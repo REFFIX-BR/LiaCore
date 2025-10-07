@@ -57,6 +57,8 @@ Responda apenas com o nome do assistente (suporte, comercial, financeiro, aprese
     
     const assistantId = ASSISTANT_IDS[finalType as keyof typeof ASSISTANT_IDS] || ASSISTANT_IDS.suporte;
     
+    console.log(`🎯 [Routing] Message routed to ${finalType} (${assistantId})`);
+    
     return {
       assistantType: finalType,
       assistantId: assistantId,
@@ -88,13 +90,19 @@ export async function sendMessageAndGetResponse(
       throw new Error("Thread ID is required");
     }
 
-    const effectiveAssistantId = assistantId || ASSISTANT_IDS.cortex || ASSISTANT_IDS.suporte;
+    // Use suporte as default (not cortex) to avoid routing assistant
+    const effectiveAssistantId = assistantId || ASSISTANT_IDS.suporte;
     
     if (!effectiveAssistantId) {
       throw new Error("No valid assistant ID available");
     }
 
-    console.log("🔵 [OpenAI] Sending message:", { threadId, assistantId: effectiveAssistantId });
+    console.log("🔵 [OpenAI] Sending message:", { 
+      threadId, 
+      assistantId: effectiveAssistantId,
+      providedAssistantId: assistantId,
+      usedFallback: !assistantId 
+    });
 
     await openai.beta.threads.messages.create(threadId, {
       role: "user",
@@ -175,8 +183,24 @@ export async function sendMessageAndGetResponse(
     if (lastMessage && lastMessage.role === "assistant") {
       const content = lastMessage.content[0];
       if (content.type === "text") {
+        const responseText = content.text.value;
+        
+        // Detect if assistant is returning JSON instead of conversational response
+        if (responseText.trim().startsWith('{') && responseText.includes('recommendedAssistantType')) {
+          console.error("⚠️ [CONFIGURATION ERROR] Assistant returned routing JSON instead of conversational response!");
+          console.error("⚠️ Assistant ID:", effectiveAssistantId);
+          console.error("⚠️ This assistant needs to be reconfigured in OpenAI platform");
+          console.error("⚠️ See INSTRUCOES_ASSISTENTES_OPENAI.md for correct configuration");
+          
+          // Return a helpful error to the user
+          return {
+            response: "Desculpe, há um problema de configuração no sistema. Por favor, contate o suporte técnico. (Erro: Assistente configurado incorretamente)",
+            ...transferData
+          };
+        }
+        
         return {
-          response: content.text.value,
+          response: responseText,
           ...transferData
         };
       }
