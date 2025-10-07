@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema } from "@shared/schema";
+import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema } from "@shared/schema";
 import { routeMessage, createThread, sendMessageAndGetResponse } from "./lib/openai";
 import { storeConversationThread, getConversationThread, searchKnowledge } from "./lib/upstash";
 
@@ -436,6 +436,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json({ success: true, message: "Documento excluído" });
     } catch (error) {
       console.error("Delete knowledge error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ==================== LEARNING SYSTEM ROUTES ====================
+
+  // Create learning event
+  app.post("/api/learning/events", async (req, res) => {
+    try {
+      const validatedData = insertLearningEventSchema.parse(req.body);
+      const event = await storage.createLearningEvent(validatedData);
+      return res.json(event);
+    } catch (error) {
+      console.error("Create learning event error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get learning events by conversation
+  app.get("/api/learning/events/:conversationId", async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      const events = await storage.getLearningEventsByConversationId(conversationId);
+      return res.json(events);
+    } catch (error) {
+      console.error("Get learning events error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get recent learning events for analysis
+  app.get("/api/learning/events", async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const events = await storage.getRecentLearningEvents(limit);
+      return res.json(events);
+    } catch (error) {
+      console.error("Get recent learning events error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get all prompt suggestions
+  app.get("/api/learning/suggestions", async (req, res) => {
+    try {
+      const status = req.query.status as string | undefined;
+      const suggestions = status 
+        ? await storage.getPromptSuggestionsByStatus(status)
+        : await storage.getAllPromptSuggestions();
+      return res.json(suggestions);
+    } catch (error) {
+      console.error("Get suggestions error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get single prompt suggestion
+  app.get("/api/learning/suggestions/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const suggestion = await storage.getPromptSuggestion(id);
+      if (!suggestion) {
+        return res.status(404).json({ error: "Suggestion not found" });
+      }
+      return res.json(suggestion);
+    } catch (error) {
+      console.error("Get suggestion error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update prompt suggestion (approve/reject)
+  app.put("/api/learning/suggestions/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status, reviewedBy, reviewNotes } = req.body;
+      
+      const updated = await storage.updatePromptSuggestion(id, {
+        status,
+        reviewedBy,
+        reviewNotes,
+      });
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Suggestion not found" });
+      }
+      
+      return res.json(updated);
+    } catch (error) {
+      console.error("Update suggestion error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Apply prompt suggestion (update assistant)
+  app.post("/api/learning/suggestions/:id/apply", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { appliedBy } = req.body;
+      
+      const suggestion = await storage.getPromptSuggestion(id);
+      if (!suggestion) {
+        return res.status(404).json({ error: "Suggestion not found" });
+      }
+
+      // Update assistant via OpenAI API
+      const { updateAssistantPrompt } = await import("./lib/openai");
+      await updateAssistantPrompt(suggestion.assistantType, suggestion.suggestedPrompt);
+
+      // Create prompt update log
+      await storage.createPromptUpdate({
+        suggestionId: id,
+        assistantType: suggestion.assistantType,
+        modificationType: "instructions",
+        previousValue: suggestion.currentPrompt,
+        newValue: suggestion.suggestedPrompt,
+        reason: suggestion.rootCauseAnalysis,
+        appliedBy,
+      });
+
+      // Update suggestion status
+      await storage.updatePromptSuggestion(id, {
+        status: "applied",
+        reviewedBy: appliedBy,
+      });
+
+      return res.json({ success: true, message: "Prompt updated successfully" });
+    } catch (error) {
+      console.error("Apply suggestion error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get all prompt updates (audit log)
+  app.get("/api/learning/updates", async (req, res) => {
+    try {
+      const assistantType = req.query.assistantType as string | undefined;
+      const updates = assistantType
+        ? await storage.getPromptUpdatesByAssistantType(assistantType)
+        : await storage.getAllPromptUpdates();
+      return res.json(updates);
+    } catch (error) {
+      console.error("Get updates error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Trigger analysis manually
+  app.post("/api/learning/analyze", async (req, res) => {
+    try {
+      const { analyzeLearningEvents } = await import("./lib/cortex-analysis");
+      const suggestions = await analyzeLearningEvents();
+      return res.json({ success: true, suggestions });
+    } catch (error) {
+      console.error("Analysis error:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
