@@ -40,6 +40,9 @@ export default function Conversations() {
     refetchInterval: 5000,
   });
 
+  // Filtrar apenas conversas ATIVAS (conversas resolvidas devem aparecer só em "Finalizadas")
+  const activeConversations = conversations.filter(conv => conv.status === 'active');
+
   // Query mensagens da conversa ativa
   const { data: conversationData } = useQuery<{ messages: Message[] }>({
     queryKey: ["/api/monitor/conversations", activeId],
@@ -181,18 +184,18 @@ export default function Conversations() {
     }
   };
 
-  const activeConversation = conversations.find(c => c.id === activeId);
+  const activeConversation = activeConversations.find(c => c.id === activeId);
   const showAISuggestion = aiSuggestion && !isEditingAI;
 
   if (conversationsLoading) {
     return <div className="flex items-center justify-center h-full">Carregando...</div>;
   }
 
-  if (conversations.length === 0) {
+  if (activeConversations.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center space-y-2">
-          <h3 className="font-semibold text-lg">Nenhuma conversa transferida</h3>
+          <h3 className="font-semibold text-lg">Nenhuma conversa ativa transferida</h3>
           <p className="text-sm text-muted-foreground">
             As conversas encaminhadas pela IA ou supervisor aparecerão aqui
           </p>
@@ -208,12 +211,12 @@ export default function Conversations() {
         <div className="p-4 border-b">
           <h2 className="font-semibold">Conversas Transferidas</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            {conversations.length} {conversations.length === 1 ? 'conversa' : 'conversas'}
+            {activeConversations.length} {activeConversations.length === 1 ? 'conversa ativa' : 'conversas ativas'}
           </p>
         </div>
         <ScrollArea className="flex-1">
           <div className="p-2 space-y-2">
-            {conversations.map((conv) => (
+            {activeConversations.map((conv) => (
               <div
                 key={conv.id}
                 onClick={() => setActiveId(conv.id)}
