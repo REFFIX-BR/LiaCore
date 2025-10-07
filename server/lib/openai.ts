@@ -180,6 +180,9 @@ export async function sendMessageAndGetResponse(
 
     const lastMessage = messages.data[0];
     
+    // DEBUG: Log complete response structure
+    console.log("🔍 [OpenAI DEBUG] Last message:", JSON.stringify(lastMessage, null, 2));
+    
     if (lastMessage && lastMessage.role === "assistant") {
       const content = lastMessage.content[0];
       if (content.type === "text") {
@@ -206,6 +209,16 @@ export async function sendMessageAndGetResponse(
       }
     }
 
+    // If transfer was requested but no assistant message, return transfer confirmation
+    if (transferData.transferred) {
+      console.log("✅ [OpenAI] Transfer requested but no response - using fallback message");
+      return {
+        response: `Entendido! Vou transferir você para ${transferData.transferredTo || 'um atendente humano'}. Em instantes você será atendido por nossa equipe. 👤`,
+        ...transferData
+      };
+    }
+
+    console.error("⚠️ [OpenAI] No valid response from assistant");
     return { response: "Desculpe, não consegui processar sua mensagem." };
   } catch (error) {
     console.error("Assistant run error:", error);
