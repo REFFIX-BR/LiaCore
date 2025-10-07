@@ -113,13 +113,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateConversation(conversation.id, {
           threadId,
         });
-      } else if (conversation.status === 'resolved' && !conversation.transferredToHuman) {
-        // Reopen resolved conversation (only if NOT transferred to human)
+      } else if (conversation.status === 'resolved') {
+        // Reopen resolved conversation and reset transfer if needed
         console.log(`🔄 [Reopen] Reabrindo conversa finalizada: ${chatId}`);
-        await storage.updateConversation(conversation.id, {
+        
+        const updateData: any = {
           status: 'active',
-        });
-        conversation = { ...conversation, status: 'active' };
+        };
+        
+        // Se estava transferida, resetar para IA voltar a responder
+        if (conversation.transferredToHuman) {
+          console.log(`🤖 [Reopen] Resetando transferência - IA volta a responder`);
+          updateData.transferredToHuman = false;
+          updateData.transferReason = null;
+          updateData.transferredAt = null;
+        }
+        
+        await storage.updateConversation(conversation.id, updateData);
+        conversation = { ...conversation, ...updateData };
       }
 
       // Store user message
@@ -446,13 +457,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateConversation(conversation.id, {
             threadId,
           });
-        } else if (conversation.status === 'resolved' && !conversation.transferredToHuman) {
-          // Reopen resolved conversation (only if NOT transferred to human)
+        } else if (conversation.status === 'resolved') {
+          // Reopen resolved conversation and reset transfer if needed
           console.log(`🔄 [Evolution Reopen] Reabrindo conversa finalizada: ${chatId} (${clientName})`);
-          await storage.updateConversation(conversation.id, {
+          
+          const updateData: any = {
             status: 'active',
-          });
-          conversation = { ...conversation, status: 'active' };
+          };
+          
+          // Se estava transferida, resetar para IA voltar a responder
+          if (conversation.transferredToHuman) {
+            console.log(`🤖 [Evolution Reopen] Resetando transferência - IA volta a responder`);
+            updateData.transferredToHuman = false;
+            updateData.transferReason = null;
+            updateData.transferredAt = null;
+          }
+          
+          await storage.updateConversation(conversation.id, updateData);
+          conversation = { ...conversation, ...updateData };
         }
 
         // Store user message
