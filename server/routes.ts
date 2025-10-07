@@ -114,7 +114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           transferReason: `Transferência automática pela IA para ${result.transferredTo}`,
           transferredAt: new Date(),
           metadata: {
-            ...conversation.metadata,
+            ...(typeof conversation.metadata === 'object' && conversation.metadata !== null ? conversation.metadata : {}),
             transferred: true,
             transferredTo: result.transferredTo,
             transferredAt: new Date().toISOString(),
@@ -306,10 +306,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const conversation = await storage.getConversation(conversationId);
 
-      // Keep status as "active" but mark as transferred in metadata
+      // Keep status as "active" but mark as transferred (for Conversas tab)
       await storage.updateConversation(conversationId, {
         status: "active",
+        transferredToHuman: true,
+        transferReason: `Transferência manual: ${notes}`,
+        transferredAt: new Date(),
         metadata: {
+          ...(typeof conversation?.metadata === 'object' && conversation?.metadata !== null ? conversation.metadata : {}),
           transferred: true,
           transferredTo: department,
           transferredAt: new Date().toISOString(),
