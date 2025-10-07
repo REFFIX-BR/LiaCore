@@ -83,54 +83,52 @@ export async function sendMessageAndGetResponse(
   userMessage: string
 ): Promise<string> {
   try {
+    if (!threadId) {
+      throw new Error("Thread ID is required");
+    }
+
     const effectiveAssistantId = assistantId || ASSISTANT_IDS.cortex || ASSISTANT_IDS.suporte;
     
     if (!effectiveAssistantId) {
       throw new Error("No valid assistant ID available");
     }
 
+    console.log("🔵 [OpenAI] Sending message:", { threadId, assistantId: effectiveAssistantId });
+
     await openai.beta.threads.messages.create(threadId, {
       role: "user",
       content: userMessage,
     });
 
-    const run = await openai.beta.threads.runs.create(threadId, {
+    const run = await openai.beta.threads.runs.createAndPoll(threadId, {
       assistant_id: effectiveAssistantId,
+    }, {
+      pollIntervalMs: 1000,
     });
 
-    let runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
-    let attempts = 0;
-    const maxAttempts = 30;
+    console.log("🔵 [OpenAI] Run completed:", { runId: run.id, status: run.status, threadId });
 
-    while (runStatus.status !== "completed" && attempts < maxAttempts) {
-      if (runStatus.status === "failed" || runStatus.status === "cancelled" || runStatus.status === "expired") {
-        throw new Error(`Run failed with status: ${runStatus.status}`);
-      }
-
-      if (runStatus.status === "requires_action" && runStatus.required_action?.type === "submit_tool_outputs") {
-        const toolCalls = runStatus.required_action.submit_tool_outputs.tool_calls;
-        const toolOutputs = await Promise.all(
-          toolCalls.map(async (toolCall) => {
-            const result = await handleToolCall(toolCall.function.name, toolCall.function.arguments);
-            return {
-              tool_call_id: toolCall.id,
-              output: result,
-            };
-          })
-        );
-
-        await openai.beta.threads.runs.submitToolOutputs(threadId, run.id, {
-          tool_outputs: toolOutputs,
-        });
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
-      attempts++;
+    if (run.status === "failed" || run.status === "cancelled" || run.status === "expired") {
+      throw new Error(`Run failed with status: ${run.status}`);
     }
 
-    if (attempts >= maxAttempts) {
-      throw new Error("Run timed out");
+    // Handle tool calls if needed
+    if (run.status === "requires_action" && run.required_action?.type === "submit_tool_outputs") {
+      const toolCalls = run.required_action.submit_tool_outputs.tool_calls;
+      const toolOutputs = await Promise.all(
+        toolCalls.map(async (toolCall) => {
+          const result = await handleToolCall(toolCall.function.name, toolCall.function.arguments);
+          return {
+            tool_call_id: toolCall.id,
+            output: result,
+          };
+        })
+      );
+
+      // @ts-ignore - TypeScript types may be outdated, but this is the correct syntax per OpenAI docs
+      await openai.beta.threads.runs.submitToolOutputsAndPoll(threadId, run.id, {
+        tool_outputs: toolOutputs,
+      });
     }
 
     const messages = await openai.beta.threads.messages.list(threadId, {

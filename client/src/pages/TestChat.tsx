@@ -60,11 +60,14 @@ export default function TestChat() {
   };
 
   const populateKnowledgeMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/knowledge/populate", {}),
-    onSuccess: (response: any) => {
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/knowledge/populate", {});
+      return response.json();
+    },
+    onSuccess: (data: any) => {
       toast({
         title: "Sucesso",
-        description: `Base populada com ${response.count} documentos`,
+        description: `Base populada com ${data.count} documentos`,
       });
     },
     onError: () => {
@@ -77,7 +80,10 @@ export default function TestChat() {
   });
 
   const clearKnowledgeMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/knowledge/clear", {}),
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/knowledge/clear", {});
+      return response.json();
+    },
     onSuccess: () => {
       toast({
         title: "Sucesso",

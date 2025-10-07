@@ -62,40 +62,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Send message and get response
-      if (threadId) {
-        const assistantId = (conversation.metadata as any)?.routing?.assistantId;
-        const response = await sendMessageAndGetResponse(threadId, assistantId, message);
-
-        // Store assistant response
-        await storage.createMessage({
-          conversationId: conversation.id,
-          role: "assistant",
-          content: response,
-          assistant: conversation.assistantType,
-        });
-
-        // Analyze sentiment (simplified)
-        const sentiment = message.includes("!") || message.toUpperCase() === message ? "negative" : "neutral";
-        const urgency = message.includes("URGENTE") || message.includes("!!!") ? "critical" : "normal";
-
-        // Update conversation
-        await storage.updateConversation(conversation.id, {
-          lastMessage: message,
-          lastMessageTime: new Date(),
-          duration: (conversation.duration || 0) + 30,
-          sentiment,
-          urgency,
-        });
-
-        return res.json({
-          success: true,
-          response,
-          assistantType: conversation.assistantType,
-          chatId,
-        });
+      if (!threadId) {
+        console.error("❌ No threadId available for conversation:", { chatId, conversationId: conversation.id });
+        return res.status(500).json({ error: "Thread ID not found" });
       }
 
-      return res.status(500).json({ error: "Failed to process message" });
+      const assistantId = (conversation.metadata as any)?.routing?.assistantId;
+      const response = await sendMessageAndGetResponse(threadId, assistantId, message);
+
+      // Store assistant response
+      await storage.createMessage({
+        conversationId: conversation.id,
+        role: "assistant",
+        content: response,
+        assistant: conversation.assistantType,
+      });
+
+      // Analyze sentiment (simplified)
+      const sentiment = message.includes("!") || message.toUpperCase() === message ? "negative" : "neutral";
+      const urgency = message.includes("URGENTE") || message.includes("!!!") ? "critical" : "normal";
+
+      // Update conversation
+      await storage.updateConversation(conversation.id, {
+        lastMessage: message,
+        lastMessageTime: new Date(),
+        duration: (conversation.duration || 0) + 30,
+        sentiment,
+        urgency,
+      });
+
+      return res.json({
+        success: true,
+        response,
+        assistantType: conversation.assistantType,
+        chatId,
+      });
     } catch (error) {
       console.error("Chat error:", error);
       return res.status(500).json({ error: "Internal server error" });
