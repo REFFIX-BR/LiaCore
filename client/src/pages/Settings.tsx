@@ -30,6 +30,7 @@ interface SystemConfig {
     openai?: boolean;
     redis?: boolean;
     vector?: boolean;
+    evolution?: boolean;
   };
   assistants?: {
     [key: string]: boolean;
@@ -38,6 +39,13 @@ interface SystemConfig {
     openai?: boolean;
     redis?: boolean;
     vector?: boolean;
+    evolution?: boolean;
+  };
+  evolution?: {
+    configured?: boolean;
+    url?: string;
+    instance?: string;
+    hasKey?: boolean;
   };
   learning?: {
     lastAnalysis?: string;
@@ -136,6 +144,7 @@ export default function Settings() {
     { name: "OpenAI API", key: "openai", status: systemConfig?.apiStatus?.openai || false },
     { name: "Upstash Redis", key: "redis", status: systemConfig?.apiStatus?.redis || false },
     { name: "Upstash Vector", key: "vector", status: systemConfig?.apiStatus?.vector || false },
+    { name: "Evolution API", key: "evolution", status: systemConfig?.apiStatus?.evolution || false },
   ];
 
   return (
@@ -378,6 +387,79 @@ export default function Settings() {
                   </Badge>
                 </div>
               ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Configuração Evolution API</CardTitle>
+              <CardDescription>
+                Integração com WhatsApp via Evolution API
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${systemConfig?.evolution?.configured ? 'bg-green-500' : 'bg-destructive'}`} />
+                    <span className="font-medium">Status da Integração</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {systemConfig?.evolution?.configured ? 'Integração WhatsApp ativa' : 'Configuração incompleta'}
+                  </p>
+                </div>
+                <Badge variant={systemConfig?.evolution?.configured ? "default" : "destructive"}>
+                  {systemConfig?.evolution?.configured ? "Configurada" : "Pendente"}
+                </Badge>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">URL da API</Label>
+                  <div className="p-3 bg-muted rounded-lg">
+                    <code className="text-sm">
+                      {systemConfig?.evolution?.url || "Não configurado"}
+                    </code>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Instância</Label>
+                  <div className="p-3 bg-muted rounded-lg">
+                    <code className="text-sm">
+                      {systemConfig?.evolution?.instance || "Não configurado"}
+                    </code>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">API Key</Label>
+                  <div className="p-3 bg-muted rounded-lg">
+                    <code className="text-sm">
+                      {systemConfig?.evolution?.hasKey ? "••••••••••••••••" : "Não configurada"}
+                    </code>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <Key className="w-4 h-4" />
+                  Como atualizar as configurações
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Para alterar as credenciais da Evolution API, configure as seguintes variáveis nos <strong>Secrets do Replit</strong>:
+                </p>
+                <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                  <li>• <code>EVOLUTION_API_URL</code></li>
+                  <li>• <code>EVOLUTION_API_KEY</code></li>
+                  <li>• <code>EVOLUTION_API_INSTANCE</code></li>
+                </ul>
+              </div>
             </CardContent>
           </Card>
 

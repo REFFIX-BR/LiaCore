@@ -1070,11 +1070,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allLearningEvents = await storage.getRecentLearningEvents();
       const allPromptUpdates = await storage.getAllPromptSuggestions();
 
+      // Check Evolution API status
+      let evolutionStatus = false;
+      if (EVOLUTION_CONFIG.apiUrl && EVOLUTION_CONFIG.apiKey && EVOLUTION_CONFIG.instance) {
+        evolutionStatus = true; // Basic config check
+      }
+
       const config = {
         apiStatus: {
           openai: !!process.env.OPENAI_API_KEY,
           redis: redisStatus,
           vector: vectorStatus,
+          evolution: evolutionStatus,
         },
         assistants: {
           cortex: !!ASSISTANT_IDS.cortex,
@@ -1089,6 +1096,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           openai: !!process.env.OPENAI_API_KEY,
           redis: !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN,
           vector: !!process.env.UPSTASH_VECTOR_REST_URL && !!process.env.UPSTASH_VECTOR_REST_TOKEN,
+          evolution: evolutionStatus,
+        },
+        evolution: {
+          configured: evolutionStatus,
+          url: EVOLUTION_CONFIG.apiUrl || "",
+          instance: EVOLUTION_CONFIG.instance || "",
+          hasKey: !!EVOLUTION_CONFIG.apiKey,
         },
         learning: {
           lastAnalysis: "Em breve",
