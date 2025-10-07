@@ -35,7 +35,7 @@ export default function Knowledge() {
     onSuccess: (data: any) => {
       const formattedResults = data.map((result: any) => ({
         id: result.chunk.id,
-        name: result.chunk.metadata?.name || "Documento sem nome",
+        name: result.chunk.name || "Documento sem nome",
         content: result.chunk.content,
         source: result.chunk.source,
         relevance: Math.round(result.score * 100),
@@ -68,7 +68,7 @@ export default function Knowledge() {
       
       const newDoc = {
         id: variables.id,
-        name: variables.metadata?.name || "Novo documento",
+        name: variables.name || "Novo documento",
         content: variables.content,
         source: variables.source,
         relevance: 100,
@@ -154,10 +154,10 @@ export default function Knowledge() {
 
     addDocumentMutation.mutate({
       id: `kb-${Date.now()}`,
+      name: newDocName,
       content: newDocContent,
       source: newDocSource,
       metadata: { 
-        name: newDocName,
         addedAt: new Date().toISOString() 
       },
     });

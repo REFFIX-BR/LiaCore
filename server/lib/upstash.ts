@@ -14,6 +14,7 @@ export const redis = new Redis({
 
 export interface KnowledgeChunk {
   id: string;
+  name?: string;
   content: string;
   source: string;
   metadata?: Record<string, any>;
@@ -38,6 +39,7 @@ export async function searchKnowledge(query: string, topK: number = 5): Promise<
     return results.map(result => ({
       chunk: {
         id: String(result.id),
+        name: result.metadata?.name as string || undefined,
         content: result.metadata?.content as string || "",
         source: result.metadata?.source as string || "Unknown",
         metadata: result.metadata,
@@ -71,9 +73,10 @@ export async function addKnowledgeChunk(
   id: string,
   content: string,
   source: string,
+  name?: string,
   metadata?: Record<string, any>
 ): Promise<void> {
-  console.log("🔵 [Upstash] Adding knowledge chunk:", { id, source });
+  console.log("🔵 [Upstash] Adding knowledge chunk:", { id, name, source });
   try {
     const embedding = await generateEmbedding(content);
     
@@ -81,6 +84,7 @@ export async function addKnowledgeChunk(
       id,
       vector: embedding,
       metadata: {
+        name,
         content,
         source,
         ...metadata,
@@ -96,6 +100,7 @@ export async function addKnowledgeChunk(
 export async function addKnowledgeChunks(
   chunks: Array<{
     id: string;
+    name?: string;
     content: string;
     source: string;
     metadata?: Record<string, any>;
@@ -110,6 +115,7 @@ export async function addKnowledgeChunks(
           id: chunk.id,
           vector: embedding,
           metadata: {
+            name: chunk.name,
             content: chunk.content,
             source: chunk.source,
             ...chunk.metadata,
