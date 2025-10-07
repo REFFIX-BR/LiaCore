@@ -9,8 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { monitorAPI } from "@/lib/api";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User, Bot, Database } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { User, Bot } from "lucide-react";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -72,46 +71,6 @@ export default function TestChat() {
     setConversation([]);
     setMessage("");
   };
-
-  const populateKnowledgeMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/knowledge/populate", {});
-      return response.json();
-    },
-    onSuccess: (data: any) => {
-      toast({
-        title: "Sucesso",
-        description: `Base populada com ${data.count} documentos`,
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Falha ao popular base de conhecimento",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const clearKnowledgeMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/knowledge/clear", {});
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Sucesso",
-        description: "Base de conhecimento limpa",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Falha ao limpar base de conhecimento",
-        variant: "destructive",
-      });
-    },
-  });
 
   const exampleMessages = [
     "Minha internet está muito lenta!",
@@ -237,42 +196,6 @@ export default function TestChat() {
                     {msg}
                   </Button>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5" />
-                Base de Conhecimento
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => populateKnowledgeMutation.mutate()}
-                  disabled={populateKnowledgeMutation.isPending}
-                  data-testid="button-populate-kb"
-                >
-                  {populateKnowledgeMutation.isPending ? "Populando..." : "Popular Base"}
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => clearKnowledgeMutation.mutate()}
-                  disabled={clearKnowledgeMutation.isPending}
-                  data-testid="button-clear-kb"
-                >
-                  {clearKnowledgeMutation.isPending ? "Limpando..." : "Limpar Base"}
-                </Button>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Popular a base com documentação técnica da TR Telecom para habilitar busca RAG
-                </p>
               </div>
             </CardContent>
           </Card>

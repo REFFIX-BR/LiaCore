@@ -213,7 +213,7 @@ export async function sendMessageAndGetResponse(
     if (transferData.transferred) {
       console.log("✅ [OpenAI] Transfer requested but no response - using fallback message");
       return {
-        response: `Entendido! Vou transferir você para ${transferData.transferredTo || 'um atendente humano'}. Em instantes você será atendido por nossa equipe. 👤`,
+        response: `Entendido! Vou transferir você para ${transferData.transferredTo || 'um atendente humano'}. Em instantes você será atendido por nossa equipe.`,
         ...transferData
       };
     }
