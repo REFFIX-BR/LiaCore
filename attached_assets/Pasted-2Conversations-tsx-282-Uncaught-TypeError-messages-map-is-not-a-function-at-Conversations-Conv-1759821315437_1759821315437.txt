@@ -1,0 +1,44 @@
+2Conversations.tsx:282 Uncaught TypeError: messages.map is not a function
+    at Conversations (Conversations.tsx:282:25)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=1c49944f:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=1c49944f:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=1c49944f:15924:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=1c49944f:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=1c49944f:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=1c49944f:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=1c49944f:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=1c49944f:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=1c49944f:19137:13)Entenda o erro
+Console.js:61 The above error occurred in the <Conversations> component:
+
+    at Conversations (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.dev/src/pages/Conversations.tsx:32:35)
+    at Route (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1c49944f:323:16)
+    at Switch (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1c49944f:379:17)
+    at Router
+    at main
+    at div
+    at div
+    at div
+    at Provider (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=1c49944f:38:15)
+    at TooltipProvider (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=1c49944f:63:5)
+    at SidebarProvider (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.dev/src/components/ui/sidebar.tsx:59:3)
+    at ThemeProvider (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.dev/src/lib/theme-provider.tsx:25:3)
+    at Provider (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=1c49944f:38:15)
+    at TooltipProvider (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=1c49944f:63:5)
+    at QueryClientProvider (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=1c49944f:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+Mt.forEach.n.<computed> @ Console.js:61Entenda o erro
+chunk-RPCDYKBN.js?v=1c49944f:9129 Uncaught TypeError: messages.map is not a function
+    at Conversations (Conversations.tsx:282:25)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=1c49944f:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=1c49944f:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=1c49944f:15924:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=1c49944f:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=1c49944f:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=1c49944f:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js?v=1c49944f:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js?v=1c49944f:18736:28)
+    at performSyncWorkOnRoot (chunk-RPCDYKBN.js?v=1c49944f:18879:28)Entenda o erro

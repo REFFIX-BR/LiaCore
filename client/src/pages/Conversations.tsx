@@ -41,11 +41,13 @@ export default function Conversations() {
   });
 
   // Query mensagens da conversa ativa
-  const { data: messages = [] } = useQuery<Message[]>({
+  const { data: conversationData } = useQuery<{ messages: Message[] }>({
     queryKey: ["/api/monitor/conversations", activeId],
     enabled: !!activeId,
     refetchInterval: 3000,
   });
+  
+  const messages = conversationData?.messages || [];
 
   // Mutation para pedir sugestão da IA
   const suggestMutation = useMutation({
