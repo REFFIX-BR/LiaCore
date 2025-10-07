@@ -8,7 +8,13 @@ import {
   type Alert,
   type InsertAlert,
   type SupervisorAction,
-  type InsertSupervisorAction
+  type InsertSupervisorAction,
+  type LearningEvent,
+  type InsertLearningEvent,
+  type PromptSuggestion,
+  type InsertPromptSuggestion,
+  type PromptUpdate,
+  type InsertPromptUpdate
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -38,6 +44,24 @@ export interface IStorage {
   // Supervisor Actions
   createSupervisorAction(action: InsertSupervisorAction): Promise<SupervisorAction>;
   getActionsByConversationId(conversationId: string): Promise<SupervisorAction[]>;
+  
+  // Learning Events
+  createLearningEvent(event: InsertLearningEvent): Promise<LearningEvent>;
+  getLearningEventsByConversationId(conversationId: string): Promise<LearningEvent[]>;
+  getLearningEventsByAssistantType(assistantType: string): Promise<LearningEvent[]>;
+  getRecentLearningEvents(limit?: number): Promise<LearningEvent[]>;
+  
+  // Prompt Suggestions
+  createPromptSuggestion(suggestion: InsertPromptSuggestion): Promise<PromptSuggestion>;
+  getAllPromptSuggestions(): Promise<PromptSuggestion[]>;
+  getPromptSuggestionsByStatus(status: string): Promise<PromptSuggestion[]>;
+  getPromptSuggestion(id: string): Promise<PromptSuggestion | undefined>;
+  updatePromptSuggestion(id: string, updates: Partial<PromptSuggestion>): Promise<PromptSuggestion | undefined>;
+  
+  // Prompt Updates
+  createPromptUpdate(update: InsertPromptUpdate): Promise<PromptUpdate>;
+  getAllPromptUpdates(): Promise<PromptUpdate[]>;
+  getPromptUpdatesByAssistantType(assistantType: string): Promise<PromptUpdate[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -46,6 +70,9 @@ export class MemStorage implements IStorage {
   private messages: Map<string, Message>;
   private alerts: Map<string, Alert>;
   private supervisorActions: Map<string, SupervisorAction>;
+  private learningEvents: Map<string, LearningEvent>;
+  private promptSuggestions: Map<string, PromptSuggestion>;
+  private promptUpdates: Map<string, PromptUpdate>;
 
   constructor() {
     this.users = new Map();
@@ -53,6 +80,9 @@ export class MemStorage implements IStorage {
     this.messages = new Map();
     this.alerts = new Map();
     this.supervisorActions = new Map();
+    this.learningEvents = new Map();
+    this.promptSuggestions = new Map();
+    this.promptUpdates = new Map();
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -181,6 +211,108 @@ export class MemStorage implements IStorage {
   async getActionsByConversationId(conversationId: string): Promise<SupervisorAction[]> {
     return Array.from(this.supervisorActions.values()).filter(
       (action) => action.conversationId === conversationId
+    ).sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  // Learning Events
+  async createLearningEvent(insertEvent: InsertLearningEvent): Promise<LearningEvent> {
+    const id = randomUUID();
+    const event: LearningEvent = {
+      ...insertEvent,
+      id,
+      correctResponse: insertEvent.correctResponse || null,
+      feedback: insertEvent.feedback || null,
+      sentiment: insertEvent.sentiment || null,
+      resolution: insertEvent.resolution || null,
+      metadata: insertEvent.metadata || null,
+      createdAt: new Date(),
+    };
+    this.learningEvents.set(id, event);
+    return event;
+  }
+
+  async getLearningEventsByConversationId(conversationId: string): Promise<LearningEvent[]> {
+    return Array.from(this.learningEvents.values()).filter(
+      (event) => event.conversationId === conversationId
+    ).sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  async getLearningEventsByAssistantType(assistantType: string): Promise<LearningEvent[]> {
+    return Array.from(this.learningEvents.values()).filter(
+      (event) => event.assistantType === assistantType
+    ).sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  async getRecentLearningEvents(limit: number = 100): Promise<LearningEvent[]> {
+    return Array.from(this.learningEvents.values())
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0))
+      .slice(0, limit);
+  }
+
+  // Prompt Suggestions
+  async createPromptSuggestion(insertSuggestion: InsertPromptSuggestion): Promise<PromptSuggestion> {
+    const id = randomUUID();
+    const suggestion: PromptSuggestion = {
+      ...insertSuggestion,
+      id,
+      affectedConversations: insertSuggestion.affectedConversations || null,
+      reviewedBy: insertSuggestion.reviewedBy || null,
+      reviewNotes: insertSuggestion.reviewNotes || null,
+      createdAt: new Date(),
+      reviewedAt: null,
+    };
+    this.promptSuggestions.set(id, suggestion);
+    return suggestion;
+  }
+
+  async getAllPromptSuggestions(): Promise<PromptSuggestion[]> {
+    return Array.from(this.promptSuggestions.values())
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  async getPromptSuggestionsByStatus(status: string): Promise<PromptSuggestion[]> {
+    return Array.from(this.promptSuggestions.values()).filter(
+      (suggestion) => suggestion.status === status
+    ).sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  async getPromptSuggestion(id: string): Promise<PromptSuggestion | undefined> {
+    return this.promptSuggestions.get(id);
+  }
+
+  async updatePromptSuggestion(id: string, updates: Partial<PromptSuggestion>): Promise<PromptSuggestion | undefined> {
+    const suggestion = this.promptSuggestions.get(id);
+    if (!suggestion) return undefined;
+    
+    const updated = { ...suggestion, ...updates };
+    if (updates.status && updates.status !== 'pending') {
+      updated.reviewedAt = new Date();
+    }
+    this.promptSuggestions.set(id, updated);
+    return updated;
+  }
+
+  // Prompt Updates
+  async createPromptUpdate(insertUpdate: InsertPromptUpdate): Promise<PromptUpdate> {
+    const id = randomUUID();
+    const update: PromptUpdate = {
+      ...insertUpdate,
+      id,
+      suggestionId: insertUpdate.suggestionId || null,
+      createdAt: new Date(),
+    };
+    this.promptUpdates.set(id, update);
+    return update;
+  }
+
+  async getAllPromptUpdates(): Promise<PromptUpdate[]> {
+    return Array.from(this.promptUpdates.values())
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  async getPromptUpdatesByAssistantType(assistantType: string): Promise<PromptUpdate[]> {
+    return Array.from(this.promptUpdates.values()).filter(
+      (update) => update.assistantType === assistantType
     ).sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
   }
 }
