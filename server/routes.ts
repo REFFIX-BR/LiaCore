@@ -308,7 +308,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Webhook endpoint for Evolution API events
   app.post("/api/webhooks/evolution", async (req, res) => {
     try {
-      const { event, instance, data } = req.body;
+      const { event: rawEvent, instance, data } = req.body;
+
+      // Normalize event to string (handle malformed payloads)
+      const event = typeof rawEvent === 'string' ? rawEvent : '';
+
+      if (!event) {
+        webhookLogger.warning('INVALID_EVENT', 'Webhook recebido sem tipo de evento válido', { 
+          instance,
+          receivedEventType: typeof rawEvent,
+          hasData: !!data 
+        });
+        console.log(`⚠️  [Evolution] Webhook recebido com evento inválido:`, { rawEvent, instance });
+        return res.json({ success: true, processed: false, reason: "invalid_event_type" });
+      }
 
       webhookLogger.info('CONNECTION', `Webhook recebido: ${event}`, {
         instance,
