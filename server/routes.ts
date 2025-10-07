@@ -616,6 +616,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DEBUG: Simular fluxo completo de conversa (criar, transferir, finalizar)
+  app.post("/api/debug/simulate-conversation", async (req, res) => {
+    try {
+      console.log("🧪 [DEBUG] Iniciando simulação de conversa completa");
+      
+      const testChatId = `test_${Date.now()}`;
+      const testPhone = "5511999999999";
+      const testName = "Cliente Teste";
+      
+      // 1. Criar conversa inicial
+      console.log("📝 [DEBUG] 1. Criando conversa");
+      const conversation = await storage.createConversation({
+        chatId: testChatId,
+        clientName: testName,
+        clientPhone: testPhone,
+        status: "active",
+        assistantType: "Suporte Técnico",
+        sentiment: "neutral",
+        urgency: "medium",
+        lastMessage: "Olá, preciso de ajuda",
+        lastMessageTime: new Date(),
+        duration: 0,
+      });
+
+      // 2. Adicionar mensagens simuladas
+      console.log("💬 [DEBUG] 2. Adicionando mensagens");
+      await storage.createMessage({
+        conversationId: conversation.id,
+        role: "user",
+        content: "Olá, preciso de ajuda com meu produto",
+        assistant: null,
+      });
+
+      await storage.createMessage({
+        conversationId: conversation.id,
+        role: "assistant",
+        content: "Olá! Como posso ajudá-lo hoje?",
+        assistant: "Suporte Técnico",
+      });
+
+      await storage.createMessage({
+        conversationId: conversation.id,
+        role: "user",
+        content: "Preciso falar com um atendente humano",
+        assistant: null,
+      });
+
+      // 3. Transferir para humano
+      console.log("🔀 [DEBUG] 3. Transferindo para humano");
+      await storage.updateConversation(conversation.id, {
+        transferredToHuman: true,
+        transferReason: "Cliente solicitou atendimento humano",
+        transferredAt: new Date(),
+        status: "active", // Mantém ativa após transferência
+      });
+
+      await storage.createSupervisorAction({
+        conversationId: conversation.id,
+        action: "transfer",
+        notes: "Cliente solicitou transferência para humano",
+        createdBy: "Sistema de Teste",
+      });
+
+      // 4. Adicionar mensagem do supervisor
+      console.log("👤 [DEBUG] 4. Supervisor respondendo");
+      await storage.createMessage({
+        conversationId: conversation.id,
+        role: "assistant",
+        content: "Olá! Sou um atendente humano. Como posso ajudar?",
+        assistant: "Supervisor Manual",
+      });
+
+      await storage.createMessage({
+        conversationId: conversation.id,
+        role: "user",
+        content: "Obrigado, meu problema foi resolvido!",
+        assistant: null,
+      });
+
+      // 5. Finalizar conversa
+      console.log("✅ [DEBUG] 5. Finalizando conversa");
+      await storage.updateConversation(conversation.id, {
+        status: "resolved",
+        lastMessage: "Obrigado, meu problema foi resolvido!",
+        lastMessageTime: new Date(),
+        duration: 300, // 5 minutos
+      });
+
+      // 6. Buscar conversa completa para retornar
+      console.log("📊 [DEBUG] 6. Buscando dados completos");
+      const finalConversation = await storage.getConversation(conversation.id);
+      const messages = await storage.getMessagesByConversationId(conversation.id);
+      const actions = await storage.getActionsByConversationId(conversation.id);
+
+      console.log("✅ [DEBUG] Simulação concluída com sucesso");
+
+      return res.json({
+        success: true,
+        message: "Fluxo completo simulado com sucesso",
+        conversationId: conversation.id,
+        chatId: testChatId,
+        details: {
+          conversation: finalConversation,
+          messages: messages,
+          actions: actions,
+        },
+        summary: {
+          status: finalConversation?.status,
+          transferredToHuman: finalConversation?.transferredToHuman,
+          transferReason: finalConversation?.transferReason,
+          totalMessages: messages.length,
+          totalActions: actions.length,
+        }
+      });
+    } catch (error) {
+      console.error("❌ [DEBUG] Erro na simulação:", error);
+      return res.status(500).json({ 
+        error: "Erro na simulação", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+
   // Get all active conversations for monitoring
   app.get("/api/monitor/conversations", async (req, res) => {
     try {
