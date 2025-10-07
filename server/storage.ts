@@ -591,8 +591,12 @@ export class DbStorage implements IStorage {
   }
 
   async updatePromptSuggestion(id: string, updates: Partial<PromptSuggestion>): Promise<PromptSuggestion | undefined> {
+    const updateData = { ...updates };
+    if (updates.status && updates.status !== 'pending') {
+      updateData.reviewedAt = new Date();
+    }
     const [updated] = await db.update(schema.promptSuggestions)
-      .set(updates)
+      .set(updateData)
       .where(eq(schema.promptSuggestions.id, id))
       .returning();
     return updated;
