@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Search, Upload, Database, Trash2 } from "lucide-react";
+import { Search, Upload } from "lucide-react";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -89,46 +89,6 @@ export default function Knowledge() {
     },
   });
 
-  const populateMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/knowledge/populate", {});
-      return response.json();
-    },
-    onSuccess: (data: any) => {
-      toast({
-        title: "Base Populada",
-        description: `${data.count} documentos adicionados`,
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Falha ao popular base",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const clearMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/knowledge/clear", {});
-      return response.json();
-    },
-    onSuccess: () => {
-      setSearchResults([]);
-      toast({
-        title: "Base Limpa",
-        description: "Todos os documentos foram removidos",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Falha ao limpar base",
-        variant: "destructive",
-      });
-    },
-  });
 
   const handleSearch = () => {
     if (!searchQuery.trim()) {
@@ -257,66 +217,23 @@ export default function Knowledge() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
-          <KnowledgeBasePanel 
-            chunks={searchResults} 
-            onDelete={(id) => {
-              apiRequest("DELETE", `/api/knowledge/${id}`, {})
-                .then(() => {
-                  setSearchResults(prev => prev.filter(c => c.id !== id));
-                  toast({ title: "Documento excluído" });
-                })
-                .catch(() => {
-                  toast({ 
-                    title: "Erro", 
-                    description: "Falha ao excluir documento",
-                    variant: "destructive" 
-                  });
-                });
-            }}
-          />
-        </div>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Gerenciar Base</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Button
-              variant="default"
-              className="w-full"
-              onClick={() => populateMutation.mutate()}
-              disabled={populateMutation.isPending}
-              data-testid="button-populate-knowledge"
-            >
-              <Database className="h-4 w-4 mr-2" />
-              {populateMutation.isPending ? "Populando..." : "Popular Base"}
-            </Button>
-            
-            <Button
-              variant="destructive"
-              className="w-full"
-              onClick={() => clearMutation.mutate()}
-              disabled={clearMutation.isPending}
-              data-testid="button-clear-knowledge"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              {clearMutation.isPending ? "Limpando..." : "Limpar Base"}
-            </Button>
-
-            <div className="pt-2 space-y-2 text-sm text-muted-foreground">
-              <p className="font-medium">Ações:</p>
-              <ul className="list-disc list-inside space-y-1">
-                <li>Popular: Adiciona 10 documentos de exemplo</li>
-                <li>Limpar: Remove todos os documentos</li>
-                <li>Adicionar: Insere documento customizado</li>
-                <li>Buscar: Consulta semântica RAG</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <KnowledgeBasePanel 
+        chunks={searchResults} 
+        onDelete={(id) => {
+          apiRequest("DELETE", `/api/knowledge/${id}`, {})
+            .then(() => {
+              setSearchResults(prev => prev.filter(c => c.id !== id));
+              toast({ title: "Documento excluído" });
+            })
+            .catch(() => {
+              toast({ 
+                title: "Erro", 
+                description: "Falha ao excluir documento",
+                variant: "destructive" 
+              });
+            });
+        }}
+      />
     </div>
   );
 }
