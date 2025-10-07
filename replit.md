@@ -57,7 +57,7 @@ Preferred communication style: Simple, everyday language.
 
 **Schema Entities**:
 - Users: Authentication and supervisor accounts
-- Conversations: Chat metadata, sentiment, urgency, assistant routing
+- Conversations: Chat metadata, sentiment, urgency, assistant routing, **conversationSummary** (accumulated JSON), **lastSummarizedAt**, **messageCountAtLastSummary**
 - Messages: Complete message history with function calls
 - Alerts: Critical issues requiring supervisor attention
 - Supervisor Actions: Audit trail of human interventions
@@ -73,7 +73,21 @@ Preferred communication style: Simple, everyday language.
 
 **AI Provider**: OpenAI with separate assistant IDs for each specialized role
 
-**Routing Logic**: GPT-5 based intent classification to select appropriate assistant
+**Routing Logic**: GPT-5 based intent classification to select appropriate assistant with context-aware routing using conversation summaries
+
+**Automatic Conversation Summarization**:
+- **Trigger**: Every 12 messages automatically generates structured summary
+- **Execution**: Async background processing (non-blocking for users)
+- **Structure**: JSON format with summary text, keyFacts, sentiment, assistantHistory, actionsTaken, pendingActions, importantDates
+- **Context Window**: Maintains last 5 messages intact for routing, summarizes previous messages
+- **Accumulation**: Field-by-field merging with deduplication prevents context loss
+- **Smart Indexing**: Tracks `messageCountAtLastSummary` to ensure no messages are skipped between cycles
+- **Configuration**: `SUMMARIZE_EVERY=12`, `KEEP_RECENT=5`, `CONTEXT_WINDOW=7`
+
+**Context-Aware Routing**:
+- Uses accumulated summary + recent message window for assistant selection
+- Detects topic changes and resolves ambiguities (e.g., isolated CPF mentions)
+- Prevents token overflow in long conversations while maintaining full context
 
 **RAG Implementation**:
 - Knowledge chunks stored in Upstash Vector with embeddings
