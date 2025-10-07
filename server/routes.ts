@@ -536,8 +536,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const metadata = conversation.metadata as any || {};
         
         // Regex mais flexível: aceita "9", "9.", "Nota 9", "nota: 8", etc.
-        // Extrai primeiro número de 0-10 encontrado
-        const npsMatch = messageText.trim().match(/\b([0-9]|10)\b/);
+        // Extrai primeiro número de 0-10 encontrado (10 primeiro, depois 0-9)
+        const npsMatch = messageText.trim().match(/\b(10|[0-9])\b/);
         
         console.log(`🔍 [NPS Debug] Conversa ${conversation.id}:`, {
           awaitingNPS: metadata.awaitingNPS,
