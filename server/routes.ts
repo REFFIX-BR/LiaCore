@@ -202,6 +202,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: supervisorId || "supervisor",
       });
 
+      const conversation = await storage.getConversation(conversationId);
+
       // Keep status as "active" but mark as transferred in metadata
       await storage.updateConversation(conversationId, {
         status: "active",
@@ -212,6 +214,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           transferNotes: notes,
         },
       });
+
+      // Create learning event for AI failure (transfer needed)
+      if (conversation) {
+        const messages = await storage.getMessagesByConversationId(conversationId);
+        const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+        const lastAiMessage = messages.filter(m => m.role === 'assistant').pop();
+
+        if (lastUserMessage && lastAiMessage) {
+          await storage.createLearningEvent({
+            conversationId,
+            eventType: 'explicit_correction',
+            assistantType: conversation.assistantType,
+            userMessage: lastUserMessage.content,
+            aiResponse: lastAiMessage.content,
+            feedback: notes, // Supervisor notes explain why transfer was needed
+            sentiment: conversation.sentiment || 'neutral',
+            resolution: 'corrected',
+          });
+          console.log("📚 [Learning] Evento de transferência criado para", conversation.assistantType);
+        }
+      }
 
       return res.json({ success: true, action });
     } catch (error) {
@@ -267,9 +290,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: supervisorId || "supervisor",
       });
 
+      const conversation = await storage.getConversation(conversationId);
       await storage.updateConversation(conversationId, {
         status: "resolved",
       });
+
+      // Create learning event for successful resolution
+      if (conversation) {
+        const messages = await storage.getMessagesByConversationId(conversationId);
+        const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+        const lastAiMessage = messages.filter(m => m.role === 'assistant').pop();
+
+        if (lastUserMessage && lastAiMessage) {
+          await storage.createLearningEvent({
+            conversationId,
+            eventType: 'implicit_success',
+            assistantType: conversation.assistantType,
+            userMessage: lastUserMessage.content,
+            aiResponse: lastAiMessage.content,
+            sentiment: conversation.sentiment || 'positive',
+            resolution: 'success',
+          });
+          console.log("📚 [Learning] Evento de sucesso criado para", conversation.assistantType);
+        }
+      }
 
       return res.json({ success: true, action });
     } catch (error) {
