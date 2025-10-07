@@ -78,6 +78,24 @@ Preferred communication style: Simple, everyday language.
 **Feedback Flow**: NPS dialog appears after conversation resolution; client/supervisor rates 0-10 + comment. Detractor scores (0-6) automatically create learning events.
 **Metrics Dashboard**: Displays NPS score, distribution, per-assistant NPS, timeline, and recent comments.
 
+### Hybrid Supervised Mode (Conversas Tab)
+
+**Overview**: Advanced supervision interface where human supervisors handle conversations transferred from AI assistants, with intelligent AI assistance for response suggestions.
+**Core Features**:
+- **Transferred Conversation Queue**: Displays all conversations escalated to human supervisors with transfer reasons and timestamps.
+- **AI-Assisted Response System**: 
+  - Supervisor requests AI suggestion using "Pedir Sugestão da IA" button
+  - GPT-4 analyzes full conversation context and generates contextually appropriate response
+  - Supervisor can either approve suggestion as-is or edit before sending
+  - Edited responses automatically create explicit learning events for continuous improvement
+- **Learning Integration**: 
+  - Approved suggestions (unchanged) → sent directly, no learning event
+  - Edited suggestions → creates learning event with `eventType: "explicit_correction"`
+  - Learning events include: original AI suggestion, final approved response, full context
+  - Feeds directly into autonomous learning pipeline for prompt improvements
+- **Manual Resolution**: Supervisors can manually resolve conversations, triggering same NPS feedback flow as Monitor page
+- **Schema**: `suggestedResponses` table tracks AI suggestions vs final approved responses with edit flags and supervisor metadata
+
 ## External Dependencies
 
 **Third-Party Services**:
