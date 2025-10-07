@@ -813,10 +813,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all active conversations for monitoring
+  // Get all active conversations for monitoring (includes resolved from last 24h)
   app.get("/api/monitor/conversations", async (req, res) => {
     try {
-      const conversations = await storage.getAllActiveConversations();
+      const conversations = await storage.getMonitorConversations();
       
       const conversationsWithMessages = await Promise.all(
         conversations.map(async (conv) => {

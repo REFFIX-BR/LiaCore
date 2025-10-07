@@ -32,6 +32,7 @@ export interface IStorage {
   getConversation(id: string): Promise<Conversation | undefined>;
   getConversationByChatId(chatId: string): Promise<Conversation | undefined>;
   getAllActiveConversations(): Promise<Conversation[]>;
+  getMonitorConversations(): Promise<Conversation[]>; // Ativas + Resolvidas (24h)
   getAllConversations(): Promise<Conversation[]>;
   getTransferredConversations(): Promise<Conversation[]>;
   createConversation(conversation: InsertConversation): Promise<Conversation>;
@@ -140,6 +141,19 @@ export class MemStorage implements IStorage {
     return Array.from(this.conversations.values()).filter(
       (conv) => conv.status === 'active'
     );
+  }
+
+  async getMonitorConversations(): Promise<Conversation[]> {
+    const now = new Date();
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    
+    return Array.from(this.conversations.values()).filter((conv) => {
+      // Show active conversations OR resolved conversations from last 24h
+      if (conv.status === 'active') return true;
+      if (conv.status === 'resolved' && conv.lastMessageTime && conv.lastMessageTime >= twentyFourHoursAgo) return true;
+      
+      return false;
+    }).sort((a, b) => (b.lastMessageTime?.getTime() || 0) - (a.lastMessageTime?.getTime() || 0));
   }
 
   async getTransferredConversations(): Promise<Conversation[]> {
@@ -544,6 +558,23 @@ export class DbStorage implements IStorage {
 
   async getAllActiveConversations(): Promise<Conversation[]> {
     return await db.select().from(schema.conversations).where(eq(schema.conversations.status, 'active'));
+  }
+
+  async getMonitorConversations(): Promise<Conversation[]> {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    return await db.select().from(schema.conversations)
+      .where(
+        or(
+          eq(schema.conversations.status, 'active'),
+          and(
+            eq(schema.conversations.status, 'resolved'),
+            isNotNull(schema.conversations.lastMessageTime),
+            gte(schema.conversations.lastMessageTime, twentyFourHoursAgo)
+          )
+        )
+      )
+      .orderBy(desc(schema.conversations.lastMessageTime));
   }
 
   async getTransferredConversations(): Promise<Conversation[]> {
