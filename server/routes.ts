@@ -246,6 +246,203 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== EVOLUTION API WEBHOOKS ====================
+  
+  // Webhook endpoint for Evolution API events
+  app.post("/api/webhooks/evolution", async (req, res) => {
+    try {
+      const { event, instance, data } = req.body;
+
+      console.log(`📱 [Evolution Webhook] Evento recebido: ${event}`, {
+        instance,
+        event,
+      });
+
+      // Process MESSAGES_UPSERT event (new messages from WhatsApp)
+      if (event === "messages.upsert") {
+        const { key, pushName, message, messageTimestamp } = data;
+        const { remoteJid, fromMe, id: messageId } = key;
+
+        // Ignore messages sent by us
+        if (fromMe) {
+          console.log(`⏭️  [Evolution] Ignorando mensagem enviada por nós`);
+          return res.json({ success: true, processed: false, reason: "fromMe" });
+        }
+
+        // Extract message text content
+        let messageText: string | null = null;
+        
+        if (message?.conversation) {
+          messageText = message.conversation;
+        } else if (message?.extendedTextMessage?.text) {
+          messageText = message.extendedTextMessage.text;
+        } else if (message?.imageMessage?.caption) {
+          messageText = `[Imagem] ${message.imageMessage.caption || ''}`;
+        } else if (message?.videoMessage?.caption) {
+          messageText = `[Vídeo] ${message.videoMessage.caption || ''}`;
+        } else if (message?.audioMessage) {
+          messageText = `[Áudio]`;
+        } else if (message?.documentMessage) {
+          messageText = `[Documento] ${message.documentMessage.fileName || ''}`;
+        } else {
+          console.log(`⚠️  [Evolution] Tipo de mensagem não suportado:`, Object.keys(message || {}));
+          return res.json({ success: true, processed: false, reason: "unsupported_type" });
+        }
+
+        if (!messageText) {
+          return res.json({ success: true, processed: false, reason: "no_text" });
+        }
+
+        // Clean phone number (remove @s.whatsapp.net)
+        const phoneNumber = remoteJid.replace('@s.whatsapp.net', '');
+        const chatId = `whatsapp_${phoneNumber}`;
+        const clientName = pushName || `Cliente ${phoneNumber.slice(-4)}`;
+
+        console.log(`💬 [Evolution] Mensagem recebida de ${clientName} (${phoneNumber}): ${messageText}`);
+
+        // Get or create conversation
+        let conversation = await storage.getConversationByChatId(chatId);
+        let threadId = await getConversationThread(chatId);
+
+        if (!conversation) {
+          // New conversation - route to appropriate assistant
+          const routing = await routeMessage(messageText);
+          
+          // Create thread
+          threadId = await createThread();
+          await storeConversationThread(chatId, threadId);
+
+          // Create conversation record
+          conversation = await storage.createConversation({
+            chatId,
+            clientName,
+            clientId: phoneNumber,
+            threadId,
+            assistantType: routing.assistantType,
+            status: "active",
+            sentiment: "neutral",
+            urgency: "normal",
+            duration: 0,
+            lastMessage: messageText,
+            metadata: { 
+              routing,
+              source: 'evolution_api',
+              instance,
+              remoteJid,
+            },
+          });
+        } else if (!threadId) {
+          // Existing conversation but no thread - create one
+          threadId = await createThread();
+          await storeConversationThread(chatId, threadId);
+          
+          await storage.updateConversation(conversation.id, {
+            threadId,
+          });
+        }
+
+        // Store user message
+        await storage.createMessage({
+          conversationId: conversation.id,
+          role: "user",
+          content: messageText,
+          assistant: null,
+        });
+
+        // If conversation is transferred to human, don't auto-respond
+        if (conversation.transferredToHuman) {
+          console.log(`👤 [Evolution] Conversa transferida para humano - não respondendo automaticamente`);
+          return res.json({ 
+            success: true, 
+            processed: true, 
+            transferred: true,
+            conversationId: conversation.id 
+          });
+        }
+
+        // Send message and get AI response (async, don't wait)
+        if (!threadId) {
+          console.error("❌ [Evolution] No threadId available:", { chatId, conversationId: conversation.id });
+          return res.json({ success: true, processed: false, reason: "no_thread" });
+        }
+
+        const assistantId = (conversation.metadata as any)?.routing?.assistantId;
+
+        // Process in background
+        (async () => {
+          try {
+            const { response: responseText, transferred, transferDetails } = await sendMessageAndGetResponse(
+              threadId!,
+              messageText,
+              assistantId
+            );
+
+            // Store assistant response
+            await storage.createMessage({
+              conversationId: conversation.id,
+              role: "assistant",
+              content: responseText,
+              assistant: conversation.assistantType,
+            });
+
+            // Update conversation
+            await storage.updateConversation(conversation.id, {
+              lastMessage: responseText,
+              lastMessageTime: new Date(),
+            });
+
+            // Handle transfer to human if requested
+            if (transferred && transferDetails) {
+              await storage.updateConversation(conversation.id, {
+                transferredToHuman: true,
+                transferReason: transferDetails.motivo,
+                transferredAt: new Date(),
+              });
+              console.log(`🔄 [Evolution] Conversa transferida para humano: ${transferDetails.departamento}`);
+            }
+
+            console.log(`✅ [Evolution] Resposta enviada: ${responseText.substring(0, 100)}...`);
+            
+            // TODO: Send response back to WhatsApp via Evolution API
+            // This would require Evolution API credentials and send message endpoint
+            
+          } catch (error) {
+            console.error("❌ [Evolution] Erro ao processar resposta:", error);
+          }
+        })();
+
+        return res.json({ 
+          success: true, 
+          processed: true,
+          conversationId: conversation.id,
+          chatId 
+        });
+      }
+
+      // Process CHATS_* events
+      if (event.startsWith("chats.")) {
+        console.log(`💬 [Evolution] Evento de chat: ${event}`);
+        // Store for future implementation if needed
+        return res.json({ success: true, processed: true, eventType: event });
+      }
+
+      // Process other MESSAGES_* events
+      if (event.startsWith("messages.")) {
+        console.log(`📨 [Evolution] Evento de mensagem: ${event}`);
+        // Store for future implementation if needed
+        return res.json({ success: true, processed: true, eventType: event });
+      }
+
+      // Unknown event type
+      console.log(`❓ [Evolution] Evento desconhecido: ${event}`);
+      return res.json({ success: true, processed: false, reason: "unknown_event" });
+
+    } catch (error) {
+      console.error("❌ [Evolution Webhook] Erro:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Get all active conversations for monitoring
   app.get("/api/monitor/conversations", async (req, res) => {
     try {
