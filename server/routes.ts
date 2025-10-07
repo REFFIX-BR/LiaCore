@@ -360,6 +360,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete single knowledge chunk
+  app.delete("/api/knowledge/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { deleteKnowledgeChunk } = await import("./lib/upstash");
+      
+      await deleteKnowledgeChunk(id);
+      
+      return res.json({ success: true, message: "Documento excluído" });
+    } catch (error) {
+      console.error("Delete knowledge error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

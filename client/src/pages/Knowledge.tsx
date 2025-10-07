@@ -21,6 +21,7 @@ import {
 export default function Knowledge() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [newDocName, setNewDocName] = useState("");
   const [newDocContent, setNewDocContent] = useState("");
   const [newDocSource, setNewDocSource] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -34,6 +35,7 @@ export default function Knowledge() {
     onSuccess: (data: any) => {
       const formattedResults = data.map((result: any) => ({
         id: result.chunk.id,
+        name: result.chunk.metadata?.name || "Documento sem nome",
         content: result.chunk.content,
         source: result.chunk.source,
         relevance: Math.round(result.score * 100),
@@ -66,12 +68,14 @@ export default function Knowledge() {
       
       const newDoc = {
         id: variables.id,
+        name: variables.metadata?.name || "Novo documento",
         content: variables.content,
         source: variables.source,
         relevance: 100,
       };
       setSearchResults(prev => [newDoc, ...prev]);
       
+      setNewDocName("");
       setNewDocContent("");
       setNewDocSource("");
       setIsDialogOpen(false);
@@ -139,10 +143,10 @@ export default function Knowledge() {
   };
 
   const handleAddDocument = () => {
-    if (!newDocContent.trim() || !newDocSource.trim()) {
+    if (!newDocName.trim() || !newDocContent.trim() || !newDocSource.trim()) {
       toast({
         title: "Campos obrigatórios",
-        description: "Preencha o conteúdo e a fonte",
+        description: "Preencha nome, conteúdo e fonte",
         variant: "destructive",
       });
       return;
@@ -152,7 +156,10 @@ export default function Knowledge() {
       id: `kb-${Date.now()}`,
       content: newDocContent,
       source: newDocSource,
-      metadata: { addedAt: new Date().toISOString() },
+      metadata: { 
+        name: newDocName,
+        addedAt: new Date().toISOString() 
+      },
     });
   };
 
@@ -208,6 +215,15 @@ export default function Knowledge() {
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
+                    <Label>Nome</Label>
+                    <Input
+                      placeholder="Ex: Problemas de Conexão"
+                      value={newDocName}
+                      onChange={(e) => setNewDocName(e.target.value)}
+                      data-testid="input-doc-name"
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label>Conteúdo</Label>
                     <Textarea
                       placeholder="Digite o conteúdo do documento..."
@@ -243,7 +259,23 @@ export default function Knowledge() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
-          <KnowledgeBasePanel chunks={searchResults} />
+          <KnowledgeBasePanel 
+            chunks={searchResults} 
+            onDelete={(id) => {
+              apiRequest("DELETE", `/api/knowledge/${id}`, {})
+                .then(() => {
+                  setSearchResults(prev => prev.filter(c => c.id !== id));
+                  toast({ title: "Documento excluído" });
+                })
+                .catch(() => {
+                  toast({ 
+                    title: "Erro", 
+                    description: "Falha ao excluir documento",
+                    variant: "destructive" 
+                  });
+                });
+            }}
+          />
         </div>
         
         <Card>

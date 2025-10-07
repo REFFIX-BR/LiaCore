@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Book, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Book, FileText, Trash2, Edit } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -11,6 +12,7 @@ import {
 
 export interface KnowledgeChunk {
   id: string;
+  name?: string;
   content: string;
   source: string;
   relevance: number;
@@ -18,9 +20,11 @@ export interface KnowledgeChunk {
 
 interface KnowledgeBasePanelProps {
   chunks: KnowledgeChunk[];
+  onDelete?: (id: string) => void;
+  onEdit?: (chunk: KnowledgeChunk) => void;
 }
 
-export function KnowledgeBasePanel({ chunks }: KnowledgeBasePanelProps) {
+export function KnowledgeBasePanel({ chunks, onDelete, onEdit }: KnowledgeBasePanelProps) {
   return (
     <Card>
       <CardHeader>
@@ -43,7 +47,7 @@ export function KnowledgeBasePanel({ chunks }: KnowledgeBasePanelProps) {
             </div>
           ) : (
             <Accordion type="single" collapsible className="space-y-2">
-              {chunks.map((chunk, index) => (
+              {chunks.map((chunk) => (
                 <AccordionItem 
                   key={chunk.id} 
                   value={chunk.id}
@@ -51,24 +55,53 @@ export function KnowledgeBasePanel({ chunks }: KnowledgeBasePanelProps) {
                 >
                   <AccordionTrigger className="hover:no-underline py-3">
                     <div className="flex items-center justify-between w-full pr-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-1">
                         <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">
-                          Contexto {index + 1}
+                        <span className="text-sm font-medium truncate">
+                          {chunk.name || "Documento sem nome"}
                         </span>
                       </div>
-                      <Badge variant="outline" className="bg-primary/10 text-primary">
-                        {chunk.relevance}% relevante
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="bg-primary/10 text-primary">
+                          {chunk.relevance}% relevante
+                        </Badge>
+                      </div>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="pt-2 pb-3">
-                    <p className="text-sm text-muted-foreground mb-2">
+                  <AccordionContent className="pt-2 pb-3 space-y-3">
+                    <p className="text-sm text-muted-foreground">
                       {chunk.content}
                     </p>
-                    <Badge variant="outline" className="text-xs">
-                      Fonte: {chunk.source}
-                    </Badge>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="text-xs">
+                        Fonte: {chunk.source}
+                      </Badge>
+                      <div className="flex gap-2">
+                        {onEdit && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => onEdit(chunk)}
+                            data-testid={`button-edit-${chunk.id}`}
+                          >
+                            <Edit className="h-3 w-3 mr-1" />
+                            Editar
+                          </Button>
+                        )}
+                        {onDelete && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => onDelete(chunk.id)}
+                            data-testid={`button-delete-${chunk.id}`}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            Excluir
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   </AccordionContent>
                 </AccordionItem>
               ))}
