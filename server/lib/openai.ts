@@ -318,4 +318,164 @@ export async function getAssistantInstructions(assistantType: string): Promise<s
   }
 }
 
+// Configurações de contexto e resumo
+export const CONTEXT_CONFIG = {
+  SUMMARIZE_EVERY: parseInt(process.env.SUMMARIZE_EVERY || "12"), // Resumir a cada X mensagens
+  KEEP_RECENT: parseInt(process.env.KEEP_RECENT_MESSAGES || "5"), // Manter últimas X mensagens intactas
+  CONTEXT_WINDOW: parseInt(process.env.CONTEXT_WINDOW || "7"), // Janela de contexto para roteamento
+};
+
+// Estrutura do resumo
+interface ConversationSummary {
+  summary: string;
+  keyFacts: {
+    currentPlan?: string;
+    requestedPlan?: string;
+    technicalIssue?: string;
+    cpf?: string;
+    [key: string]: any;
+  };
+  sentiment: string;
+  assistantHistory: string[];
+  actionsTaken: string[];
+  pendingActions: string[];
+  importantDates?: string[];
+}
+
+// Gerar resumo estruturado da conversa
+export async function summarizeConversation(messages: Array<{ role: string; content: string }>): Promise<string> {
+  try {
+    const prompt = `Você é um assistente especializado em resumir conversas de atendimento ao cliente.
+
+Analise as mensagens abaixo e crie um resumo estruturado em JSON com:
+- summary: Resumo conciso da conversa (2-3 frases)
+- keyFacts: Informações importantes extraídas (plano atual, CPF, problema técnico, etc)
+- sentiment: Sentimento do cliente (satisfeito/neutro/frustrado/irritado)
+- assistantHistory: Lista de assistentes que atenderam (ex: ["comercial", "suporte"])
+- actionsTaken: Ações já realizadas
+- pendingActions: Ações pendentes/próximos passos
+- importantDates: Datas mencionadas (se houver)
+
+IMPORTANTE:
+- Seja objetivo e preserve TODAS as informações críticas (CPF, números de protocolo, valores, etc)
+- Ignore saudações e confirmações genéricas
+- Foque no contexto necessário para continuidade do atendimento
+
+Mensagens:
+${messages.map((m, i) => `${i + 1}. [${m.role}]: ${m.content}`).join('\n')}
+
+Responda APENAS com o JSON estruturado, sem explicações adicionais.`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+    });
+
+    const summary = response.choices[0].message.content?.trim() || "{}";
+    
+    // Validar que é JSON válido
+    JSON.parse(summary);
+    
+    console.log("📝 [Summarization] Summary generated successfully");
+    return summary;
+  } catch (error) {
+    console.error("❌ [Summarization] Error:", error);
+    // Retornar resumo básico em caso de erro
+    return JSON.stringify({
+      summary: "Erro ao gerar resumo. Contexto parcialmente preservado.",
+      keyFacts: {},
+      sentiment: "unknown",
+      assistantHistory: [],
+      actionsTaken: [],
+      pendingActions: []
+    });
+  }
+}
+
+// Roteamento com contexto (nova versão)
+export async function routeMessageWithContext(
+  currentMessage: string, 
+  conversationHistory: Array<{ role: string; content: string }> = [],
+  conversationSummary?: string
+): Promise<RouterResult> {
+  try {
+    // Pegar últimas N mensagens para contexto
+    const recentMessages = conversationHistory.slice(-CONTEXT_CONFIG.CONTEXT_WINDOW);
+    
+    // Construir contexto
+    let contextText = "";
+    if (conversationSummary) {
+      const summary = JSON.parse(conversationSummary) as ConversationSummary;
+      contextText = `RESUMO DA CONVERSA ANTERIOR:\n${summary.summary}\n`;
+      if (summary.assistantHistory.length > 0) {
+        contextText += `Assistentes anteriores: ${summary.assistantHistory.join(" → ")}\n`;
+      }
+      if (summary.pendingActions.length > 0) {
+        contextText += `Ações pendentes: ${summary.pendingActions.join(", ")}\n`;
+      }
+      contextText += "\n";
+    }
+    
+    if (recentMessages.length > 0) {
+      contextText += `ÚLTIMAS ${recentMessages.length} MENSAGENS:\n`;
+      contextText += recentMessages.map(m => `[${m.role}]: ${m.content}`).join('\n');
+      contextText += "\n\n";
+    }
+
+    const routingPrompt = `Você é o supervisor de roteamento da TR Telecom. Analise a mensagem atual do cliente considerando o contexto da conversa.
+
+${contextText}MENSAGEM ATUAL DO CLIENTE: "${currentMessage}"
+
+Assistentes disponíveis:
+- suporte: Problemas técnicos, conexão, velocidade, equipamentos, desbloqueio
+- comercial: Vendas, planos, upgrade, contratação
+- financeiro: Faturas, pagamentos, cobranças, dúvidas financeiras
+- apresentacao: Apresentação da empresa, novos clientes
+- ouvidoria: Reclamações formais, SAC
+- cancelamento: Cancelamento de serviço
+
+REGRAS IMPORTANTES:
+1. PRIORIZE a mensagem atual - ela tem precedência sobre o histórico
+2. Se a mensagem atual contiver palavras de suporte técnico/desbloqueio (desbloqueio, desbloquear, liberar conexão, reduzir conexão), retorne SUPORTE imediatamente
+3. Se a mensagem for apenas um número, use o contexto para determinar:
+   - Se contexto indica CPF solicitado → tipo apropriado baseado no fluxo
+   - Se for número isolado sem contexto → suporte (fallback seguro)
+4. Detecte mudanças de assunto - cliente pode mudar de demanda durante conversa
+5. Considere o sentimento - frustração recorrente pode indicar necessidade de escalação
+
+Responda APENAS com JSON válido:
+{
+  "recommendedAssistantType": "<tipo>",
+  "confidence": <0.0-1.0>,
+  "reason": "<1-2 frases explicando a decisão>"
+}`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-5",
+      messages: [{ role: "user", content: routingPrompt }],
+      response_format: { type: "json_object" },
+    });
+
+    const result = JSON.parse(response.choices[0].message.content?.trim() || "{}");
+    const assistantType = result.recommendedAssistantType?.toLowerCase() || "suporte";
+    const validTypes = ["suporte", "comercial", "financeiro", "apresentacao", "ouvidoria", "cancelamento"];
+    const finalType = validTypes.includes(assistantType) ? assistantType : "suporte";
+    
+    const assistantId = ASSISTANT_IDS[finalType as keyof typeof ASSISTANT_IDS] || ASSISTANT_IDS.suporte;
+    
+    console.log(`🎯 [Routing with Context] ${currentMessage.substring(0, 50)}... → ${finalType} (confidence: ${result.confidence}, reason: ${result.reason})`);
+    
+    return {
+      assistantType: finalType,
+      assistantId: assistantId,
+      confidence: result.confidence || 0.85,
+    };
+  } catch (error) {
+    console.error("❌ [Routing with Context] Error:", error);
+    // Fallback para roteamento simples
+    return routeMessage(currentMessage);
+  }
+}
+
 export { openai };

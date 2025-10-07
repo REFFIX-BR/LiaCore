@@ -24,6 +24,9 @@ export const conversations = pgTable("conversations", {
   lastMessageTime: timestamp("last_message_time").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
   metadata: jsonb("metadata"),
+  conversationSummary: text("conversation_summary"),
+  lastSummarizedAt: timestamp("last_summarized_at"),
+  messageCountAtLastSummary: integer("message_count_at_last_summary").default(0),
 });
 
 export const messages = pgTable("messages", {
