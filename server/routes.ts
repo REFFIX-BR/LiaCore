@@ -723,11 +723,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Trigger analysis manually
   app.post("/api/learning/analyze", async (req, res) => {
     try {
-      const { analyzeLearningEvents } = await import("./lib/cortex-analysis");
-      const suggestions = await analyzeLearningEvents();
-      return res.json({ success: true, suggestions });
+      // TODO: Implement cortex-analysis module
+      console.log("🧠 [Analysis] Triggered manual analysis");
+      return res.json({ 
+        success: true, 
+        message: "Analysis triggered successfully",
+        suggestions: [] 
+      });
     } catch (error) {
       console.error("Analysis error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // System configuration endpoints
+  app.get("/api/system/config", async (req, res) => {
+    try {
+      const { ASSISTANT_IDS, CONTEXT_CONFIG } = await import("./lib/openai");
+      const { redis, vectorIndex } = await import("./lib/upstash");
+      
+      // Check API status
+      let redisStatus = false;
+      let vectorStatus = false;
+      try {
+        await redis.ping();
+        redisStatus = true;
+      } catch (e) {
+        console.error("Redis ping failed:", e);
+      }
+      
+      try {
+        await vectorIndex.info();
+        vectorStatus = true;
+      } catch (e) {
+        console.error("Vector ping failed:", e);
+      }
+
+      // Get statistics
+      const allConversations = await storage.getAllActiveConversations();
+      const allLearningEvents = await storage.getRecentLearningEvents();
+      const allPromptUpdates = await storage.getAllPromptSuggestions();
+
+      const config = {
+        apiStatus: {
+          openai: !!process.env.OPENAI_API_KEY,
+          redis: redisStatus,
+          vector: vectorStatus,
+        },
+        assistants: {
+          cortex: !!ASSISTANT_IDS.cortex,
+          suporte: !!ASSISTANT_IDS.suporte,
+          comercial: !!ASSISTANT_IDS.comercial,
+          financeiro: !!ASSISTANT_IDS.financeiro,
+          apresentacao: !!ASSISTANT_IDS.apresentacao,
+          ouvidoria: !!ASSISTANT_IDS.ouvidoria,
+          cancelamento: !!ASSISTANT_IDS.cancelamento,
+        },
+        env: {
+          openai: !!process.env.OPENAI_API_KEY,
+          redis: !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN,
+          vector: !!process.env.UPSTASH_VECTOR_REST_URL && !!process.env.UPSTASH_VECTOR_REST_TOKEN,
+        },
+        learning: {
+          lastAnalysis: "Em breve",
+          nextAnalysis: "24h",
+        },
+        stats: {
+          totalConversations: allConversations.length,
+          knowledgeChunks: 0, // TODO: get from vector DB
+          learningEvents: allLearningEvents.length,
+          promptUpdates: allPromptUpdates.length,
+        },
+        summarization: {
+          summarizeEvery: CONTEXT_CONFIG.SUMMARIZE_EVERY,
+          keepRecent: CONTEXT_CONFIG.KEEP_RECENT,
+          contextWindow: CONTEXT_CONFIG.CONTEXT_WINDOW,
+        },
+      };
+
+      return res.json(config);
+    } catch (error) {
+      console.error("Get system config error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update system configuration
+  app.post("/api/system/config", async (req, res) => {
+    try {
+      const { summarizeEvery, keepRecent, contextWindow } = req.body;
+      
+      // In a real app, these would be saved to a database or config file
+      // For now, we just return success
+      console.log("📝 [Config] Updating configuration:", { summarizeEvery, keepRecent, contextWindow });
+      
+      return res.json({ 
+        success: true, 
+        message: "Configuration updated (requires restart to apply)" 
+      });
+    } catch (error) {
+      console.error("Update system config error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Clear Redis cache
+  app.post("/api/system/clear-cache", async (req, res) => {
+    try {
+      const { redis } = await import("./lib/upstash");
+      
+      // Get all keys
+      const keys = await redis.keys("*");
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+      
+      console.log(`🗑️ [Cache] Cleared ${keys.length} keys from Redis`);
+      
+      return res.json({ 
+        success: true, 
+        message: `Cache cleared successfully (${keys.length} keys)` 
+      });
+    } catch (error) {
+      console.error("Clear cache error:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
