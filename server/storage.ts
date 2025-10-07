@@ -123,6 +123,7 @@ export class MemStorage implements IStorage {
     const conversation: Conversation = {
       ...insertConv,
       id,
+      status: insertConv.status || "active",
       clientId: insertConv.clientId || null,
       threadId: insertConv.threadId || null,
       sentiment: insertConv.sentiment || null,
@@ -255,6 +256,7 @@ export class MemStorage implements IStorage {
     const suggestion: PromptSuggestion = {
       ...insertSuggestion,
       id,
+      status: insertSuggestion.status || "pending",
       affectedConversations: insertSuggestion.affectedConversations || null,
       reviewedBy: insertSuggestion.reviewedBy || null,
       reviewNotes: insertSuggestion.reviewNotes || null,

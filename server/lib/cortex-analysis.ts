@@ -95,8 +95,20 @@ export async function analyzeLearningEvents(): Promise<any[]> {
       const suggestions = await callCortexAnalysis(assistantType, analysisData);
 
       if (suggestions && suggestions.length > 0) {
-        // Salvar sugestões no banco
+        // Salvar sugestões no banco (com deduplicação)
         for (const suggestion of suggestions) {
+          // Verificar se já existe sugestão similar pendente
+          const existingSuggestions = await storage.getPromptSuggestionsByStatus("pending");
+          const isDuplicate = existingSuggestions.some(existing => 
+            existing.assistantType === suggestion.assistantType &&
+            existing.problemIdentified === suggestion.problemIdentified
+          );
+
+          if (isDuplicate) {
+            console.log(`⏭️  [LIA Cortex Analysis] Sugestão duplicada ignorada para ${assistantType}`);
+            continue;
+          }
+
           await storage.createPromptSuggestion({
             assistantType: suggestion.assistantType,
             problemIdentified: suggestion.problemIdentified,
