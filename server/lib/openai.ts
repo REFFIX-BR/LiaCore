@@ -2,7 +2,7 @@ import OpenAI from "openai";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  organization: undefined,
+  organization: "org-AaGGTB8W7UF7Cyzrxi12lVL8",
 });
 
 export const ASSISTANT_IDS = {
