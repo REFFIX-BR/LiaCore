@@ -276,14 +276,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           messageText = message.conversation;
         } else if (message?.extendedTextMessage?.text) {
           messageText = message.extendedTextMessage.text;
-        } else if (message?.imageMessage?.caption) {
-          messageText = `[Imagem] ${message.imageMessage.caption || ''}`;
-        } else if (message?.videoMessage?.caption) {
-          messageText = `[Vídeo] ${message.videoMessage.caption || ''}`;
+        } else if (message?.imageMessage) {
+          // Handle images with or without caption
+          messageText = message.imageMessage.caption 
+            ? `[Imagem] ${message.imageMessage.caption}` 
+            : `[Imagem recebida]`;
+        } else if (message?.videoMessage) {
+          // Handle videos with or without caption
+          messageText = message.videoMessage.caption 
+            ? `[Vídeo] ${message.videoMessage.caption}` 
+            : `[Vídeo recebido]`;
         } else if (message?.audioMessage) {
-          messageText = `[Áudio]`;
+          messageText = `[Áudio recebido]`;
         } else if (message?.documentMessage) {
-          messageText = `[Documento] ${message.documentMessage.fileName || ''}`;
+          messageText = message.documentMessage.fileName 
+            ? `[Documento] ${message.documentMessage.fileName}` 
+            : `[Documento recebido]`;
+        } else if (message?.stickerMessage) {
+          messageText = `[Sticker recebido]`;
+        } else if (message?.contactMessage) {
+          messageText = `[Contato compartilhado]`;
+        } else if (message?.locationMessage) {
+          messageText = `[Localização compartilhada]`;
         } else {
           console.log(`⚠️  [Evolution] Tipo de mensagem não suportado:`, Object.keys(message || {}));
           return res.json({ success: true, processed: false, reason: "unsupported_type" });
@@ -419,10 +433,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Process CHATS_* events
+      // Process CHATS_* events (metadata synchronization)
       if (event.startsWith("chats.")) {
-        console.log(`💬 [Evolution] Evento de chat: ${event}`);
-        // Store for future implementation if needed
+        const { id, conversationTimestamp, name } = data || {};
+        console.log(`💬 [Evolution] Evento de chat: ${event}`, { chatId: id, name });
+        
+        // Update conversation metadata if chat exists in our system
+        if (id && event === "chats.upsert") {
+          const phoneNumber = id.replace('@s.whatsapp.net', '');
+          const chatId = `whatsapp_${phoneNumber}`;
+          const conversation = await storage.getConversationByChatId(chatId);
+          
+          if (conversation && name) {
+            // Update client name if provided and different
+            if (conversation.clientName !== name) {
+              await storage.updateConversation(conversation.id, {
+                clientName: name,
+              });
+              console.log(`✏️  [Evolution] Nome do cliente atualizado: ${name}`);
+            }
+          }
+        }
+        
         return res.json({ success: true, processed: true, eventType: event });
       }
 

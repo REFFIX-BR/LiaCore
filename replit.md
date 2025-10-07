@@ -112,6 +112,45 @@ Preferred communication style: Simple, everyday language.
 - **Manual Resolution**: Supervisors can manually resolve conversations, triggering same NPS feedback flow as Monitor page
 - **Schema**: `suggestedResponses` table tracks AI suggestions vs final approved responses with edit flags and supervisor metadata
 
+### WhatsApp Integration (Evolution API)
+
+**Overview**: Native integration with Evolution API for receiving and processing WhatsApp messages in real-time through webhooks.
+
+**Webhook Endpoint**: `POST /api/webhooks/evolution` - Receives events from Evolution API external WhatsApp system.
+
+**Supported Events**:
+- `messages.upsert` - New incoming/outgoing messages (primary event for customer messages)
+- `messages.update` - Message status updates (logged)
+- `messages.delete` - Message deletions (logged)
+- `chats.upsert` - Chat creation/updates (synchronizes client name metadata)
+- `chats.update` - Chat modifications (logged)
+- `chats.delete` - Chat deletions (logged)
+
+**Message Processing Flow**:
+1. **Webhook Reception**: Evolution API sends `messages.upsert` event with message payload
+2. **Message Extraction**: System extracts text from various message types (conversation, extendedTextMessage, image captions, etc.)
+3. **Client Identification**: Phone number extracted from `remoteJid` (format: `5511999999999@s.whatsapp.net`)
+4. **Chat ID Assignment**: Prefixed with `whatsapp_` for WhatsApp conversations
+5. **AI Routing**: Message routed to appropriate assistant (Suporte, Comercial, etc.)
+6. **Thread Management**: OpenAI thread created/retrieved for conversation continuity
+7. **Response Generation**: AI assistant processes message and generates contextual response
+8. **Background Processing**: AI response stored asynchronously, conversation updated
+9. **Transfer Handling**: If `transferir_para_humano` function called, conversation marked as transferred
+
+**Message Types Supported**:
+- **Text**: `conversation`, `extendedTextMessage`
+- **Media**: Image (with/without caption), Video (with/without caption), Audio, Document, Sticker
+- **Location & Contact**: Contact sharing, Location sharing
+- **Auto-ignore**: Messages with `fromMe: true` (sent by business)
+
+**Conversation Metadata**:
+- Source: Tagged as `evolution_api` in conversation metadata
+- Instance: Evolution API instance name stored
+- Remote JID: Original WhatsApp identifier preserved
+- Client tracking: Phone number used as `clientId`
+
+**Future Enhancement**: Response sending back to WhatsApp via Evolution API (currently marked as TODO in code)
+
 ## External Dependencies
 
 **Third-Party Services**:
