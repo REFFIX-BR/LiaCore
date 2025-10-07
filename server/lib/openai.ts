@@ -131,14 +131,15 @@ export async function sendMessageAndGetResponse(
           })
         );
 
-        // @ts-ignore - TypeScript types may be outdated for submitToolOutputs
-        run = await openai.beta.threads.runs.submitToolOutputs(threadId, runId, {
+        run = await openai.beta.threads.runs.submitToolOutputs(runId, {
+          thread_id: threadId,
           tool_outputs: toolOutputs,
         });
       } else {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        // @ts-ignore - TypeScript types may be outdated for retrieve
-        run = await openai.beta.threads.runs.retrieve(threadId, runId);
+        run = await openai.beta.threads.runs.retrieve(runId, {
+          thread_id: threadId,
+        });
       }
 
       attempts++;
