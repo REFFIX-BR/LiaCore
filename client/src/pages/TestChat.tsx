@@ -27,16 +27,30 @@ export default function TestChat() {
   const sendMessageMutation = useMutation({
     mutationFn: () => monitorAPI.sendChatMessage(chatId, clientName, message),
     onSuccess: (response: any) => {
+      // Extract response text (handle both string and nested object)
+      const responseText = typeof response.response === 'string' 
+        ? response.response 
+        : response.response?.response || response.response;
+      
       setConversation(prev => [
         ...prev,
         { role: "user", content: message },
-        { role: "assistant", content: response.response },
+        { role: "assistant", content: responseText },
       ]);
       setMessage("");
-      toast({
-        title: "Mensagem Enviada",
-        description: `Roteado para ${response.assistantType}`,
-      });
+      
+      // Show transfer notification if transferred
+      if (response.transferred) {
+        toast({
+          title: "Transferido para Atendente Humano",
+          description: `Departamento: ${response.transferredTo}`,
+        });
+      } else {
+        toast({
+          title: "Mensagem Enviada",
+          description: `Roteado para ${response.assistantType}`,
+        });
+      }
     },
     onError: (error) => {
       toast({
