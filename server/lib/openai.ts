@@ -90,9 +90,7 @@ export async function sendMessageAndGetResponse(
       assistant_id: effectiveAssistantId,
     });
 
-    let runStatus = await openai.beta.threads.runs.retrieve(run.id, {
-      thread_id: threadId,
-    });
+    let runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
     let attempts = 0;
     const maxAttempts = 30;
 
@@ -113,16 +111,13 @@ export async function sendMessageAndGetResponse(
           })
         );
 
-        await openai.beta.threads.runs.submitToolOutputs(run.id, {
-          thread_id: threadId,
+        await openai.beta.threads.runs.submitToolOutputs(threadId, run.id, {
           tool_outputs: toolOutputs,
         });
       }
 
       await new Promise(resolve => setTimeout(resolve, 1000));
-      runStatus = await openai.beta.threads.runs.retrieve(run.id, {
-        thread_id: threadId,
-      });
+      runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
       attempts++;
     }
 
