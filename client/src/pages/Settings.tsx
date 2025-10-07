@@ -73,6 +73,14 @@ export default function Settings() {
     contextWindow: "7",
     analysisInterval: "2",
   });
+  
+  const [evolutionConfig, setEvolutionConfig] = useState({
+    url: "",
+    apiKey: "",
+    instance: "",
+  });
+  
+  const [isEditingEvolution, setIsEditingEvolution] = useState(false);
 
   // Query para buscar configurações do sistema
   const { data: systemConfig } = useQuery<SystemConfig>({
@@ -87,6 +95,14 @@ export default function Settings() {
         keepRecent: String(systemConfig.summarization?.keepRecent || 5),
         contextWindow: String(systemConfig.summarization?.contextWindow || 7),
         analysisInterval: String(systemConfig.learning?.analysisIntervalHours || 2),
+      });
+    }
+    
+    if (systemConfig?.evolution) {
+      setEvolutionConfig({
+        url: systemConfig.evolution.url || "",
+        apiKey: "", // Nunca expor a chave atual
+        instance: systemConfig.evolution.instance || "",
       });
     }
   }, [systemConfig]);
@@ -127,6 +143,29 @@ export default function Settings() {
       toast({
         title: "Cache limpo",
         description: "O cache do Redis foi limpo com sucesso.",
+      });
+    },
+  });
+
+  // Mutation para atualizar configurações da Evolution API
+  const updateEvolutionMutation = useMutation({
+    mutationFn: async (data: { url: string; apiKey: string; instance: string }) => {
+      return apiRequest('POST', '/api/system/evolution-config', data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Configuração Atualizada",
+        description: "As credenciais da Evolution API foram salvas com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/system/config'] });
+      setIsEditingEvolution(false);
+      setEvolutionConfig(prev => ({ ...prev, apiKey: "" })); // Limpar campo de senha
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Erro ao Salvar",
+        description: error.message || "Não foi possível atualizar as configurações.",
       });
     },
   });
@@ -415,51 +454,118 @@ export default function Settings() {
 
               <Separator />
 
-              <div className="space-y-3">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">URL da API</Label>
-                  <div className="p-3 bg-muted rounded-lg">
-                    <code className="text-sm">
-                      {systemConfig?.evolution?.url || "Não configurado"}
-                    </code>
+              {!isEditingEvolution ? (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">URL da API</Label>
+                    <div className="p-3 bg-muted rounded-lg">
+                      <code className="text-sm">
+                        {systemConfig?.evolution?.url || "Não configurado"}
+                      </code>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Instância</Label>
+                    <div className="p-3 bg-muted rounded-lg">
+                      <code className="text-sm">
+                        {systemConfig?.evolution?.instance || "Não configurado"}
+                      </code>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">API Key</Label>
+                    <div className="p-3 bg-muted rounded-lg">
+                      <code className="text-sm">
+                        {systemConfig?.evolution?.hasKey ? "••••••••••••••••" : "Não configurada"}
+                      </code>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={() => setIsEditingEvolution(true)}
+                    className="w-full"
+                    data-testid="button-edit-evolution"
+                  >
+                    <SettingsIcon className="w-4 h-4 mr-2" />
+                    Editar Configurações
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="evolution-url">URL da API *</Label>
+                    <Input
+                      id="evolution-url"
+                      type="url"
+                      placeholder="https://sua-evolution-api.com"
+                      value={evolutionConfig.url}
+                      onChange={(e) => setEvolutionConfig({ ...evolutionConfig, url: e.target.value })}
+                      data-testid="input-evolution-url"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      URL base da sua instância Evolution API
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="evolution-instance">Nome da Instância *</Label>
+                    <Input
+                      id="evolution-instance"
+                      type="text"
+                      placeholder="minha-instancia"
+                      value={evolutionConfig.instance}
+                      onChange={(e) => setEvolutionConfig({ ...evolutionConfig, instance: e.target.value })}
+                      data-testid="input-evolution-instance"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Nome da instância configurada no Evolution API
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="evolution-key">API Key *</Label>
+                    <Input
+                      id="evolution-key"
+                      type="password"
+                      placeholder="Digite a API Key"
+                      value={evolutionConfig.apiKey}
+                      onChange={(e) => setEvolutionConfig({ ...evolutionConfig, apiKey: e.target.value })}
+                      data-testid="input-evolution-key"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Chave de autenticação da Evolution API (será armazenada com segurança)
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => updateEvolutionMutation.mutate(evolutionConfig)}
+                      disabled={updateEvolutionMutation.isPending || !evolutionConfig.url || !evolutionConfig.instance || !evolutionConfig.apiKey}
+                      className="flex-1"
+                      data-testid="button-save-evolution"
+                    >
+                      {updateEvolutionMutation.isPending ? "Salvando..." : "Salvar Configurações"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditingEvolution(false);
+                        setEvolutionConfig({
+                          url: systemConfig?.evolution?.url || "",
+                          apiKey: "",
+                          instance: systemConfig?.evolution?.instance || "",
+                        });
+                      }}
+                      disabled={updateEvolutionMutation.isPending}
+                      data-testid="button-cancel-evolution"
+                    >
+                      Cancelar
+                    </Button>
                   </div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Instância</Label>
-                  <div className="p-3 bg-muted rounded-lg">
-                    <code className="text-sm">
-                      {systemConfig?.evolution?.instance || "Não configurado"}
-                    </code>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">API Key</Label>
-                  <div className="p-3 bg-muted rounded-lg">
-                    <code className="text-sm">
-                      {systemConfig?.evolution?.hasKey ? "••••••••••••••••" : "Não configurada"}
-                    </code>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="p-4 bg-muted/50 rounded-lg space-y-2">
-                <p className="text-sm font-medium flex items-center gap-2">
-                  <Key className="w-4 h-4" />
-                  Como atualizar as configurações
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Para alterar as credenciais da Evolution API, configure as seguintes variáveis nos <strong>Secrets do Replit</strong>:
-                </p>
-                <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                  <li>• <code>EVOLUTION_API_URL</code></li>
-                  <li>• <code>EVOLUTION_API_KEY</code></li>
-                  <li>• <code>EVOLUTION_API_INSTANCE</code></li>
-                </ul>
-              </div>
+              )}
             </CardContent>
           </Card>
 
