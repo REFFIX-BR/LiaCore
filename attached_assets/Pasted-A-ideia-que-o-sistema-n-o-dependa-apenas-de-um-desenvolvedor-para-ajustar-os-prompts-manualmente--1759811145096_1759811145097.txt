@@ -1,0 +1,98 @@
+A ideia é que o sistema não dependa apenas de um desenvolvedor para ajustar os prompts manualmente. Ele deve aprender com cada interação, especialmente com as intervenções dos supervisores, para se tornar mais inteligente com o tempo.
+Vamos desenhar a arquitetura e o fluxo para essa funcionalidade.
+Conceito Central: O "Ciclo de Aprendizagem e Correção"
+O ciclo funciona em três estágios principais:
+Captura de Feedback: Identificar interações "boas" e "ruins" de forma explícita e implícita.
+Análise e Geração de Sugestões: Um "Agente Supervisor" (a LIA Cortex Analysis) analisa os dados capturados e gera propostas de melhoria.
+Aplicação e Log: As melhorias são revisadas (ou aplicadas automaticamente, dependendo da confiança) e um log detalhado é gerado para auditoria humana.
+Fluxograma do Ciclo de Aprendizagem
+code
+Mermaid
+graph TD
+    subgraph "1. Estágio de Operação e Captura"
+        A[Conversa entre Cliente e Agente IA] --> B{Houve Intervenção Humana?};
+        B --> |Sim| C[Supervisor assume/corrige];
+        C --> D[**Evento de Feedback Explícito:** <br/>Supervisor marca o motivo da intervenção <br/>(ex: 'Resposta Incorreta', 'IA em Loop') <br/>e fornece a resposta correta];
+        
+        B --> |Não| E{Conversa finalizada com sucesso?};
+        E --> |Sim| F[**Evento de Feedback Implícito Positivo:** <br/>Resolução rápida, sentimento positivo no final];
+        E --> |Não (cliente abandona)| G[**Evento de Feedback Implícito Negativo:** <br/>Abandono de chat, sentimento negativo];
+
+        D --> H[(Dados de Aprendizagem)];
+        F --> H;
+        G --> H;
+    end
+
+    subgraph "2. Estágio de Análise (LIA Cortex Analysis)"
+        H --> I{Trigger de Análise <br/>(Ex: Diário / A cada 100 conversas)};
+        I --> J[**LIA Cortex Analysis** analisa lotes de Dados de Aprendizagem];
+        J --> K[Identifica Padrões Recorrentes];
+        K --> |Ex: "IA sempre erra sobre a política de multa"| L[Gera uma **Sugestão de Melhoria**];
+    end
+
+    subgraph "3. Estágio de Aplicação e Log"
+        L --> M{**Proposta de Melhoria:** <br/>"Adicionar a seguinte informação ao prompt do LIA Cancelamento: <br/>'A multa por cancelamento é de 20%...'"};
+        M --> N{Revisão Humana?};
+        N --> |Sim (Recomendado)| O[Supervisor aprova/edita/rejeita a sugestão no Dashboard];
+        N --> |Não (Modo Automático - Alto Risco)| P[Aplicação Automática];
+        
+        O --> |Aprovado| Q[**Ação:** Atualiza o `prompt/instructions` do Agente IA via API];
+        P --> Q;
+
+        Q --> R[**Gera Log de Auditoria:** <br/>- Data/Hora <br/>- Agente Afetado <br/>- Mudança (Antes/Depois) <br/>- Motivo (Análise da IA) <br/>- Aprovado por (Supervisor/Automático)];
+        
+        R --> S((Fim do Ciclo));
+    end
+Implementação no Dashboard de Supervisão
+Para gerenciar esse ciclo, adicionamos uma nova seção/aba ao dashboard.
+Nova Seção no Dashboard: "Evolução dos Agentes"
+Esta seção terá duas abas principais: "Sugestões de Aprendizagem" e "Log de Atualizações".
+Aba 1: Sugestões de Aprendizagem
+Esta é a caixa de entrada para o supervisor. A LIA Cortex Analysis irá popular esta lista com propostas de melhoria. Cada sugestão é um "card" detalhado.
+Card de Sugestão (Exemplo):
+code
+Code
++------------------------------------------------------------------------------------+
+| 💡 Sugestão de Melhoria para: LIA Financeiro  | Confiança: 95% | Gerado: 20/05 14:30 |
+|------------------------------------------------------------------------------------|
+| **Problema Identificado:**                                                         |
+| A LIA Financeiro falhou em responder corretamente sobre a data de vencimento       |
+| da segunda via de boletos em 3 conversas (chat-123, chat-456, chat-789),            |
+| resultando em intervenção humana.                                                  |
+|                                                                                    |
+| **Análise da Causa Raiz:**                                                         |
+| O prompt atual não especifica que a segunda via do boleto tem um novo vencimento   |
+| de 3 dias úteis.                                                                   |
+|                                                                                    |
+| **Sugestão de Alteração no Prompt (Instructions):**                                |
+|                                                                                    |
+| [ - ] "Ao gerar uma segunda via, informe o cliente sobre o código de barras."      |
+| [ + ] "Ao gerar uma segunda via, informe o cliente sobre o código de barras e      |
+|         avise que a nova data de vencimento é de 3 dias úteis."                    |
+|------------------------------------------------------------------------------------|
+| [ Botão: ✅ Aprovar e Aplicar ]  [ Botão: 📝 Editar Sugestão ]  [ Botão: ❌ Rejeitar ] |
++------------------------------------------------------------------------------------+
+Confiança: Uma pontuação (0-100%) calculada pela LIA Cortex Analysis sobre o quão certa ela está de que essa mudança terá um impacto positivo.
+Análise da Causa Raiz: A explicação da IA sobre por que ela acredita que a mudança é necessária.
+Diff Visual (+ e -): Uma visualização clara do que será adicionado ou removido do prompt, facilitando a revisão humana.
+Ações: Permite que o supervisor aprove a mudança com um clique, edite o texto sugerido antes de aplicar, ou simplesmente rejeite a sugestão.
+Aba 2: Log de Atualizações
+Este é o registro imutável de todas as mudanças feitas nos agentes. É crucial para auditoria, rastreamento de performance e, se necessário, para reverter uma mudança que causou problemas.
+Layout da Tabela de Log:
+Data/Hora	Agente Modificado	Modificação Realizada	Motivo/Análise	Aprovado Por
+20/05 15:01	LIA Financeiro	Prompt de Instruções	Corrigir informação sobre vencimento de 2ª via	Supervisor Silva
+19/05 09:22	LIA Suporte	Adicionada Function reiniciar_equipamento	Reduzir necessidade de agendamento técnico	Automático (Conf. 98%)
+18/05 17:45	LIA Comercial	Prompt de Instruções	Adicionar detalhes sobre a nova promoção de maio	Supervisora Ana
+Modificação Realizada: Um link clicável que abre um modal mostrando o "diff" completo (o antes e o depois) da mudança.
+Aprovado Por: Registra quem (ou o quê) autorizou a mudança, garantindo responsabilidade.
+Como o "Agente Supervisor" (LIA Cortex Analysis) Funciona?
+Este é o cérebro da operação. Ele não é um agente de chat, mas um modelo de linguagem especializado em análise de código e texto.
+Input: Ele recebe um conjunto de dados estruturados contendo transcrições de conversas, o prompt do agente que atuou, e um rótulo (SUCESSO, FALHA, CORREÇÃO_HUMANA). Se for uma correção, ele também recebe a resposta "correta" fornecida pelo supervisor.
+Processo: Ele é instruído (via um meta-prompt) a agir como um "Especialista em Otimização de Prompts de IA". Sua tarefa é:
+Comparar as respostas falhas com o prompt original.
+Identificar a lacuna de conhecimento ou instrução que levou ao erro.
+Analisar a resposta correta do supervisor para entender o que deveria ter sido dito.
+Formular uma alteração mínima e precisa no prompt original que teria evitado o erro.
+Gerar a justificativa (a "Análise da Causa Raiz").
+Output: A saída é o JSON que popula o "Card de Sugestão" no dashboard.
+Integrando este ciclo, seu sistema LIA CORTEX não apenas executa tarefas, mas se torna uma plataforma de aprendizado dinâmico, melhorando continuamente sua performance e se adaptando às necessidades do negócio com mínima intervenção manual.
