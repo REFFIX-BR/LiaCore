@@ -47,9 +47,11 @@ Responda apenas com o nome do assistente (suporte, comercial, financeiro, aprese
     const validTypes = ["suporte", "comercial", "financeiro", "apresentacao", "ouvidoria", "cancelamento"];
     const finalType = validTypes.includes(assistantType) ? assistantType : "suporte";
     
+    const assistantId = ASSISTANT_IDS[finalType as keyof typeof ASSISTANT_IDS] || ASSISTANT_IDS.suporte;
+    
     return {
       assistantType: finalType,
-      assistantId: ASSISTANT_IDS[finalType as keyof typeof ASSISTANT_IDS],
+      assistantId: assistantId,
       confidence: 0.85,
     };
   } catch (error) {
@@ -73,13 +75,19 @@ export async function sendMessageAndGetResponse(
   userMessage: string
 ): Promise<string> {
   try {
+    const effectiveAssistantId = assistantId || ASSISTANT_IDS.cortex || ASSISTANT_IDS.suporte;
+    
+    if (!effectiveAssistantId) {
+      throw new Error("No valid assistant ID available");
+    }
+
     await openai.beta.threads.messages.create(threadId, {
       role: "user",
       content: userMessage,
     });
 
     const run = await openai.beta.threads.runs.create(threadId, {
-      assistant_id: assistantId,
+      assistant_id: effectiveAssistantId,
     });
 
     let runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
