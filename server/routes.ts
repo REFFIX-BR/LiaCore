@@ -103,14 +103,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdBy: "IA Assistant",
         });
 
-        // Update conversation with transfer metadata
+        // Update conversation with transfer fields (for Conversas tab)
         await storage.updateConversation(conversation.id, {
           lastMessage: message,
           lastMessageTime: new Date(),
           duration: (conversation.duration || 0) + 30,
           sentiment,
           urgency,
+          transferredToHuman: true,
+          transferReason: `Transferência automática pela IA para ${result.transferredTo}`,
+          transferredAt: new Date(),
           metadata: {
+            ...conversation.metadata,
             transferred: true,
             transferredTo: result.transferredTo,
             transferredAt: new Date().toISOString(),
