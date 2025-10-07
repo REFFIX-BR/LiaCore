@@ -30,6 +30,7 @@ Preferred communication style: Simple, everyday language.
 - Test Chat: Development tool for testing chat flows
 - Conversations: Chat interface with message history
 - Knowledge: RAG knowledge base management
+- Assistants: Performance analytics dashboard for all specialized AI assistants with metrics, transfer analysis, and update history
 - Agent Evolution: Continuous learning dashboard with prompt suggestions and update logs
 - Settings: Comprehensive system configuration and tools management
 
@@ -190,6 +191,26 @@ Preferred communication style: Simple, everyday language.
 - `GET /api/system/config` - Returns complete system configuration and status
 - `POST /api/system/config` - Updates system configuration
 - `POST /api/system/clear-cache` - Clears Redis cache
+
+## Recent Changes
+
+### October 7, 2025 - Assistants Performance Dashboard
+- **NEW PAGE**: Created `/assistants` route with comprehensive performance analytics
+- **Overview Metrics**: Total conversations, resolutions, transfers, and success rate KPIs
+- **Per-Assistant Analytics**: Individual performance cards showing:
+  - Total conversations handled
+  - Success rate (resolved vs transferred)
+  - Average response time
+  - Sentiment analysis
+  - Transfer count
+- **Multi-Tab Interface**:
+  - Performance tab: Visual metrics for all 6 assistants
+  - Updates tab: Historical log of prompt modifications
+  - Transfers tab: Analysis of which assistants transfer most and why
+- **Backend Endpoint**: `GET /api/assistants/metrics` with aggregated statistics
+- **Storage Layer**: Added `getAllConversations()` and `getAllSupervisorActions()` methods
+- **Error Handling**: Robust defensive programming with loading/error states
+- **Learning Configuration**: Reduced analysis interval from 24h to 2h (configurable 1-24h) for faster system evolution
 
 ## External Dependencies
 
