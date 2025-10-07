@@ -100,35 +100,51 @@ export async function sendMessageAndGetResponse(
       content: userMessage,
     });
 
-    const run = await openai.beta.threads.runs.createAndPoll(threadId, {
+    let run = await openai.beta.threads.runs.create(threadId, {
       assistant_id: effectiveAssistantId,
-    }, {
-      pollIntervalMs: 1000,
     });
+
+    console.log("🔵 [OpenAI] Run created:", { runId: run.id, threadId });
+
+    // Manual polling loop
+    let attempts = 0;
+    const maxAttempts = 60;
+
+    while (run.status === "queued" || run.status === "in_progress" || run.status === "requires_action") {
+      if (attempts >= maxAttempts) {
+        throw new Error("Run timed out after 60 seconds");
+      }
+
+      if (run.status === "requires_action" && run.required_action?.type === "submit_tool_outputs") {
+        console.log("🔧 [OpenAI] Handling tool calls...");
+        const toolCalls = run.required_action.submit_tool_outputs.tool_calls;
+        const toolOutputs = await Promise.all(
+          toolCalls.map(async (toolCall) => {
+            const result = await handleToolCall(toolCall.function.name, toolCall.function.arguments);
+            return {
+              tool_call_id: toolCall.id,
+              output: result,
+            };
+          })
+        );
+
+        // @ts-ignore - TypeScript types may be outdated for submitToolOutputs
+        run = await openai.beta.threads.runs.submitToolOutputs(threadId, run.id, {
+          tool_outputs: toolOutputs,
+        });
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        // @ts-ignore - TypeScript types may be outdated for retrieve
+        run = await openai.beta.threads.runs.retrieve(threadId, run.id);
+      }
+
+      attempts++;
+    }
 
     console.log("🔵 [OpenAI] Run completed:", { runId: run.id, status: run.status, threadId });
 
     if (run.status === "failed" || run.status === "cancelled" || run.status === "expired") {
       throw new Error(`Run failed with status: ${run.status}`);
-    }
-
-    // Handle tool calls if needed
-    if (run.status === "requires_action" && run.required_action?.type === "submit_tool_outputs") {
-      const toolCalls = run.required_action.submit_tool_outputs.tool_calls;
-      const toolOutputs = await Promise.all(
-        toolCalls.map(async (toolCall) => {
-          const result = await handleToolCall(toolCall.function.name, toolCall.function.arguments);
-          return {
-            tool_call_id: toolCall.id,
-            output: result,
-          };
-        })
-      );
-
-      // @ts-ignore - TypeScript types may be outdated, but this is the correct syntax per OpenAI docs
-      await openai.beta.threads.runs.submitToolOutputsAndPoll(threadId, run.id, {
-        tool_outputs: toolOutputs,
-      });
     }
 
     const messages = await openai.beta.threads.messages.list(threadId, {

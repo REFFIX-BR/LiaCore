@@ -72,6 +72,7 @@ export const monitorAPI = {
   },
 
   sendChatMessage: async (chatId: string, clientName: string, message: string) => {
-    return apiRequest("POST", `/api/chat/message`, { chatId, clientName, message });
+    const response = await apiRequest("POST", `/api/chat/message`, { chatId, clientName, message });
+    return response.json();
   },
 };
