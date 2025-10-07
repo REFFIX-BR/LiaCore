@@ -594,6 +594,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DEBUG: Get all conversations (including resolved) for troubleshooting
+  app.get("/api/debug/all-conversations", async (req, res) => {
+    try {
+      const conversations = await storage.getAllConversations();
+      return res.json(conversations);
+    } catch (error) {
+      console.error("Debug conversations error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Get all active conversations for monitoring
   app.get("/api/monitor/conversations", async (req, res) => {
     try {
