@@ -511,7 +511,7 @@ export class MemStorage implements IStorage {
 }
 
 import { db } from "./db";
-import { eq, desc, and, or, gte, sql } from "drizzle-orm";
+import { eq, desc, and, or, gte, isNotNull, sql } from "drizzle-orm";
 import * as schema from "@shared/schema";
 
 export class DbStorage implements IStorage {
@@ -556,6 +556,7 @@ export class DbStorage implements IStorage {
           eq(schema.conversations.status, 'active'),
           and(
             eq(schema.conversations.status, 'resolved'),
+            isNotNull(schema.conversations.lastMessageTime),
             gte(schema.conversations.lastMessageTime, twentyFourHoursAgo)
           )
         )
