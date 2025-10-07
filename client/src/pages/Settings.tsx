@@ -24,6 +24,18 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { evolutionConfigSchema, type EvolutionConfig } from "@shared/schema";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
 interface SystemConfig {
   apiStatus?: {
@@ -74,13 +86,17 @@ export default function Settings() {
     analysisInterval: "2",
   });
   
-  const [evolutionConfig, setEvolutionConfig] = useState({
-    url: "",
-    apiKey: "",
-    instance: "",
-  });
-  
   const [isEditingEvolution, setIsEditingEvolution] = useState(false);
+
+  // Form Evolution API usando useForm + Zod
+  const evolutionForm = useForm<EvolutionConfig>({
+    resolver: zodResolver(evolutionConfigSchema),
+    defaultValues: {
+      url: "",
+      apiKey: "",
+      instance: "",
+    },
+  });
 
   // Query para buscar configurações do sistema
   const { data: systemConfig } = useQuery<SystemConfig>({
@@ -99,13 +115,13 @@ export default function Settings() {
     }
     
     if (systemConfig?.evolution) {
-      setEvolutionConfig({
+      evolutionForm.reset({
         url: systemConfig.evolution.url || "",
         apiKey: "", // Nunca expor a chave atual
         instance: systemConfig.evolution.instance || "",
       });
     }
-  }, [systemConfig]);
+  }, [systemConfig, evolutionForm]);
 
   // Mutation para atualizar configurações
   const updateConfigMutation = useMutation({
@@ -149,13 +165,10 @@ export default function Settings() {
 
   // Mutation para atualizar configurações da Evolution API
   const updateEvolutionMutation = useMutation({
-    mutationFn: async (data: { url: string; apiKey: string; instance: string }) => {
+    mutationFn: async (data: EvolutionConfig) => {
       return apiRequest('POST', '/api/system/evolution-config', data);
     },
-    onSuccess: (response: any) => {
-      // Mostrar instruções detalhadas
-      const instructions = response.instructions || "Configurações salvas!";
-      
+    onSuccess: () => {
       toast({
         title: "✅ Configuração Validada",
         description: (
@@ -163,7 +176,7 @@ export default function Settings() {
             <p className="font-medium">Próximos passos:</p>
             <ol className="list-decimal list-inside space-y-1 text-sm">
               <li>Abra a aba "Secrets" do Replit (ícone 🔑)</li>
-              <li>Adicione as 3 variáveis com os valores fornecidos</li>
+              <li>Adicione as 3 variáveis: EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_API_INSTANCE</li>
               <li>Reinicie o servidor para aplicar</li>
             </ol>
           </div>
@@ -171,12 +184,13 @@ export default function Settings() {
         duration: 10000,
       });
       
-      // Log das instruções completas no console
-      console.log("📋 Instruções Evolution API:", instructions);
-      
       queryClient.invalidateQueries({ queryKey: ['/api/system/config'] });
       setIsEditingEvolution(false);
-      setEvolutionConfig(prev => ({ ...prev, apiKey: "" })); // Limpar campo de senha
+      evolutionForm.reset({
+        url: systemConfig?.evolution?.url || "",
+        apiKey: "",
+        instance: systemConfig?.evolution?.instance || "",
+      });
     },
     onError: (error: any) => {
       toast({
@@ -510,78 +524,100 @@ export default function Settings() {
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="evolution-url">URL da API *</Label>
-                    <Input
-                      id="evolution-url"
-                      type="url"
-                      placeholder="https://sua-evolution-api.com"
-                      value={evolutionConfig.url}
-                      onChange={(e) => setEvolutionConfig({ ...evolutionConfig, url: e.target.value })}
-                      data-testid="input-evolution-url"
+                <Form {...evolutionForm}>
+                  <form onSubmit={evolutionForm.handleSubmit((data) => updateEvolutionMutation.mutate(data))} className="space-y-4">
+                    <FormField
+                      control={evolutionForm.control}
+                      name="url"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>URL da API *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="https://sua-evolution-api.com" 
+                              {...field} 
+                              data-testid="input-evolution-url"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            URL base da sua instância Evolution API
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                    <p className="text-sm text-muted-foreground">
-                      URL base da sua instância Evolution API
-                    </p>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="evolution-instance">Nome da Instância *</Label>
-                    <Input
-                      id="evolution-instance"
-                      type="text"
-                      placeholder="minha-instancia"
-                      value={evolutionConfig.instance}
-                      onChange={(e) => setEvolutionConfig({ ...evolutionConfig, instance: e.target.value })}
-                      data-testid="input-evolution-instance"
+                    <FormField
+                      control={evolutionForm.control}
+                      name="instance"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nome da Instância *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="minha-instancia" 
+                              {...field} 
+                              data-testid="input-evolution-instance"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Nome da instância configurada no Evolution API
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                    <p className="text-sm text-muted-foreground">
-                      Nome da instância configurada no Evolution API
-                    </p>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="evolution-key">API Key *</Label>
-                    <Input
-                      id="evolution-key"
-                      type="password"
-                      placeholder="Digite a API Key"
-                      value={evolutionConfig.apiKey}
-                      onChange={(e) => setEvolutionConfig({ ...evolutionConfig, apiKey: e.target.value })}
-                      data-testid="input-evolution-key"
+                    <FormField
+                      control={evolutionForm.control}
+                      name="apiKey"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>API Key *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="password" 
+                              placeholder="Digite a API Key" 
+                              {...field} 
+                              data-testid="input-evolution-key"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Chave de autenticação da Evolution API (será armazenada com segurança)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                    <p className="text-sm text-muted-foreground">
-                      Chave de autenticação da Evolution API (será armazenada com segurança)
-                    </p>
-                  </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => updateEvolutionMutation.mutate(evolutionConfig)}
-                      disabled={updateEvolutionMutation.isPending || !evolutionConfig.url || !evolutionConfig.instance || !evolutionConfig.apiKey}
-                      className="flex-1"
-                      data-testid="button-save-evolution"
-                    >
-                      {updateEvolutionMutation.isPending ? "Salvando..." : "Salvar Configurações"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setIsEditingEvolution(false);
-                        setEvolutionConfig({
-                          url: systemConfig?.evolution?.url || "",
-                          apiKey: "",
-                          instance: systemConfig?.evolution?.instance || "",
-                        });
-                      }}
-                      disabled={updateEvolutionMutation.isPending}
-                      data-testid="button-cancel-evolution"
-                    >
-                      Cancelar
-                    </Button>
-                  </div>
-                </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="submit"
+                        disabled={updateEvolutionMutation.isPending}
+                        className="flex-1"
+                        data-testid="button-save-evolution"
+                      >
+                        {updateEvolutionMutation.isPending ? "Salvando..." : "Salvar Configurações"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setIsEditingEvolution(false);
+                          evolutionForm.reset({
+                            url: systemConfig?.evolution?.url || "",
+                            apiKey: "",
+                            instance: systemConfig?.evolution?.instance || "",
+                          });
+                        }}
+                        disabled={updateEvolutionMutation.isPending}
+                        data-testid="button-cancel-evolution"
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
               )}
             </CardContent>
           </Card>

@@ -180,6 +180,19 @@ export const insertSuggestedResponseSchema = createInsertSchema(suggestedRespons
   approvedAt: true,
 });
 
+// Evolution API Configuration Schema
+export const evolutionConfigSchema = z.object({
+  url: z.string()
+    .url({ message: "URL inválida. Use o formato: https://sua-api.com" })
+    .min(1, { message: "URL é obrigatória" }),
+  apiKey: z.string()
+    .min(1, { message: "API Key é obrigatória" }),
+  instance: z.string()
+    .min(1, { message: "Nome da instância é obrigatório" }),
+});
+
+export type EvolutionConfig = z.infer<typeof evolutionConfigSchema>;
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Conversation = typeof conversations.$inferSelect;

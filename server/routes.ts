@@ -1257,12 +1257,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasApiKey: !!apiKey
       });
 
-      // Instruções para o usuário
+      // Instruções para o usuário (SEM expor a API key)
       const instructions = `
 Para aplicar as configurações da Evolution API, adicione estas variáveis nos Secrets do Replit:
 
 1. EVOLUTION_API_URL = ${url}
-2. EVOLUTION_API_KEY = ${apiKey}
+2. EVOLUTION_API_KEY = (use a chave que você forneceu)
 3. EVOLUTION_API_INSTANCE = ${instance}
 
 Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
