@@ -53,57 +53,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Buscar histórico de mensagens para contexto e resumo
-      const allMessages = await storage.getMessagesByConversationId(conversation.id);
-      const messageCount = allMessages.length;
-      
-      // Verificar se precisa gerar resumo automático
-      const lastSummaryCount = conversation.messageCountAtLastSummary || 0;
-      const messagesSinceLastSummary = messageCount - lastSummaryCount;
-      
-      if (messagesSinceLastSummary >= CONTEXT_CONFIG.SUMMARIZE_EVERY && messageCount > CONTEXT_CONFIG.SUMMARIZE_EVERY) {
-        console.log(`📝 [Auto-Summary] Gerando resumo automático (${messagesSinceLastSummary} mensagens desde último resumo)`);
-        
-        // Pegar mensagens para resumir (excluindo as últimas KEEP_RECENT)
-        const messagesToSummarize = allMessages.slice(lastSummaryCount, messageCount - CONTEXT_CONFIG.KEEP_RECENT);
-        
-        if (messagesToSummarize.length > 0) {
-          const summaryInput = messagesToSummarize.map((m: any) => ({
-            role: m.role,
-            content: m.content
-          }));
-          
-          const newSummary = await summarizeConversation(summaryInput);
-          
-          // Mesclar com resumo anterior se existir
-          let finalSummary = newSummary;
-          if (conversation.conversationSummary) {
-            try {
-              const oldSummary = JSON.parse(conversation.conversationSummary);
-              const newSummaryObj = JSON.parse(newSummary);
-              
-              // Combinar históricos
-              const combinedHistory = [...(oldSummary.assistantHistory || []), ...(newSummaryObj.assistantHistory || [])];
-              newSummaryObj.assistantHistory = Array.from(new Set(combinedHistory)); // Remove duplicatas
-              
-              finalSummary = JSON.stringify(newSummaryObj);
-            } catch (e) {
-              console.error("❌ Erro ao mesclar resumos:", e);
-            }
-          }
-          
-          // Atualizar conversa com novo resumo
-          await storage.updateConversation(conversation.id, {
-            conversationSummary: finalSummary,
-            lastSummarizedAt: new Date(),
-            messageCountAtLastSummary: messageCount,
-          });
-          
-          conversation.conversationSummary = finalSummary;
-          console.log(`✅ [Auto-Summary] Resumo gerado e armazenado (total: ${messageCount} msgs)`);
-        }
-      }
-
       // Store user message
       await storage.createMessage({
         conversationId: conversation.id,
@@ -181,6 +130,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
         duration: (conversation.duration || 0) + 30,
         sentiment,
         urgency,
+      });
+
+      // Gerar resumo de forma assíncrona (não bloqueia a resposta)
+      const conversationId = conversation.id;
+      setImmediate(async () => {
+        try {
+          const allMessages = await storage.getMessagesByConversationId(conversationId);
+          const messageCount = allMessages.length;
+          const lastSummaryCount = conversation.messageCountAtLastSummary || 0;
+          const messagesSinceLastSummary = messageCount - lastSummaryCount;
+          
+          if (messagesSinceLastSummary >= CONTEXT_CONFIG.SUMMARIZE_EVERY && messageCount > CONTEXT_CONFIG.SUMMARIZE_EVERY) {
+            console.log(`📝 [Auto-Summary] Iniciando resumo em background (${messageCount} mensagens totais)`);
+            
+            const messagesToSummarize = allMessages.slice(lastSummaryCount, Math.max(lastSummaryCount, messageCount - CONTEXT_CONFIG.KEEP_RECENT));
+            
+            if (messagesToSummarize.length > 0) {
+              const summaryInput = messagesToSummarize.map((m: any) => ({
+                role: m.role,
+                content: m.content
+              }));
+              
+              const newSummary = await summarizeConversation(summaryInput);
+              
+              let finalSummary = newSummary;
+              if (conversation.conversationSummary) {
+                try {
+                  const oldSummary = JSON.parse(conversation.conversationSummary);
+                  const newSummaryObj = JSON.parse(newSummary);
+                  
+                  // Função auxiliar para deduplicar arrays
+                  const deduplicateArray = (arr: string[]) => Array.from(new Set(arr));
+                  
+                  // Mesclar TODOS os campos acumulando contexto corretamente
+                  const merged = {
+                    // Substituir por resumo mais recente (é um resumo, não histórico)
+                    summary: newSummaryObj.summary || oldSummary.summary || '',
+                    
+                    // Mesclar fatos-chave (novos sobrescrevem, mas mantém únicos)
+                    keyFacts: {
+                      ...(oldSummary.keyFacts || {}),
+                      ...(newSummaryObj.keyFacts || {})
+                    },
+                    
+                    // Sentimento mais recente
+                    sentiment: newSummaryObj.sentiment || oldSummary.sentiment || 'neutral',
+                    
+                    // Acumula assistentes (sem duplicatas)
+                    assistantHistory: deduplicateArray([
+                      ...(oldSummary.assistantHistory || []),
+                      ...(newSummaryObj.assistantHistory || [])
+                    ]),
+                    
+                    // Acumula ações realizadas (SEM duplicatas)
+                    actionsTaken: deduplicateArray([
+                      ...(oldSummary.actionsTaken || []),
+                      ...(newSummaryObj.actionsTaken || [])
+                    ]),
+                    
+                    // Combinar ações pendentes (union de ambas, SEM duplicatas)
+                    pendingActions: deduplicateArray([
+                      ...(oldSummary.pendingActions || []),
+                      ...(newSummaryObj.pendingActions || [])
+                    ]),
+                    
+                    // Acumula datas importantes (sem duplicatas)
+                    importantDates: deduplicateArray([
+                      ...(oldSummary.importantDates || []),
+                      ...(newSummaryObj.importantDates || [])
+                    ])
+                  };
+                  
+                  finalSummary = JSON.stringify(merged);
+                } catch (e) {
+                  console.error("❌ Erro ao mesclar resumos:", e);
+                }
+              }
+              
+              await storage.updateConversation(conversationId, {
+                conversationSummary: finalSummary,
+                lastSummarizedAt: new Date(),
+                // CRÍTICO: marcar até onde resumimos (não incluindo KEEP_RECENT)
+                // para que as mensagens "mantidas intactas" sejam resumidas no próximo ciclo
+                // Edge case: garantir que não seja negativo
+                messageCountAtLastSummary: Math.max(0, messageCount - CONTEXT_CONFIG.KEEP_RECENT),
+              });
+              
+              console.log(`✅ [Auto-Summary] Resumo concluído (${messageCount} msgs resumidas)`);
+            }
+          }
+        } catch (error) {
+          console.error("❌ [Auto-Summary] Erro ao gerar resumo:", error);
+        }
       });
 
       return res.json({
