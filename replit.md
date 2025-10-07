@@ -44,13 +44,29 @@ Preferred communication style: Simple, everyday language.
 ### AI & Knowledge Management
 
 **AI Provider**: OpenAI, with separate assistant IDs for each specialized role.
+
+**Assistant Configuration**: All 6 specialized assistants (Suporte, Comercial, Financeiro, Cancelamento, Ouvidoria, Apresentação) have detailed instructions documented in `INSTRUCOES_ASSISTENTES_OPENAI.md`. Each assistant is configured to:
+- Respond in natural conversational Portuguese (never JSON)
+- Use WhatsApp-friendly formatting (short messages, emojis, ≤500 chars)
+- Transfer to human agents using `transferir_para_humano` function when appropriate
+- Access specialized tools for their domain (e.g., `consultar_pppoe_status` for Support, `consultar_boleto_cliente` for Finance)
+
+**Critical Configuration**: All assistants MUST have Response Format set to "text" (NOT "json_object") in OpenAI platform to ensure conversational responses.
+
+**Assistant IDs**:
+- Support: `asst_CDkh1oE8YvKLtJYs3WY4rJX8` (verified correct)
+- Routing: Uses GPT-5 for intent classification (separate from conversational assistants)
+
 **Routing Logic**: GPT-5 based intent classification using conversation summaries and recent messages for context-aware routing.
+
 **Automatic Conversation Summarization**:
 - Triggered every 12 messages, processed asynchronously.
 - Generates structured JSON summaries (summary text, key facts, sentiment, actions, etc.).
 - Maintains context with last 5 messages, accumulates summaries to prevent context loss.
 - Configurable parameters: `SUMMARIZE_EVERY=12`, `KEEP_RECENT=5`, `CONTEXT_WINDOW=7`.
+
 **RAG Implementation**: Knowledge chunks in Upstash Vector with embeddings; assistants can call `consultar_base_de_conhecimento` for dynamic knowledge retrieval.
+
 **Function Calling**: Assistants are equipped with custom functions for tasks like connection verification, knowledge base queries, invoice lookups, and visit scheduling.
 
 ### Real-Time Monitoring
