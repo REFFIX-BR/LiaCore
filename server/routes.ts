@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema, insertSatisfactionFeedbackSchema, type Conversation } from "@shared/schema";
 import { routeMessage, createThread, sendMessageAndGetResponse, summarizeConversation, routeMessageWithContext, CONTEXT_CONFIG } from "./lib/openai";
 import { storeConversationThread, getConversationThread, searchKnowledge } from "./lib/upstash";
+import { webhookLogger } from "./lib/webhook-logger";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -309,6 +310,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { event, instance, data } = req.body;
 
+      webhookLogger.info('CONNECTION', `Webhook recebido: ${event}`, {
+        instance,
+        timestamp: new Date().toISOString(),
+      });
+
       console.log(`📱 [Evolution Webhook] Evento recebido: ${event}`, {
         instance,
         event,
@@ -321,6 +327,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Ignore messages sent by us
         if (fromMe) {
+          webhookLogger.info('MESSAGE_IGNORED', 'Mensagem enviada por nós - ignorada');
           console.log(`⏭️  [Evolution] Ignorando mensagem enviada por nós`);
           return res.json({ success: true, processed: false, reason: "fromMe" });
         }
@@ -367,6 +374,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const phoneNumber = remoteJid.replace('@s.whatsapp.net', '');
         const chatId = `whatsapp_${phoneNumber}`;
         const clientName = pushName || `Cliente ${phoneNumber.slice(-4)}`;
+
+        webhookLogger.success('MESSAGE_RECEIVED', `Mensagem de ${clientName}`, {
+          phoneNumber,
+          messagePreview: messageText.substring(0, 50),
+          chatId,
+        });
 
         console.log(`💬 [Evolution] Mensagem recebida de ${clientName} (${phoneNumber}): ${messageText}`);
 
@@ -421,6 +434,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // If conversation is transferred to human, don't auto-respond
         if (conversation.transferredToHuman) {
+          webhookLogger.warning('TRANSFER_ACTIVE', 'Conversa transferida - resposta manual necessária', {
+            conversationId: conversation.id,
+            clientName,
+          });
           console.log(`👤 [Evolution] Conversa transferida para humano - não respondendo automaticamente`);
           return res.json({ 
             success: true, 
@@ -476,15 +493,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             console.log(`✅ [Evolution] Resposta gerada: ${responseText.substring(0, 100)}...`);
             
+            webhookLogger.success('AI_RESPONSE', `Resposta da IA gerada (${conversation.assistantType})`, {
+              conversationId: conversation.id,
+              responsePreview: responseText.substring(0, 50),
+              transferred: transferred || false,
+            });
+            
             // Send response back to WhatsApp via Evolution API
             const sent = await sendWhatsAppMessage(clientPhoneNumber, responseText);
             if (sent) {
+              webhookLogger.success('MESSAGE_SENT', `Mensagem enviada ao WhatsApp`, {
+                phoneNumber: clientPhoneNumber,
+                clientName,
+              });
               console.log(`📤 [Evolution] Resposta enviada ao WhatsApp com sucesso`);
             } else {
+              webhookLogger.error('SEND_FAILED', `Falha ao enviar resposta ao WhatsApp`, {
+                phoneNumber: clientPhoneNumber,
+                clientName,
+              });
               console.error(`⚠️  [Evolution] Falha ao enviar resposta ao WhatsApp`);
             }
             
           } catch (error) {
+            webhookLogger.error('PROCESSING_ERROR', `Erro ao processar resposta`, {
+              error: error instanceof Error ? error.message : String(error),
+              conversationId: conversation.id,
+            });
             console.error("❌ [Evolution] Erro ao processar resposta:", error);
           }
         })();
@@ -534,6 +569,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json({ success: true, processed: false, reason: "unknown_event" });
 
     } catch (error) {
+      webhookLogger.error('WEBHOOK_ERROR', 'Erro crítico no webhook', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       console.error("❌ [Evolution Webhook] Erro:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
@@ -1621,6 +1659,27 @@ A resposta deve:
   });
 
   const httpServer = createServer(app);
+
+  // Setup WebSocket for real-time webhook logs
+  webhookLogger.setupWebSocket(httpServer);
+
+  // Endpoint to get webhook logs
+  app.get("/api/webhook-logs", (req, res) => {
+    const logs = webhookLogger.getLogs();
+    return res.json({ logs });
+  });
+
+  // Endpoint to get webhook stats
+  app.get("/api/webhook-logs/stats", (req, res) => {
+    const stats = webhookLogger.getStats();
+    return res.json(stats);
+  });
+
+  // Endpoint to clear webhook logs
+  app.post("/api/webhook-logs/clear", (req, res) => {
+    webhookLogger.clearLogs();
+    return res.json({ success: true, message: "Logs cleared" });
+  });
 
   return httpServer;
 }
