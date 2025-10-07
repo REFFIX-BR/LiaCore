@@ -70,11 +70,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const assistantId = (conversation.metadata as any)?.routing?.assistantId;
       const result = await sendMessageAndGetResponse(threadId, assistantId, message, chatId);
 
-      // Store assistant response
+      // Store assistant response (ensure it's always a string)
+      const responseText = typeof result.response === 'string' 
+        ? result.response 
+        : (result.response?.response || JSON.stringify(result.response));
+      
       await storage.createMessage({
         conversationId: conversation.id,
         role: "assistant",
-        content: result.response,
+        content: responseText,
         assistant: conversation.assistantType,
       });
 
@@ -111,7 +115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         return res.json({
           success: true,
-          response: result.response,
+          response: responseText,
           assistantType: conversation.assistantType,
           chatId,
           transferred: true,
@@ -130,7 +134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       return res.json({
         success: true,
-        response: result.response,
+        response: responseText,
         assistantType: conversation.assistantType,
         chatId,
       });

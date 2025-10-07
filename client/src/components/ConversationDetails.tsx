@@ -138,7 +138,9 @@ export function ConversationDetails({
                         {formatDistanceToNow(msg.timestamp, { addSuffix: true, locale: ptBR })}
                       </span>
                     </div>
-                    <p className="text-sm bg-muted p-3 rounded-lg">{msg.content}</p>
+                    <p className="text-sm bg-muted p-3 rounded-lg">
+                      {typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)}
+                    </p>
                     {msg.functionCall && (
                       <Badge variant="outline" className="text-xs">
                         {functionIcons[msg.functionCall.name] || "⚙️"} {msg.functionCall.name}

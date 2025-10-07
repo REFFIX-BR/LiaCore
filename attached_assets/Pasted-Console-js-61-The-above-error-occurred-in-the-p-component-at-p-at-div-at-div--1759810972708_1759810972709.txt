@@ -1,0 +1,62 @@
+Console.js:61 The above error occurred in the <p> component:
+
+    at p
+    at div
+    at div
+    at div
+    at div
+    at div
+    at https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.d…unner/workspace/node_modules/.vite/deps/chunk-KYDO7B72.js?v=9213edc5:42:13
+    at https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.d…e/node_modules/.vite/deps/@radix-ui_react-scroll-area.js?v=9213edc5:114:13
+    at div
+    at https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.d…unner/workspace/node_modules/.vite/deps/chunk-KYDO7B72.js?v=9213edc5:42:13
+    at Provider (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.d…unner/workspace/node_modules/.vite/deps/chunk-E7IAXTU4.js?v=9213edc5:38:15)
+    at https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.d…ace/node_modules/.vite/deps/@radix-ui_react-scroll-area.js?v=9213edc5:52:7
+    at _c (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.dev/src/components/ui/scroll-area.tsx:21:11)
+    at div
+    at https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.d…unner/workspace/node_modules/.vite/deps/chunk-KYDO7B72.js?v=9213edc5:42:13
+    at Presence (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.d…unner/workspace/node_modules/.vite/deps/chunk-7WPAJ6XX.js?v=9213edc5:24:11)
+    at https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.d…orkspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=9213edc5:387:13
+    at _c5 (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.dev/src/components/ui/tabs.tsx:72:12)
+    at div
+    at https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.d…unner/workspace/node_modules/.vite/deps/chunk-KYDO7B72.js?v=9213edc5:42:13
+    at Provider (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.d…unner/workspace/node_modules/.vite/deps/chunk-E7IAXTU4.js?v=9213edc5:38:15)
+    at https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.d…workspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=9213edc5:265:7
+    at div
+    at _c (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.dev/src/components/ui/card.tsx:20:11)
+    at ConversationDetails (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.dev/src/components/ConversationDetails.tsx:53:3)
+    at div
+    at div
+    at div
+    at Monitor (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.dev/src/pages/Monitor.tsx:33:41)
+    at Route (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=9213edc5:323:16)
+    at Switch (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=9213edc5:379:17)
+    at Router
+    at main
+    at div
+    at div
+    at div
+    at Provider (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.d…unner/workspace/node_modules/.vite/deps/chunk-E7IAXTU4.js?v=9213edc5:38:15)
+    at TooltipProvider (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.d…rkspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=9213edc5:62:5)
+    at SidebarProvider (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.dev/src/components/ui/sidebar.tsx:59:3)
+    at ThemeProvider (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.dev/src/lib/theme-provider.tsx:25:3)
+    at Provider (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.d…unner/workspace/node_modules/.vite/deps/chunk-E7IAXTU4.js?v=9213edc5:38:15)
+    at TooltipProvider (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.d…rkspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=9213edc5:62:5)
+    at QueryClientProvider (https://c75a1a01-267e-4042-80a4-d4b8c392ddda-00-4tf3x1yu4xt3.riker.replit.d…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=9213edc5:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=9213edc5:9934 Uncaught Error: Objects are not valid as a React child (found: object with keys {response}). If you meant to render a collection of children, use an array instead.
+    at throwOnInvalidObjectType (chunk-RPCDYKBN.js?v=9213edc5:9934:17)
+    at reconcileChildFibers2 (chunk-RPCDYKBN.js?v=9213edc5:10564:15)
+    at reconcileChildren (chunk-RPCDYKBN.js?v=9213edc5:14290:37)
+    at updateHostComponent (chunk-RPCDYKBN.js?v=9213edc5:14807:11)
+    at beginWork (chunk-RPCDYKBN.js?v=9213edc5:15935:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=9213edc5:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=9213edc5:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=9213edc5:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js?v=9213edc5:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js?v=9213edc5:18736:28)
+﻿
+
