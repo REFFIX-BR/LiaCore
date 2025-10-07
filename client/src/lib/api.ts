@@ -56,37 +56,22 @@ export const monitorAPI = {
   },
 
   transferToHuman: async (conversationId: string, department: string, notes: string) => {
-    return apiRequest(`/api/supervisor/transfer`, {
-      method: "POST",
-      body: JSON.stringify({ conversationId, department, notes, supervisorId: "supervisor" }),
-    });
+    return apiRequest("POST", `/api/supervisor/transfer`, { conversationId, department, notes, supervisorId: "supervisor" });
   },
 
   pauseAI: async (conversationId: string) => {
-    return apiRequest(`/api/supervisor/pause`, {
-      method: "POST",
-      body: JSON.stringify({ conversationId, supervisorId: "supervisor" }),
-    });
+    return apiRequest("POST", `/api/supervisor/pause`, { conversationId, supervisorId: "supervisor" });
   },
 
   addNote: async (conversationId: string, note: string) => {
-    return apiRequest(`/api/supervisor/note`, {
-      method: "POST",
-      body: JSON.stringify({ conversationId, note, supervisorId: "supervisor" }),
-    });
+    return apiRequest("POST", `/api/supervisor/note`, { conversationId, note, supervisorId: "supervisor" });
   },
 
   markResolved: async (conversationId: string) => {
-    return apiRequest(`/api/supervisor/resolve`, {
-      method: "POST",
-      body: JSON.stringify({ conversationId, supervisorId: "supervisor" }),
-    });
+    return apiRequest("POST", `/api/supervisor/resolve`, { conversationId, supervisorId: "supervisor" });
   },
 
   sendChatMessage: async (chatId: string, clientName: string, message: string) => {
-    return apiRequest(`/api/chat/message`, {
-      method: "POST",
-      body: JSON.stringify({ chatId, clientName, message }),
-    });
+    return apiRequest("POST", `/api/chat/message`, { chatId, clientName, message });
   },
 };
