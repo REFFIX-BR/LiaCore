@@ -55,6 +55,49 @@ export const supervisorActions = pgTable("supervisor_actions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const learningEvents = pgTable("learning_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull(),
+  eventType: text("event_type").notNull(), // 'explicit_correction', 'implicit_success', 'implicit_failure'
+  assistantType: text("assistant_type").notNull(),
+  userMessage: text("user_message").notNull(),
+  aiResponse: text("ai_response").notNull(),
+  correctResponse: text("correct_response"), // If supervisor corrected
+  feedback: text("feedback"), // Supervisor notes
+  sentiment: text("sentiment"),
+  resolution: text("resolution"), // 'success', 'abandoned', 'corrected'
+  createdAt: timestamp("created_at").defaultNow(),
+  metadata: jsonb("metadata"),
+});
+
+export const promptSuggestions = pgTable("prompt_suggestions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  assistantType: text("assistant_type").notNull(),
+  problemIdentified: text("problem_identified").notNull(),
+  rootCauseAnalysis: text("root_cause_analysis").notNull(),
+  currentPrompt: text("current_prompt").notNull(),
+  suggestedPrompt: text("suggested_prompt").notNull(),
+  confidenceScore: integer("confidence_score").notNull(), // 0-100
+  affectedConversations: text("affected_conversations").array(),
+  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected', 'applied'
+  reviewedBy: text("reviewed_by"),
+  reviewNotes: text("review_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+});
+
+export const promptUpdates = pgTable("prompt_updates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  suggestionId: varchar("suggestion_id"),
+  assistantType: text("assistant_type").notNull(),
+  modificationType: text("modification_type").notNull(), // 'instructions', 'function_added', 'function_removed'
+  previousValue: text("previous_value").notNull(),
+  newValue: text("new_value").notNull(),
+  reason: text("reason").notNull(),
+  appliedBy: text("applied_by").notNull(), // 'Supervisor Name' or 'Automatic'
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -80,6 +123,22 @@ export const insertSupervisorActionSchema = createInsertSchema(supervisorActions
   createdAt: true,
 });
 
+export const insertLearningEventSchema = createInsertSchema(learningEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPromptSuggestionSchema = createInsertSchema(promptSuggestions).omit({
+  id: true,
+  createdAt: true,
+  reviewedAt: true,
+});
+
+export const insertPromptUpdateSchema = createInsertSchema(promptUpdates).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Conversation = typeof conversations.$inferSelect;
@@ -90,3 +149,9 @@ export type Alert = typeof alerts.$inferSelect;
 export type InsertAlert = z.infer<typeof insertAlertSchema>;
 export type SupervisorAction = typeof supervisorActions.$inferSelect;
 export type InsertSupervisorAction = z.infer<typeof insertSupervisorActionSchema>;
+export type LearningEvent = typeof learningEvents.$inferSelect;
+export type InsertLearningEvent = z.infer<typeof insertLearningEventSchema>;
+export type PromptSuggestion = typeof promptSuggestions.$inferSelect;
+export type InsertPromptSuggestion = z.infer<typeof insertPromptSuggestionSchema>;
+export type PromptUpdate = typeof promptUpdates.$inferSelect;
+export type InsertPromptUpdate = z.infer<typeof insertPromptUpdateSchema>;
