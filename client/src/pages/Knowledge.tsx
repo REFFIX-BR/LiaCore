@@ -27,8 +27,10 @@ export default function Knowledge() {
   const { toast } = useToast();
 
   const searchMutation = useMutation({
-    mutationFn: (query: string) => 
-      apiRequest("POST", "/api/knowledge/search", { query, topK: 5 }),
+    mutationFn: async (query: string) => {
+      const response = await apiRequest("POST", "/api/knowledge/search", { query, topK: 5 });
+      return response.json();
+    },
     onSuccess: (data: any) => {
       const formattedResults = data.map((result: any) => ({
         id: result.chunk.id,
@@ -52,8 +54,10 @@ export default function Knowledge() {
   });
 
   const addDocumentMutation = useMutation({
-    mutationFn: (doc: any) => 
-      apiRequest("POST", "/api/knowledge/add", { chunks: [doc] }),
+    mutationFn: async (doc: any) => {
+      const response = await apiRequest("POST", "/api/knowledge/add", { chunks: [doc] });
+      return response.json();
+    },
     onSuccess: (_, variables) => {
       toast({
         title: "Sucesso",
@@ -82,11 +86,14 @@ export default function Knowledge() {
   });
 
   const populateMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/knowledge/populate", {}),
-    onSuccess: (response: any) => {
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/knowledge/populate", {});
+      return response.json();
+    },
+    onSuccess: (data: any) => {
       toast({
         title: "Base Populada",
-        description: `${response.count} documentos adicionados`,
+        description: `${data.count} documentos adicionados`,
       });
     },
     onError: () => {
@@ -99,7 +106,10 @@ export default function Knowledge() {
   });
 
   const clearMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/knowledge/clear", {}),
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/knowledge/clear", {});
+      return response.json();
+    },
     onSuccess: () => {
       setSearchResults([]);
       toast({
