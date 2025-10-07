@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { KPIPanel } from "@/components/KPIPanel";
 import { ConversationCard } from "@/components/ConversationCard";
 import { ConversationDetails } from "@/components/ConversationDetails";
 import { NPSFeedbackDialog } from "@/components/NPSFeedbackDialog";
@@ -97,10 +96,10 @@ export default function Monitor() {
   });
 
   const filters = [
-    { id: "all", label: "Início" },
-    { id: "transfer", label: "Conversas" },
-    { id: "alerts", label: "Alertas 🚩" },
-    { id: "resolved", label: "Finalizados" },
+    { id: "all", label: "Todas" },
+    { id: "transfer", label: "Transferidas" },
+    { id: "alerts", label: "Com Alertas" },
+    { id: "resolved", label: "Finalizadas" },
   ];
 
   const filteredConversations = conversations.filter(conv => {
@@ -156,32 +155,6 @@ export default function Monitor() {
     ],
   };
 
-  const kpis = {
-    activeConversations: conversations.filter(c => c.status === "active").length,
-    avgResponseTime: "2.1s",
-    sentiment: {
-      label: "Neutro",
-      percentage: 85,
-      color: "bg-muted text-muted-foreground",
-    },
-    resolutionRate: 88,
-  };
-
-  const assistantDistribution = [
-    { name: 'LIA Suporte', percentage: 45, color: 'bg-chart-1' },
-    { name: 'LIA Financeiro', percentage: 30, color: 'bg-chart-2' },
-    { name: 'LIA Comercial', percentage: 20, color: 'bg-chart-3' },
-    { name: 'Outros', percentage: 5, color: 'bg-chart-4' },
-  ];
-
-  const criticalAlerts = alerts.slice(0, 5).map(alert => ({
-    id: alert.id,
-    type: alert.type as "critical_sentiment" | "ai_loop" | "function_failure",
-    chatId: conversations.find(c => c.id === alert.conversationId)?.chatId || "unknown",
-    clientName: conversations.find(c => c.id === alert.conversationId)?.clientName || "Unknown",
-    message: alert.message,
-  }));
-
   const handleTransfer = (dept: string, notes: string) => {
     if (activeConvId) {
       transferMutation.mutate({ conversationId: activeConvId, dept, notes });
@@ -202,7 +175,6 @@ export default function Monitor() {
 
   const handleMarkResolved = () => {
     if (activeConvId) {
-      // Abre o modal de NPS antes de resolver
       setShowNPSDialog(true);
     }
   };
@@ -210,7 +182,6 @@ export default function Monitor() {
   const handleNPSSubmit = async (score: number, comment: string) => {
     if (activeConvId && activeConversation) {
       try {
-        // Enviar feedback
         await feedbackMutation.mutateAsync({
           conversationId: activeConvId,
           assistantType: activeConversation.assistantType,
@@ -219,10 +190,8 @@ export default function Monitor() {
           clientName: activeConversation.clientName,
         });
         
-        // Marcar como resolvido
         resolveMutation.mutate(activeConvId);
       } catch (error) {
-        // Re-throw to let dialog handle the error
         throw error;
       }
     }
@@ -270,16 +239,8 @@ export default function Monitor() {
         ))}
       </div>
 
-      <div className="grid grid-cols-12 gap-4 h-[calc(100vh-16rem)]">
-        <div className="col-span-3">
-          <KPIPanel 
-            kpis={kpis} 
-            alerts={criticalAlerts} 
-            assistantDistribution={assistantDistribution} 
-          />
-        </div>
-
-        <div className="col-span-3">
+      <div className="grid grid-cols-12 gap-4 h-[calc(100vh-14rem)]">
+        <div className="col-span-4">
           <div className="border rounded-lg h-full flex flex-col">
             <div className="p-4 border-b">
               <h2 className="font-semibold">Fila de Conversas</h2>
@@ -302,7 +263,7 @@ export default function Monitor() {
           </div>
         </div>
 
-        <div className="col-span-6">
+        <div className="col-span-8">
           {activeConversation ? (
             <ConversationDetails
               chatId={activeConversation.chatId}
@@ -323,13 +284,11 @@ export default function Monitor() {
         </div>
       </div>
 
-      {/* NPS Feedback Dialog */}
       {activeConversation && (
         <NPSFeedbackDialog
           open={showNPSDialog}
           onClose={() => {
             setShowNPSDialog(false);
-            // Se fechar sem feedback (pular), marcar como resolvido mesmo assim
             if (activeConvId) {
               resolveMutation.mutate(activeConvId);
             }
