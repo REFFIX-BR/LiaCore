@@ -14,7 +14,9 @@ import {
   type PromptSuggestion,
   type InsertPromptSuggestion,
   type PromptUpdate,
-  type InsertPromptUpdate
+  type InsertPromptUpdate,
+  type SatisfactionFeedback,
+  type InsertSatisfactionFeedback
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -64,6 +66,12 @@ export interface IStorage {
   createPromptUpdate(update: InsertPromptUpdate): Promise<PromptUpdate>;
   getAllPromptUpdates(): Promise<PromptUpdate[]>;
   getPromptUpdatesByAssistantType(assistantType: string): Promise<PromptUpdate[]>;
+  
+  // Satisfaction Feedback
+  createSatisfactionFeedback(feedback: InsertSatisfactionFeedback): Promise<SatisfactionFeedback>;
+  getAllSatisfactionFeedback(): Promise<SatisfactionFeedback[]>;
+  getSatisfactionFeedbackByConversationId(conversationId: string): Promise<SatisfactionFeedback | undefined>;
+  getSatisfactionFeedbackByAssistantType(assistantType: string): Promise<SatisfactionFeedback[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -75,6 +83,7 @@ export class MemStorage implements IStorage {
   private learningEvents: Map<string, LearningEvent>;
   private promptSuggestions: Map<string, PromptSuggestion>;
   private promptUpdates: Map<string, PromptUpdate>;
+  private satisfactionFeedback: Map<string, SatisfactionFeedback>;
 
   constructor() {
     this.users = new Map();
@@ -85,6 +94,7 @@ export class MemStorage implements IStorage {
     this.learningEvents = new Map();
     this.promptSuggestions = new Map();
     this.promptUpdates = new Map();
+    this.satisfactionFeedback = new Map();
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -331,6 +341,37 @@ export class MemStorage implements IStorage {
   async getPromptUpdatesByAssistantType(assistantType: string): Promise<PromptUpdate[]> {
     return Array.from(this.promptUpdates.values()).filter(
       (update) => update.assistantType === assistantType
+    ).sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  // Satisfaction Feedback
+  async createSatisfactionFeedback(insertFeedback: InsertSatisfactionFeedback): Promise<SatisfactionFeedback> {
+    const id = randomUUID();
+    const feedback: SatisfactionFeedback = {
+      ...insertFeedback,
+      id,
+      comment: insertFeedback.comment || null,
+      clientName: insertFeedback.clientName || null,
+      createdAt: new Date(),
+    };
+    this.satisfactionFeedback.set(id, feedback);
+    return feedback;
+  }
+
+  async getAllSatisfactionFeedback(): Promise<SatisfactionFeedback[]> {
+    return Array.from(this.satisfactionFeedback.values())
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  async getSatisfactionFeedbackByConversationId(conversationId: string): Promise<SatisfactionFeedback | undefined> {
+    return Array.from(this.satisfactionFeedback.values()).find(
+      (feedback) => feedback.conversationId === conversationId
+    );
+  }
+
+  async getSatisfactionFeedbackByAssistantType(assistantType: string): Promise<SatisfactionFeedback[]> {
+    return Array.from(this.satisfactionFeedback.values()).filter(
+      (feedback) => feedback.assistantType === assistantType
     ).sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
   }
 }
