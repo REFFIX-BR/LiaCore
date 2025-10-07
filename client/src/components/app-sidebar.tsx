@@ -18,7 +18,8 @@ import {
   Brain,
   Activity,
   Monitor as MonitorIcon,
-  TestTube2
+  TestTube2,
+  TrendingUp
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -47,6 +48,11 @@ const menuItems = [
     title: "Base de Conhecimento",
     url: "/knowledge",
     icon: Database,
+  },
+  {
+    title: "Evolução dos Agentes",
+    url: "/evolution",
+    icon: TrendingUp,
   },
   {
     title: "Assistentes",
