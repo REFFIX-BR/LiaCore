@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { monitorAPI } from "@/lib/api";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -297,53 +298,52 @@ export default function Monitor() {
 
         {departments.map((dept) => (
           <TabsContent key={dept.id} value={dept.value} className="mt-4">
-            <div className="grid grid-cols-12 gap-4 h-[calc(100vh-18rem)]">
-              <div className="col-span-4">
-                <div className="border rounded-lg h-full flex flex-col">
-                  <div className="p-4 border-b">
-                    <h2 className="font-semibold">{dept.label}</h2>
-                    <Badge variant="outline" className="mt-2">
-                      {conversationCards.length} conversas
-                    </Badge>
-                  </div>
-                  <ScrollArea className="flex-1">
-                    <div className="p-2 space-y-2">
-                      {conversationCards.map((conv) => (
-                        <ConversationCard
-                          key={conv.id}
-                          conversation={conv}
-                          isActive={activeConvId === conv.id}
-                          onClick={() => setActiveConvId(conv.id)}
-                        />
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
-              </div>
-
-              <div className="col-span-8">
-                {activeConversation ? (
-                  <ConversationDetails
-                    chatId={activeConversation.chatId}
-                    clientName={activeConversation.clientName}
-                    messages={activeMessages}
-                    analysis={mockAnalysis}
-                    isPaused={isPaused}
-                    onPauseToggle={handlePauseToggle}
-                    onTransfer={handleTransfer}
-                    onAddNote={handleAddNote}
-                    onMarkResolved={handleMarkResolved}
-                  />
-                ) : (
-                  <div className="border rounded-lg h-full flex items-center justify-center">
-                    <p className="text-muted-foreground">Selecione uma conversa para ver os detalhes</p>
-                  </div>
-                )}
-              </div>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-semibold">{dept.label}</h2>
+              <Badge variant="outline">
+                {conversationCards.length} conversas
+              </Badge>
             </div>
+            <ScrollArea className="h-[calc(100vh-16rem)]">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 pb-4">
+                {conversationCards.map((conv) => (
+                  <ConversationCard
+                    key={conv.id}
+                    conversation={conv}
+                    isActive={activeConvId === conv.id}
+                    onClick={() => setActiveConvId(conv.id)}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
           </TabsContent>
         ))}
       </Tabs>
+
+      <Dialog open={!!activeConvId} onOpenChange={(open) => !open && setActiveConvId(null)}>
+        <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              {activeConversation && `Chat ${activeConversation.chatId} - ${activeConversation.clientName}`}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            {activeConversation && (
+              <ConversationDetails
+                chatId={activeConversation.chatId}
+                clientName={activeConversation.clientName}
+                messages={activeMessages}
+                analysis={mockAnalysis}
+                isPaused={isPaused}
+                onPauseToggle={handlePauseToggle}
+                onTransfer={handleTransfer}
+                onAddNote={handleAddNote}
+                onMarkResolved={handleMarkResolved}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {activeConversation && (
         <NPSFeedbackDialog
