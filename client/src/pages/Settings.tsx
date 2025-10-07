@@ -23,7 +23,7 @@ import {
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface SystemConfig {
   apiStatus?: {
@@ -49,6 +49,11 @@ interface SystemConfig {
     learningEvents?: number;
     promptUpdates?: number;
   };
+  summarization?: {
+    summarizeEvery?: number;
+    keepRecent?: number;
+    contextWindow?: number;
+  };
 }
 
 export default function Settings() {
@@ -63,6 +68,17 @@ export default function Settings() {
   const { data: systemConfig } = useQuery<SystemConfig>({
     queryKey: ['/api/system/config'],
   });
+
+  // Sincronizar valores do backend quando dados carregarem
+  useEffect(() => {
+    if (systemConfig?.summarization) {
+      setConfigValues({
+        summarizeEvery: String(systemConfig.summarization.summarizeEvery || 12),
+        keepRecent: String(systemConfig.summarization.keepRecent || 5),
+        contextWindow: String(systemConfig.summarization.contextWindow || 7),
+      });
+    }
+  }, [systemConfig]);
 
   // Mutation para atualizar configurações
   const updateConfigMutation = useMutation({
