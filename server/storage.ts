@@ -429,4 +429,234 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+import { db } from "./db";
+import { eq, desc, and } from "drizzle-orm";
+import * as schema from "@shared/schema";
+
+export class DbStorage implements IStorage {
+  // Users
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(schema.users).where(eq(schema.users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(schema.users).where(eq(schema.users.username, username));
+    return user;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(schema.users).values(insertUser).returning();
+    return user;
+  }
+
+  // Conversations
+  async getConversation(id: string): Promise<Conversation | undefined> {
+    const [conversation] = await db.select().from(schema.conversations).where(eq(schema.conversations.id, id));
+    return conversation;
+  }
+
+  async getConversationByChatId(chatId: string): Promise<Conversation | undefined> {
+    const [conversation] = await db.select().from(schema.conversations).where(eq(schema.conversations.chatId, chatId));
+    return conversation;
+  }
+
+  async getAllActiveConversations(): Promise<Conversation[]> {
+    return await db.select().from(schema.conversations).where(eq(schema.conversations.status, 'active'));
+  }
+
+  async getTransferredConversations(): Promise<Conversation[]> {
+    return await db.select().from(schema.conversations)
+      .where(and(
+        eq(schema.conversations.transferredToHuman, true),
+        eq(schema.conversations.status, 'active')
+      ))
+      .orderBy(desc(schema.conversations.transferredAt));
+  }
+
+  async getAllConversations(): Promise<Conversation[]> {
+    return await db.select().from(schema.conversations).orderBy(desc(schema.conversations.createdAt));
+  }
+
+  async createConversation(insertConv: InsertConversation): Promise<Conversation> {
+    const [conversation] = await db.insert(schema.conversations).values(insertConv).returning();
+    return conversation;
+  }
+
+  async updateConversation(id: string, updates: Partial<Conversation>): Promise<Conversation | undefined> {
+    const [updated] = await db.update(schema.conversations)
+      .set(updates)
+      .where(eq(schema.conversations.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Messages
+  async getMessagesByConversationId(conversationId: string): Promise<Message[]> {
+    return await db.select().from(schema.messages)
+      .where(eq(schema.messages.conversationId, conversationId))
+      .orderBy(schema.messages.timestamp);
+  }
+
+  async createMessage(insertMsg: InsertMessage): Promise<Message> {
+    const [message] = await db.insert(schema.messages).values(insertMsg).returning();
+    return message;
+  }
+
+  // Alerts
+  async getActiveAlerts(): Promise<Alert[]> {
+    return await db.select().from(schema.alerts)
+      .where(eq(schema.alerts.resolved, false))
+      .orderBy(desc(schema.alerts.createdAt));
+  }
+
+  async getAlertsByConversationId(conversationId: string): Promise<Alert[]> {
+    return await db.select().from(schema.alerts)
+      .where(eq(schema.alerts.conversationId, conversationId));
+  }
+
+  async createAlert(insertAlert: InsertAlert): Promise<Alert> {
+    const [alert] = await db.insert(schema.alerts).values(insertAlert).returning();
+    return alert;
+  }
+
+  async resolveAlert(id: string): Promise<void> {
+    await db.update(schema.alerts)
+      .set({ resolved: true })
+      .where(eq(schema.alerts.id, id));
+  }
+
+  // Supervisor Actions
+  async createSupervisorAction(insertAction: InsertSupervisorAction): Promise<SupervisorAction> {
+    const [action] = await db.insert(schema.supervisorActions).values(insertAction).returning();
+    return action;
+  }
+
+  async getActionsByConversationId(conversationId: string): Promise<SupervisorAction[]> {
+    return await db.select().from(schema.supervisorActions)
+      .where(eq(schema.supervisorActions.conversationId, conversationId))
+      .orderBy(desc(schema.supervisorActions.createdAt));
+  }
+
+  async getAllSupervisorActions(): Promise<SupervisorAction[]> {
+    return await db.select().from(schema.supervisorActions)
+      .orderBy(desc(schema.supervisorActions.createdAt));
+  }
+
+  // Learning Events
+  async createLearningEvent(insertEvent: InsertLearningEvent): Promise<LearningEvent> {
+    const [event] = await db.insert(schema.learningEvents).values(insertEvent).returning();
+    return event;
+  }
+
+  async getLearningEventsByConversationId(conversationId: string): Promise<LearningEvent[]> {
+    return await db.select().from(schema.learningEvents)
+      .where(eq(schema.learningEvents.conversationId, conversationId))
+      .orderBy(desc(schema.learningEvents.createdAt));
+  }
+
+  async getLearningEventsByAssistantType(assistantType: string): Promise<LearningEvent[]> {
+    return await db.select().from(schema.learningEvents)
+      .where(eq(schema.learningEvents.assistantType, assistantType))
+      .orderBy(desc(schema.learningEvents.createdAt));
+  }
+
+  async getRecentLearningEvents(limit: number = 100): Promise<LearningEvent[]> {
+    return await db.select().from(schema.learningEvents)
+      .orderBy(desc(schema.learningEvents.createdAt))
+      .limit(limit);
+  }
+
+  // Prompt Suggestions
+  async createPromptSuggestion(insertSuggestion: InsertPromptSuggestion): Promise<PromptSuggestion> {
+    const [suggestion] = await db.insert(schema.promptSuggestions).values(insertSuggestion).returning();
+    return suggestion;
+  }
+
+  async getAllPromptSuggestions(): Promise<PromptSuggestion[]> {
+    return await db.select().from(schema.promptSuggestions)
+      .orderBy(desc(schema.promptSuggestions.createdAt));
+  }
+
+  async getPromptSuggestionsByStatus(status: string): Promise<PromptSuggestion[]> {
+    return await db.select().from(schema.promptSuggestions)
+      .where(eq(schema.promptSuggestions.status, status))
+      .orderBy(desc(schema.promptSuggestions.createdAt));
+  }
+
+  async getPromptSuggestion(id: string): Promise<PromptSuggestion | undefined> {
+    const [suggestion] = await db.select().from(schema.promptSuggestions)
+      .where(eq(schema.promptSuggestions.id, id));
+    return suggestion;
+  }
+
+  async updatePromptSuggestion(id: string, updates: Partial<PromptSuggestion>): Promise<PromptSuggestion | undefined> {
+    const [updated] = await db.update(schema.promptSuggestions)
+      .set(updates)
+      .where(eq(schema.promptSuggestions.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Prompt Updates
+  async createPromptUpdate(insertUpdate: InsertPromptUpdate): Promise<PromptUpdate> {
+    const [update] = await db.insert(schema.promptUpdates).values(insertUpdate).returning();
+    return update;
+  }
+
+  async getAllPromptUpdates(): Promise<PromptUpdate[]> {
+    return await db.select().from(schema.promptUpdates)
+      .orderBy(desc(schema.promptUpdates.createdAt));
+  }
+
+  async getPromptUpdatesByAssistantType(assistantType: string): Promise<PromptUpdate[]> {
+    return await db.select().from(schema.promptUpdates)
+      .where(eq(schema.promptUpdates.assistantType, assistantType))
+      .orderBy(desc(schema.promptUpdates.createdAt));
+  }
+
+  // Satisfaction Feedback
+  async createSatisfactionFeedback(insertFeedback: InsertSatisfactionFeedback): Promise<SatisfactionFeedback> {
+    const [feedback] = await db.insert(schema.satisfactionFeedback).values(insertFeedback).returning();
+    return feedback;
+  }
+
+  async getAllSatisfactionFeedback(): Promise<SatisfactionFeedback[]> {
+    return await db.select().from(schema.satisfactionFeedback)
+      .orderBy(desc(schema.satisfactionFeedback.createdAt));
+  }
+
+  async getSatisfactionFeedbackByConversationId(conversationId: string): Promise<SatisfactionFeedback | undefined> {
+    const [feedback] = await db.select().from(schema.satisfactionFeedback)
+      .where(eq(schema.satisfactionFeedback.conversationId, conversationId));
+    return feedback;
+  }
+
+  async getSatisfactionFeedbackByAssistantType(assistantType: string): Promise<SatisfactionFeedback[]> {
+    return await db.select().from(schema.satisfactionFeedback)
+      .where(eq(schema.satisfactionFeedback.assistantType, assistantType))
+      .orderBy(desc(schema.satisfactionFeedback.createdAt));
+  }
+
+  // Suggested Responses
+  async createSuggestedResponse(insertResponse: InsertSuggestedResponse): Promise<SuggestedResponse> {
+    const [response] = await db.insert(schema.suggestedResponses).values(insertResponse).returning();
+    return response;
+  }
+
+  async getSuggestedResponsesByConversationId(conversationId: string): Promise<SuggestedResponse[]> {
+    return await db.select().from(schema.suggestedResponses)
+      .where(eq(schema.suggestedResponses.conversationId, conversationId))
+      .orderBy(desc(schema.suggestedResponses.createdAt));
+  }
+
+  async updateSuggestedResponse(id: string, updates: Partial<SuggestedResponse>): Promise<SuggestedResponse | undefined> {
+    const [updated] = await db.update(schema.suggestedResponses)
+      .set(updates)
+      .where(eq(schema.suggestedResponses.id, id))
+      .returning();
+    return updated;
+  }
+}
+
+export const storage = new DbStorage();
