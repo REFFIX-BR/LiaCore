@@ -310,6 +310,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { event: rawEvent, instance, data } = req.body;
 
+      // DEBUG: Log completo do payload recebido
+      console.log(`🔍 [Evolution DEBUG] Payload completo:`, JSON.stringify(req.body, null, 2));
+
       // Normalize event to string (handle malformed payloads)
       const event = typeof rawEvent === 'string' ? rawEvent : '';
 
@@ -317,7 +320,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         webhookLogger.warning('INVALID_EVENT', 'Webhook recebido sem tipo de evento válido', { 
           instance,
           receivedEventType: typeof rawEvent,
-          hasData: !!data 
+          hasData: !!data,
+          fullPayload: req.body
         });
         console.log(`⚠️  [Evolution] Webhook recebido com evento inválido:`, { rawEvent, instance });
         return res.json({ success: true, processed: false, reason: "invalid_event_type" });
