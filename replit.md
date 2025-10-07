@@ -31,6 +31,7 @@ Preferred communication style: Simple, everyday language.
 - Conversations: Chat interface with message history
 - Knowledge: RAG knowledge base management
 - Agent Evolution: Continuous learning dashboard with prompt suggestions and update logs
+- Settings: Comprehensive system configuration and tools management
 
 ### Backend Architecture
 
@@ -151,6 +152,44 @@ Preferred communication style: Simple, everyday language.
 - `POST /api/learning/analyze` - Trigger manual analysis
 - `POST /api/learning/suggestions/:id/approve` - Approve suggestion
 - `POST /api/learning/suggestions/:id/reject` - Reject suggestion
+
+### Settings & System Management
+
+**Settings Page** (`/settings`): Centralized configuration hub with 5 specialized tabs:
+
+1. **Assistants Tab**:
+   - Status monitoring for all 7 OpenAI assistants (Suporte, Comercial, Financeiro, Apresentação, Ouvidoria, Cancelamento, Cortex)
+   - Direct links to OpenAI Platform for assistant management
+   - Visual indicators (Configurado/Não configurado) based on environment variables
+
+2. **Resumos Tab** (Automatic Summarization):
+   - Configurable `SUMMARIZE_EVERY` (default: 12 messages)
+   - Configurable `KEEP_RECENT` (default: 5 messages)
+   - Configurable `CONTEXT_WINDOW` (default: 7 messages)
+   - Real-time sync with backend configuration
+   - Explanatory documentation of summarization system
+
+3. **APIs Tab**:
+   - Live connection status for OpenAI, Upstash Redis, and Upstash Vector
+   - Environment variable validation (API keys and tokens)
+   - Online/offline indicators with status badges
+
+4. **Aprendizado Tab** (Continuous Learning):
+   - Analysis interval configuration (24 hours)
+   - Manual analysis trigger
+   - Last/next analysis timestamps
+   - Learning criteria documentation
+
+5. **Ferramentas Tab** (System Tools):
+   - Clear Redis cache
+   - Re-index knowledge base
+   - Export/Import configurations
+   - System statistics (conversations, knowledge chunks, learning events, prompt updates)
+
+**Backend Endpoints**:
+- `GET /api/system/config` - Returns complete system configuration and status
+- `POST /api/system/config` - Updates system configuration
+- `POST /api/system/clear-cache` - Clears Redis cache
 
 ## External Dependencies
 
