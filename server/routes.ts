@@ -25,7 +25,15 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string): Promise<b
   }
 
   try {
-    const url = `${EVOLUTION_CONFIG.apiUrl}/message/sendText/${EVOLUTION_CONFIG.instance}`;
+    // Ensure URL has protocol
+    let baseUrl = EVOLUTION_CONFIG.apiUrl.trim();
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = `https://${baseUrl}`;
+    }
+    
+    const url = `${baseUrl}/message/sendText/${EVOLUTION_CONFIG.instance}`;
+    
+    console.log(`📤 [Evolution] Enviando mensagem para ${phoneNumber} via ${url}`);
     
     const response = await fetch(url, {
       method: 'POST',
@@ -430,6 +438,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const assistantId = (conversation.metadata as any)?.routing?.assistantId;
 
+        // Capture phoneNumber for async callback
+        const clientPhoneNumber = phoneNumber;
+
         // Process in background
         (async () => {
           try {
@@ -466,7 +477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`✅ [Evolution] Resposta gerada: ${responseText.substring(0, 100)}...`);
             
             // Send response back to WhatsApp via Evolution API
-            const sent = await sendWhatsAppMessage(phoneNumber, responseText);
+            const sent = await sendWhatsAppMessage(clientPhoneNumber, responseText);
             if (sent) {
               console.log(`📤 [Evolution] Resposta enviada ao WhatsApp com sucesso`);
             } else {

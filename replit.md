@@ -153,11 +153,20 @@ Preferred communication style: Simple, everyday language.
 - All WhatsApp message types supported (text, media with/without captions, stickers, contacts, locations)
 - CHATS_UPSERT synchronizes client names with conversation metadata
 - Messages automatically routed to appropriate assistants and responses generated
+- **Outbound messaging fully implemented**: AI responses sent back to WhatsApp automatically via Evolution API
+
+**Outbound Messaging Details**:
+- **Endpoint**: `POST https://{EVOLUTION_API_URL}/message/sendText/{EVOLUTION_API_INSTANCE}`
+- **Authentication**: Uses `EVOLUTION_API_KEY` in `apikey` header
+- **Configuration**: Requires 3 environment variables (URL, API key, instance name)
+- **Flow**: Webhook receives message → AI processes → Response automatically sent to WhatsApp
+- **Delay**: 1200ms typing simulation for natural conversation feel
+- **Error Handling**: Graceful fallback with detailed logging if Evolution API unavailable
 
 **Future Enhancements**:
-- **Outbound Messaging**: Send AI responses back to WhatsApp via Evolution API (requires credentials)
 - **Extended CHATS_* Handling**: Enrich metadata sync beyond name if needed
-- **Automated Testing**: Add e2e tests or manual runbook for webhook verification
+- **Media Support**: Add outbound support for images, audio, documents
+- **Automated Testing**: Add e2e tests for webhook verification with real WhatsApp numbers
 
 ## External Dependencies
 
