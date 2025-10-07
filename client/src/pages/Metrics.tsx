@@ -33,10 +33,10 @@ export default function Metrics() {
     );
   }
 
-  const overview = metrics?.overview || {};
-  const byAssistant = metrics?.byAssistant || [];
-  const timeline = metrics?.timeline || [];
-  const comments = metrics?.comments || [];
+  const overview = (metrics as any)?.overview || {};
+  const byAssistant = (metrics as any)?.byAssistant || [];
+  const timeline = (metrics as any)?.timeline || [];
+  const comments = (metrics as any)?.comments || [];
 
   // Cor do NPS baseado no score
   const getNPSColor = (score: number) => {
