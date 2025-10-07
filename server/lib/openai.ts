@@ -281,4 +281,41 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
   }
 }
 
+// Update assistant prompt/instructions
+export async function updateAssistantPrompt(assistantType: string, newInstructions: string): Promise<void> {
+  try {
+    const assistantId = ASSISTANT_IDS[assistantType as keyof typeof ASSISTANT_IDS];
+    
+    if (!assistantId) {
+      throw new Error(`Assistant type ${assistantType} not found`);
+    }
+
+    await openai.beta.assistants.update(assistantId, {
+      instructions: newInstructions,
+    });
+
+    console.log(`✅ [OpenAI] Updated instructions for ${assistantType} (${assistantId})`);
+  } catch (error) {
+    console.error(`❌ [OpenAI] Error updating ${assistantType}:`, error);
+    throw error;
+  }
+}
+
+// Get current assistant instructions
+export async function getAssistantInstructions(assistantType: string): Promise<string> {
+  try {
+    const assistantId = ASSISTANT_IDS[assistantType as keyof typeof ASSISTANT_IDS];
+    
+    if (!assistantId) {
+      throw new Error(`Assistant type ${assistantType} not found`);
+    }
+
+    const assistant = await openai.beta.assistants.retrieve(assistantId);
+    return assistant.instructions || "";
+  } catch (error) {
+    console.error(`❌ [OpenAI] Error getting instructions for ${assistantType}:`, error);
+    throw error;
+  }
+}
+
 export { openai };
