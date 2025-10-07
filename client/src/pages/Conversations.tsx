@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, Send, CheckCircle2, Edit3, Loader2 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { NPSFeedbackDialog } from "@/components/NPSFeedbackDialog";
 import { useToast } from "@/hooks/use-toast";
 
 interface Conversation {
@@ -31,7 +30,6 @@ export default function Conversations() {
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
   const [suggestionId, setSuggestionId] = useState<string | null>(null);
   const [isEditingAI, setIsEditingAI] = useState(false);
-  const [showNPSDialog, setShowNPSDialog] = useState(false);
   const { toast } = useToast();
 
   // Query conversas transferidas
@@ -159,28 +157,8 @@ export default function Conversations() {
 
   const handleResolve = () => {
     if (activeId) {
-      // Mostrar dialog NPS antes de resolver
-      setShowNPSDialog(true);
-    }
-  };
-
-  const handleNPSSubmit = async (score: number, comment: string) => {
-    if (activeId && activeConversation) {
-      try {
-        // Enviar feedback
-        await apiRequest("POST", "/api/feedback", {
-          conversationId: activeId,
-          assistantType: activeConversation.assistantType,
-          npsScore: score,
-          comment: comment || undefined,
-          clientName: activeConversation.clientName,
-        });
-        
-        // Marcar como resolvido
-        resolveMutation.mutate(activeId);
-      } catch (error) {
-        throw error;
-      }
+      // Supervisor apenas finaliza - NPS será enviado ao cliente via WhatsApp
+      resolveMutation.mutate(activeId);
     }
   };
 
@@ -400,24 +378,6 @@ export default function Conversations() {
         </Card>
       )}
 
-      {/* NPS Feedback Dialog */}
-      {activeConversation && (
-        <NPSFeedbackDialog
-          open={showNPSDialog}
-          onClose={() => {
-            setShowNPSDialog(false);
-            // Se fechar sem feedback, marcar como resolvido mesmo assim
-            if (activeId) {
-              resolveMutation.mutate(activeId);
-            }
-          }}
-          conversationId={activeId!}
-          assistantType={activeConversation.assistantType}
-          clientName={activeConversation.clientName}
-          onSubmit={handleNPSSubmit}
-          isSubmitting={false}
-        />
-      )}
     </div>
   );
 }
