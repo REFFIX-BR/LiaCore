@@ -31,37 +31,49 @@ export function KnowledgeBasePanel({ chunks }: KnowledgeBasePanelProps) {
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-96">
-          <Accordion type="single" collapsible className="space-y-2">
-            {chunks.map((chunk, index) => (
-              <AccordionItem 
-                key={chunk.id} 
-                value={chunk.id}
-                className="border rounded-lg px-3 bg-muted/30"
-              >
-                <AccordionTrigger className="hover:no-underline py-3">
-                  <div className="flex items-center justify-between w-full pr-3">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">
-                        Contexto {index + 1}
-                      </span>
+          {chunks.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-80 text-center">
+              <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
+              <p className="text-sm text-muted-foreground mb-1">
+                Nenhum resultado encontrado
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Faça uma busca ou adicione documentos à base
+              </p>
+            </div>
+          ) : (
+            <Accordion type="single" collapsible className="space-y-2">
+              {chunks.map((chunk, index) => (
+                <AccordionItem 
+                  key={chunk.id} 
+                  value={chunk.id}
+                  className="border rounded-lg px-3 bg-muted/30"
+                >
+                  <AccordionTrigger className="hover:no-underline py-3">
+                    <div className="flex items-center justify-between w-full pr-3">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">
+                          Contexto {index + 1}
+                        </span>
+                      </div>
+                      <Badge variant="outline" className="bg-primary/10 text-primary">
+                        {chunk.relevance}% relevante
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className="bg-primary/10 text-primary">
-                      {chunk.relevance}% relevante
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-2 pb-3">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {chunk.content}
+                    </p>
+                    <Badge variant="outline" className="text-xs">
+                      Fonte: {chunk.source}
                     </Badge>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="pt-2 pb-3">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    {chunk.content}
-                  </p>
-                  <Badge variant="outline" className="text-xs">
-                    Fonte: {chunk.source}
-                  </Badge>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          )}
         </ScrollArea>
       </CardContent>
     </Card>
