@@ -143,9 +143,18 @@ export class MemStorage implements IStorage {
   }
 
   async getTransferredConversations(): Promise<Conversation[]> {
-    return Array.from(this.conversations.values()).filter(
-      (conv) => conv.transferredToHuman === true && conv.status === 'active'
-    ).sort((a, b) => (b.transferredAt?.getTime() || 0) - (a.transferredAt?.getTime() || 0));
+    const now = new Date();
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    
+    return Array.from(this.conversations.values()).filter((conv) => {
+      if (conv.transferredToHuman !== true) return false;
+      
+      // Show active conversations OR resolved conversations from last 24h
+      if (conv.status === 'active') return true;
+      if (conv.status === 'resolved' && conv.lastMessageTime && conv.lastMessageTime >= twentyFourHoursAgo) return true;
+      
+      return false;
+    }).sort((a, b) => (b.transferredAt?.getTime() || 0) - (a.transferredAt?.getTime() || 0));
   }
 
   async getAllConversations(): Promise<Conversation[]> {
@@ -502,7 +511,7 @@ export class MemStorage implements IStorage {
 }
 
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, or, gte, sql } from "drizzle-orm";
 import * as schema from "@shared/schema";
 
 export class DbStorage implements IStorage {
@@ -538,10 +547,18 @@ export class DbStorage implements IStorage {
   }
 
   async getTransferredConversations(): Promise<Conversation[]> {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
     return await db.select().from(schema.conversations)
       .where(and(
         eq(schema.conversations.transferredToHuman, true),
-        eq(schema.conversations.status, 'active')
+        or(
+          eq(schema.conversations.status, 'active'),
+          and(
+            eq(schema.conversations.status, 'resolved'),
+            gte(schema.conversations.lastMessageTime, twentyFourHoursAgo)
+          )
+        )
       ))
       .orderBy(desc(schema.conversations.transferredAt));
   }
