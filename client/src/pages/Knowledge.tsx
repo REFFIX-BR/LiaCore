@@ -29,7 +29,7 @@ export default function Knowledge() {
 
   const searchMutation = useMutation({
     mutationFn: async (query: string) => {
-      const response = await apiRequest("POST", "/api/knowledge/search", { query, topK: 5 });
+      const response = await apiRequest("POST", "/api/knowledge/search", { query, topK: 20 });
       return response.json();
     },
     onSuccess: (data: any) => {

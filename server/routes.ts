@@ -234,7 +234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Knowledge base search
   app.post("/api/knowledge/search", async (req, res) => {
     try {
-      const { query, topK = 5 } = req.body;
+      const { query, topK = 20 } = req.body;
 
       if (!query) {
         return res.status(400).json({ error: "Query is required" });

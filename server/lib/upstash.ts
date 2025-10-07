@@ -20,7 +20,7 @@ export interface KnowledgeChunk {
   metadata?: Record<string, any>;
 }
 
-export async function searchKnowledge(query: string, topK: number = 5): Promise<Array<{
+export async function searchKnowledge(query: string, topK: number = 20): Promise<Array<{
   chunk: KnowledgeChunk;
   score: number;
 }>> {
