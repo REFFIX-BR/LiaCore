@@ -12,6 +12,7 @@ import Dashboard from "@/pages/Dashboard";
 import Conversations from "@/pages/Conversations";
 import Knowledge from "@/pages/Knowledge";
 import Monitor from "@/pages/Monitor";
+import WebhookMonitor from "@/pages/WebhookMonitor";
 import TestChat from "@/pages/TestChat";
 import AgentEvolution from "@/pages/AgentEvolution";
 import Settings from "@/pages/Settings";
@@ -23,6 +24,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/monitor" component={Monitor} />
+      <Route path="/webhook-monitor" component={WebhookMonitor} />
       <Route path="/test-chat" component={TestChat} />
       <Route path="/conversations" component={Conversations} />
       <Route path="/knowledge" component={Knowledge} />

@@ -19,7 +19,8 @@ import {
   Activity,
   Monitor as MonitorIcon,
   TestTube2,
-  TrendingUp
+  TrendingUp,
+  Wifi
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -33,6 +34,11 @@ const menuItems = [
     title: "Monitor Supervisor",
     url: "/monitor",
     icon: MonitorIcon,
+  },
+  {
+    title: "Monitor Webhook",
+    url: "/webhook-monitor",
+    icon: Wifi,
   },
   {
     title: "Test Chat",
