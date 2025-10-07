@@ -30,6 +30,7 @@ Preferred communication style: Simple, everyday language.
 - Test Chat: Development tool for testing chat flows
 - Conversations: Chat interface with message history
 - Knowledge: RAG knowledge base management
+- Agent Evolution: Continuous learning dashboard with prompt suggestions and update logs
 
 ### Backend Architecture
 
@@ -60,6 +61,9 @@ Preferred communication style: Simple, everyday language.
 - Messages: Complete message history with function calls
 - Alerts: Critical issues requiring supervisor attention
 - Supervisor Actions: Audit trail of human interventions
+- Learning Events: Captures implicit and explicit feedback from interactions
+- Prompt Suggestions: AI-generated recommendations for assistant improvement
+- Prompt Updates: Audit log of approved prompt changes
 
 **Vector Database**: Upstash Vector for semantic search in knowledge base
 
@@ -93,6 +97,46 @@ Preferred communication style: Simple, everyday language.
 - Human intervention controls (pause AI, transfer to human, add notes)
 
 **Update Mechanism**: Client-side polling with React Query at 3-5 second intervals for different data types
+
+### Continuous Learning System
+
+**Overview**: Fully autonomous system that evolves assistant prompts based on supervisor interventions without manual developer input
+
+**Core Components**:
+- **LIA Cortex Analysis Agent** (`server/lib/cortex-analysis.ts`): GPT-4 powered analysis agent that identifies patterns and generates improvement suggestions
+- **Learning Scheduler** (`server/lib/learning-scheduler.ts`): Automated periodic analysis runs every 24 hours
+- **Feedback Capture**: Integrated into conversation lifecycle (resolution, transfers, supervisor notes)
+- **Supervision Interface**: Agent Evolution dashboard for reviewing and approving prompt changes
+
+**Learning Pipeline**:
+
+1. **Feedback Collection**:
+   - Implicit Positive: Conversation marked as resolved
+   - Implicit Negative: Transfer to human agent (indicates AI failure)
+   - Explicit: Supervisor corrections and intervention notes
+
+2. **Automated Analysis**:
+   - Groups learning events by assistant type
+   - Requires ≥2 explicit corrections before generating suggestions
+   - Identifies recurring patterns and root causes
+   - Generates improvement suggestions with confidence scores
+
+3. **Supervision Workflow**:
+   - Dashboard displays pending suggestions with side-by-side diff view
+   - Supervisor approves or rejects with notes
+   - Approved changes update assistant instructions via OpenAI API
+   - Complete audit trail of all prompt modifications
+
+4. **Deduplication & Idempotency**:
+   - Hash-based deduplication prevents duplicate suggestions
+   - Checks existing pending suggestions before creating new ones
+
+**API Endpoints**:
+- `GET /api/learning/suggestions` - List all prompt suggestions
+- `GET /api/learning/updates` - View prompt update history
+- `POST /api/learning/analyze` - Trigger manual analysis
+- `POST /api/learning/suggestions/:id/approve` - Approve suggestion
+- `POST /api/learning/suggestions/:id/reject` - Reject suggestion
 
 ## External Dependencies
 
