@@ -93,8 +93,14 @@ export class MemStorage implements IStorage {
     const conversation: Conversation = {
       ...insertConv,
       id,
+      clientId: insertConv.clientId || null,
+      threadId: insertConv.threadId || null,
+      sentiment: insertConv.sentiment || null,
+      urgency: insertConv.urgency || null,
+      lastMessage: insertConv.lastMessage || null,
       createdAt: new Date(),
       lastMessageTime: new Date(),
+      metadata: insertConv.metadata || null,
     };
     this.conversations.set(id, conversation);
     return conversation;
@@ -121,6 +127,8 @@ export class MemStorage implements IStorage {
       ...insertMsg,
       id,
       timestamp: new Date(),
+      functionCall: insertMsg.functionCall || null,
+      assistant: insertMsg.assistant || null,
     };
     this.messages.set(id, message);
     return message;
@@ -163,6 +171,7 @@ export class MemStorage implements IStorage {
     const action: SupervisorAction = {
       ...insertAction,
       id,
+      notes: insertAction.notes || null,
       createdAt: new Date(),
     };
     this.supervisorActions.set(id, action);

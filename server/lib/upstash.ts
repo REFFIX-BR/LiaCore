@@ -31,7 +31,7 @@ export async function searchKnowledge(query: string, topK: number = 5): Promise<
 
     return results.map(result => ({
       chunk: {
-        id: result.id,
+        id: String(result.id),
         content: result.metadata?.content as string || "",
         source: result.metadata?.source as string || "Unknown",
         metadata: result.metadata,

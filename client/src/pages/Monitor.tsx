@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { KPIPanel } from "@/components/KPIPanel";
 import { ConversationCard } from "@/components/ConversationCard";
 import { ConversationDetails } from "@/components/ConversationDetails";
@@ -8,152 +9,68 @@ import { Badge } from "@/components/ui/badge";
 import { Search } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-
-//todo: remove mock functionality
-const mockKPIs = {
-  activeConversations: 37,
-  avgResponseTime: "2.1s",
-  sentiment: {
-    label: "Neutro",
-    percentage: 85,
-    color: "bg-muted text-muted-foreground",
-  },
-  resolutionRate: 88,
-};
-
-//todo: remove mock functionality
-const mockAlerts = [
-  {
-    id: '1',
-    type: 'critical_sentiment' as const,
-    chatId: 'chat-12345',
-    clientName: 'João S.',
-    message: 'Sentimento Crítico',
-  },
-  {
-    id: '2',
-    type: 'ai_loop' as const,
-    chatId: 'chat-67890',
-    clientName: 'Maria P.',
-    message: 'IA Presa em Loop',
-  },
-  {
-    id: '3',
-    type: 'function_failure' as const,
-    chatId: 'chat-55555',
-    clientName: 'Carlos R.',
-    message: "Falha na Function: 'verificar_conexao'",
-  },
-];
-
-//todo: remove mock functionality
-const mockDistribution = [
-  { name: 'LIA Suporte', percentage: 45, color: 'bg-chart-1' },
-  { name: 'LIA Financeiro', percentage: 30, color: 'bg-chart-2' },
-  { name: 'LIA Comercial', percentage: 20, color: 'bg-chart-3' },
-  { name: 'Outros', percentage: 5, color: 'bg-chart-4' },
-];
-
-//todo: remove mock functionality
-const mockConversations = [
-  {
-    id: '1',
-    chatId: 'chat-12345',
-    clientName: 'João Silva',
-    assistant: 'LIA Suporte',
-    duration: 332,
-    lastMessage: 'NÃO RESOLVEU NADA! QUERO FALAR COM ALGUÉM!!',
-    sentiment: 'negative' as const,
-    urgency: 'critical' as const,
-    hasAlert: true,
-    transferSuggested: false,
-    lastMessageTime: new Date(Date.now() - 1000 * 60 * 2),
-  },
-  {
-    id: '2',
-    chatId: 'chat-67890',
-    clientName: 'Maria Paula',
-    assistant: 'LIA Financeiro',
-    duration: 187,
-    lastMessage: 'Quando vence minha fatura?',
-    sentiment: 'neutral' as const,
-    urgency: 'normal' as const,
-    hasAlert: false,
-    transferSuggested: true,
-    lastMessageTime: new Date(Date.now() - 1000 * 60 * 5),
-  },
-  {
-    id: '3',
-    chatId: 'chat-55555',
-    clientName: 'Carlos Roberto',
-    assistant: 'LIA Técnico',
-    duration: 445,
-    lastMessage: 'A conexão caiu novamente',
-    sentiment: 'negative' as const,
-    urgency: 'high' as const,
-    hasAlert: true,
-    transferSuggested: false,
-    lastMessageTime: new Date(Date.now() - 1000 * 60 * 8),
-  },
-];
-
-//todo: remove mock functionality
-const mockMessages = {
-  '1': [
-    {
-      id: '1',
-      role: 'user' as const,
-      content: 'Minha internet está muito lenta no plano Fibra Gamer!',
-      timestamp: new Date(Date.now() - 1000 * 60 * 5),
-    },
-    {
-      id: '2',
-      role: 'assistant' as const,
-      content: 'Vou verificar sua conexão e consultar as especificações...',
-      timestamp: new Date(Date.now() - 1000 * 60 * 4),
-      functionCall: { name: 'verificar_conexao', status: 'completed' },
-    },
-    {
-      id: '3',
-      role: 'assistant' as const,
-      content: 'Sua conexão está normal. A latência esperada é de 5-15ms.',
-      timestamp: new Date(Date.now() - 1000 * 60 * 3),
-    },
-    {
-      id: '4',
-      role: 'user' as const,
-      content: 'NÃO RESOLVEU NADA! QUERO FALAR COM ALGUÉM!!',
-      timestamp: new Date(Date.now() - 1000 * 60 * 2),
-    },
-  ],
-};
-
-//todo: remove mock functionality
-const mockAnalysis = {
-  summary: 'Cliente reportando lentidão persistente na conexão apesar da IA confirmar conexão normal. Alto nível de frustração.',
-  intent: 'Resolução de problema técnico de conexão',
-  entities: {
-    Plano: 'Fibra Gamer',
-    Protocolo: '#987654',
-  },
-  actions: [
-    { time: '14:31:02', description: 'Chamou Function: verificar_conexao()' },
-    { time: '14:31:15', description: "Chamou Function: consultar_base_de_conhecimento(query: 'latência Fibra Gamer')" },
-  ],
-  sentimentHistory: [
-    { time: '14:30', score: 50 },
-    { time: '14:31', score: 45 },
-    { time: '14:32', score: 30 },
-    { time: '14:33', score: 15 },
-  ],
-};
+import { monitorAPI } from "@/lib/api";
+import { queryClient } from "@/lib/queryClient";
 
 export default function Monitor() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
-  const [activeConvId, setActiveConvId] = useState<string | null>("1");
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const { toast } = useToast();
+
+  const { data: conversations = [], isLoading: conversationsLoading } = useQuery({
+    queryKey: ["/api/monitor/conversations"],
+    queryFn: monitorAPI.getConversations,
+    refetchInterval: 5000,
+  });
+
+  const { data: alerts = [] } = useQuery({
+    queryKey: ["/api/monitor/alerts"],
+    queryFn: monitorAPI.getAlerts,
+    refetchInterval: 3000,
+  });
+
+  const { data: conversationDetails } = useQuery({
+    queryKey: ["/api/monitor/conversations", activeConvId],
+    queryFn: () => monitorAPI.getConversationDetails(activeConvId!),
+    enabled: !!activeConvId,
+  });
+
+  const transferMutation = useMutation({
+    mutationFn: ({ conversationId, dept, notes }: { conversationId: string; dept: string; notes: string }) =>
+      monitorAPI.transferToHuman(conversationId, dept, notes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations"] });
+      toast({ title: "Transferência Iniciada", description: "Chat transferido com sucesso" });
+    },
+  });
+
+  const pauseMutation = useMutation({
+    mutationFn: monitorAPI.pauseAI,
+    onSuccess: () => {
+      setIsPaused(!isPaused);
+      toast({ title: isPaused ? "IA Reativada" : "IA Pausada" });
+    },
+  });
+
+  const noteMutation = useMutation({
+    mutationFn: ({ conversationId, note }: { conversationId: string; note: string }) =>
+      monitorAPI.addNote(conversationId, note),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations", activeConvId] });
+      toast({ title: "Nota Adicionada", description: "Nota interna registrada com sucesso" });
+    },
+  });
+
+  const resolveMutation = useMutation({
+    mutationFn: monitorAPI.markResolved,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations"] });
+      setActiveConvId(null);
+      toast({ title: "Chat Resolvido", description: "Conversa marcada como resolvida" });
+    },
+  });
 
   const filters = [
     { id: "all", label: "Todos" },
@@ -163,38 +80,111 @@ export default function Monitor() {
     { id: "resolved", label: "Finalizados" },
   ];
 
-  const filteredConversations = mockConversations.filter(conv => {
-    if (activeFilter === "alerts") return conv.hasAlert;
-    if (activeFilter === "transfer") return conv.transferSuggested;
+  const filteredConversations = conversations.filter(conv => {
+    if (activeFilter === "alerts") {
+      return alerts.some(alert => alert.conversationId === conv.id);
+    }
+    if (activeFilter === "active") return conv.status === "active";
+    if (activeFilter === "resolved") return conv.status === "resolved";
     return true;
   });
 
-  const activeConversation = mockConversations.find(c => c.id === activeConvId);
-  const activeMessages = activeConvId ? mockMessages[activeConvId as keyof typeof mockMessages] || [] : [];
+  const conversationCards = filteredConversations.map(conv => ({
+    id: conv.id,
+    chatId: conv.chatId,
+    clientName: conv.clientName,
+    assistant: `LIA ${conv.assistantType.charAt(0).toUpperCase() + conv.assistantType.slice(1)}`,
+    duration: conv.duration,
+    lastMessage: conv.lastMessage || "",
+    sentiment: (conv.sentiment || "neutral") as "positive" | "neutral" | "negative",
+    urgency: (conv.urgency || "normal") as "normal" | "high" | "critical",
+    hasAlert: alerts.some(a => a.conversationId === conv.id),
+    transferSuggested: false,
+    lastMessageTime: new Date(conv.lastMessageTime),
+  }));
+
+  const activeConversation = conversations.find(c => c.id === activeConvId);
+  const activeMessages = conversationDetails?.messages.map(msg => ({
+    id: msg.id,
+    role: msg.role as "user" | "assistant",
+    content: msg.content,
+    timestamp: new Date(msg.timestamp),
+    functionCall: msg.functionCall,
+  })) || [];
+
+  const mockAnalysis = {
+    summary: conversationDetails?.messages.slice(0, 3).map(m => m.content).join(" ") || "Aguardando análise...",
+    intent: "Resolução de problema técnico",
+    entities: {
+      Plano: "N/A",
+      Protocolo: activeConversation?.chatId || "N/A",
+    },
+    actions: conversationDetails?.messages
+      .filter(m => m.functionCall)
+      .map((m, idx) => ({
+        time: new Date(m.timestamp).toLocaleTimeString(),
+        description: `Chamou Function: ${m.functionCall?.name || 'unknown'}()`,
+      })) || [],
+    sentimentHistory: [
+      { time: "14:30", score: 50 },
+      { time: "14:31", score: 40 },
+      { time: "14:32", score: 30 },
+    ],
+  };
+
+  const kpis = {
+    activeConversations: conversations.filter(c => c.status === "active").length,
+    avgResponseTime: "2.1s",
+    sentiment: {
+      label: "Neutro",
+      percentage: 85,
+      color: "bg-muted text-muted-foreground",
+    },
+    resolutionRate: 88,
+  };
+
+  const assistantDistribution = [
+    { name: 'LIA Suporte', percentage: 45, color: 'bg-chart-1' },
+    { name: 'LIA Financeiro', percentage: 30, color: 'bg-chart-2' },
+    { name: 'LIA Comercial', percentage: 20, color: 'bg-chart-3' },
+    { name: 'Outros', percentage: 5, color: 'bg-chart-4' },
+  ];
+
+  const criticalAlerts = alerts.slice(0, 5).map(alert => ({
+    id: alert.id,
+    type: alert.type as "critical_sentiment" | "ai_loop" | "function_failure",
+    chatId: conversations.find(c => c.id === alert.conversationId)?.chatId || "unknown",
+    clientName: conversations.find(c => c.id === alert.conversationId)?.clientName || "Unknown",
+    message: alert.message,
+  }));
 
   const handleTransfer = (dept: string, notes: string) => {
-    toast({
-      title: "Transferência Iniciada",
-      description: `Chat transferido para ${dept}`,
-    });
-    console.log('Transfer to:', dept, 'Notes:', notes);
+    if (activeConvId) {
+      transferMutation.mutate({ conversationId: activeConvId, dept, notes });
+    }
+  };
+
+  const handlePauseToggle = () => {
+    if (activeConvId) {
+      pauseMutation.mutate(activeConvId);
+    }
   };
 
   const handleAddNote = (note: string) => {
-    toast({
-      title: "Nota Adicionada",
-      description: "Nota interna registrada com sucesso",
-    });
-    console.log('Note added:', note);
+    if (activeConvId) {
+      noteMutation.mutate({ conversationId: activeConvId, note });
+    }
   };
 
   const handleMarkResolved = () => {
-    toast({
-      title: "Chat Resolvido",
-      description: "Conversa marcada como resolvida",
-    });
-    console.log('Marked as resolved');
+    if (activeConvId) {
+      resolveMutation.mutate(activeConvId);
+    }
   };
+
+  if (conversationsLoading) {
+    return <div className="flex items-center justify-center h-full">Carregando...</div>;
+  }
 
   return (
     <div className="space-y-4">
@@ -237,9 +227,9 @@ export default function Monitor() {
       <div className="grid grid-cols-12 gap-4 h-[calc(100vh-16rem)]">
         <div className="col-span-3">
           <KPIPanel 
-            kpis={mockKPIs} 
-            alerts={mockAlerts} 
-            assistantDistribution={mockDistribution} 
+            kpis={kpis} 
+            alerts={criticalAlerts} 
+            assistantDistribution={assistantDistribution} 
           />
         </div>
 
@@ -248,12 +238,12 @@ export default function Monitor() {
             <div className="p-4 border-b">
               <h2 className="font-semibold">Fila de Conversas</h2>
               <Badge variant="outline" className="mt-2">
-                {filteredConversations.length} conversas
+                {conversationCards.length} conversas
               </Badge>
             </div>
             <ScrollArea className="flex-1">
               <div className="p-2 space-y-2">
-                {filteredConversations.map((conv) => (
+                {conversationCards.map((conv) => (
                   <ConversationCard
                     key={conv.id}
                     conversation={conv}
@@ -274,7 +264,7 @@ export default function Monitor() {
               messages={activeMessages}
               analysis={mockAnalysis}
               isPaused={isPaused}
-              onPauseToggle={() => setIsPaused(!isPaused)}
+              onPauseToggle={handlePauseToggle}
               onTransfer={handleTransfer}
               onAddNote={handleAddNote}
               onMarkResolved={handleMarkResolved}

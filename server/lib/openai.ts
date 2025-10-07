@@ -70,7 +70,7 @@ export async function runAssistant(threadId: string, assistantId: string): Promi
     assistant_id: assistantId,
   });
 
-  let runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
+  let runStatus = await openai.beta.threads.runs.retrieve(run.thread_id, run.id);
 
   while (runStatus.status !== "completed") {
     if (runStatus.status === "failed" || runStatus.status === "cancelled" || runStatus.status === "expired") {
@@ -81,13 +81,13 @@ export async function runAssistant(threadId: string, assistantId: string): Promi
       const toolCalls = runStatus.required_action?.submit_tool_outputs?.tool_calls || [];
       const toolOutputs = await handleToolCalls(toolCalls);
       
-      await openai.beta.threads.runs.submitToolOutputs(threadId, run.id, {
+      await openai.beta.threads.runs.submitToolOutputs(run.thread_id, run.id, {
         tool_outputs: toolOutputs,
       });
     }
 
     await new Promise(resolve => setTimeout(resolve, 500));
-    runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
+    runStatus = await openai.beta.threads.runs.retrieve(run.thread_id, run.id);
   }
 
   const messages = await openai.beta.threads.messages.list(threadId);
