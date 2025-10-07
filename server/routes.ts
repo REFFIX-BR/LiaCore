@@ -605,6 +605,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DEBUG: Delete conversation by chatId (for testing)
+  app.delete("/api/debug/conversation/:chatId", async (req, res) => {
+    try {
+      await storage.deleteConversation(req.params.chatId);
+      return res.json({ success: true, message: "Conversa deletada com sucesso" });
+    } catch (error) {
+      console.error("Delete conversation error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Get all active conversations for monitoring
   app.get("/api/monitor/conversations", async (req, res) => {
     try {
@@ -1433,7 +1444,10 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
     try {
       const validatedData = insertSatisfactionFeedbackSchema.parse(req.body);
       
-      // Determinar categoria baseado no score
+      // Criar feedback (category é calculado automaticamente pelo storage)
+      const feedback = await storage.createSatisfactionFeedback(validatedData);
+      
+      // Determinar categoria para lógica adicional
       let category: string;
       if (validatedData.npsScore >= 0 && validatedData.npsScore <= 6) {
         category = "detractor";
@@ -1442,12 +1456,6 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
       } else {
         category = "promoter";
       }
-      
-      // Criar feedback
-      const feedback = await storage.createSatisfactionFeedback({
-        ...validatedData,
-        category,
-      });
       
       // Se for detractor (NPS 0-6), criar learning event negativo
       if (category === "detractor") {

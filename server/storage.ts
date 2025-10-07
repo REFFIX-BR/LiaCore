@@ -36,6 +36,7 @@ export interface IStorage {
   getTransferredConversations(): Promise<Conversation[]>;
   createConversation(conversation: InsertConversation): Promise<Conversation>;
   updateConversation(id: string, updates: Partial<Conversation>): Promise<Conversation | undefined>;
+  deleteConversation(chatId: string): Promise<void>;
   
   // Messages
   getMessagesByConversationId(conversationId: string): Promise<Message[]>;
@@ -185,6 +186,59 @@ export class MemStorage implements IStorage {
     const updated = { ...conversation, ...updates };
     this.conversations.set(id, updated);
     return updated;
+  }
+
+  async deleteConversation(chatId: string): Promise<void> {
+    const conversation = await this.getConversationByChatId(chatId);
+    if (!conversation) return;
+
+    // Delete all related data
+    const conversationId = conversation.id;
+    
+    // Delete messages
+    for (const [id, msg] of Array.from(this.messages.entries())) {
+      if (msg.conversationId === conversationId) {
+        this.messages.delete(id);
+      }
+    }
+    
+    // Delete alerts
+    for (const [id, alert] of Array.from(this.alerts.entries())) {
+      if (alert.conversationId === conversationId) {
+        this.alerts.delete(id);
+      }
+    }
+    
+    // Delete supervisor actions
+    for (const [id, action] of Array.from(this.supervisorActions.entries())) {
+      if (action.conversationId === conversationId) {
+        this.supervisorActions.delete(id);
+      }
+    }
+    
+    // Delete learning events
+    for (const [id, event] of Array.from(this.learningEvents.entries())) {
+      if (event.conversationId === conversationId) {
+        this.learningEvents.delete(id);
+      }
+    }
+    
+    // Delete satisfaction feedback
+    for (const [id, feedback] of Array.from(this.satisfactionFeedback.entries())) {
+      if (feedback.conversationId === conversationId) {
+        this.satisfactionFeedback.delete(id);
+      }
+    }
+    
+    // Delete suggested responses
+    for (const [id, response] of Array.from(this.suggestedResponses.entries())) {
+      if (response.conversationId === conversationId) {
+        this.suggestedResponses.delete(id);
+      }
+    }
+    
+    // Finally delete the conversation
+    this.conversations.delete(conversationId);
   }
 
   async getMessagesByConversationId(conversationId: string): Promise<Message[]> {
@@ -372,9 +426,21 @@ export class MemStorage implements IStorage {
   // Satisfaction Feedback
   async createSatisfactionFeedback(insertFeedback: InsertSatisfactionFeedback): Promise<SatisfactionFeedback> {
     const id = randomUUID();
+    
+    // Calculate category based on NPS score
+    let category: string;
+    if (insertFeedback.npsScore >= 0 && insertFeedback.npsScore <= 6) {
+      category = 'detractor';
+    } else if (insertFeedback.npsScore >= 7 && insertFeedback.npsScore <= 8) {
+      category = 'neutral';
+    } else {
+      category = 'promoter';
+    }
+    
     const feedback: SatisfactionFeedback = {
       ...insertFeedback,
       id,
+      category,
       comment: insertFeedback.comment || null,
       clientName: insertFeedback.clientName || null,
       createdAt: new Date(),
@@ -495,6 +561,24 @@ export class DbStorage implements IStorage {
       .where(eq(schema.conversations.id, id))
       .returning();
     return updated;
+  }
+
+  async deleteConversation(chatId: string): Promise<void> {
+    const conversation = await this.getConversationByChatId(chatId);
+    if (!conversation) return;
+
+    const conversationId = conversation.id;
+
+    // Delete all related data (Postgres will handle cascade if set up, but we'll be explicit)
+    await db.delete(schema.messages).where(eq(schema.messages.conversationId, conversationId));
+    await db.delete(schema.alerts).where(eq(schema.alerts.conversationId, conversationId));
+    await db.delete(schema.supervisorActions).where(eq(schema.supervisorActions.conversationId, conversationId));
+    await db.delete(schema.learningEvents).where(eq(schema.learningEvents.conversationId, conversationId));
+    await db.delete(schema.satisfactionFeedback).where(eq(schema.satisfactionFeedback.conversationId, conversationId));
+    await db.delete(schema.suggestedResponses).where(eq(schema.suggestedResponses.conversationId, conversationId));
+    
+    // Finally delete the conversation
+    await db.delete(schema.conversations).where(eq(schema.conversations.id, conversationId));
   }
 
   // Messages
@@ -634,7 +718,20 @@ export class DbStorage implements IStorage {
 
   // Satisfaction Feedback
   async createSatisfactionFeedback(insertFeedback: InsertSatisfactionFeedback): Promise<SatisfactionFeedback> {
-    const [feedback] = await db.insert(schema.satisfactionFeedback).values(insertFeedback).returning();
+    // Calculate category based on NPS score
+    let category: string;
+    if (insertFeedback.npsScore >= 0 && insertFeedback.npsScore <= 6) {
+      category = 'detractor';
+    } else if (insertFeedback.npsScore >= 7 && insertFeedback.npsScore <= 8) {
+      category = 'neutral';
+    } else {
+      category = 'promoter';
+    }
+    
+    const [feedback] = await db.insert(schema.satisfactionFeedback).values({
+      ...insertFeedback,
+      category
+    }).returning();
     return feedback;
   }
 
