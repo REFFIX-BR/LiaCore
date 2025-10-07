@@ -172,6 +172,7 @@ export const insertPromptUpdateSchema = createInsertSchema(promptUpdates).omit({
 export const insertSatisfactionFeedbackSchema = createInsertSchema(satisfactionFeedback).omit({
   id: true,
   createdAt: true,
+  category: true, // Category is calculated by backend based on npsScore
 });
 
 export const insertSuggestedResponseSchema = createInsertSchema(suggestedResponses).omit({
