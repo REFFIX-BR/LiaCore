@@ -15,6 +15,7 @@ import {
   History
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 
 interface AssistantMetrics {
   assistantType: string;
@@ -101,10 +102,11 @@ export default function Assistants() {
               Não foi possível carregar as métricas dos assistentes. Tente novamente.
             </p>
             <button 
-              onClick={() => window.location.reload()} 
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/assistants/metrics'] })} 
               className="w-full bg-primary text-primary-foreground py-2 rounded-md hover-elevate"
+              data-testid="button-retry-metrics"
             >
-              Recarregar Página
+              Tentar Novamente
             </button>
           </CardContent>
         </Card>
