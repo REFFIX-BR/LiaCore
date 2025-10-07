@@ -1229,6 +1229,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update Evolution API configuration
+  app.post("/api/system/evolution-config", async (req, res) => {
+    try {
+      const { url, apiKey, instance } = req.body;
+      
+      if (!url || !apiKey || !instance) {
+        return res.status(400).json({ 
+          error: "Todos os campos são obrigatórios (url, apiKey, instance)" 
+        });
+      }
+
+      // Validar URL
+      try {
+        new URL(url);
+      } catch {
+        return res.status(400).json({ 
+          error: "URL inválida. Use o formato: https://sua-api.com" 
+        });
+      }
+
+      // Nota: Em produção, essas variáveis seriam salvas nos Secrets do Replit
+      // Por enquanto, vamos apenas validar e retornar sucesso
+      console.log("🔧 [Evolution API] Configurações recebidas (não serão persistidas nesta versão):", {
+        url,
+        instance,
+        hasApiKey: !!apiKey
+      });
+
+      // Instruções para o usuário
+      const instructions = `
+Para aplicar as configurações da Evolution API, adicione estas variáveis nos Secrets do Replit:
+
+1. EVOLUTION_API_URL = ${url}
+2. EVOLUTION_API_KEY = ${apiKey}
+3. EVOLUTION_API_INSTANCE = ${instance}
+
+Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
+      `.trim();
+
+      return res.json({ 
+        success: true, 
+        message: "Configurações validadas com sucesso!",
+        instructions,
+        config: {
+          url,
+          instance,
+          hasApiKey: true
+        }
+      });
+    } catch (error) {
+      console.error("Update Evolution config error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Clear Redis cache
   app.post("/api/system/clear-cache", async (req, res) => {
     try {

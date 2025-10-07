@@ -152,11 +152,28 @@ export default function Settings() {
     mutationFn: async (data: { url: string; apiKey: string; instance: string }) => {
       return apiRequest('POST', '/api/system/evolution-config', data);
     },
-    onSuccess: () => {
+    onSuccess: (response: any) => {
+      // Mostrar instruções detalhadas
+      const instructions = response.instructions || "Configurações salvas!";
+      
       toast({
-        title: "Configuração Atualizada",
-        description: "As credenciais da Evolution API foram salvas com sucesso.",
+        title: "✅ Configuração Validada",
+        description: (
+          <div className="space-y-2 mt-2">
+            <p className="font-medium">Próximos passos:</p>
+            <ol className="list-decimal list-inside space-y-1 text-sm">
+              <li>Abra a aba "Secrets" do Replit (ícone 🔑)</li>
+              <li>Adicione as 3 variáveis com os valores fornecidos</li>
+              <li>Reinicie o servidor para aplicar</li>
+            </ol>
+          </div>
+        ),
+        duration: 10000,
       });
+      
+      // Log das instruções completas no console
+      console.log("📋 Instruções Evolution API:", instructions);
+      
       queryClient.invalidateQueries({ queryKey: ['/api/system/config'] });
       setIsEditingEvolution(false);
       setEvolutionConfig(prev => ({ ...prev, apiKey: "" })); // Limpar campo de senha
