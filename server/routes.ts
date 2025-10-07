@@ -739,6 +739,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ADMIN: Resolver conversas transferidas em lote
+  app.post("/api/admin/resolve-transferred-conversations", async (req, res) => {
+    try {
+      const { conversationIds, resolveAll } = req.body;
+
+      let conversationsToResolve: Conversation[] = [];
+
+      if (resolveAll === true) {
+        // Buscar todas as conversas transferidas e ativas
+        const allTransferred = await storage.getTransferredConversations();
+        conversationsToResolve = allTransferred.filter(c => c.status === 'active');
+      } else if (conversationIds && Array.isArray(conversationIds)) {
+        // Resolver apenas IDs específicos
+        conversationsToResolve = await Promise.all(
+          conversationIds.map(async (id: string) => {
+            const conv = await storage.getConversation(id);
+            return conv;
+          })
+        ).then(convs => convs.filter((c): c is Conversation => c !== undefined));
+      } else {
+        return res.status(400).json({ 
+          error: "Forneça conversationIds (array) ou resolveAll (boolean)" 
+        });
+      }
+
+      if (conversationsToResolve.length === 0) {
+        return res.json({
+          success: true,
+          message: "Nenhuma conversa para resolver",
+          resolved: 0,
+          conversations: []
+        });
+      }
+
+      // Resolver todas as conversas
+      const resolved = await Promise.all(
+        conversationsToResolve.map(async (conv) => {
+          await storage.updateConversation(conv.id, {
+            status: "resolved",
+            lastMessageTime: new Date(),
+            duration: conv.duration || 0,
+          });
+
+          // Registrar ação de supervisor
+          await storage.createSupervisorAction({
+            conversationId: conv.id,
+            action: "resolve",
+            notes: "Conversa resolvida administrativamente",
+            createdBy: "Admin",
+          });
+
+          return {
+            id: conv.id,
+            chatId: conv.chatId,
+            clientName: conv.clientName,
+          };
+        })
+      );
+
+      return res.json({
+        success: true,
+        message: `${resolved.length} conversa(s) resolvida(s) com sucesso`,
+        resolved: resolved.length,
+        conversations: resolved,
+      });
+    } catch (error) {
+      console.error("❌ [ADMIN] Erro ao resolver conversas:", error);
+      return res.status(500).json({ 
+        error: "Erro ao resolver conversas", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+
   // Get all active conversations for monitoring
   app.get("/api/monitor/conversations", async (req, res) => {
     try {
