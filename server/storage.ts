@@ -403,7 +403,7 @@ export class MemStorage implements IStorage {
       finalResponse: insertResponse.finalResponse || null,
       wasEdited: insertResponse.wasEdited ?? null,
       wasApproved: insertResponse.wasApproved ?? null,
-      approvedAt: insertResponse.approvedAt ?? null,
+      approvedAt: null,
       createdAt: new Date(),
     };
     this.suggestedResponses.set(id, response);

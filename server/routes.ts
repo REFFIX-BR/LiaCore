@@ -1141,6 +1141,165 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get transferred conversations
+  app.get("/api/conversations/transferred", async (req, res) => {
+    try {
+      const conversations = await storage.getTransferredConversations();
+      return res.json(conversations);
+    } catch (error) {
+      console.error("Get transferred conversations error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // AI suggest response based on context
+  app.post("/api/conversations/:id/suggest-response", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { supervisorName } = req.body;
+
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+
+      const messages = await storage.getMessagesByConversationId(id);
+      const lastUserMessage = messages.filter(m => m.role === "user").pop();
+
+      if (!lastUserMessage) {
+        return res.status(400).json({ error: "No user message found" });
+      }
+
+      // Preparar contexto da conversa
+      const conversationHistory = messages.map(m => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      // Usar OpenAI para sugerir resposta baseada no contexto
+      const suggestionPrompt = `Você é um assistente experiente da TR Telecom. 
+      
+Analise o histórico da conversa abaixo e sugira a melhor resposta para a última mensagem do cliente.
+
+Histórico da conversa:
+${conversationHistory.map(m => `${m.role === 'user' ? 'Cliente' : 'Assistente'}: ${m.content}`).join('\n')}
+
+Baseado no contexto completo da conversa, sugira uma resposta profissional, empática e que resolva a questão do cliente. 
+A resposta deve:
+- Ser direta e objetiva
+- Manter tom profissional e empático
+- Oferecer solução clara
+- Se necessário, pedir informações adicionais`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: suggestionPrompt,
+          },
+        ],
+        temperature: 0.7,
+      });
+
+      const suggestedResponse = completion.choices[0]?.message?.content || "Não foi possível gerar sugestão";
+
+      // Salvar sugestão
+      const suggestion = await storage.createSuggestedResponse({
+        conversationId: id,
+        messageContext: lastUserMessage.content,
+        suggestedResponse,
+        supervisorName,
+        wasEdited: false,
+        wasApproved: false,
+      });
+
+      console.log(`🤖 [AI Suggestion] Sugestão gerada para conversa ${id}`);
+
+      return res.json({
+        suggestionId: suggestion.id,
+        suggestedResponse,
+      });
+    } catch (error) {
+      console.error("Suggest response error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Send supervisor message (approved or edited)
+  app.post("/api/conversations/:id/send-message", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { content, suggestionId, wasEdited, supervisorName } = req.body;
+
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+
+      // Criar mensagem do supervisor
+      const message = await storage.createMessage({
+        conversationId: id,
+        role: "assistant",
+        content,
+        assistant: `Supervisor: ${supervisorName}`,
+      });
+
+      // Atualizar conversa
+      await storage.updateConversation(id, {
+        lastMessage: content,
+        lastMessageTime: new Date(),
+      });
+
+      // Se foi baseado em sugestão, atualizar o registro
+      if (suggestionId) {
+        await storage.updateSuggestedResponse(suggestionId, {
+          finalResponse: content,
+          wasEdited: wasEdited || false,
+          wasApproved: true,
+        });
+
+        // Se editou a sugestão da IA, criar learning event
+        if (wasEdited) {
+          const suggestion = await storage.getSuggestedResponsesByConversationId(id);
+          const originalSuggestion = suggestion.find(s => s.id === suggestionId);
+          
+          if (originalSuggestion) {
+            await storage.createLearningEvent({
+              conversationId: id,
+              eventType: "explicit_correction",
+              assistantType: conversation.assistantType,
+              userMessage: originalSuggestion.messageContext,
+              aiResponse: originalSuggestion.suggestedResponse,
+              correctResponse: content,
+              feedback: `Supervisor editou sugestão da IA`,
+              sentiment: "neutral",
+              resolution: "corrected",
+              metadata: {
+                source: "supervised_response",
+                suggestionId,
+                supervisorName,
+              },
+            });
+
+            console.log(`📚 [Learning] Supervisor editou sugestão - learning event criado`);
+          }
+        }
+      }
+
+      console.log(`✉️ [Supervisor] Mensagem enviada na conversa ${id}`);
+
+      return res.json({ 
+        success: true, 
+        message,
+        learningEventCreated: wasEdited,
+      });
+    } catch (error) {
+      console.error("Send message error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
