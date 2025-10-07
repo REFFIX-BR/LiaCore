@@ -2,36 +2,139 @@ import { KnowledgeBasePanel } from "@/components/KnowledgeBasePanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Upload } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Search, Upload, Database, Trash2 } from "lucide-react";
 import { useState } from "react";
-
-//todo: remove mock functionality
-const mockChunks = [
-  {
-    id: '1',
-    content: 'O plano Fibra Gamer é otimizado para baixa latência, com um ping esperado de 5-15ms para servidores locais. Ideal para jogos online competitivos.',
-    source: 'Manual Técnico Planos 2024',
-    relevance: 95,
-  },
-  {
-    id: '2',
-    content: 'Velocidade de download: até 500 Mbps. Upload simétrico de 500 Mbps. Conexão dedicada sem compartilhamento.',
-    source: 'Especificações Fibra Gamer',
-    relevance: 87,
-  },
-  {
-    id: '3',
-    content: 'Suporte prioritário 24/7 com técnicos especializados em gaming. SLA de 2 horas para resolução de problemas.',
-    source: 'Políticas de Suporte Premium',
-    relevance: 72,
-  },
-];
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function Knowledge() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [newDocContent, setNewDocContent] = useState("");
+  const [newDocSource, setNewDocSource] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  const searchMutation = useMutation({
+    mutationFn: (query: string) => 
+      apiRequest("POST", "/api/knowledge/search", { query, topK: 5 }),
+    onSuccess: (data: any) => {
+      const formattedResults = data.map((result: any) => ({
+        id: result.chunk.id,
+        content: result.chunk.content,
+        source: result.chunk.source,
+        relevance: Math.round(result.score * 100),
+      }));
+      setSearchResults(formattedResults);
+      toast({
+        title: "Busca Concluída",
+        description: `Encontrados ${formattedResults.length} resultados`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao buscar conhecimento",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const addDocumentMutation = useMutation({
+    mutationFn: (doc: any) => 
+      apiRequest("POST", "/api/knowledge/add", { chunks: [doc] }),
+    onSuccess: () => {
+      toast({
+        title: "Sucesso",
+        description: "Documento adicionado à base",
+      });
+      setNewDocContent("");
+      setNewDocSource("");
+      setIsDialogOpen(false);
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao adicionar documento",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const populateMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/knowledge/populate", {}),
+    onSuccess: (response: any) => {
+      toast({
+        title: "Base Populada",
+        description: `${response.count} documentos adicionados`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao popular base",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const clearMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/knowledge/clear", {}),
+    onSuccess: () => {
+      setSearchResults([]);
+      toast({
+        title: "Base Limpa",
+        description: "Todos os documentos foram removidos",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao limpar base",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleSearch = () => {
-    console.log('Searching:', searchQuery);
+    if (!searchQuery.trim()) {
+      toast({
+        title: "Campo vazio",
+        description: "Digite algo para buscar",
+        variant: "destructive",
+      });
+      return;
+    }
+    searchMutation.mutate(searchQuery);
+  };
+
+  const handleAddDocument = () => {
+    if (!newDocContent.trim() || !newDocSource.trim()) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Preencha o conteúdo e a fonte",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    addDocumentMutation.mutate({
+      id: `kb-${Date.now()}`,
+      content: newDocContent,
+      source: newDocSource,
+      metadata: { addedAt: new Date().toISOString() },
+    });
   };
 
   return (
@@ -53,23 +156,115 @@ export default function Knowledge() {
               placeholder="Digite sua consulta para busca semântica..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSearch();
+                }
+              }}
               data-testid="input-knowledge-search"
               className="flex-1"
             />
-            <Button onClick={handleSearch} data-testid="button-search">
+            <Button 
+              onClick={handleSearch}
+              disabled={searchMutation.isPending}
+              data-testid="button-search"
+            >
               <Search className="h-4 w-4 mr-2" />
-              Buscar
+              {searchMutation.isPending ? "Buscando..." : "Buscar"}
             </Button>
-            <Button variant="outline" data-testid="button-upload">
-              <Upload className="h-4 w-4 mr-2" />
-              Upload
-            </Button>
+            
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" data-testid="button-upload">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Adicionar
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Adicionar Documento</DialogTitle>
+                  <DialogDescription>
+                    Adicione um novo documento à base de conhecimento
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Conteúdo</Label>
+                    <Textarea
+                      placeholder="Digite o conteúdo do documento..."
+                      value={newDocContent}
+                      onChange={(e) => setNewDocContent(e.target.value)}
+                      rows={6}
+                      data-testid="textarea-doc-content"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Fonte</Label>
+                    <Input
+                      placeholder="Ex: Manual Técnico 2024"
+                      value={newDocSource}
+                      onChange={(e) => setNewDocSource(e.target.value)}
+                      data-testid="input-doc-source"
+                    />
+                  </div>
+                  <Button 
+                    onClick={handleAddDocument}
+                    disabled={addDocumentMutation.isPending}
+                    className="w-full"
+                    data-testid="button-confirm-add"
+                  >
+                    {addDocumentMutation.isPending ? "Adicionando..." : "Adicionar Documento"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <KnowledgeBasePanel chunks={mockChunks} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <KnowledgeBasePanel chunks={searchResults} />
+        </div>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Gerenciar Base</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button
+              variant="default"
+              className="w-full"
+              onClick={() => populateMutation.mutate()}
+              disabled={populateMutation.isPending}
+              data-testid="button-populate-knowledge"
+            >
+              <Database className="h-4 w-4 mr-2" />
+              {populateMutation.isPending ? "Populando..." : "Popular Base"}
+            </Button>
+            
+            <Button
+              variant="destructive"
+              className="w-full"
+              onClick={() => clearMutation.mutate()}
+              disabled={clearMutation.isPending}
+              data-testid="button-clear-knowledge"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              {clearMutation.isPending ? "Limpando..." : "Limpar Base"}
+            </Button>
+
+            <div className="pt-2 space-y-2 text-sm text-muted-foreground">
+              <p className="font-medium">Ações:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>Popular: Adiciona 10 documentos de exemplo</li>
+                <li>Limpar: Remove todos os documentos</li>
+                <li>Adicionar: Insere documento customizado</li>
+                <li>Buscar: Consulta semântica RAG</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
