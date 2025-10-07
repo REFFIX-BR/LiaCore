@@ -42,6 +42,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastMessage: message,
           metadata: { routing },
         });
+      } else if (!threadId) {
+        // Existing conversation but no thread - create one
+        threadId = await createThread();
+        await storeConversationThread(chatId, threadId);
+        
+        // Update conversation with threadId
+        await storage.updateConversation(conversation.id, {
+          threadId,
+        });
       }
 
       // Store user message
