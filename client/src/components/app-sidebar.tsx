@@ -17,7 +17,8 @@ import {
   Settings,
   Brain,
   Activity,
-  Monitor as MonitorIcon
+  Monitor as MonitorIcon,
+  TestTube2
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -31,6 +32,11 @@ const menuItems = [
     title: "Monitor Supervisor",
     url: "/monitor",
     icon: MonitorIcon,
+  },
+  {
+    title: "Test Chat",
+    url: "/test-chat",
+    icon: TestTube2,
   },
   {
     title: "Conversas",
