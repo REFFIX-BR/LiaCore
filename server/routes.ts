@@ -371,10 +371,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Process in background
         (async () => {
           try {
-            const { response: responseText, transferred, transferDetails } = await sendMessageAndGetResponse(
+            const { response: responseText, transferred, transferredTo } = await sendMessageAndGetResponse(
               threadId!,
-              messageText,
-              assistantId
+              assistantId,
+              messageText
             );
 
             // Store assistant response
@@ -392,13 +392,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
 
             // Handle transfer to human if requested
-            if (transferred && transferDetails) {
+            if (transferred) {
               await storage.updateConversation(conversation.id, {
                 transferredToHuman: true,
-                transferReason: transferDetails.motivo,
+                transferReason: transferredTo || 'Transferido pela IA',
                 transferredAt: new Date(),
               });
-              console.log(`🔄 [Evolution] Conversa transferida para humano: ${transferDetails.departamento}`);
+              console.log(`🔄 [Evolution] Conversa transferida para humano: ${transferredTo}`);
             }
 
             console.log(`✅ [Evolution] Resposta enviada: ${responseText.substring(0, 100)}...`);
