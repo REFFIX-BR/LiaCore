@@ -10,6 +10,54 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Evolution API configuration
+const EVOLUTION_CONFIG = {
+  apiUrl: process.env.EVOLUTION_API_URL,
+  apiKey: process.env.EVOLUTION_API_KEY,
+  instance: process.env.EVOLUTION_API_INSTANCE,
+};
+
+// Helper function to send WhatsApp message via Evolution API
+async function sendWhatsAppMessage(phoneNumber: string, text: string): Promise<boolean> {
+  if (!EVOLUTION_CONFIG.apiUrl || !EVOLUTION_CONFIG.apiKey || !EVOLUTION_CONFIG.instance) {
+    console.error("❌ [Evolution] Credenciais não configuradas");
+    return false;
+  }
+
+  try {
+    const url = `${EVOLUTION_CONFIG.apiUrl}/message/sendText/${EVOLUTION_CONFIG.instance}`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': EVOLUTION_CONFIG.apiKey,
+      },
+      body: JSON.stringify({
+        number: phoneNumber,
+        text: text,
+        delay: 1200, // Simula digitação natural
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ [Evolution] Erro ao enviar mensagem (${response.status}):`, errorText);
+      return false;
+    }
+
+    const result = await response.json();
+    console.log(`✅ [Evolution] Mensagem enviada para ${phoneNumber}`, {
+      messageId: result.key?.id,
+      status: result.status,
+    });
+    return true;
+  } catch (error) {
+    console.error("❌ [Evolution] Erro ao enviar mensagem:", error);
+    return false;
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   
   // Chat endpoint - Main entry point for TR Chat messages
@@ -415,10 +463,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.log(`🔄 [Evolution] Conversa transferida para humano: ${transferredTo}`);
             }
 
-            console.log(`✅ [Evolution] Resposta enviada: ${responseText.substring(0, 100)}...`);
+            console.log(`✅ [Evolution] Resposta gerada: ${responseText.substring(0, 100)}...`);
             
-            // TODO: Send response back to WhatsApp via Evolution API
-            // This would require Evolution API credentials and send message endpoint
+            // Send response back to WhatsApp via Evolution API
+            const sent = await sendWhatsAppMessage(phoneNumber, responseText);
+            if (sent) {
+              console.log(`📤 [Evolution] Resposta enviada ao WhatsApp com sucesso`);
+            } else {
+              console.error(`⚠️  [Evolution] Falha ao enviar resposta ao WhatsApp`);
+            }
             
           } catch (error) {
             console.error("❌ [Evolution] Erro ao processar resposta:", error);
