@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema } from "@shared/schema";
+import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema, type Conversation } from "@shared/schema";
 import { routeMessage, createThread, sendMessageAndGetResponse, summarizeConversation, routeMessageWithContext, CONTEXT_CONFIG } from "./lib/openai";
 import { storeConversationThread, getConversationThread, searchKnowledge } from "./lib/upstash";
 
@@ -868,14 +868,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Calcular métricas por assistente
       const assistantMetrics = assistantTypes.map(type => {
-        const conversations = allConversations.filter(c => c.assistantType === type);
+        const conversations = allConversations.filter((c: Conversation) => c.assistantType === type);
         const totalConversations = conversations.length;
         
         // Conversas resolvidas (status = resolved)
-        const resolvedConversations = conversations.filter(c => c.status === "resolved").length;
+        const resolvedConversations = conversations.filter((c: Conversation) => c.status === "resolved").length;
         
         // Conversas transferidas (metadata.transferred = true ou supervisor action de transfer)
-        const transferredConversations = conversations.filter(c => 
+        const transferredConversations = conversations.filter((c: Conversation) => 
           (c.metadata as any)?.transferred === true
         ).length;
         
@@ -886,13 +886,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Duração média
         const avgDuration = totalConversations > 0
-          ? conversations.reduce((sum, c) => sum + (c.duration || 0), 0) / totalConversations
+          ? conversations.reduce((sum: number, c: Conversation) => sum + (c.duration || 0), 0) / totalConversations
           : 0;
         
         // Sentimento médio
-        const sentiments = conversations.map(c => c.sentiment || "neutral");
-        const positiveCount = sentiments.filter(s => s === "positive").length;
-        const negativeCount = sentiments.filter(s => s === "negative").length;
+        const sentiments = conversations.map((c: Conversation) => c.sentiment || "neutral");
+        const positiveCount = sentiments.filter((s: string | null) => s === "positive").length;
+        const negativeCount = sentiments.filter((s: string | null) => s === "negative").length;
         const avgSentiment = positiveCount > negativeCount ? "positive" 
           : negativeCount > positiveCount ? "negative" 
           : "neutral";
@@ -910,8 +910,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Overview geral
       const totalConversations = allConversations.length;
-      const totalResolved = allConversations.filter(c => c.status === "resolved").length;
-      const totalTransferred = allConversations.filter(c => 
+      const totalResolved = allConversations.filter((c: Conversation) => c.status === "resolved").length;
+      const totalTransferred = allConversations.filter((c: Conversation) => 
         (c.metadata as any)?.transferred === true
       ).length;
       const overallSuccessRate = totalConversations > 0 
@@ -920,24 +920,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Histórico de atualizações (últimas 10)
       const updates = allPromptUpdates
-        .sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime())
+        .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0))
         .slice(0, 10)
         .map(update => ({
           assistantType: update.assistantType,
-          date: new Date(update.appliedAt).toLocaleDateString('pt-BR'),
+          date: update.createdAt ? new Date(update.createdAt).toLocaleDateString('pt-BR') : 'N/A',
           modificationType: update.modificationType || "Atualização de prompt",
           appliedBy: update.appliedBy,
         }));
 
       // Análise de transferências
       const transfersByAssistant = assistantTypes.map(type => {
-        const conversations = allConversations.filter(c => 
+        const conversations = allConversations.filter((c: Conversation) => 
           c.assistantType === type && (c.metadata as any)?.transferred === true
         );
         
         const reasons = conversations
-          .map(c => (c.metadata as any)?.transferNotes || "Não especificado")
-          .filter((v, i, a) => a.indexOf(v) === i) // Remove duplicatas
+          .map((c: Conversation) => (c.metadata as any)?.transferNotes || "Não especificado")
+          .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i) // Remove duplicatas
           .slice(0, 5); // Top 5 motivos
 
         return {

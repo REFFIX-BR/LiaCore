@@ -28,6 +28,7 @@ export interface IStorage {
   getConversation(id: string): Promise<Conversation | undefined>;
   getConversationByChatId(chatId: string): Promise<Conversation | undefined>;
   getAllActiveConversations(): Promise<Conversation[]>;
+  getAllConversations(): Promise<Conversation[]>;
   createConversation(conversation: InsertConversation): Promise<Conversation>;
   updateConversation(id: string, updates: Partial<Conversation>): Promise<Conversation | undefined>;
   
@@ -44,6 +45,7 @@ export interface IStorage {
   // Supervisor Actions
   createSupervisorAction(action: InsertSupervisorAction): Promise<SupervisorAction>;
   getActionsByConversationId(conversationId: string): Promise<SupervisorAction[]>;
+  getAllSupervisorActions(): Promise<SupervisorAction[]>;
   
   // Learning Events
   createLearningEvent(event: InsertLearningEvent): Promise<LearningEvent>;
@@ -118,6 +120,11 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getAllConversations(): Promise<Conversation[]> {
+    return Array.from(this.conversations.values())
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
   async createConversation(insertConv: InsertConversation): Promise<Conversation> {
     const id = randomUUID();
     const conversation: Conversation = {
@@ -129,6 +136,10 @@ export class MemStorage implements IStorage {
       sentiment: insertConv.sentiment || null,
       urgency: insertConv.urgency || null,
       lastMessage: insertConv.lastMessage || null,
+      duration: insertConv.duration ?? null,
+      conversationSummary: insertConv.conversationSummary ?? null,
+      lastSummarizedAt: insertConv.lastSummarizedAt ?? null,
+      messageCountAtLastSummary: insertConv.messageCountAtLastSummary ?? null,
       createdAt: new Date(),
       lastMessageTime: new Date(),
       metadata: insertConv.metadata || null,
@@ -213,6 +224,11 @@ export class MemStorage implements IStorage {
     return Array.from(this.supervisorActions.values()).filter(
       (action) => action.conversationId === conversationId
     ).sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  async getAllSupervisorActions(): Promise<SupervisorAction[]> {
+    return Array.from(this.supervisorActions.values())
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
   }
 
   // Learning Events
