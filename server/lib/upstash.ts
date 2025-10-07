@@ -22,6 +22,7 @@ export async function searchKnowledge(query: string, topK: number = 5): Promise<
   chunk: KnowledgeChunk;
   score: number;
 }>> {
+  console.log(`🔍 [Upstash] Searching knowledge base:`, { query, topK });
   try {
     const results = await vectorIndex.query({
       data: query,
@@ -29,6 +30,8 @@ export async function searchKnowledge(query: string, topK: number = 5): Promise<
       includeMetadata: true,
     });
 
+    console.log(`✅ [Upstash] Found ${results.length} results`);
+    
     return results.map(result => ({
       chunk: {
         id: String(result.id),
@@ -39,7 +42,7 @@ export async function searchKnowledge(query: string, topK: number = 5): Promise<
       score: result.score,
     }));
   } catch (error) {
-    console.error("Error searching knowledge base:", error);
+    console.error("❌ [Upstash] Error searching knowledge base:", error);
     return [];
   }
 }
@@ -67,15 +70,22 @@ export async function addKnowledgeChunk(
   source: string,
   metadata?: Record<string, any>
 ): Promise<void> {
-  await vectorIndex.upsert({
-    id,
-    data: content,
-    metadata: {
-      content,
-      source,
-      ...metadata,
-    },
-  });
+  console.log("🔵 [Upstash] Adding knowledge chunk:", { id, source });
+  try {
+    const result = await vectorIndex.upsert({
+      id,
+      data: content,
+      metadata: {
+        content,
+        source,
+        ...metadata,
+      },
+    });
+    console.log("✅ [Upstash] Chunk added successfully:", { id, result });
+  } catch (error) {
+    console.error("❌ [Upstash] Error adding chunk:", error);
+    throw error;
+  }
 }
 
 export async function addKnowledgeChunks(
@@ -86,17 +96,24 @@ export async function addKnowledgeChunks(
     metadata?: Record<string, any>;
   }>
 ): Promise<void> {
-  const upsertData = chunks.map(chunk => ({
-    id: chunk.id,
-    data: chunk.content,
-    metadata: {
-      content: chunk.content,
-      source: chunk.source,
-      ...chunk.metadata,
-    },
-  }));
+  console.log(`🔵 [Upstash] Adding ${chunks.length} knowledge chunks`);
+  try {
+    const upsertData = chunks.map(chunk => ({
+      id: chunk.id,
+      data: chunk.content,
+      metadata: {
+        content: chunk.content,
+        source: chunk.source,
+        ...chunk.metadata,
+      },
+    }));
 
-  await vectorIndex.upsert(upsertData);
+    const result = await vectorIndex.upsert(upsertData);
+    console.log(`✅ [Upstash] ${chunks.length} chunks added successfully:`, result);
+  } catch (error) {
+    console.error("❌ [Upstash] Error adding chunks:", error);
+    throw error;
+  }
 }
 
 export async function deleteKnowledgeChunk(id: string): Promise<void> {
