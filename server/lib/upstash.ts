@@ -60,3 +60,49 @@ export async function getConversationMetadata(chatId: string): Promise<Record<st
   const data = await redis.get(`metadata:${chatId}`);
   return data ? JSON.parse(data as string) : null;
 }
+
+export async function addKnowledgeChunk(
+  id: string,
+  content: string,
+  source: string,
+  metadata?: Record<string, any>
+): Promise<void> {
+  await vectorIndex.upsert({
+    id,
+    data: content,
+    metadata: {
+      content,
+      source,
+      ...metadata,
+    },
+  });
+}
+
+export async function addKnowledgeChunks(
+  chunks: Array<{
+    id: string;
+    content: string;
+    source: string;
+    metadata?: Record<string, any>;
+  }>
+): Promise<void> {
+  const upsertData = chunks.map(chunk => ({
+    id: chunk.id,
+    data: chunk.content,
+    metadata: {
+      content: chunk.content,
+      source: chunk.source,
+      ...chunk.metadata,
+    },
+  }));
+
+  await vectorIndex.upsert(upsertData);
+}
+
+export async function deleteKnowledgeChunk(id: string): Promise<void> {
+  await vectorIndex.delete(id);
+}
+
+export async function clearKnowledgeBase(): Promise<void> {
+  await vectorIndex.reset();
+}

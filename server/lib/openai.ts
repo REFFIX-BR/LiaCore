@@ -172,10 +172,25 @@ async function handleToolCall(functionName: string, argsString: string): Promise
 
       case "consultar_base_de_conhecimento":
         const query = args.query || "";
+        const { searchKnowledge } = await import("./upstash");
+        const results = await searchKnowledge(query, 3);
+        
+        if (results.length === 0) {
+          return JSON.stringify({
+            contexto: "Não foram encontradas informações específicas sobre este tópico na base de conhecimento.",
+            relevancia: 0,
+            fonte: "Base de Conhecimento TR Telecom",
+          });
+        }
+        
+        const contexto = results.map(r => r.chunk.content).join('\n\n');
+        const relevancia = results[0]?.score || 0;
+        const fonte = results[0]?.chunk.source || "Base de Conhecimento TR Telecom";
+        
         return JSON.stringify({
-          contexto: `Baseado na documentação técnica sobre "${query}", encontramos as seguintes informações: Para problemas de conexão, verifique se todos os cabos estão conectados corretamente e reinicie o equipamento. A latência esperada para planos Fibra é entre 5-15ms. Velocidades podem variar dependendo do horário e quantidade de dispositivos conectados.`,
-          relevancia: 0.92,
-          fonte: "Base de Conhecimento TR Telecom",
+          contexto,
+          relevancia,
+          fonte,
         });
 
       case "agendar_visita":
