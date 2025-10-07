@@ -80,8 +80,9 @@ export async function createThread(): Promise<string> {
 export async function sendMessageAndGetResponse(
   threadId: string,
   assistantId: string,
-  userMessage: string
-): Promise<string> {
+  userMessage: string,
+  chatId?: string
+): Promise<{ response: string; transferred?: boolean; transferredTo?: string }> {
   try {
     if (!threadId) {
       throw new Error("Thread ID is required");
@@ -109,7 +110,8 @@ export async function sendMessageAndGetResponse(
     // Manual polling loop
     let attempts = 0;
     const maxAttempts = 60;
-    const runId = run.id; // Store runId separately to avoid corruption
+    const runId = run.id;
+    let transferData: { transferred?: boolean; transferredTo?: string } = {};
 
     while (run.status === "queued" || run.status === "in_progress" || run.status === "requires_action") {
       if (attempts >= maxAttempts) {
@@ -123,7 +125,19 @@ export async function sendMessageAndGetResponse(
         const toolCalls = run.required_action.submit_tool_outputs.tool_calls;
         const toolOutputs = await Promise.all(
           toolCalls.map(async (toolCall) => {
-            const result = await handleToolCall(toolCall.function.name, toolCall.function.arguments);
+            const result = await handleToolCall(toolCall.function.name, toolCall.function.arguments, chatId);
+            
+            // Check if this was a transfer call
+            if (toolCall.function.name === "transferir_para_humano") {
+              const transferResult = JSON.parse(result);
+              if (transferResult.success) {
+                transferData = {
+                  transferred: true,
+                  transferredTo: transferResult.departamento
+                };
+              }
+            }
+            
             return {
               tool_call_id: toolCall.id,
               output: result,
@@ -161,18 +175,21 @@ export async function sendMessageAndGetResponse(
     if (lastMessage && lastMessage.role === "assistant") {
       const content = lastMessage.content[0];
       if (content.type === "text") {
-        return content.text.value;
+        return {
+          response: content.text.value,
+          ...transferData
+        };
       }
     }
 
-    return "Desculpe, não consegui processar sua mensagem.";
+    return { response: "Desculpe, não consegui processar sua mensagem." };
   } catch (error) {
     console.error("Assistant run error:", error);
-    return "Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.";
+    return { response: "Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente." };
   }
 }
 
-async function handleToolCall(functionName: string, argsString: string): Promise<string> {
+async function handleToolCall(functionName: string, argsString: string, chatId?: string): Promise<string> {
   try {
     const args = JSON.parse(argsString);
 
@@ -217,6 +234,20 @@ async function handleToolCall(functionName: string, argsString: string): Promise
           contexto,
           relevancia,
           fonte,
+        });
+
+      case "transferir_para_humano":
+        const departamento = args.departamento || args.department || "Suporte Geral";
+        const motivo = args.motivo || args.reason || "Solicitação do cliente";
+        
+        console.log("🔀 [Transfer] IA solicitou transferência:", { chatId, departamento, motivo });
+        
+        // Mark conversation for transfer (will be processed in routes.ts)
+        return JSON.stringify({
+          success: true,
+          departamento,
+          motivo,
+          mensagem: "Transferência iniciada com sucesso",
         });
 
       case "agendar_visita":

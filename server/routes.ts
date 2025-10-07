@@ -68,13 +68,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const assistantId = (conversation.metadata as any)?.routing?.assistantId;
-      const response = await sendMessageAndGetResponse(threadId, assistantId, message);
+      const result = await sendMessageAndGetResponse(threadId, assistantId, message, chatId);
 
       // Store assistant response
       await storage.createMessage({
         conversationId: conversation.id,
         role: "assistant",
-        content: response,
+        content: result.response,
         assistant: conversation.assistantType,
       });
 
@@ -82,7 +82,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sentiment = message.includes("!") || message.toUpperCase() === message ? "negative" : "neutral";
       const urgency = message.includes("URGENTE") || message.includes("!!!") ? "critical" : "normal";
 
-      // Update conversation
+      // Check if AI requested transfer
+      if (result.transferred) {
+        console.log("🔀 [Transfer] Processando transferência automática da IA");
+        
+        // Create supervisor action
+        await storage.createSupervisorAction({
+          conversationId: conversation.id,
+          action: "transfer",
+          notes: `Transferência automática pela IA para ${result.transferredTo}`,
+          createdBy: "IA Assistant",
+        });
+
+        // Update conversation with transfer metadata
+        await storage.updateConversation(conversation.id, {
+          lastMessage: message,
+          lastMessageTime: new Date(),
+          duration: (conversation.duration || 0) + 30,
+          sentiment,
+          urgency,
+          metadata: {
+            transferred: true,
+            transferredTo: result.transferredTo,
+            transferredAt: new Date().toISOString(),
+            transferNotes: "Transferência automática pela IA",
+          },
+        });
+
+        return res.json({
+          success: true,
+          response: result.response,
+          assistantType: conversation.assistantType,
+          chatId,
+          transferred: true,
+          transferredTo: result.transferredTo,
+        });
+      }
+
+      // Normal update without transfer
       await storage.updateConversation(conversation.id, {
         lastMessage: message,
         lastMessageTime: new Date(),
@@ -93,7 +130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       return res.json({
         success: true,
-        response,
+        response: result.response,
         assistantType: conversation.assistantType,
         chatId,
       });
