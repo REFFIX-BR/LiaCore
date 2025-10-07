@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { KPIPanel } from "@/components/KPIPanel";
 import { ConversationCard } from "@/components/ConversationCard";
 import { ConversationDetails } from "@/components/ConversationDetails";
+import { NPSFeedbackDialog } from "@/components/NPSFeedbackDialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,13 +11,14 @@ import { Search } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { monitorAPI } from "@/lib/api";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 export default function Monitor() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [showNPSDialog, setShowNPSDialog] = useState(false);
   const { toast } = useToast();
 
   const { data: conversations = [], isLoading: conversationsLoading } = useQuery({
@@ -69,6 +71,28 @@ export default function Monitor() {
       queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations"] });
       setActiveConvId(null);
       toast({ title: "Chat Resolvido", description: "Conversa marcada como resolvida" });
+    },
+  });
+
+  const feedbackMutation = useMutation({
+    mutationFn: async ({ conversationId, assistantType, npsScore, comment, clientName }: {
+      conversationId: string;
+      assistantType: string;
+      npsScore: number;
+      comment?: string;
+      clientName?: string;
+    }) => {
+      return apiRequest("POST", "/api/feedback", {
+        conversationId,
+        assistantType,
+        npsScore,
+        comment,
+        clientName,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/metrics/nps"] });
+      toast({ title: "Feedback Enviado", description: "Obrigado pela avaliação!" });
     },
   });
 
@@ -178,7 +202,29 @@ export default function Monitor() {
 
   const handleMarkResolved = () => {
     if (activeConvId) {
-      resolveMutation.mutate(activeConvId);
+      // Abre o modal de NPS antes de resolver
+      setShowNPSDialog(true);
+    }
+  };
+
+  const handleNPSSubmit = async (score: number, comment: string) => {
+    if (activeConvId && activeConversation) {
+      try {
+        // Enviar feedback
+        await feedbackMutation.mutateAsync({
+          conversationId: activeConvId,
+          assistantType: activeConversation.assistantType,
+          npsScore: score,
+          comment: comment || undefined,
+          clientName: activeConversation.clientName,
+        });
+        
+        // Marcar como resolvido
+        resolveMutation.mutate(activeConvId);
+      } catch (error) {
+        // Re-throw to let dialog handle the error
+        throw error;
+      }
     }
   };
 
@@ -276,6 +322,25 @@ export default function Monitor() {
           )}
         </div>
       </div>
+
+      {/* NPS Feedback Dialog */}
+      {activeConversation && (
+        <NPSFeedbackDialog
+          open={showNPSDialog}
+          onClose={() => {
+            setShowNPSDialog(false);
+            // Se fechar sem feedback (pular), marcar como resolvido mesmo assim
+            if (activeConvId) {
+              resolveMutation.mutate(activeConvId);
+            }
+          }}
+          conversationId={activeConvId!}
+          assistantType={activeConversation.assistantType}
+          clientName={activeConversation.clientName}
+          onSubmit={handleNPSSubmit}
+          isSubmitting={feedbackMutation.isPending}
+        />
+      )}
     </div>
   );
 }

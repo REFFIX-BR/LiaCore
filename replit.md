@@ -2,9 +2,9 @@
 
 ## Overview
 
-LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed for TR Telecom customer service operations. The system acts as an intelligent router and coordinator that manages multiple specialized AI assistants (Support, Sales, Technical, Financial, etc.) powered by OpenAI's Assistants API. It integrates a RAG (Retrieval-Augmented Generation) knowledge base using Upstash Vector for dynamic document-based responses, enabling assistants to both perform actions through structured APIs and answer open-ended questions from company documentation.
+LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed for TR Telecom customer service operations. It acts as an intelligent router and coordinator for multiple specialized AI assistants (e.g., Support, Sales, Technical, Financial) powered by OpenAI's Assistants API. The platform integrates a RAG (Retrieval-Augmented Generation) knowledge base using Upstash Vector for dynamic, document-based responses, enabling assistants to perform actions via structured APIs and answer open-ended questions from company documentation.
 
-The platform includes a real-time supervisor monitoring dashboard that provides complete visibility into all customer interactions, allowing human supervisors to track sentiment, detect issues, and intervene when necessary.
+A real-time supervisor monitoring dashboard provides visibility into customer interactions, allowing human supervisors to track sentiment, detect issues, and intervene. The platform also includes a fully autonomous continuous learning system that evolves assistant prompts based on supervisor interventions and customer feedback (NPS).
 
 ## User Preferences
 
@@ -14,223 +14,88 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 
-**Framework**: React with TypeScript using Vite as the build tool
-
-**UI Components**: shadcn/ui component library based on Radix UI primitives with Tailwind CSS for styling
-
-**Design System**: Custom design guidelines inspired by Carbon Design System and Linear's interface patterns, optimized for enterprise data-dense interfaces with both dark mode (primary) and light mode support
-
-**State Management**: TanStack Query (React Query) for server state management and data fetching with 5-second polling intervals for real-time updates
-
-**Routing**: Wouter for lightweight client-side routing
-
-**Key Pages**:
-- Dashboard: Overview metrics and system status
-- Monitor: Real-time supervisor dashboard with conversation tracking
-- Test Chat: Development tool for testing chat flows
-- Conversations: Chat interface with message history
-- Knowledge: RAG knowledge base management
-- Assistants: Performance analytics dashboard for all specialized AI assistants with metrics, transfer analysis, and update history
-- Agent Evolution: Continuous learning dashboard with prompt suggestions and update logs
-- Settings: Comprehensive system configuration and tools management
+**Framework**: React with TypeScript using Vite.
+**UI Components**: shadcn/ui based on Radix UI, styled with Tailwind CSS.
+**Design System**: Custom design guidelines inspired by Carbon Design System and Linear's interface, optimized for enterprise data-dense interfaces with dark and light mode support.
+**State Management**: TanStack Query for server state management and data fetching with 5-second polling intervals.
+**Routing**: Wouter for client-side routing.
+**Key Pages**: Dashboard, Monitor, Test Chat, Conversations, Knowledge, Assistants, Agent Evolution, Metrics, Settings.
 
 ### Backend Architecture
 
-**Runtime**: Node.js with Express.js server
-
-**Language**: TypeScript with ES modules
-
-**API Design**: RESTful API endpoints under `/api` namespace
-
+**Runtime**: Node.js with Express.js.
+**Language**: TypeScript with ES modules.
+**API Design**: RESTful API endpoints under `/api`.
 **Core Modules**:
-- **Router Module** (`server/lib/openai.ts`): Analyzes incoming messages using GPT-5 to route to appropriate specialized assistant (Support, Commercial, Financial, Presentation, Ombudsman, Cancellation)
-- **OpenAI Integration**: Manages threads and message exchanges with OpenAI Assistants API
-- **Upstash Integration**: Handles vector search for RAG knowledge base and Redis for conversation thread storage
-
-**Session Management**: OpenAI thread-based conversations with 7-day expiry stored in Redis
-
-**Storage Layer**: In-memory storage implementation (`MemStorage`) with interface design (`IStorage`) ready for database migration
+- **Router Module**: Analyzes incoming messages using GPT-5 to route to appropriate specialized assistant.
+- **OpenAI Integration**: Manages threads and message exchanges with OpenAI Assistants API.
+- **Upstash Integration**: Handles vector search for RAG knowledge base and Redis for conversation thread storage.
+**Session Management**: OpenAI thread-based conversations with 7-day expiry stored in Redis.
+**Storage Layer**: In-memory storage with an interface (`IStorage`) designed for database migration.
 
 ### Database & Data Storage
 
-**Primary Database**: PostgreSQL (via Neon serverless) - schema defined but not yet fully connected
-
-**ORM**: Drizzle ORM for type-safe database operations
-
-**Schema Entities**:
-- Users: Authentication and supervisor accounts
-- Conversations: Chat metadata, sentiment, urgency, assistant routing, **conversationSummary** (accumulated JSON), **lastSummarizedAt**, **messageCountAtLastSummary**
-- Messages: Complete message history with function calls
-- Alerts: Critical issues requiring supervisor attention
-- Supervisor Actions: Audit trail of human interventions
-- Learning Events: Captures implicit and explicit feedback from interactions
-- Prompt Suggestions: AI-generated recommendations for assistant improvement
-- Prompt Updates: Audit log of approved prompt changes
-
-**Vector Database**: Upstash Vector for semantic search in knowledge base
-
-**Cache Layer**: Upstash Redis for session data and conversation threads
+**Primary Database**: PostgreSQL (via Neon serverless).
+**ORM**: Drizzle ORM.
+**Schema Entities**: Users, Conversations (including `conversationSummary`), Messages, Alerts, Supervisor Actions, Learning Events, Prompt Suggestions, Prompt Updates, Satisfaction Feedback.
+**Vector Database**: Upstash Vector for semantic search in knowledge base.
+**Cache Layer**: Upstash Redis for session data and conversation threads.
 
 ### AI & Knowledge Management
 
-**AI Provider**: OpenAI with separate assistant IDs for each specialized role
-
-**Routing Logic**: GPT-5 based intent classification to select appropriate assistant with context-aware routing using conversation summaries
-
+**AI Provider**: OpenAI, with separate assistant IDs for each specialized role.
+**Routing Logic**: GPT-5 based intent classification using conversation summaries and recent messages for context-aware routing.
 **Automatic Conversation Summarization**:
-- **Trigger**: Every 12 messages automatically generates structured summary
-- **Execution**: Async background processing (non-blocking for users)
-- **Structure**: JSON format with summary text, keyFacts, sentiment, assistantHistory, actionsTaken, pendingActions, importantDates
-- **Context Window**: Maintains last 5 messages intact for routing, summarizes previous messages
-- **Accumulation**: Field-by-field merging with deduplication prevents context loss
-- **Smart Indexing**: Tracks `messageCountAtLastSummary` to ensure no messages are skipped between cycles
-- **Configuration**: `SUMMARIZE_EVERY=12`, `KEEP_RECENT=5`, `CONTEXT_WINDOW=7`
-
-**Context-Aware Routing**:
-- Uses accumulated summary + recent message window for assistant selection
-- Detects topic changes and resolves ambiguities (e.g., isolated CPF mentions)
-- Prevents token overflow in long conversations while maintaining full context
-
-**RAG Implementation**:
-- Knowledge chunks stored in Upstash Vector with embeddings
-- Semantic search retrieves relevant context (top-K results)
-- Assistants can call `consultar_base_de_conhecimento` function to access dynamic knowledge
-- Supports both structured API calls (e.g., `verificar_conexao`) and unstructured document queries
-
-**Function Calling**: Assistants equipped with custom functions for:
-- Connection verification
-- Knowledge base queries
-- Invoice lookups
-- Visit scheduling
+- Triggered every 12 messages, processed asynchronously.
+- Generates structured JSON summaries (summary text, key facts, sentiment, actions, etc.).
+- Maintains context with last 5 messages, accumulates summaries to prevent context loss.
+- Configurable parameters: `SUMMARIZE_EVERY=12`, `KEEP_RECENT=5`, `CONTEXT_WINDOW=7`.
+**RAG Implementation**: Knowledge chunks in Upstash Vector with embeddings; assistants can call `consultar_base_de_conhecimento` for dynamic knowledge retrieval.
+**Function Calling**: Assistants are equipped with custom functions for tasks like connection verification, knowledge base queries, invoice lookups, and visit scheduling.
 
 ### Real-Time Monitoring
 
-**Supervisor Dashboard Features**:
-- KPI metrics (active conversations, response time, sentiment, resolution rate)
-- Live conversation queue with urgency/sentiment indicators
-- Critical alerts (negative sentiment, AI loops, function failures)
-- Conversation details with full transcript and AI analysis
-- Human intervention controls (pause AI, transfer to human, add notes)
-
-**Update Mechanism**: Client-side polling with React Query at 3-5 second intervals for different data types
+**Supervisor Dashboard**: Displays KPI metrics, live conversation queue with urgency/sentiment, critical alerts, full transcripts, and human intervention controls.
+**Update Mechanism**: Client-side polling with React Query at 3-5 second intervals.
 
 ### Continuous Learning System
 
-**Overview**: Fully autonomous system that evolves assistant prompts based on supervisor interventions without manual developer input
-
-**Core Components**:
-- **LIA Cortex Analysis Agent** (`server/lib/cortex-analysis.ts`): GPT-4 powered analysis agent that identifies patterns and generates improvement suggestions
-- **Learning Scheduler** (`server/lib/learning-scheduler.ts`): Automated periodic analysis runs every 24 hours
-- **Feedback Capture**: Integrated into conversation lifecycle (resolution, transfers, supervisor notes)
-- **Supervision Interface**: Agent Evolution dashboard for reviewing and approving prompt changes
-
+**Overview**: Autonomous system for evolving assistant prompts based on supervisor interventions and feedback.
+**Core Components**: LIA Cortex Analysis Agent (GPT-4 powered), Learning Scheduler (automated periodic analysis), Feedback Capture.
 **Learning Pipeline**:
-
-1. **Feedback Collection**:
-   - Implicit Positive: Conversation marked as resolved
-   - Implicit Negative: Transfer to human agent (indicates AI failure)
-   - Explicit: Supervisor corrections and intervention notes
-
-2. **Automated Analysis**:
-   - Groups learning events by assistant type
-   - Requires ≥2 explicit corrections before generating suggestions
-   - Identifies recurring patterns and root causes
-   - Generates improvement suggestions with confidence scores
-
-3. **Supervision Workflow**:
-   - Dashboard displays pending suggestions with side-by-side diff view
-   - Supervisor approves or rejects with notes
-   - Approved changes update assistant instructions via OpenAI API
-   - Complete audit trail of all prompt modifications
-
-4. **Deduplication & Idempotency**:
-   - Hash-based deduplication prevents duplicate suggestions
-   - Checks existing pending suggestions before creating new ones
-
-**API Endpoints**:
-- `GET /api/learning/suggestions` - List all prompt suggestions
-- `GET /api/learning/updates` - View prompt update history
-- `POST /api/learning/analyze` - Trigger manual analysis
-- `POST /api/learning/suggestions/:id/approve` - Approve suggestion
-- `POST /api/learning/suggestions/:id/reject` - Reject suggestion
+1. **Feedback Collection**: Implicit (resolved conversations, transfers), Explicit (supervisor corrections), NPS-based (detractors).
+2. **Automated Analysis**: Groups learning events, identifies patterns, generates improvement suggestions.
+3. **Supervision Workflow**: Supervisor reviews/approves suggestions via the Agent Evolution dashboard; approved changes update OpenAI assistant instructions.
+**Deduplication & Idempotency**: Prevents duplicate suggestions.
 
 ### Settings & System Management
 
-**Settings Page** (`/settings`): Centralized configuration hub with 5 specialized tabs:
+**Settings Page**: Centralized configuration with tabs for Assistants (status monitoring), Resumos (summarization config), APIs (connection status), Aprendizado (learning config), and Ferramentas (system tools like cache clear, re-indexing).
 
-1. **Assistants Tab**:
-   - Status monitoring for all 7 OpenAI assistants (Suporte, Comercial, Financeiro, Apresentação, Ouvidoria, Cancelamento, Cortex)
-   - Direct links to OpenAI Platform for assistant management
-   - Visual indicators (Configurado/Não configurado) based on environment variables
+### NPS & Customer Satisfaction System
 
-2. **Resumos Tab** (Automatic Summarization):
-   - Configurable `SUMMARIZE_EVERY` (default: 12 messages)
-   - Configurable `KEEP_RECENT` (default: 5 messages)
-   - Configurable `CONTEXT_WINDOW` (default: 7 messages)
-   - Real-time sync with backend configuration
-   - Explanatory documentation of summarization system
-
-3. **APIs Tab**:
-   - Live connection status for OpenAI, Upstash Redis, and Upstash Vector
-   - Environment variable validation (API keys and tokens)
-   - Online/offline indicators with status badges
-
-4. **Aprendizado Tab** (Continuous Learning):
-   - Analysis interval configuration (24 hours)
-   - Manual analysis trigger
-   - Last/next analysis timestamps
-   - Learning criteria documentation
-
-5. **Ferramentas Tab** (System Tools):
-   - Clear Redis cache
-   - Re-index knowledge base
-   - Export/Import configurations
-   - System statistics (conversations, knowledge chunks, learning events, prompt updates)
-
-**Backend Endpoints**:
-- `GET /api/system/config` - Returns complete system configuration and status
-- `POST /api/system/config` - Updates system configuration
-- `POST /api/system/clear-cache` - Clears Redis cache
-
-## Recent Changes
-
-### October 7, 2025 - Assistants Performance Dashboard
-- **NEW PAGE**: Created `/assistants` route with comprehensive performance analytics
-- **Overview Metrics**: Total conversations, resolutions, transfers, and success rate KPIs
-- **Per-Assistant Analytics**: Individual performance cards showing:
-  - Total conversations handled
-  - Success rate (resolved vs transferred)
-  - Average response time
-  - Sentiment analysis
-  - Transfer count
-- **Multi-Tab Interface**:
-  - Performance tab: Visual metrics for all 6 assistants
-  - Updates tab: Historical log of prompt modifications
-  - Transfers tab: Analysis of which assistants transfer most and why
-- **Backend Endpoint**: `GET /api/assistants/metrics` with aggregated statistics
-- **Storage Layer**: Added `getAllConversations()` and `getAllSupervisorActions()` methods
-- **Error Handling**: Robust defensive programming with loading/error states
-- **Learning Configuration**: Reduced analysis interval from 24h to 2h (configurable 1-24h) for faster system evolution
+**Overview**: Integrated post-conversation feedback system capturing NPS and feeding detractor feedback into the continuous learning pipeline.
+**Feedback Flow**: NPS dialog appears after conversation resolution; client/supervisor rates 0-10 + comment. Detractor scores (0-6) automatically create learning events.
+**Metrics Dashboard**: Displays NPS score, distribution, per-assistant NPS, timeline, and recent comments.
 
 ## External Dependencies
 
 **Third-Party Services**:
-- **OpenAI**: Assistants API for conversational AI and GPT-5 for routing
-- **Upstash Vector**: Serverless vector database for RAG knowledge embeddings
-- **Upstash Redis**: Serverless Redis for session and thread storage
-- **Neon Database**: Serverless PostgreSQL for persistent data storage
+- **OpenAI**: Assistants API (conversational AI), GPT-5 (routing).
+- **Upstash Vector**: Serverless vector database for RAG.
+- **Upstash Redis**: Serverless Redis for session and thread storage.
+- **Neon Database**: Serverless PostgreSQL for persistent data.
 
 **Key NPM Packages**:
-- `@radix-ui/*`: Headless UI component primitives
-- `@tanstack/react-query`: Server state management
-- `drizzle-orm`: Type-safe database ORM
-- `express`: Web server framework
-- `react-hook-form` + `zod`: Form handling and validation
-- `date-fns`: Date formatting and manipulation
-- `tailwindcss`: Utility-first CSS framework
+- `@radix-ui/*`: Headless UI components.
+- `@tanstack/react-query`: Server state management.
+- `drizzle-orm`: Type-safe database ORM.
+- `express`: Web server framework.
+- `react-hook-form` + `zod`: Form handling and validation.
+- `date-fns`: Date manipulation.
+- `tailwindcss`: Utility-first CSS framework.
 
 **Development Tools**:
-- Vite with React plugin for fast development
-- TypeScript for type safety
-- ESLint and Prettier (implied by setup)
-- Replit-specific plugins for development environment integration
+- Vite with React plugin.
+- TypeScript.
+- ESLint and Prettier.
