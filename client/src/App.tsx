@@ -14,6 +14,7 @@ import Knowledge from "@/pages/Knowledge";
 import Monitor from "@/pages/Monitor";
 import TestChat from "@/pages/TestChat";
 import AgentEvolution from "@/pages/AgentEvolution";
+import Settings from "@/pages/Settings";
 
 function Router() {
   return (
@@ -26,7 +27,7 @@ function Router() {
       <Route path="/evolution" component={AgentEvolution} />
       <Route path="/assistants" component={Dashboard} />
       <Route path="/metrics" component={Dashboard} />
-      <Route path="/settings" component={Dashboard} />
+      <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>
   );

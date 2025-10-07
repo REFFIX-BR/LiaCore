@@ -25,6 +25,32 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 
+interface SystemConfig {
+  apiStatus?: {
+    openai?: boolean;
+    redis?: boolean;
+    vector?: boolean;
+  };
+  assistants?: {
+    [key: string]: boolean;
+  };
+  env?: {
+    openai?: boolean;
+    redis?: boolean;
+    vector?: boolean;
+  };
+  learning?: {
+    lastAnalysis?: string;
+    nextAnalysis?: string;
+  };
+  stats?: {
+    totalConversations?: number;
+    knowledgeChunks?: number;
+    learningEvents?: number;
+    promptUpdates?: number;
+  };
+}
+
 export default function Settings() {
   const { toast } = useToast();
   const [configValues, setConfigValues] = useState({
@@ -34,17 +60,14 @@ export default function Settings() {
   });
 
   // Query para buscar configurações do sistema
-  const { data: systemConfig } = useQuery({
+  const { data: systemConfig } = useQuery<SystemConfig>({
     queryKey: ['/api/system/config'],
   });
 
   // Mutation para atualizar configurações
   const updateConfigMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest('/api/system/config', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      return apiRequest('POST', '/api/system/config', data);
     },
     onSuccess: () => {
       toast({
@@ -58,9 +81,7 @@ export default function Settings() {
   // Mutation para trigger de análise manual
   const triggerAnalysisMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest('/api/learning/analyze', {
-        method: 'POST',
-      });
+      return apiRequest('POST', '/api/learning/analyze');
     },
     onSuccess: () => {
       toast({
@@ -73,9 +94,7 @@ export default function Settings() {
   // Mutation para limpar cache
   const clearCacheMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest('/api/system/clear-cache', {
-        method: 'POST',
-      });
+      return apiRequest('POST', '/api/system/clear-cache');
     },
     onSuccess: () => {
       toast({
