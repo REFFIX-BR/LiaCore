@@ -27,6 +27,9 @@ export const conversations = pgTable("conversations", {
   conversationSummary: text("conversation_summary"),
   lastSummarizedAt: timestamp("last_summarized_at"),
   messageCountAtLastSummary: integer("message_count_at_last_summary").default(0),
+  transferredToHuman: boolean("transferred_to_human").default(false),
+  transferReason: text("transfer_reason"),
+  transferredAt: timestamp("transferred_at"),
 });
 
 export const messages = pgTable("messages", {
@@ -112,6 +115,19 @@ export const satisfactionFeedback = pgTable("satisfaction_feedback", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const suggestedResponses = pgTable("suggested_responses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull(),
+  messageContext: text("message_context").notNull(), // User's last message
+  suggestedResponse: text("suggested_response").notNull(), // AI suggested response
+  finalResponse: text("final_response"), // What was actually sent (if edited)
+  wasEdited: boolean("was_edited").default(false),
+  wasApproved: boolean("was_approved").default(false),
+  supervisorName: text("supervisor_name").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  approvedAt: timestamp("approved_at"),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -158,6 +174,12 @@ export const insertSatisfactionFeedbackSchema = createInsertSchema(satisfactionF
   createdAt: true,
 });
 
+export const insertSuggestedResponseSchema = createInsertSchema(suggestedResponses).omit({
+  id: true,
+  createdAt: true,
+  approvedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Conversation = typeof conversations.$inferSelect;
@@ -176,3 +198,5 @@ export type PromptUpdate = typeof promptUpdates.$inferSelect;
 export type InsertPromptUpdate = z.infer<typeof insertPromptUpdateSchema>;
 export type SatisfactionFeedback = typeof satisfactionFeedback.$inferSelect;
 export type InsertSatisfactionFeedback = z.infer<typeof insertSatisfactionFeedbackSchema>;
+export type SuggestedResponse = typeof suggestedResponses.$inferSelect;
+export type InsertSuggestedResponse = z.infer<typeof insertSuggestedResponseSchema>;

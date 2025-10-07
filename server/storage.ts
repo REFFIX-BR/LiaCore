@@ -16,7 +16,9 @@ import {
   type PromptUpdate,
   type InsertPromptUpdate,
   type SatisfactionFeedback,
-  type InsertSatisfactionFeedback
+  type InsertSatisfactionFeedback,
+  type SuggestedResponse,
+  type InsertSuggestedResponse
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -31,6 +33,7 @@ export interface IStorage {
   getConversationByChatId(chatId: string): Promise<Conversation | undefined>;
   getAllActiveConversations(): Promise<Conversation[]>;
   getAllConversations(): Promise<Conversation[]>;
+  getTransferredConversations(): Promise<Conversation[]>;
   createConversation(conversation: InsertConversation): Promise<Conversation>;
   updateConversation(id: string, updates: Partial<Conversation>): Promise<Conversation | undefined>;
   
@@ -72,6 +75,11 @@ export interface IStorage {
   getAllSatisfactionFeedback(): Promise<SatisfactionFeedback[]>;
   getSatisfactionFeedbackByConversationId(conversationId: string): Promise<SatisfactionFeedback | undefined>;
   getSatisfactionFeedbackByAssistantType(assistantType: string): Promise<SatisfactionFeedback[]>;
+  
+  // Suggested Responses
+  createSuggestedResponse(response: InsertSuggestedResponse): Promise<SuggestedResponse>;
+  getSuggestedResponsesByConversationId(conversationId: string): Promise<SuggestedResponse[]>;
+  updateSuggestedResponse(id: string, updates: Partial<SuggestedResponse>): Promise<SuggestedResponse | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -84,6 +92,7 @@ export class MemStorage implements IStorage {
   private promptSuggestions: Map<string, PromptSuggestion>;
   private promptUpdates: Map<string, PromptUpdate>;
   private satisfactionFeedback: Map<string, SatisfactionFeedback>;
+  private suggestedResponses: Map<string, SuggestedResponse>;
 
   constructor() {
     this.users = new Map();
@@ -95,6 +104,7 @@ export class MemStorage implements IStorage {
     this.promptSuggestions = new Map();
     this.promptUpdates = new Map();
     this.satisfactionFeedback = new Map();
+    this.suggestedResponses = new Map();
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -130,6 +140,12 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getTransferredConversations(): Promise<Conversation[]> {
+    return Array.from(this.conversations.values()).filter(
+      (conv) => conv.transferredToHuman === true && conv.status === 'active'
+    ).sort((a, b) => (b.transferredAt?.getTime() || 0) - (a.transferredAt?.getTime() || 0));
+  }
+
   async getAllConversations(): Promise<Conversation[]> {
     return Array.from(this.conversations.values())
       .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
@@ -150,6 +166,9 @@ export class MemStorage implements IStorage {
       conversationSummary: insertConv.conversationSummary ?? null,
       lastSummarizedAt: insertConv.lastSummarizedAt ?? null,
       messageCountAtLastSummary: insertConv.messageCountAtLastSummary ?? null,
+      transferredToHuman: insertConv.transferredToHuman ?? null,
+      transferReason: insertConv.transferReason ?? null,
+      transferredAt: insertConv.transferredAt ?? null,
       createdAt: new Date(),
       lastMessageTime: new Date(),
       metadata: insertConv.metadata || null,
@@ -373,6 +392,40 @@ export class MemStorage implements IStorage {
     return Array.from(this.satisfactionFeedback.values()).filter(
       (feedback) => feedback.assistantType === assistantType
     ).sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  // Suggested Responses
+  async createSuggestedResponse(insertResponse: InsertSuggestedResponse): Promise<SuggestedResponse> {
+    const id = randomUUID();
+    const response: SuggestedResponse = {
+      ...insertResponse,
+      id,
+      finalResponse: insertResponse.finalResponse || null,
+      wasEdited: insertResponse.wasEdited ?? null,
+      wasApproved: insertResponse.wasApproved ?? null,
+      approvedAt: insertResponse.approvedAt ?? null,
+      createdAt: new Date(),
+    };
+    this.suggestedResponses.set(id, response);
+    return response;
+  }
+
+  async getSuggestedResponsesByConversationId(conversationId: string): Promise<SuggestedResponse[]> {
+    return Array.from(this.suggestedResponses.values()).filter(
+      (response) => response.conversationId === conversationId
+    ).sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  async updateSuggestedResponse(id: string, updates: Partial<SuggestedResponse>): Promise<SuggestedResponse | undefined> {
+    const response = this.suggestedResponses.get(id);
+    if (!response) return undefined;
+    
+    const updated = { ...response, ...updates };
+    if (updates.wasApproved) {
+      updated.approvedAt = new Date();
+    }
+    this.suggestedResponses.set(id, updated);
+    return updated;
   }
 }
 
