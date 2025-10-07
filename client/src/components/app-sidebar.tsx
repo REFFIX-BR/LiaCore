@@ -16,7 +16,8 @@ import {
   Database, 
   Settings,
   Brain,
-  Activity
+  Activity,
+  Monitor as MonitorIcon
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -25,6 +26,11 @@ const menuItems = [
     title: "Dashboard",
     url: "/",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Monitor Supervisor",
+    url: "/monitor",
+    icon: MonitorIcon,
   },
   {
     title: "Conversas",

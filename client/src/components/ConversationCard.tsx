@@ -1,0 +1,108 @@
+import { Badge } from "@/components/ui/badge";
+import { AlertTriangle, Clock } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+interface ConversationCardData {
+  id: string;
+  chatId: string;
+  clientName: string;
+  assistant: string;
+  duration: number;
+  lastMessage: string;
+  sentiment: "positive" | "neutral" | "negative";
+  urgency: "normal" | "high" | "critical";
+  hasAlert: boolean;
+  transferSuggested: boolean;
+  lastMessageTime: Date;
+}
+
+interface ConversationCardProps {
+  conversation: ConversationCardData;
+  isActive: boolean;
+  onClick: () => void;
+}
+
+const sentimentEmoji = {
+  positive: "😊",
+  neutral: "😐",
+  negative: "😠",
+};
+
+const sentimentColors = {
+  positive: "bg-chart-2/10 text-chart-2",
+  neutral: "bg-muted text-muted-foreground",
+  negative: "bg-destructive/10 text-destructive",
+};
+
+const urgencyColors = {
+  normal: "bg-muted text-muted-foreground",
+  high: "bg-chart-3/10 text-chart-3",
+  critical: "bg-destructive/10 text-destructive",
+};
+
+const urgencyLabels = {
+  normal: "Normal",
+  high: "Alta",
+  critical: "Crítica",
+};
+
+export function ConversationCard({ conversation, isActive, onClick }: ConversationCardProps) {
+  const minutes = Math.floor(conversation.duration / 60);
+  const seconds = conversation.duration % 60;
+  const durationStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left p-4 rounded-lg border transition-colors hover-elevate active-elevate-2 ${
+        isActive ? "bg-accent border-primary" : "border-border"
+      }`}
+      data-testid={`conversation-card-${conversation.chatId}`}
+    >
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {conversation.hasAlert && (
+              <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
+            )}
+            {conversation.transferSuggested && (
+              <span className="text-base flex-shrink-0">↪️</span>
+            )}
+            <span className="text-sm font-medium truncate">
+              Chat #{conversation.chatId}
+            </span>
+          </div>
+          <div className="flex items-center gap-1 text-muted-foreground flex-shrink-0">
+            <Clock className="h-3 w-3" />
+            <span className="text-xs">{durationStr}</span>
+          </div>
+        </div>
+
+        <div>
+          <Badge variant="outline" className="mb-2">
+            {conversation.assistant}
+          </Badge>
+          <p className="text-sm font-medium mb-1">Cliente: {conversation.clientName}</p>
+        </div>
+
+        <div className="bg-muted/50 p-2 rounded text-xs italic">
+          "{conversation.lastMessage}"
+        </div>
+
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <Badge variant="outline" className={sentimentColors[conversation.sentiment]}>
+            {sentimentEmoji[conversation.sentiment]} {conversation.sentiment === "positive" ? "Positivo" : conversation.sentiment === "neutral" ? "Neutro" : "Negativo"}
+          </Badge>
+          <Badge variant="outline" className={urgencyColors[conversation.urgency]}>
+            Urgência: {urgencyLabels[conversation.urgency]}
+          </Badge>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Última mensagem {formatDistanceToNow(conversation.lastMessageTime, { addSuffix: true, locale: ptBR })}
+        </p>
+      </div>
+    </button>
+  );
+}

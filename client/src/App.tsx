@@ -11,11 +11,13 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import Conversations from "@/pages/Conversations";
 import Knowledge from "@/pages/Knowledge";
+import Monitor from "@/pages/Monitor";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/monitor" component={Monitor} />
       <Route path="/conversations" component={Conversations} />
       <Route path="/knowledge" component={Knowledge} />
       <Route path="/assistants" component={Dashboard} />
