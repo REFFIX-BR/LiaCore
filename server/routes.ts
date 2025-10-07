@@ -477,6 +477,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversation = { ...conversation, ...updateData };
         }
 
+        // Check if this is NPS feedback (conversation resolved and message is 0-10)
+        const npsMatch = messageText.trim().match(/^([0-9]|10)$/);
+        if (conversation.status === 'resolved' && npsMatch) {
+          const npsScore = parseInt(npsMatch[1]);
+          
+          // Armazenar feedback NPS diretamente
+          await storage.createSatisfactionFeedback({
+            conversationId: conversation.id,
+            assistantType: conversation.assistantType,
+            npsScore,
+            clientName: conversation.clientName,
+          });
+          
+          console.log(`📊 [NPS] Cliente ${clientName} avaliou com nota ${npsScore}`);
+          
+          // Enviar mensagem de agradecimento
+          const thankYouMessage = `Obrigado pelo seu feedback! 🙏\n\nSua opinião é muito importante para nós.`;
+          await sendWhatsAppMessage(phoneNumber, thankYouMessage);
+          
+          return res.json({ 
+            success: true, 
+            processed: true, 
+            nps_received: true,
+            score: npsScore 
+          });
+        }
+
         // Store user message
         await storage.createMessage({
           conversationId: conversation.id,
@@ -1042,6 +1069,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
             resolution: 'success',
           });
           console.log("📚 [Learning] Evento de sucesso criado para", conversation.assistantType);
+        }
+
+        // Enviar pesquisa NPS para cliente via WhatsApp
+        const metadata = conversation.metadata as any;
+        if (metadata?.source === 'evolution_api' && conversation.clientId) {
+          const npsMessage = `
+Olá ${conversation.clientName}! 👋
+
+Seu atendimento foi finalizado. 
+
+📊 *Pesquisa de Satisfação*
+
+Em uma escala de 0 a 10, qual a probabilidade de você recomendar nosso atendimento?
+
+Digite um número de *0* (muito improvável) a *10* (muito provável)
+          `.trim();
+
+          const sent = await sendWhatsAppMessage(conversation.clientId, npsMessage);
+          if (sent) {
+            console.log(`📊 [NPS] Pesquisa enviada para ${conversation.clientName} (${conversation.clientId})`);
+          }
         }
       }
 
