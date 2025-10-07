@@ -113,8 +113,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateConversation(conversation.id, {
           threadId,
         });
-      } else if (conversation.status === 'resolved') {
-        // Reopen resolved conversation
+      } else if (conversation.status === 'resolved' && !conversation.transferredToHuman) {
+        // Reopen resolved conversation (only if NOT transferred to human)
         console.log(`🔄 [Reopen] Reabrindo conversa finalizada: ${chatId}`);
         await storage.updateConversation(conversation.id, {
           status: 'active',
@@ -446,8 +446,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateConversation(conversation.id, {
             threadId,
           });
-        } else if (conversation.status === 'resolved') {
-          // Reopen resolved conversation
+        } else if (conversation.status === 'resolved' && !conversation.transferredToHuman) {
+          // Reopen resolved conversation (only if NOT transferred to human)
           console.log(`🔄 [Evolution Reopen] Reabrindo conversa finalizada: ${chatId} (${clientName})`);
           await storage.updateConversation(conversation.id, {
             status: 'active',
