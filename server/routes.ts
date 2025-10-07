@@ -598,7 +598,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/monitor/conversations", async (req, res) => {
     try {
       const conversations = await storage.getAllActiveConversations();
-      return res.json(conversations);
+      
+      const conversationsWithMessages = await Promise.all(
+        conversations.map(async (conv) => {
+          // Optimized: Get only the last 10 messages from database (DESC order - newest first)
+          const recentMessages = await storage.getRecentMessagesByConversationId(conv.id, 10);
+          
+          // Since messages come in DESC order, the first match is the most recent
+          const lastClientMessage = recentMessages
+            .filter(m => m.role === 'user')[0];
+          
+          const lastAIMessage = recentMessages
+            .filter(m => m.role === 'assistant')[0];
+          
+          return {
+            ...conv,
+            lastClientMessage: lastClientMessage?.content || null,
+            lastAIMessage: lastAIMessage?.content || null,
+          };
+        })
+      );
+      
+      return res.json(conversationsWithMessages);
     } catch (error) {
       console.error("Monitor error:", error);
       return res.status(500).json({ error: "Internal server error" });

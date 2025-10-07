@@ -39,6 +39,7 @@ export interface IStorage {
   
   // Messages
   getMessagesByConversationId(conversationId: string): Promise<Message[]>;
+  getRecentMessagesByConversationId(conversationId: string, limit: number): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
   
   // Alerts
@@ -190,6 +191,11 @@ export class MemStorage implements IStorage {
     return Array.from(this.messages.values()).filter(
       (msg) => msg.conversationId === conversationId
     ).sort((a, b) => (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0));
+  }
+
+  async getRecentMessagesByConversationId(conversationId: string, limit: number): Promise<Message[]> {
+    const allMessages = await this.getMessagesByConversationId(conversationId);
+    return allMessages.slice(-limit).reverse();
   }
 
   async createMessage(insertMsg: InsertMessage): Promise<Message> {
@@ -496,6 +502,13 @@ export class DbStorage implements IStorage {
     return await db.select().from(schema.messages)
       .where(eq(schema.messages.conversationId, conversationId))
       .orderBy(schema.messages.timestamp);
+  }
+
+  async getRecentMessagesByConversationId(conversationId: string, limit: number): Promise<Message[]> {
+    return await db.select().from(schema.messages)
+      .where(eq(schema.messages.conversationId, conversationId))
+      .orderBy(desc(schema.messages.timestamp))
+      .limit(limit);
   }
 
   async createMessage(insertMsg: InsertMessage): Promise<Message> {

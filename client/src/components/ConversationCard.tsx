@@ -10,6 +10,8 @@ interface ConversationCardData {
   assistant: string;
   duration: number;
   lastMessage: string;
+  lastClientMessage?: string;
+  lastAIMessage?: string;
   sentiment: "positive" | "neutral" | "negative";
   urgency: "normal" | "high" | "critical";
   hasAlert: boolean;
@@ -86,9 +88,23 @@ export function ConversationCard({ conversation, isActive, onClick }: Conversati
           <p className="text-sm font-medium mb-1">Cliente: {conversation.clientName}</p>
         </div>
 
-        <div className="bg-muted/50 p-2 rounded text-xs italic">
-          "{conversation.lastMessage}"
-        </div>
+        {conversation.lastClientMessage && (
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">Cliente:</p>
+            <div className="bg-muted/50 p-2 rounded text-xs italic line-clamp-2">
+              "{conversation.lastClientMessage}"
+            </div>
+          </div>
+        )}
+
+        {conversation.lastAIMessage && (
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">IA:</p>
+            <div className="bg-primary/5 p-2 rounded text-xs italic line-clamp-2">
+              "{conversation.lastAIMessage}"
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <Badge variant="outline" className={sentimentColors[conversation.sentiment]}>

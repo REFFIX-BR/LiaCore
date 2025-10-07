@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Search } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { monitorAPI } from "@/lib/api";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -15,6 +16,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 export default function Monitor() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
+  const [activeDepartment, setActiveDepartment] = useState("all");
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [showNPSDialog, setShowNPSDialog] = useState(false);
@@ -95,6 +97,16 @@ export default function Monitor() {
     },
   });
 
+  const departments = [
+    { id: "all", label: "Todos", value: "all" },
+    { id: "apresentacao", label: "Apresentação", value: "apresentacao" },
+    { id: "financeiro", label: "Financeiro", value: "financeiro" },
+    { id: "suporte", label: "Suporte Técnico", value: "suporte" },
+    { id: "comercial", label: "Comercial", value: "comercial" },
+    { id: "ouvidoria", label: "Ouvidoria", value: "ouvidoria" },
+    { id: "cancelamento", label: "Cancelamento", value: "cancelamento" },
+  ];
+
   const filters = [
     { id: "all", label: "Todas" },
     { id: "transfer", label: "Transferidas" },
@@ -103,14 +115,40 @@ export default function Monitor() {
   ];
 
   const filteredConversations = conversations.filter(conv => {
+    let passesStatusFilter = true;
+    let passesDepartmentFilter = true;
+    let passesSearchFilter = true;
+
     if (activeFilter === "alerts") {
-      return alerts.some(alert => alert.conversationId === conv.id);
+      passesStatusFilter = alerts.some(alert => alert.conversationId === conv.id);
+    } else if (activeFilter === "all") {
+      passesStatusFilter = conv.status === "active" && !conv.metadata?.transferred;
+    } else if (activeFilter === "transfer") {
+      passesStatusFilter = conv.metadata?.transferred === true;
+    } else if (activeFilter === "resolved") {
+      passesStatusFilter = conv.status === "resolved";
     }
-    if (activeFilter === "all") return conv.status === "active" && !conv.metadata?.transferred;
-    if (activeFilter === "transfer") return conv.metadata?.transferred === true;
-    if (activeFilter === "resolved") return conv.status === "resolved";
-    return true;
+
+    if (activeDepartment !== "all") {
+      passesDepartmentFilter = conv.assistantType === activeDepartment;
+    }
+
+    if (searchQuery.trim()) {
+      const searchLower = searchQuery.toLowerCase();
+      passesSearchFilter = 
+        conv.chatId.toLowerCase().includes(searchLower) ||
+        conv.clientName.toLowerCase().includes(searchLower);
+    }
+
+    return passesStatusFilter && passesDepartmentFilter && passesSearchFilter;
   });
+
+  const getConversationCountByDepartment = (deptValue: string) => {
+    if (deptValue === "all") {
+      return conversations.filter(c => c.status === "active").length;
+    }
+    return conversations.filter(c => c.assistantType === deptValue && c.status === "active").length;
+  };
 
   const conversationCards = filteredConversations.map(conv => ({
     id: conv.id,
@@ -119,6 +157,8 @@ export default function Monitor() {
     assistant: `LIA ${conv.assistantType.charAt(0).toUpperCase() + conv.assistantType.slice(1)}`,
     duration: conv.duration,
     lastMessage: conv.lastMessage || "",
+    lastClientMessage: (conv as any).lastClientMessage || "",
+    lastAIMessage: (conv as any).lastAIMessage || "",
     sentiment: (conv.sentiment || "neutral") as "positive" | "neutral" | "negative",
     urgency: (conv.urgency || "normal") as "normal" | "high" | "critical",
     hasAlert: alerts.some(a => a.conversationId === conv.id),
@@ -239,50 +279,71 @@ export default function Monitor() {
         ))}
       </div>
 
-      <div className="grid grid-cols-12 gap-4 h-[calc(100vh-14rem)]">
-        <div className="col-span-4">
-          <div className="border rounded-lg h-full flex flex-col">
-            <div className="p-4 border-b">
-              <h2 className="font-semibold">Fila de Conversas</h2>
-              <Badge variant="outline" className="mt-2">
-                {conversationCards.length} conversas
+      <Tabs value={activeDepartment} onValueChange={setActiveDepartment} className="w-full">
+        <TabsList className="w-full justify-start">
+          {departments.map((dept) => (
+            <TabsTrigger 
+              key={dept.id} 
+              value={dept.value}
+              data-testid={`tab-${dept.id}`}
+            >
+              {dept.label}
+              <Badge variant="secondary" className="ml-2">
+                {getConversationCountByDepartment(dept.value)}
               </Badge>
-            </div>
-            <ScrollArea className="flex-1">
-              <div className="p-2 space-y-2">
-                {conversationCards.map((conv) => (
-                  <ConversationCard
-                    key={conv.id}
-                    conversation={conv}
-                    isActive={activeConvId === conv.id}
-                    onClick={() => setActiveConvId(conv.id)}
-                  />
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
-        </div>
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-        <div className="col-span-8">
-          {activeConversation ? (
-            <ConversationDetails
-              chatId={activeConversation.chatId}
-              clientName={activeConversation.clientName}
-              messages={activeMessages}
-              analysis={mockAnalysis}
-              isPaused={isPaused}
-              onPauseToggle={handlePauseToggle}
-              onTransfer={handleTransfer}
-              onAddNote={handleAddNote}
-              onMarkResolved={handleMarkResolved}
-            />
-          ) : (
-            <div className="border rounded-lg h-full flex items-center justify-center">
-              <p className="text-muted-foreground">Selecione uma conversa para ver os detalhes</p>
+        {departments.map((dept) => (
+          <TabsContent key={dept.id} value={dept.value} className="mt-4">
+            <div className="grid grid-cols-12 gap-4 h-[calc(100vh-18rem)]">
+              <div className="col-span-4">
+                <div className="border rounded-lg h-full flex flex-col">
+                  <div className="p-4 border-b">
+                    <h2 className="font-semibold">{dept.label}</h2>
+                    <Badge variant="outline" className="mt-2">
+                      {conversationCards.length} conversas
+                    </Badge>
+                  </div>
+                  <ScrollArea className="flex-1">
+                    <div className="p-2 space-y-2">
+                      {conversationCards.map((conv) => (
+                        <ConversationCard
+                          key={conv.id}
+                          conversation={conv}
+                          isActive={activeConvId === conv.id}
+                          onClick={() => setActiveConvId(conv.id)}
+                        />
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              </div>
+
+              <div className="col-span-8">
+                {activeConversation ? (
+                  <ConversationDetails
+                    chatId={activeConversation.chatId}
+                    clientName={activeConversation.clientName}
+                    messages={activeMessages}
+                    analysis={mockAnalysis}
+                    isPaused={isPaused}
+                    onPauseToggle={handlePauseToggle}
+                    onTransfer={handleTransfer}
+                    onAddNote={handleAddNote}
+                    onMarkResolved={handleMarkResolved}
+                  />
+                ) : (
+                  <div className="border rounded-lg h-full flex items-center justify-center">
+                    <p className="text-muted-foreground">Selecione uma conversa para ver os detalhes</p>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </div>
-      </div>
+          </TabsContent>
+        ))}
+      </Tabs>
 
       {activeConversation && (
         <NPSFeedbackDialog
