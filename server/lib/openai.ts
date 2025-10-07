@@ -84,7 +84,13 @@ export async function sendMessageAndGetResponse(
   assistantId: string,
   userMessage: string,
   chatId?: string
-): Promise<{ response: string; transferred?: boolean; transferredTo?: string }> {
+): Promise<{ 
+  response: string; 
+  transferred?: boolean; 
+  transferredTo?: string;
+  resolved?: boolean;
+  resolveReason?: string;
+}> {
   try {
     if (!threadId) {
       throw new Error("Thread ID is required");
@@ -120,6 +126,7 @@ export async function sendMessageAndGetResponse(
     const maxAttempts = 60;
     const runId = run.id;
     let transferData: { transferred?: boolean; transferredTo?: string } = {};
+    let resolveData: { resolved?: boolean; resolveReason?: string } = {};
 
     while (run.status === "queued" || run.status === "in_progress" || run.status === "requires_action") {
       if (attempts >= maxAttempts) {
@@ -142,6 +149,17 @@ export async function sendMessageAndGetResponse(
                 transferData = {
                   transferred: true,
                   transferredTo: transferResult.departamento
+                };
+              }
+            }
+            
+            // Check if this was a resolve call
+            if (toolCall.function.name === "finalizar_conversa") {
+              const resolveResult = JSON.parse(result);
+              if (resolveResult.success) {
+                resolveData = {
+                  resolved: true,
+                  resolveReason: resolveResult.motivo
                 };
               }
             }
@@ -198,13 +216,15 @@ export async function sendMessageAndGetResponse(
           // Return a helpful error to the user
           return {
             response: "Desculpe, há um problema de configuração no sistema. Por favor, contate o suporte técnico. (Erro: Assistente configurado incorretamente)",
-            ...transferData
+            ...transferData,
+            ...resolveData
           };
         }
         
         return {
           response: responseText,
-          ...transferData
+          ...transferData,
+          ...resolveData
         };
       }
     }
@@ -214,7 +234,17 @@ export async function sendMessageAndGetResponse(
       console.log("✅ [OpenAI] Transfer requested but no response - using fallback message");
       return {
         response: `Entendido! Vou transferir você para ${transferData.transferredTo || 'um atendente humano'}. Em instantes você será atendido por nossa equipe.`,
-        ...transferData
+        ...transferData,
+        ...resolveData
+      };
+    }
+
+    // If resolve was requested but no assistant message, return resolve confirmation
+    if (resolveData.resolved) {
+      console.log("✅ [OpenAI] Resolve requested but no response - using fallback message");
+      return {
+        response: "Atendimento finalizado com sucesso! Em breve você receberá uma pesquisa de satisfação.",
+        ...resolveData
       };
     }
 
@@ -285,6 +315,18 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
           departamento,
           motivo,
           mensagem: "Transferência iniciada com sucesso",
+        });
+
+      case "finalizar_conversa":
+        const motivo_finalizacao = args.motivo || "Problema resolvido";
+        
+        console.log("✅ [Resolve] IA solicitou finalização:", { chatId, motivo: motivo_finalizacao });
+        
+        // Mark conversation for resolution (will be processed in routes.ts)
+        return JSON.stringify({
+          success: true,
+          motivo: motivo_finalizacao,
+          mensagem: "Conversa finalizada com sucesso. Pesquisa de satisfação será enviada ao cliente.",
         });
 
       case "agendar_visita":

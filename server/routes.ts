@@ -166,6 +166,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sentiment = message.includes("!") || message.toUpperCase() === message ? "negative" : "neutral";
       const urgency = message.includes("URGENTE") || message.includes("!!!") ? "critical" : "normal";
 
+      // Check if AI requested conversation resolution
+      if (result.resolved) {
+        console.log("✅ [AI Resolve] Processando finalização automática pela IA");
+        
+        // Create supervisor action
+        await storage.createSupervisorAction({
+          conversationId: conversation.id,
+          action: "resolve",
+          notes: `Finalização automática pela IA: ${result.resolveReason || 'Problema resolvido'}`,
+          createdBy: "IA Assistant",
+        });
+
+        // Update conversation - mark as resolved and set awaitingNPS flag
+        const existingMetadata = typeof conversation.metadata === 'object' && conversation.metadata !== null 
+          ? conversation.metadata 
+          : {};
+          
+        await storage.updateConversation(conversation.id, {
+          status: 'resolved',
+          lastMessage: message,
+          lastMessageTime: new Date(),
+          duration: (conversation.duration || 0) + 30,
+          sentiment,
+          urgency,
+          metadata: {
+            ...existingMetadata,
+            awaitingNPS: true,
+            resolvedBy: 'IA Assistant',
+            resolvedAt: new Date().toISOString(),
+            resolveReason: result.resolveReason || 'Problema resolvido',
+          },
+        });
+
+        console.log(`✅ [AI Resolve] Conversa ${conversation.id} marcada como resolvida, enviando NPS...`);
+
+        // Send NPS survey via WhatsApp
+        const npsSurveyMessage = "Obrigado pelo contato! Para nos ajudar a melhorar, por favor avalie nosso atendimento de 0 a 10:";
+        
+        try {
+          await sendWhatsAppMessage(chatId, npsSurveyMessage);
+          console.log(`📊 [NPS] Pesquisa enviada ao cliente ${clientName}`);
+        } catch (error) {
+          console.error("❌ [NPS] Erro ao enviar pesquisa:", error);
+        }
+
+        return res.json({
+          success: true,
+          response: responseText,
+          assistantType: conversation.assistantType,
+          chatId,
+          resolved: true,
+          npsSent: true,
+        });
+      }
+
       // Check if AI requested transfer
       if (result.transferred) {
         console.log("🔀 [Transfer] Processando transferência automática da IA");
@@ -207,7 +262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Normal update without transfer
+      // Normal update without transfer or resolve
       await storage.updateConversation(conversation.id, {
         lastMessage: message,
         lastMessageTime: new Date(),
