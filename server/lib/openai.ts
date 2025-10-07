@@ -36,21 +36,30 @@ Mensagem do cliente: "${message}"
 
 Responda apenas com o nome do assistente (suporte, comercial, financeiro, apresentacao, ouvidoria, ou cancelamento).`;
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [{ role: "user", content: routingPrompt }],
-    temperature: 0.3,
-  });
+  try {
+    // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+    const response = await openai.chat.completions.create({
+      model: "gpt-5",
+      messages: [{ role: "user", content: routingPrompt }],
+    });
 
-  const assistantType = response.choices[0].message.content?.trim().toLowerCase() || "suporte";
-  const validTypes = ["suporte", "comercial", "financeiro", "apresentacao", "ouvidoria", "cancelamento"];
-  const finalType = validTypes.includes(assistantType) ? assistantType : "suporte";
-  
-  return {
-    assistantType: finalType,
-    assistantId: ASSISTANT_IDS[finalType as keyof typeof ASSISTANT_IDS],
-    confidence: 0.85,
-  };
+    const assistantType = response.choices[0].message.content?.trim().toLowerCase() || "suporte";
+    const validTypes = ["suporte", "comercial", "financeiro", "apresentacao", "ouvidoria", "cancelamento"];
+    const finalType = validTypes.includes(assistantType) ? assistantType : "suporte";
+    
+    return {
+      assistantType: finalType,
+      assistantId: ASSISTANT_IDS[finalType as keyof typeof ASSISTANT_IDS],
+      confidence: 0.85,
+    };
+  } catch (error) {
+    console.error("Routing error:", error);
+    return {
+      assistantType: "suporte",
+      assistantId: ASSISTANT_IDS.suporte,
+      confidence: 0.5,
+    };
+  }
 }
 
 export async function createThread(): Promise<string> {
@@ -58,97 +67,138 @@ export async function createThread(): Promise<string> {
   return thread.id;
 }
 
-export async function addMessageToThread(threadId: string, message: string): Promise<void> {
-  await openai.beta.threads.messages.create(threadId, {
-    role: "user",
-    content: message,
-  });
-}
+export async function sendMessageAndGetResponse(
+  threadId: string,
+  assistantId: string,
+  userMessage: string
+): Promise<string> {
+  try {
+    await openai.beta.threads.messages.create(threadId, {
+      role: "user",
+      content: userMessage,
+    });
 
-export async function runAssistant(threadId: string, assistantId: string): Promise<string> {
-  const run = await openai.beta.threads.runs.create(threadId, {
-    assistant_id: assistantId,
-  });
+    const run = await openai.beta.threads.runs.create(threadId, {
+      assistant_id: assistantId,
+    });
 
-  let runStatus = await openai.beta.threads.runs.retrieve(run.thread_id, run.id);
+    let runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
+    let attempts = 0;
+    const maxAttempts = 30;
 
-  while (runStatus.status !== "completed") {
-    if (runStatus.status === "failed" || runStatus.status === "cancelled" || runStatus.status === "expired") {
-      throw new Error(`Run failed with status: ${runStatus.status}`);
+    while (runStatus.status !== "completed" && attempts < maxAttempts) {
+      if (runStatus.status === "failed" || runStatus.status === "cancelled" || runStatus.status === "expired") {
+        throw new Error(`Run failed with status: ${runStatus.status}`);
+      }
+
+      if (runStatus.status === "requires_action" && runStatus.required_action?.type === "submit_tool_outputs") {
+        const toolCalls = runStatus.required_action.submit_tool_outputs.tool_calls;
+        const toolOutputs = await Promise.all(
+          toolCalls.map(async (toolCall) => {
+            const result = await handleToolCall(toolCall.function.name, toolCall.function.arguments);
+            return {
+              tool_call_id: toolCall.id,
+              output: result,
+            };
+          })
+        );
+
+        await openai.beta.threads.runs.submitToolOutputs(threadId, run.id, {
+          tool_outputs: toolOutputs,
+        });
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
+      attempts++;
     }
 
-    if (runStatus.status === "requires_action") {
-      const toolCalls = runStatus.required_action?.submit_tool_outputs?.tool_calls || [];
-      const toolOutputs = await handleToolCalls(toolCalls);
-      
-      await openai.beta.threads.runs.submitToolOutputs(run.thread_id, run.id, {
-        tool_outputs: toolOutputs,
-      });
+    if (attempts >= maxAttempts) {
+      throw new Error("Run timed out");
     }
 
-    await new Promise(resolve => setTimeout(resolve, 500));
-    runStatus = await openai.beta.threads.runs.retrieve(run.thread_id, run.id);
-  }
+    const messages = await openai.beta.threads.messages.list(threadId, {
+      order: "desc",
+      limit: 1,
+    });
 
-  const messages = await openai.beta.threads.messages.list(threadId);
-  const lastMessage = messages.data[0];
-  
-  if (lastMessage.role === "assistant" && lastMessage.content[0].type === "text") {
-    return lastMessage.content[0].text.value;
-  }
+    const lastMessage = messages.data[0];
+    
+    if (lastMessage && lastMessage.role === "assistant") {
+      const content = lastMessage.content[0];
+      if (content.type === "text") {
+        return content.text.value;
+      }
+    }
 
-  return "Desculpe, não consegui processar sua mensagem.";
+    return "Desculpe, não consegui processar sua mensagem.";
+  } catch (error) {
+    console.error("Assistant run error:", error);
+    return "Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.";
+  }
 }
 
-async function handleToolCalls(toolCalls: any[]): Promise<any[]> {
-  const outputs = [];
-
-  for (const toolCall of toolCalls) {
-    const functionName = toolCall.function.name;
-    const args = JSON.parse(toolCall.function.arguments);
-
-    let result = "";
+async function handleToolCall(functionName: string, argsString: string): Promise<string> {
+  try {
+    const args = JSON.parse(argsString);
 
     switch (functionName) {
       case "verificar_conexao":
-        result = JSON.stringify({
+        return JSON.stringify({
           status: "online",
           sinal: "excelente",
-          velocidade: "500 Mbps",
+          velocidade_download: "500 Mbps",
+          velocidade_upload: "250 Mbps",
           latencia: "12ms",
+          pacotes_perdidos: "0%",
         });
-        break;
 
       case "consultar_fatura":
-        result = JSON.stringify({
+        return JSON.stringify({
           valor: "R$ 129,90",
           vencimento: "15/11/2024",
           status: "em aberto",
+          codigo_barras: "34191.79001 01043.510047 91020.150008 1 96610000012990",
+          protocolo: `#${Math.floor(Math.random() * 1000000)}`,
         });
-        break;
 
       case "consultar_base_de_conhecimento":
-        result = await searchKnowledgeBase(args.query);
-        break;
+        const query = args.query || "";
+        return JSON.stringify({
+          contexto: `Baseado na documentação técnica sobre "${query}", encontramos as seguintes informações: Para problemas de conexão, verifique se todos os cabos estão conectados corretamente e reinicie o equipamento. A latência esperada para planos Fibra é entre 5-15ms. Velocidades podem variar dependendo do horário e quantidade de dispositivos conectados.`,
+          relevancia: 0.92,
+          fonte: "Base de Conhecimento TR Telecom",
+        });
+
+      case "agendar_visita":
+        return JSON.stringify({
+          protocolo: `#VST-${Math.floor(Math.random() * 1000000)}`,
+          data_agendada: args.data || "Próxima terça-feira",
+          horario: args.horario || "14:00-18:00",
+          tecnico: "João Silva",
+          status: "confirmado",
+        });
+
+      case "consultar_planos":
+        return JSON.stringify({
+          planos: [
+            { nome: "Fibra 300", velocidade: "300 Mbps", valor: "R$ 99,90" },
+            { nome: "Fibra 500", velocidade: "500 Mbps", valor: "R$ 129,90" },
+            { nome: "Fibra Gamer", velocidade: "1 Gbps", valor: "R$ 199,90" },
+          ],
+        });
 
       default:
-        result = JSON.stringify({ error: "Função não implementada" });
+        return JSON.stringify({
+          error: `Função ${functionName} não implementada`,
+        });
     }
-
-    outputs.push({
-      tool_call_id: toolCall.id,
-      output: result,
+  } catch (error) {
+    console.error(`Tool call error for ${functionName}:`, error);
+    return JSON.stringify({
+      error: `Erro ao executar ${functionName}`,
     });
   }
-
-  return outputs;
-}
-
-async function searchKnowledgeBase(query: string): Promise<string> {
-  return JSON.stringify({
-    context: `Informações sobre: ${query}. Baseado na documentação técnica, encontramos as especificações relevantes para sua consulta.`,
-    relevance: 0.92,
-  });
 }
 
 export { openai };

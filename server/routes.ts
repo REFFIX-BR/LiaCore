@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema } from "@shared/schema";
-import { routeMessage, createThread, addMessageToThread, runAssistant } from "./lib/openai";
+import { routeMessage, createThread, sendMessageAndGetResponse } from "./lib/openai";
 import { storeConversationThread, getConversationThread, searchKnowledge } from "./lib/upstash";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -52,11 +52,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         assistant: null,
       });
 
-      // Add message to thread and run assistant
+      // Send message and get response
       if (threadId) {
-        await addMessageToThread(threadId, message);
         const assistantId = (conversation.metadata as any)?.routing?.assistantId;
-        const response = await runAssistant(threadId, assistantId);
+        const response = await sendMessageAndGetResponse(threadId, assistantId, message);
 
         // Store assistant response
         await storage.createMessage({
@@ -66,11 +65,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           assistant: conversation.assistantType,
         });
 
+        // Analyze sentiment (simplified)
+        const sentiment = message.includes("!") || message.toUpperCase() === message ? "negative" : "neutral";
+        const urgency = message.includes("URGENTE") || message.includes("!!!") ? "critical" : "normal";
+
         // Update conversation
         await storage.updateConversation(conversation.id, {
           lastMessage: message,
           lastMessageTime: new Date(),
-          duration: (conversation.duration || 0) + 1,
+          duration: (conversation.duration || 0) + 30,
+          sentiment,
+          urgency,
         });
 
         return res.json({
