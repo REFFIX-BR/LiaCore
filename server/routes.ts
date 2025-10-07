@@ -113,6 +113,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateConversation(conversation.id, {
           threadId,
         });
+      } else if (conversation.status === 'resolved') {
+        // Reopen resolved conversation
+        console.log(`🔄 [Reopen] Reabrindo conversa finalizada: ${chatId}`);
+        await storage.updateConversation(conversation.id, {
+          status: 'active',
+        });
+        conversation = { ...conversation, status: 'active' };
       }
 
       // Store user message
