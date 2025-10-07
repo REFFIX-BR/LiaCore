@@ -31,7 +31,7 @@ Preferred communication style: Simple, everyday language.
 - **OpenAI Integration**: Manages threads and message exchanges with OpenAI Assistants API.
 - **Upstash Integration**: Handles vector search for RAG knowledge base and Redis for conversation thread storage.
 **Session Management**: OpenAI thread-based conversations with 7-day expiry stored in Redis.
-**Storage Layer**: In-memory storage with an interface (`IStorage`) designed for database migration.
+**Storage Layer**: PostgreSQL-backed storage using `DbStorage` class implementing `IStorage` interface via Drizzle ORM for permanent data persistence.
 
 ### Database & Data Storage
 
