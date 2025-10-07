@@ -101,6 +101,17 @@ export const promptUpdates = pgTable("prompt_updates", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const satisfactionFeedback = pgTable("satisfaction_feedback", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull(),
+  assistantType: text("assistant_type").notNull(),
+  npsScore: integer("nps_score").notNull(), // 0-10
+  category: text("category").notNull(), // 'detractor' (0-6), 'neutral' (7-8), 'promoter' (9-10)
+  comment: text("comment"),
+  clientName: text("client_name"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -142,6 +153,11 @@ export const insertPromptUpdateSchema = createInsertSchema(promptUpdates).omit({
   createdAt: true,
 });
 
+export const insertSatisfactionFeedbackSchema = createInsertSchema(satisfactionFeedback).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Conversation = typeof conversations.$inferSelect;
@@ -158,3 +174,5 @@ export type PromptSuggestion = typeof promptSuggestions.$inferSelect;
 export type InsertPromptSuggestion = z.infer<typeof insertPromptSuggestionSchema>;
 export type PromptUpdate = typeof promptUpdates.$inferSelect;
 export type InsertPromptUpdate = z.infer<typeof insertPromptUpdateSchema>;
+export type SatisfactionFeedback = typeof satisfactionFeedback.$inferSelect;
+export type InsertSatisfactionFeedback = z.infer<typeof insertSatisfactionFeedbackSchema>;
