@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ConversationCard } from "@/components/ConversationCard";
 import { ConversationDetails } from "@/components/ConversationDetails";
-import { NPSFeedbackDialog } from "@/components/NPSFeedbackDialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { monitorAPI } from "@/lib/api";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 
 export default function Monitor() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -20,7 +19,6 @@ export default function Monitor() {
   const [activeDepartment, setActiveDepartment] = useState("all");
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
-  const [showNPSDialog, setShowNPSDialog] = useState(false);
   const { toast } = useToast();
 
   const { data: conversations = [], isLoading: conversationsLoading } = useQuery({
@@ -72,29 +70,7 @@ export default function Monitor() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations"] });
       setActiveConvId(null);
-      toast({ title: "Chat Resolvido", description: "Conversa marcada como resolvida" });
-    },
-  });
-
-  const feedbackMutation = useMutation({
-    mutationFn: async ({ conversationId, assistantType, npsScore, comment, clientName }: {
-      conversationId: string;
-      assistantType: string;
-      npsScore: number;
-      comment?: string;
-      clientName?: string;
-    }) => {
-      return apiRequest("POST", "/api/feedback", {
-        conversationId,
-        assistantType,
-        npsScore,
-        comment,
-        clientName,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/metrics/nps"] });
-      toast({ title: "Feedback Enviado", description: "Obrigado pela avaliação!" });
+      toast({ title: "Chat Resolvido", description: "Conversa finalizada. Pesquisa NPS enviada ao cliente via WhatsApp." });
     },
   });
 
@@ -216,25 +192,7 @@ export default function Monitor() {
 
   const handleMarkResolved = () => {
     if (activeConvId) {
-      setShowNPSDialog(true);
-    }
-  };
-
-  const handleNPSSubmit = async (score: number, comment: string) => {
-    if (activeConvId && activeConversation) {
-      try {
-        await feedbackMutation.mutateAsync({
-          conversationId: activeConvId,
-          assistantType: activeConversation.assistantType,
-          npsScore: score,
-          comment: comment || undefined,
-          clientName: activeConversation.clientName,
-        });
-        
-        resolveMutation.mutate(activeConvId);
-      } catch (error) {
-        throw error;
-      }
+      resolveMutation.mutate(activeConvId);
     }
   };
 
@@ -344,23 +302,6 @@ export default function Monitor() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {activeConversation && (
-        <NPSFeedbackDialog
-          open={showNPSDialog}
-          onClose={() => {
-            setShowNPSDialog(false);
-            if (activeConvId) {
-              resolveMutation.mutate(activeConvId);
-            }
-          }}
-          conversationId={activeConvId!}
-          assistantType={activeConversation.assistantType}
-          clientName={activeConversation.clientName}
-          onSubmit={handleNPSSubmit}
-          isSubmitting={feedbackMutation.isPending}
-        />
-      )}
     </div>
   );
 }

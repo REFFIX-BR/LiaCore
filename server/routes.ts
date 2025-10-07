@@ -479,10 +479,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Check if this is NPS feedback (awaiting NPS flag set and message is 0-10)
         const metadata = conversation.metadata as any || {};
-        const npsMatch = messageText.trim().match(/^([0-9]|10)$/);
+        
+        // Regex mais flexível: aceita "9", "9.", "Nota 9", "nota: 8", etc.
+        // Extrai primeiro número de 0-10 encontrado
+        const npsMatch = messageText.trim().match(/\b([0-9]|10)\b/);
+        
+        console.log(`🔍 [NPS Debug] Conversa ${conversation.id}:`, {
+          awaitingNPS: metadata.awaitingNPS,
+          messageText,
+          npsMatch: npsMatch ? npsMatch[0] : null,
+          status: conversation.status
+        });
         
         if (metadata.awaitingNPS && npsMatch) {
-          const npsScore = parseInt(npsMatch[1], 10);
+          const npsScore = parseInt(npsMatch[0], 10);
+          console.log(`📊 [NPS] Detectada resposta NPS: ${npsScore} de ${clientName}`);
           
           // Verificar se já existe feedback para esta conversa (evitar duplicatas)
           const existingFeedback = await storage.getSatisfactionFeedbackByConversationId(conversation.id);
@@ -508,12 +519,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           // Armazenar feedback NPS diretamente
-          await storage.createSatisfactionFeedback({
+          console.log(`💾 [NPS] Salvando feedback no banco:`, {
+            conversationId: conversation.id,
+            assistantType: conversation.assistantType,
+            npsScore,
+            clientName: conversation.clientName
+          });
+          
+          const savedFeedback = await storage.createSatisfactionFeedback({
             conversationId: conversation.id,
             assistantType: conversation.assistantType,
             npsScore,
             clientName: conversation.clientName,
           });
+          
+          console.log(`✅ [NPS] Feedback salvo com ID:`, savedFeedback.id);
           
           // Remover flag awaitingNPS
           await storage.updateConversation(conversation.id, {
@@ -530,7 +550,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             success: true, 
             processed: true, 
             nps_received: true,
-            score: npsScore 
+            score: npsScore,
+            feedbackId: savedFeedback.id 
           });
         }
 
@@ -1935,6 +1956,34 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
       return res.json(conversations);
     } catch (error) {
       console.error("Get transferred conversations error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get single conversation by ID
+  app.get("/api/conversations/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      return res.json(conversation);
+    } catch (error) {
+      console.error("Get conversation error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get feedback by conversation ID
+  app.get("/api/feedback/:conversationId", async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      const feedback = await storage.getSatisfactionFeedbackByConversationId(conversationId);
+      // Retorna 200 com null se não houver feedback (não é erro)
+      return res.json({ feedback: feedback || null });
+    } catch (error) {
+      console.error("Get feedback error:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
