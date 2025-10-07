@@ -1,5 +1,6 @@
 import { Index } from "@upstash/vector";
 import { Redis } from "@upstash/redis";
+import { generateEmbedding } from "./openai";
 
 export const vectorIndex = new Index({
   url: process.env.UPSTASH_VECTOR_REST_URL!,
@@ -24,8 +25,10 @@ export async function searchKnowledge(query: string, topK: number = 5): Promise<
 }>> {
   console.log(`🔍 [Upstash] Searching knowledge base:`, { query, topK });
   try {
+    const queryEmbedding = await generateEmbedding(query);
+    
     const results = await vectorIndex.query({
-      data: query,
+      vector: queryEmbedding,
       topK,
       includeMetadata: true,
     });
@@ -72,9 +75,11 @@ export async function addKnowledgeChunk(
 ): Promise<void> {
   console.log("🔵 [Upstash] Adding knowledge chunk:", { id, source });
   try {
+    const embedding = await generateEmbedding(content);
+    
     const result = await vectorIndex.upsert({
       id,
-      data: content,
+      vector: embedding,
       metadata: {
         content,
         source,
@@ -98,15 +103,20 @@ export async function addKnowledgeChunks(
 ): Promise<void> {
   console.log(`🔵 [Upstash] Adding ${chunks.length} knowledge chunks`);
   try {
-    const upsertData = chunks.map(chunk => ({
-      id: chunk.id,
-      data: chunk.content,
-      metadata: {
-        content: chunk.content,
-        source: chunk.source,
-        ...chunk.metadata,
-      },
-    }));
+    const upsertData = await Promise.all(
+      chunks.map(async (chunk) => {
+        const embedding = await generateEmbedding(chunk.content);
+        return {
+          id: chunk.id,
+          vector: embedding,
+          metadata: {
+            content: chunk.content,
+            source: chunk.source,
+            ...chunk.metadata,
+          },
+        };
+      })
+    );
 
     const result = await vectorIndex.upsert(upsertData);
     console.log(`✅ [Upstash] ${chunks.length} chunks added successfully:`, result);

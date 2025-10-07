@@ -5,6 +5,14 @@ const openai = new OpenAI({
   organization: "org-AaGGTB8W7UF7Cyzrxi12lVL8",
 });
 
+export async function generateEmbedding(text: string): Promise<number[]> {
+  const response = await openai.embeddings.create({
+    model: "text-embedding-3-small",
+    input: text,
+  });
+  return response.data[0].embedding;
+}
+
 export const ASSISTANT_IDS = {
   cortex: process.env.CORTEX_ASSISTANT_ID!,
   apresentacao: process.env.OPENAI_APRESENTACAO_ASSISTANT_ID!,
