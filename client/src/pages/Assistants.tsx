@@ -49,7 +49,7 @@ interface AssistantStats {
 }
 
 export default function Assistants() {
-  const { data: stats, isLoading } = useQuery<AssistantStats>({
+  const { data: stats, isLoading, error } = useQuery<AssistantStats>({
     queryKey: ['/api/assistants/metrics'],
     refetchInterval: 30000, // Atualiza a cada 30s
   });
@@ -64,7 +64,7 @@ export default function Assistants() {
   ];
 
   const getAssistantMetrics = (type: string): AssistantMetrics | undefined => {
-    return stats?.assistants.find(a => a.assistantType === type);
+    return stats?.assistants?.find(a => a.assistantType === type);
   };
 
   const getSentimentColor = (sentiment: string) => {
@@ -81,6 +81,43 @@ export default function Assistants() {
         <div className="text-center space-y-3">
           <Activity className="w-8 h-8 mx-auto animate-pulse" />
           <p className="text-muted-foreground">Carregando métricas dos assistentes...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <XCircle className="w-5 h-5" />
+              Erro ao Carregar Métricas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">
+              Não foi possível carregar as métricas dos assistentes. Tente novamente.
+            </p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="w-full bg-primary text-primary-foreground py-2 rounded-md hover-elevate"
+            >
+              Recarregar Página
+            </button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!stats || !stats.overview || !stats.assistants) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center space-y-3">
+          <Activity className="w-8 h-8 mx-auto opacity-50" />
+          <p className="text-muted-foreground">Nenhum dado disponível</p>
         </div>
       </div>
     );
@@ -107,7 +144,7 @@ export default function Assistants() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-total-conversations">
-              {stats?.overview.totalConversations || 0}
+              {stats.overview.totalConversations}
             </div>
             <p className="text-xs text-muted-foreground">Atendimentos realizados</p>
           </CardContent>
@@ -120,7 +157,7 @@ export default function Assistants() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-total-resolved">
-              {stats?.overview.totalResolved || 0}
+              {stats.overview.totalResolved}
             </div>
             <p className="text-xs text-muted-foreground">Casos resolvidos pela IA</p>
           </CardContent>
@@ -133,7 +170,7 @@ export default function Assistants() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-total-transferred">
-              {stats?.overview.totalTransferred || 0}
+              {stats.overview.totalTransferred}
             </div>
             <p className="text-xs text-muted-foreground">Enviados para humano</p>
           </CardContent>
@@ -146,7 +183,7 @@ export default function Assistants() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-success-rate">
-              {stats?.overview.overallSuccessRate.toFixed(1) || 0}%
+              {stats.overview.overallSuccessRate?.toFixed(1) ?? 0}%
             </div>
             <p className="text-xs text-muted-foreground">Resolvidos sem humano</p>
           </CardContent>
