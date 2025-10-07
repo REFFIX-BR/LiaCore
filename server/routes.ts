@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema, type Conversation } from "@shared/schema";
+import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema, insertSatisfactionFeedbackSchema, type Conversation } from "@shared/schema";
 import { routeMessage, createThread, sendMessageAndGetResponse, summarizeConversation, routeMessageWithContext, CONTEXT_CONFIG } from "./lib/openai";
 import { storeConversationThread, getConversationThread, searchKnowledge } from "./lib/upstash";
 
@@ -962,6 +962,181 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json(response);
     } catch (error) {
       console.error("Get assistants metrics error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Submit satisfaction feedback (NPS)
+  app.post("/api/feedback", async (req, res) => {
+    try {
+      const validatedData = insertSatisfactionFeedbackSchema.parse(req.body);
+      
+      // Determinar categoria baseado no score
+      let category: string;
+      if (validatedData.npsScore >= 0 && validatedData.npsScore <= 6) {
+        category = "detractor";
+      } else if (validatedData.npsScore >= 7 && validatedData.npsScore <= 8) {
+        category = "neutral";
+      } else {
+        category = "promoter";
+      }
+      
+      // Criar feedback
+      const feedback = await storage.createSatisfactionFeedback({
+        ...validatedData,
+        category,
+      });
+      
+      // Se for detractor (NPS 0-6), criar learning event negativo
+      if (category === "detractor") {
+        const conversation = await storage.getConversation(validatedData.conversationId);
+        
+        if (conversation) {
+          // Buscar últimas mensagens da conversa
+          const messages = await storage.getMessagesByConversationId(validatedData.conversationId);
+          const lastUserMessage = messages.filter(m => m.role === "user").slice(-1)[0];
+          const lastAiMessage = messages.filter(m => m.role === "assistant").slice(-1)[0];
+          
+          await storage.createLearningEvent({
+            conversationId: validatedData.conversationId,
+            eventType: "explicit_correction",
+            assistantType: validatedData.assistantType,
+            userMessage: lastUserMessage?.content || "N/A",
+            aiResponse: lastAiMessage?.content || "N/A",
+            correctResponse: null,
+            feedback: `NPS Baixo (${validatedData.npsScore}): ${validatedData.comment || "Sem comentário"}`,
+            sentiment: "negative",
+            resolution: "corrected",
+            metadata: {
+              npsScore: validatedData.npsScore,
+              npsComment: validatedData.comment,
+              source: "nps_feedback",
+            },
+          });
+          
+          console.log(`📊 [NPS] Detractor feedback criado learning event: NPS ${validatedData.npsScore}`);
+        }
+      }
+      
+      console.log(`📊 [NPS] Feedback recebido: ${category.toUpperCase()} - Score ${validatedData.npsScore}`);
+      
+      return res.json({ success: true, feedback });
+    } catch (error) {
+      console.error("Submit feedback error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get NPS metrics
+  app.get("/api/metrics/nps", async (req, res) => {
+    try {
+      const allFeedback = await storage.getAllSatisfactionFeedback();
+      const allConversations = await storage.getAllConversations();
+      
+      // Calcular métricas gerais de NPS
+      const totalFeedback = allFeedback.length;
+      const promoters = allFeedback.filter(f => f.category === "promoter").length;
+      const neutrals = allFeedback.filter(f => f.category === "neutral").length;
+      const detractors = allFeedback.filter(f => f.category === "detractor").length;
+      
+      // NPS Score = (% Promoters - % Detractors)
+      const npsScore = totalFeedback > 0 
+        ? Math.round(((promoters - detractors) / totalFeedback) * 100) 
+        : 0;
+      
+      // Score médio
+      const avgScore = totalFeedback > 0
+        ? allFeedback.reduce((sum, f) => sum + f.npsScore, 0) / totalFeedback
+        : 0;
+      
+      // Métricas por assistente
+      const assistantTypes = ["suporte", "comercial", "financeiro", "apresentacao", "ouvidoria", "cancelamento"];
+      const byAssistant = assistantTypes.map(type => {
+        const feedback = allFeedback.filter(f => f.assistantType === type);
+        const total = feedback.length;
+        const promo = feedback.filter(f => f.category === "promoter").length;
+        const detrac = feedback.filter(f => f.category === "detractor").length;
+        const score = total > 0 ? Math.round(((promo - detrac) / total) * 100) : 0;
+        const avg = total > 0 ? feedback.reduce((sum, f) => sum + f.npsScore, 0) / total : 0;
+        
+        return {
+          assistantType: type,
+          totalFeedback: total,
+          promoters: promo,
+          neutrals: feedback.filter(f => f.category === "neutral").length,
+          detractors: detrac,
+          npsScore: score,
+          avgScore: avg,
+        };
+      }).filter(m => m.totalFeedback > 0);
+      
+      // Feedback ao longo do tempo (últimos 30 dias)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const recentFeedback = allFeedback.filter(f => 
+        f.createdAt && new Date(f.createdAt) >= thirtyDaysAgo
+      );
+      
+      // Agrupar por dia
+      const dailyStats = recentFeedback.reduce((acc: any, f) => {
+        const date = f.createdAt ? new Date(f.createdAt).toLocaleDateString('pt-BR') : 'N/A';
+        if (!acc[date]) {
+          acc[date] = { date, scores: [] };
+        }
+        acc[date].scores.push(f.npsScore);
+        return acc;
+      }, {});
+      
+      const timeline = Object.values(dailyStats).map((day: any) => ({
+        date: day.date,
+        avgScore: day.scores.reduce((sum: number, s: number) => sum + s, 0) / day.scores.length,
+        count: day.scores.length,
+      })).sort((a: any, b: any) => {
+        const dateA = new Date(a.date.split('/').reverse().join('-'));
+        const dateB = new Date(b.date.split('/').reverse().join('-'));
+        return dateA.getTime() - dateB.getTime();
+      });
+      
+      // Principais comentários (últimos 10 com comentário)
+      const comments = allFeedback
+        .filter(f => f.comment && f.comment.trim() !== "")
+        .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0))
+        .slice(0, 10)
+        .map(f => ({
+          score: f.npsScore,
+          category: f.category,
+          comment: f.comment,
+          assistantType: f.assistantType,
+          clientName: f.clientName,
+          date: f.createdAt ? new Date(f.createdAt).toLocaleDateString('pt-BR') : 'N/A',
+        }));
+      
+      // Taxa de resposta (feedback vs conversas finalizadas)
+      const resolvedConversations = allConversations.filter(c => c.status === "resolved").length;
+      const responseRate = resolvedConversations > 0 
+        ? (totalFeedback / resolvedConversations) * 100 
+        : 0;
+      
+      const response = {
+        overview: {
+          npsScore,
+          avgScore: Math.round(avgScore * 10) / 10,
+          totalFeedback,
+          promoters,
+          neutrals,
+          detractors,
+          responseRate: Math.round(responseRate),
+          resolvedConversations,
+        },
+        byAssistant,
+        timeline,
+        comments,
+      };
+      
+      return res.json(response);
+    } catch (error) {
+      console.error("Get NPS metrics error:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
