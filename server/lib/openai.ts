@@ -109,11 +109,14 @@ export async function sendMessageAndGetResponse(
     // Manual polling loop
     let attempts = 0;
     const maxAttempts = 60;
+    const runId = run.id; // Store runId separately to avoid corruption
 
     while (run.status === "queued" || run.status === "in_progress" || run.status === "requires_action") {
       if (attempts >= maxAttempts) {
         throw new Error("Run timed out after 60 seconds");
       }
+
+      console.log("🔄 [OpenAI] Polling run:", { status: run.status, runId, threadId, attempt: attempts });
 
       if (run.status === "requires_action" && run.required_action?.type === "submit_tool_outputs") {
         console.log("🔧 [OpenAI] Handling tool calls...");
@@ -129,13 +132,13 @@ export async function sendMessageAndGetResponse(
         );
 
         // @ts-ignore - TypeScript types may be outdated for submitToolOutputs
-        run = await openai.beta.threads.runs.submitToolOutputs(threadId, run.id, {
+        run = await openai.beta.threads.runs.submitToolOutputs(threadId, runId, {
           tool_outputs: toolOutputs,
         });
       } else {
         await new Promise(resolve => setTimeout(resolve, 1000));
         // @ts-ignore - TypeScript types may be outdated for retrieve
-        run = await openai.beta.threads.runs.retrieve(threadId, run.id);
+        run = await openai.beta.threads.runs.retrieve(threadId, runId);
       }
 
       attempts++;
