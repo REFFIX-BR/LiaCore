@@ -74,6 +74,13 @@ Preferred communication style: Simple, everyday language.
 **Supervisor Dashboard**: Displays KPI metrics, live conversation queue with urgency/sentiment, critical alerts, full transcripts, and human intervention controls.
 **Update Mechanism**: Client-side polling with React Query at 3-5 second intervals.
 
+**Monitor Page Optimizations** (October 2025):
+- **Space-Optimized Layout**: Removed sidebar/detail split in favor of full-width responsive grid of conversation cards, maximizing screen real estate for 200+ simultaneous conversations.
+- **Grid Layout**: Responsive design scales from 1 column (mobile) to 5 columns (large desktop: 2xl breakpoint), displaying maximum conversations per viewport.
+- **Floating Dialog Details**: Conversation details (transcript, analysis, actions) appear in a max-6xl modal dialog when clicking any card, preserving full grid visibility.
+- **Performance**: Optimized backend queries fetch only last 10 messages per conversation (DESC order) using `getRecentMessagesByConversationId`, reducing database load from N messages to ~2k rows for 200 conversations.
+- **Card Display**: Each card shows last client message and last AI message separately with visual distinction, plus urgency/sentiment indicators.
+
 ### Continuous Learning System
 
 **Overview**: Autonomous system for evolving assistant prompts based on supervisor interventions and feedback.
