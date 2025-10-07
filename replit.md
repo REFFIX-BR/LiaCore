@@ -149,7 +149,15 @@ Preferred communication style: Simple, everyday language.
 - Remote JID: Original WhatsApp identifier preserved
 - Client tracking: Phone number used as `clientId`
 
-**Future Enhancement**: Response sending back to WhatsApp via Evolution API (currently marked as TODO in code)
+**Implementation Status**: ✅ Complete
+- All WhatsApp message types supported (text, media with/without captions, stickers, contacts, locations)
+- CHATS_UPSERT synchronizes client names with conversation metadata
+- Messages automatically routed to appropriate assistants and responses generated
+
+**Future Enhancements**:
+- **Outbound Messaging**: Send AI responses back to WhatsApp via Evolution API (requires credentials)
+- **Extended CHATS_* Handling**: Enrich metadata sync beyond name if needed
+- **Automated Testing**: Add e2e tests or manual runbook for webhook verification
 
 ## External Dependencies
 
