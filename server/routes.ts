@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema } from "@shared/schema";
-import { routeMessage, createThread, sendMessageAndGetResponse } from "./lib/openai";
+import { routeMessage, createThread, sendMessageAndGetResponse, summarizeConversation, routeMessageWithContext, CONTEXT_CONFIG } from "./lib/openai";
 import { storeConversationThread, getConversationThread, searchKnowledge } from "./lib/upstash";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -21,7 +21,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let threadId = await getConversationThread(chatId);
 
       if (!conversation) {
-        // New conversation - route to appropriate assistant
+        // New conversation - route to appropriate assistant (sem contexto ainda)
         const routing = await routeMessage(message);
         
         // Create thread
@@ -53,6 +53,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Buscar histórico de mensagens para contexto e resumo
+      const allMessages = await storage.getMessagesByConversationId(conversation.id);
+      const messageCount = allMessages.length;
+      
+      // Verificar se precisa gerar resumo automático
+      const lastSummaryCount = conversation.messageCountAtLastSummary || 0;
+      const messagesSinceLastSummary = messageCount - lastSummaryCount;
+      
+      if (messagesSinceLastSummary >= CONTEXT_CONFIG.SUMMARIZE_EVERY && messageCount > CONTEXT_CONFIG.SUMMARIZE_EVERY) {
+        console.log(`📝 [Auto-Summary] Gerando resumo automático (${messagesSinceLastSummary} mensagens desde último resumo)`);
+        
+        // Pegar mensagens para resumir (excluindo as últimas KEEP_RECENT)
+        const messagesToSummarize = allMessages.slice(lastSummaryCount, messageCount - CONTEXT_CONFIG.KEEP_RECENT);
+        
+        if (messagesToSummarize.length > 0) {
+          const summaryInput = messagesToSummarize.map((m: any) => ({
+            role: m.role,
+            content: m.content
+          }));
+          
+          const newSummary = await summarizeConversation(summaryInput);
+          
+          // Mesclar com resumo anterior se existir
+          let finalSummary = newSummary;
+          if (conversation.conversationSummary) {
+            try {
+              const oldSummary = JSON.parse(conversation.conversationSummary);
+              const newSummaryObj = JSON.parse(newSummary);
+              
+              // Combinar históricos
+              const combinedHistory = [...(oldSummary.assistantHistory || []), ...(newSummaryObj.assistantHistory || [])];
+              newSummaryObj.assistantHistory = Array.from(new Set(combinedHistory)); // Remove duplicatas
+              
+              finalSummary = JSON.stringify(newSummaryObj);
+            } catch (e) {
+              console.error("❌ Erro ao mesclar resumos:", e);
+            }
+          }
+          
+          // Atualizar conversa com novo resumo
+          await storage.updateConversation(conversation.id, {
+            conversationSummary: finalSummary,
+            lastSummarizedAt: new Date(),
+            messageCountAtLastSummary: messageCount,
+          });
+          
+          conversation.conversationSummary = finalSummary;
+          console.log(`✅ [Auto-Summary] Resumo gerado e armazenado (total: ${messageCount} msgs)`);
+        }
+      }
+
       // Store user message
       await storage.createMessage({
         conversationId: conversation.id,
@@ -73,7 +124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store assistant response (ensure it's always a string)
       const responseText = typeof result.response === 'string' 
         ? result.response 
-        : (result.response?.response || JSON.stringify(result.response));
+        : ((result.response as any)?.response || JSON.stringify(result.response));
       
       await storage.createMessage({
         conversationId: conversation.id,
