@@ -477,10 +477,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversation = { ...conversation, ...updateData };
         }
 
-        // Check if this is NPS feedback (conversation resolved and message is 0-10)
+        // Check if this is NPS feedback (awaiting NPS flag set and message is 0-10)
+        const metadata = conversation.metadata as any || {};
         const npsMatch = messageText.trim().match(/^([0-9]|10)$/);
-        if (conversation.status === 'resolved' && npsMatch) {
-          const npsScore = parseInt(npsMatch[1]);
+        
+        if (metadata.awaitingNPS && npsMatch) {
+          const npsScore = parseInt(npsMatch[1], 10);
+          
+          // Verificar se já existe feedback para esta conversa (evitar duplicatas)
+          const existingFeedback = await storage.getSatisfactionFeedbackByConversationId(conversation.id);
+          if (existingFeedback) {
+            console.log(`⚠️ [NPS] Feedback duplicado ignorado para ${clientName}`);
+            const alreadyMessage = `Obrigado! Seu feedback já foi registrado anteriormente.`;
+            await sendWhatsAppMessage(phoneNumber, alreadyMessage);
+            return res.json({ 
+              success: true, 
+              processed: true, 
+              nps_duplicate: true 
+            });
+          }
+          
+          // Verificar se telefone corresponde ao cliente da conversa
+          if (phoneNumber !== conversation.clientId) {
+            console.log(`⚠️ [NPS] Tentativa de envio de telefone diferente: ${phoneNumber} vs ${conversation.clientId}`);
+            return res.json({ 
+              success: true, 
+              processed: false, 
+              error: 'Phone mismatch' 
+            });
+          }
           
           // Armazenar feedback NPS diretamente
           await storage.createSatisfactionFeedback({
@@ -490,10 +515,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             clientName: conversation.clientName,
           });
           
+          // Remover flag awaitingNPS
+          await storage.updateConversation(conversation.id, {
+            metadata: { ...metadata, awaitingNPS: false }
+          });
+          
           console.log(`📊 [NPS] Cliente ${clientName} avaliou com nota ${npsScore}`);
           
-          // Enviar mensagem de agradecimento
-          const thankYouMessage = `Obrigado pelo seu feedback! 🙏\n\nSua opinião é muito importante para nós.`;
+          // Enviar mensagem de agradecimento (sem emoji)
+          const thankYouMessage = `Obrigado pelo seu feedback!\n\nSua opinião é muito importante para nós.`;
           await sendWhatsAppMessage(phoneNumber, thankYouMessage);
           
           return res.json({ 
@@ -1048,8 +1078,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const conversation = await storage.getConversation(conversationId);
+      
+      // Preparar metadata para aguardar NPS se for WhatsApp
+      const currentMetadata = conversation?.metadata as any || {};
+      const isWhatsApp = currentMetadata?.source === 'evolution_api';
+      
       await storage.updateConversation(conversationId, {
         status: "resolved",
+        metadata: isWhatsApp ? { ...currentMetadata, awaitingNPS: true } : currentMetadata,
       });
 
       // Create learning event for successful resolution
@@ -1075,11 +1111,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const metadata = conversation.metadata as any;
         if (metadata?.source === 'evolution_api' && conversation.clientId) {
           const npsMessage = `
-Olá ${conversation.clientName}! 👋
+Olá ${conversation.clientName}!
 
 Seu atendimento foi finalizado. 
 
-📊 *Pesquisa de Satisfação*
+*Pesquisa de Satisfação*
 
 Em uma escala de 0 a 10, qual a probabilidade de você recomendar nosso atendimento?
 
