@@ -54,11 +54,20 @@ export default function Knowledge() {
   const addDocumentMutation = useMutation({
     mutationFn: (doc: any) => 
       apiRequest("POST", "/api/knowledge/add", { chunks: [doc] }),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       toast({
         title: "Sucesso",
         description: "Documento adicionado à base",
       });
+      
+      const newDoc = {
+        id: variables.id,
+        content: variables.content,
+        source: variables.source,
+        relevance: 100,
+      };
+      setSearchResults(prev => [newDoc, ...prev]);
+      
       setNewDocContent("");
       setNewDocSource("");
       setIsDialogOpen(false);
