@@ -161,9 +161,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: supervisorId || "supervisor",
       });
 
-      // Update conversation status
+      // Keep status as "active" but mark as transferred in metadata
       await storage.updateConversation(conversationId, {
-        status: "transferred",
+        status: "active",
+        metadata: {
+          transferred: true,
+          transferredTo: department,
+          transferredAt: new Date().toISOString(),
+          transferNotes: notes,
+        },
       });
 
       return res.json({ success: true, action });

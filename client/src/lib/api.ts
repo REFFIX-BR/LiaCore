@@ -11,6 +11,12 @@ export interface ConversationData {
   duration: number;
   lastMessage: string | null;
   lastMessageTime: Date;
+  metadata?: {
+    transferred?: boolean;
+    transferredTo?: string;
+    transferredAt?: string;
+    transferNotes?: string;
+  };
 }
 
 export interface MessageData {

@@ -73,10 +73,9 @@ export default function Monitor() {
   });
 
   const filters = [
-    { id: "all", label: "Todos" },
-    { id: "active", label: "Ativos" },
+    { id: "all", label: "Início" },
+    { id: "transfer", label: "Conversas" },
     { id: "alerts", label: "Alertas 🚩" },
-    { id: "transfer", label: "Transferência ↪️" },
     { id: "resolved", label: "Finalizados" },
   ];
 
@@ -84,7 +83,8 @@ export default function Monitor() {
     if (activeFilter === "alerts") {
       return alerts.some(alert => alert.conversationId === conv.id);
     }
-    if (activeFilter === "active") return conv.status === "active";
+    if (activeFilter === "all") return conv.status === "active" && !conv.metadata?.transferred;
+    if (activeFilter === "transfer") return conv.metadata?.transferred === true;
     if (activeFilter === "resolved") return conv.status === "resolved";
     return true;
   });
