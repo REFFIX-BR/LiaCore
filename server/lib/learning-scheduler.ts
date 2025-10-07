@@ -1,7 +1,7 @@
 import { analyzeLearningEvents } from "./cortex-analysis";
 
-// Configuração do scheduler
-const ANALYSIS_INTERVAL_HOURS = 24; // Executar análise a cada 24 horas
+// Configuração do scheduler (padrão: 2 horas - mais responsivo para atendimento ao cliente)
+const ANALYSIS_INTERVAL_HOURS = parseInt(process.env.ANALYSIS_INTERVAL_HOURS || "2");
 const ANALYSIS_INTERVAL_MS = ANALYSIS_INTERVAL_HOURS * 60 * 60 * 1000;
 
 let schedulerInterval: NodeJS.Timeout | null = null;

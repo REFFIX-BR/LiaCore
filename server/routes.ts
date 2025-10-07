@@ -786,7 +786,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         learning: {
           lastAnalysis: "Em breve",
-          nextAnalysis: "24h",
+          nextAnalysis: `${process.env.ANALYSIS_INTERVAL_HOURS || 2}h`,
+          analysisIntervalHours: parseInt(process.env.ANALYSIS_INTERVAL_HOURS || "2"),
         },
         stats: {
           totalConversations: allConversations.length,
@@ -811,15 +812,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update system configuration
   app.post("/api/system/config", async (req, res) => {
     try {
-      const { summarizeEvery, keepRecent, contextWindow } = req.body;
+      const { summarizeEvery, keepRecent, contextWindow, analysisInterval } = req.body;
       
       // In a real app, these would be saved to a database or config file
       // For now, we just return success
-      console.log("📝 [Config] Updating configuration:", { summarizeEvery, keepRecent, contextWindow });
+      console.log("📝 [Config] Updating configuration:", { 
+        summarizeEvery, 
+        keepRecent, 
+        contextWindow,
+        analysisInterval 
+      });
       
       return res.json({ 
         success: true, 
-        message: "Configuration updated (requires restart to apply)" 
+        message: "Configurações atualizadas! Reinicie o servidor para aplicar: SUMMARIZE_EVERY, KEEP_RECENT, CONTEXT_WINDOW, ANALYSIS_INTERVAL_HOURS" 
       });
     } catch (error) {
       console.error("Update system config error:", error);

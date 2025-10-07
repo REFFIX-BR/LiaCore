@@ -42,6 +42,7 @@ interface SystemConfig {
   learning?: {
     lastAnalysis?: string;
     nextAnalysis?: string;
+    analysisIntervalHours?: number;
   };
   stats?: {
     totalConversations?: number;
@@ -62,6 +63,7 @@ export default function Settings() {
     summarizeEvery: "12",
     keepRecent: "5",
     contextWindow: "7",
+    analysisInterval: "2",
   });
 
   // Query para buscar configurações do sistema
@@ -71,11 +73,12 @@ export default function Settings() {
 
   // Sincronizar valores do backend quando dados carregarem
   useEffect(() => {
-    if (systemConfig?.summarization) {
+    if (systemConfig?.summarization || systemConfig?.learning) {
       setConfigValues({
-        summarizeEvery: String(systemConfig.summarization.summarizeEvery || 12),
-        keepRecent: String(systemConfig.summarization.keepRecent || 5),
-        contextWindow: String(systemConfig.summarization.contextWindow || 7),
+        summarizeEvery: String(systemConfig.summarization?.summarizeEvery || 12),
+        keepRecent: String(systemConfig.summarization?.keepRecent || 5),
+        contextWindow: String(systemConfig.summarization?.contextWindow || 7),
+        analysisInterval: String(systemConfig.learning?.analysisIntervalHours || 2),
       });
     }
   }, [systemConfig]);
@@ -420,15 +423,32 @@ export default function Settings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-4 border rounded-lg space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Intervalo de Análise</span>
-                  <Badge variant="outline">24 horas</Badge>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="analysis-interval">Intervalo de Análise (horas)</Label>
+                <Input
+                  id="analysis-interval"
+                  type="number"
+                  min="1"
+                  max="24"
+                  value={configValues.analysisInterval}
+                  onChange={(e) => setConfigValues({ ...configValues, analysisInterval: e.target.value })}
+                  data-testid="input-analysis-interval"
+                />
                 <p className="text-sm text-muted-foreground">
-                  O sistema executa análise automática de eventos de aprendizado a cada 24 horas
+                  O sistema executa análise automática de eventos de aprendizado a cada X horas (padrão: 2h para resposta rápida)
                 </p>
               </div>
+              
+              <Button 
+                onClick={() => updateConfigMutation.mutate(configValues)}
+                disabled={updateConfigMutation.isPending}
+                className="w-full"
+                data-testid="button-save-learning-config"
+              >
+                {updateConfigMutation.isPending ? "Salvando..." : "Salvar Configurações"}
+              </Button>
+
+              <Separator />
 
               <div className="p-4 border rounded-lg space-y-3">
                 <div className="flex items-center justify-between">
