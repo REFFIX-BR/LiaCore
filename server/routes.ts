@@ -856,6 +856,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get assistants metrics
+  app.get("/api/assistants/metrics", async (req, res) => {
+    try {
+      const allConversations = await storage.getAllConversations();
+      const allPromptUpdates = await storage.getAllPromptUpdates();
+      const allSupervisorActions = await storage.getAllSupervisorActions();
+
+      // Tipos de assistentes
+      const assistantTypes = ["suporte", "comercial", "financeiro", "apresentacao", "ouvidoria", "cancelamento"];
+      
+      // Calcular métricas por assistente
+      const assistantMetrics = assistantTypes.map(type => {
+        const conversations = allConversations.filter(c => c.assistantType === type);
+        const totalConversations = conversations.length;
+        
+        // Conversas resolvidas (status = resolved)
+        const resolvedConversations = conversations.filter(c => c.status === "resolved").length;
+        
+        // Conversas transferidas (metadata.transferred = true ou supervisor action de transfer)
+        const transferredConversations = conversations.filter(c => 
+          (c.metadata as any)?.transferred === true
+        ).length;
+        
+        // Taxa de sucesso
+        const successRate = totalConversations > 0 
+          ? (resolvedConversations / totalConversations) * 100 
+          : 0;
+        
+        // Duração média
+        const avgDuration = totalConversations > 0
+          ? conversations.reduce((sum, c) => sum + (c.duration || 0), 0) / totalConversations
+          : 0;
+        
+        // Sentimento médio
+        const sentiments = conversations.map(c => c.sentiment || "neutral");
+        const positiveCount = sentiments.filter(s => s === "positive").length;
+        const negativeCount = sentiments.filter(s => s === "negative").length;
+        const avgSentiment = positiveCount > negativeCount ? "positive" 
+          : negativeCount > positiveCount ? "negative" 
+          : "neutral";
+        
+        return {
+          assistantType: type,
+          totalConversations,
+          resolvedConversations,
+          transferredConversations,
+          successRate,
+          avgDuration,
+          avgSentiment,
+        };
+      });
+
+      // Overview geral
+      const totalConversations = allConversations.length;
+      const totalResolved = allConversations.filter(c => c.status === "resolved").length;
+      const totalTransferred = allConversations.filter(c => 
+        (c.metadata as any)?.transferred === true
+      ).length;
+      const overallSuccessRate = totalConversations > 0 
+        ? (totalResolved / totalConversations) * 100 
+        : 0;
+
+      // Histórico de atualizações (últimas 10)
+      const updates = allPromptUpdates
+        .sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime())
+        .slice(0, 10)
+        .map(update => ({
+          assistantType: update.assistantType,
+          date: new Date(update.appliedAt).toLocaleDateString('pt-BR'),
+          modificationType: update.modificationType || "Atualização de prompt",
+          appliedBy: update.appliedBy,
+        }));
+
+      // Análise de transferências
+      const transfersByAssistant = assistantTypes.map(type => {
+        const conversations = allConversations.filter(c => 
+          c.assistantType === type && (c.metadata as any)?.transferred === true
+        );
+        
+        const reasons = conversations
+          .map(c => (c.metadata as any)?.transferNotes || "Não especificado")
+          .filter((v, i, a) => a.indexOf(v) === i) // Remove duplicatas
+          .slice(0, 5); // Top 5 motivos
+
+        return {
+          assistantType: type,
+          count: conversations.length,
+          reasons,
+        };
+      }).filter(t => t.count > 0); // Apenas assistentes com transferências
+
+      const response = {
+        overview: {
+          totalConversations,
+          totalResolved,
+          totalTransferred,
+          overallSuccessRate,
+        },
+        assistants: assistantMetrics,
+        updates,
+        transfers: transfersByAssistant,
+      };
+
+      return res.json(response);
+    } catch (error) {
+      console.error("Get assistants metrics error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
