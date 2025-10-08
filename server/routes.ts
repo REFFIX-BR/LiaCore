@@ -522,27 +522,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateConversation(conversation.id, {
             threadId,
           });
-        } else if (conversation.status === 'resolved') {
-          // Reopen resolved conversation and reset transfer if needed
-          console.log(`🔄 [Evolution Reopen] Reabrindo conversa finalizada: ${chatId} (${clientName})`);
-          
-          const updateData: any = {
-            status: 'active',
-          };
-          
-          // Se estava transferida, resetar para IA voltar a responder
-          if (conversation.transferredToHuman) {
-            console.log(`🤖 [Evolution Reopen] Resetando transferência - IA volta a responder`);
-            updateData.transferredToHuman = false;
-            updateData.transferReason = null;
-            updateData.transferredAt = null;
-          }
-          
-          await storage.updateConversation(conversation.id, updateData);
-          conversation = { ...conversation, ...updateData };
         }
 
-        // Check if this is NPS feedback (awaiting NPS flag set and message is 0-10)
+        // Check if this is NPS feedback BEFORE reopening conversation
+        // This prevents reopening when client is just responding to NPS survey
         const metadata = conversation.metadata as any || {};
         
         // Regex mais flexível: aceita "9", "9.", "Nota 9", "nota: 8", etc.
