@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { verifyToken, type JWTPayload } from "../lib/auth";
+import { storage } from "../storage";
 
 declare global {
   namespace Express {
@@ -29,6 +30,32 @@ export function authenticate(
 
   req.user = payload;
   next();
+}
+
+// Middleware to track user activity for status monitoring
+export function trackUserActivity(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  if (req.user?.id) {
+    // Update activity asynchronously without blocking the request
+    storage.updateUserActivity(req.user.id).catch(err => {
+      console.error("Error updating user activity:", err);
+    });
+  }
+  next();
+}
+
+// Combined middleware: authenticate + track activity
+export function authenticateWithTracking(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  authenticate(req, res, () => {
+    trackUserActivity(req, res, next);
+  });
 }
 
 // Type for user roles

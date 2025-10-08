@@ -2828,5 +2828,20 @@ A resposta deve:
     }
   });
 
+  // ============================================================================
+  // AGENTS STATUS MONITOR
+  // ============================================================================
+
+  // Get all agents status (online/idle/offline) with metrics
+  app.get("/api/agents/status", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const agentsStatus = await storage.getAgentsStatus();
+      return res.json(agentsStatus);
+    } catch (error) {
+      console.error("❌ [Agents Status] Error getting agents status:", error);
+      return res.status(500).json({ error: "Error fetching agents status" });
+    }
+  });
+
   return httpServer;
 }

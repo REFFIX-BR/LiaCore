@@ -119,6 +119,22 @@ export interface IStorage {
     tokenUsage: Array<{ date: string; tokens: number }>;
     recentActivity: Array<{ type: string; message: string; timestamp: Date | null }>;
   }>;
+
+  // Agent Status Monitor
+  getAgentsStatus(): Promise<Array<{
+    id: string;
+    fullName: string;
+    role: string;
+    status: 'online' | 'idle' | 'offline';
+    activeConversations: number;
+    resolvedToday: number;
+    avgResponseTime: number;
+    successRate: number;
+    sentimentAverage: string;
+    lastActivity: Date | null;
+  }>>;
+  
+  updateUserActivity(userId: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -1199,6 +1215,94 @@ export class DbStorage implements IStorage {
       });
     }
     return usage;
+  }
+
+  async getAgentsStatus() {
+    const now = new Date();
+    const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Get all human agents (AGENT and SUPERVISOR roles)
+    const agents = await db.select().from(schema.users)
+      .where(or(
+        eq(schema.users.role, 'AGENT'),
+        eq(schema.users.role, 'SUPERVISOR')
+      ));
+
+    const agentsStatus = await Promise.all(agents.map(async (agent) => {
+      // Determine status based on lastActivityAt
+      let status: 'online' | 'idle' | 'offline' = 'offline';
+      if (agent.lastActivityAt) {
+        const lastActivity = new Date(agent.lastActivityAt);
+        if (lastActivity > fiveMinutesAgo) {
+          status = 'online';
+        } else if (lastActivity > new Date(now.getTime() - 30 * 60 * 1000)) {
+          status = 'idle';
+        }
+      }
+
+      // Active conversations assigned to this agent
+      const activeConversations = await db.select().from(schema.conversations)
+        .where(and(
+          eq(schema.conversations.assignedTo, agent.id),
+          or(
+            eq(schema.conversations.status, 'active'),
+            eq(schema.conversations.status, 'transferred')
+          )
+        ));
+
+      // Resolved conversations today
+      const resolvedToday = await db.select().from(schema.conversations)
+        .where(and(
+          eq(schema.conversations.assignedTo, agent.id),
+          eq(schema.conversations.status, 'resolved'),
+          gte(schema.conversations.resolvedAt, today)
+        ));
+
+      // Calculate success rate (resolved without escalation)
+      const totalAssigned = await db.select().from(schema.conversations)
+        .where(eq(schema.conversations.assignedTo, agent.id));
+      
+      const successfullyResolved = totalAssigned.filter(c => 
+        c.status === 'resolved' && !c.transferredToHuman
+      );
+      const successRate = totalAssigned.length > 0 
+        ? Math.round((successfullyResolved.length / totalAssigned.length) * 100)
+        : 0;
+
+      // Calculate average sentiment
+      const conversationsWithSentiment = totalAssigned.filter(c => c.sentiment);
+      const sentimentScore = conversationsWithSentiment.reduce((sum, c) => {
+        if (c.sentiment === 'positive') return sum + 1;
+        if (c.sentiment === 'negative') return sum - 1;
+        return sum;
+      }, 0);
+      const sentimentAverage = conversationsWithSentiment.length > 0
+        ? sentimentScore > 0 ? 'positive' : sentimentScore < 0 ? 'negative' : 'neutral'
+        : 'neutral';
+
+      return {
+        id: agent.id,
+        fullName: agent.fullName,
+        role: agent.role,
+        status,
+        activeConversations: activeConversations.length,
+        resolvedToday: resolvedToday.length,
+        avgResponseTime: 0, // TODO: Calculate from message timestamps
+        successRate,
+        sentimentAverage,
+        lastActivity: agent.lastActivityAt
+      };
+    }));
+
+    return agentsStatus;
+  }
+
+  async updateUserActivity(userId: string) {
+    await db.update(schema.users)
+      .set({ lastActivityAt: new Date() })
+      .where(eq(schema.users.id, userId));
   }
 }
 
