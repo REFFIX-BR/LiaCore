@@ -141,33 +141,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Register new user (admin only)
-  app.post("/api/auth/register", authenticate, requireAdmin, async (req, res) => {
+  // Request user registration (public)
+  app.post("/api/auth/register", async (req, res) => {
     try {
-      const { username, password, fullName, role } = insertUserSchema.parse(req.body);
+      const { username, password, fullName, email } = req.body;
 
-      // Check if username already exists
+      // Validate required fields
+      if (!username || !password || !fullName || !email) {
+        return res.status(400).json({ error: "Todos os campos são obrigatórios" });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: "Email inválido" });
+      }
+
+      // Validate password length
+      if (password.length < 6) {
+        return res.status(400).json({ error: "Senha deve ter no mínimo 6 caracteres" });
+      }
+
+      // Check if username already exists in users
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
-        return res.status(400).json({ error: "Usuário já existe" });
+        return res.status(400).json({ error: "Nome de usuário já existe" });
+      }
+
+      // Check if there's already a pending request with this username
+      const existingRequest = await storage.getRegistrationRequestByUsername(username);
+      if (existingRequest && existingRequest.status === "pending") {
+        return res.status(400).json({ error: "Já existe uma solicitação pendente com este usuário" });
       }
 
       // Hash password
       const hashedPassword = await hashPassword(password);
 
-      // Create user
-      const user = await storage.createUser({
+      // SECURITY: Always force AGENT role for public registration requests
+      // Admin/Supervisor can only be assigned by existing admins through the Users page
+      const request = await storage.createRegistrationRequest({
         username,
         password: hashedPassword,
         fullName,
-        role: role || "AGENT",
-        status: "active",
+        email,
+        requestedRole: "AGENT", // FORCED to AGENT for security
+        status: "pending",
       });
 
-      res.json({ user: getUserFromUser(user) });
+      res.json({ 
+        message: "Solicitação de registro enviada com sucesso",
+        requestId: request.id 
+      });
     } catch (error) {
-      console.error("❌ [Auth] Registration error:", error);
-      res.status(400).json({ error: "Erro ao criar usuário" });
+      console.error("❌ [Auth] Registration request error:", error);
+      res.status(400).json({ error: "Erro ao enviar solicitação de registro" });
     }
   });
 
@@ -261,6 +288,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("❌ [Users] Error deleting user:", error);
       res.status(500).json({ error: "Erro ao deletar usuário" });
+    }
+  });
+
+  // ============================================================================
+  // REGISTRATION REQUESTS ROUTES
+  // ============================================================================
+
+  // Get all registration requests (admin/supervisor only)
+  app.get("/api/registration-requests", authenticate, requireAdminOrSupervisor, async (_req, res) => {
+    try {
+      const requests = await storage.getAllRegistrationRequests();
+      res.json({ requests });
+    } catch (error) {
+      console.error("❌ [Registration] Error getting requests:", error);
+      res.status(500).json({ error: "Erro ao buscar solicitações" });
+    }
+  });
+
+  // Get pending registration requests (admin/supervisor only)
+  app.get("/api/registration-requests/pending", authenticate, requireAdminOrSupervisor, async (_req, res) => {
+    try {
+      const requests = await storage.getPendingRegistrationRequests();
+      res.json({ requests });
+    } catch (error) {
+      console.error("❌ [Registration] Error getting pending requests:", error);
+      res.status(500).json({ error: "Erro ao buscar solicitações pendentes" });
+    }
+  });
+
+  // Approve registration request (admin/supervisor only)
+  app.post("/api/registration-requests/:id/approve", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get the registration request
+      const requests = await storage.getAllRegistrationRequests();
+      const request = requests.find(r => r.id === id);
+      
+      if (!request) {
+        return res.status(404).json({ error: "Solicitação não encontrada" });
+      }
+
+      if (request.status !== "pending") {
+        return res.status(400).json({ error: "Solicitação já foi processada" });
+      }
+
+      // Create the user
+      const user = await storage.createUser({
+        username: request.username,
+        password: request.password, // Already hashed
+        fullName: request.fullName,
+        email: request.email,
+        role: request.requestedRole || "AGENT",
+        status: "ACTIVE",
+      });
+
+      // Update registration request status
+      await storage.updateRegistrationRequest(id, {
+        status: "approved",
+        reviewedBy: req.user!.userId,
+        reviewedAt: new Date(),
+      });
+
+      res.json({ 
+        message: "Usuário aprovado e criado com sucesso",
+        user: getUserFromUser(user) 
+      });
+    } catch (error: any) {
+      console.error("❌ [Registration] Error approving request:", error);
+      res.status(400).json({ error: error?.message || "Erro ao aprovar solicitação" });
+    }
+  });
+
+  // Reject registration request (admin/supervisor only)
+  app.post("/api/registration-requests/:id/reject", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      
+      // Get the registration request
+      const requests = await storage.getAllRegistrationRequests();
+      const request = requests.find(r => r.id === id);
+      
+      if (!request) {
+        return res.status(404).json({ error: "Solicitação não encontrada" });
+      }
+
+      if (request.status !== "pending") {
+        return res.status(400).json({ error: "Solicitação já foi processada" });
+      }
+
+      // Update registration request status
+      await storage.updateRegistrationRequest(id, {
+        status: "rejected",
+        reviewedBy: req.user!.userId,
+        reviewedAt: new Date(),
+        rejectionReason: reason || "Não especificado",
+      });
+
+      res.json({ message: "Solicitação rejeitada com sucesso" });
+    } catch (error) {
+      console.error("❌ [Registration] Error rejecting request:", error);
+      res.status(400).json({ error: "Erro ao rejeitar solicitação" });
     }
   });
 

@@ -33,7 +33,8 @@ import {
   MessagesSquare,
   Lightbulb,
   BarChart3,
-  Cog
+  Cog,
+  UserPlus
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
@@ -165,13 +166,19 @@ const menuCategories: MenuCategory[] = [
   {
     title: "Administração",
     icon: Cog,
-    roles: ["ADMIN"],
+    roles: ["ADMIN", "SUPERVISOR"],
     items: [
       {
         title: "Usuários",
         url: "/users",
         icon: UsersIcon,
         roles: ["ADMIN"],
+      },
+      {
+        title: "Solicitações de Registro",
+        url: "/registration-requests",
+        icon: UserPlus,
+        roles: ["ADMIN", "SUPERVISOR"],
       },
       {
         title: "Configurações",

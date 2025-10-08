@@ -19,7 +19,9 @@ import {
   type SatisfactionFeedback,
   type InsertSatisfactionFeedback,
   type SuggestedResponse,
-  type InsertSuggestedResponse
+  type InsertSuggestedResponse,
+  type RegistrationRequest,
+  type InsertRegistrationRequest
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -154,6 +156,14 @@ export interface IStorage {
     npsScore: number;
     transfersToHuman: number;
   }>>;
+
+  // Registration Requests
+  createRegistrationRequest(request: InsertRegistrationRequest): Promise<RegistrationRequest>;
+  getRegistrationRequestByUsername(username: string): Promise<RegistrationRequest | undefined>;
+  getAllRegistrationRequests(): Promise<RegistrationRequest[]>;
+  getPendingRegistrationRequests(): Promise<RegistrationRequest[]>;
+  updateRegistrationRequest(id: string, updates: Partial<RegistrationRequest>): Promise<RegistrationRequest | undefined>;
+  deleteRegistrationRequest(id: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -167,6 +177,7 @@ export class MemStorage implements IStorage {
   private promptUpdates: Map<string, PromptUpdate>;
   private satisfactionFeedback: Map<string, SatisfactionFeedback>;
   private suggestedResponses: Map<string, SuggestedResponse>;
+  private registrationRequests: Map<string, RegistrationRequest>;
 
   constructor() {
     this.users = new Map();
@@ -179,6 +190,7 @@ export class MemStorage implements IStorage {
     this.promptUpdates = new Map();
     this.satisfactionFeedback = new Map();
     this.suggestedResponses = new Map();
+    this.registrationRequests = new Map();
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -651,6 +663,51 @@ export class MemStorage implements IStorage {
     this.suggestedResponses.set(id, updated);
     return updated;
   }
+
+  // Registration Requests
+  async createRegistrationRequest(insertRequest: InsertRegistrationRequest): Promise<RegistrationRequest> {
+    const id = randomUUID();
+    const request: RegistrationRequest = {
+      ...insertRequest,
+      id,
+      reviewedBy: null,
+      reviewedAt: null,
+      rejectionReason: null,
+      createdAt: new Date(),
+    };
+    this.registrationRequests.set(id, request);
+    return request;
+  }
+
+  async getRegistrationRequestByUsername(username: string): Promise<RegistrationRequest | undefined> {
+    return Array.from(this.registrationRequests.values()).find(
+      (request) => request.username === username
+    );
+  }
+
+  async getAllRegistrationRequests(): Promise<RegistrationRequest[]> {
+    return Array.from(this.registrationRequests.values())
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  async getPendingRegistrationRequests(): Promise<RegistrationRequest[]> {
+    return Array.from(this.registrationRequests.values())
+      .filter(request => request.status === 'pending')
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  async updateRegistrationRequest(id: string, updates: Partial<RegistrationRequest>): Promise<RegistrationRequest | undefined> {
+    const request = this.registrationRequests.get(id);
+    if (!request) return undefined;
+    
+    const updated = { ...request, ...updates };
+    this.registrationRequests.set(id, updated);
+    return updated;
+  }
+
+  async deleteRegistrationRequest(id: string): Promise<void> {
+    this.registrationRequests.delete(id);
+  }
 }
 
 import { db } from "./db";
@@ -683,6 +740,14 @@ export class DbStorage implements IStorage {
     return user;
   }
 
+  async updateUser(id: string, updates: UpdateUser): Promise<User> {
+    const [updated] = await db.update(schema.users)
+      .set(updates)
+      .where(eq(schema.users.id, id))
+      .returning();
+    return updated;
+  }
+
   async updateUserLastLogin(id: string): Promise<void> {
     await db.update(schema.users)
       .set({ lastLoginAt: new Date() })
@@ -695,6 +760,11 @@ export class DbStorage implements IStorage {
       .where(eq(schema.users.id, id))
       .returning();
     return updated;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await db.delete(schema.users)
+      .where(eq(schema.users.id, id));
   }
 
   // Conversations
@@ -1472,6 +1542,47 @@ export class DbStorage implements IStorage {
 
     // Sort by period
     return reports.sort((a, b) => a.period.localeCompare(b.period));
+  }
+
+  // Registration Requests
+  async createRegistrationRequest(insertRequest: InsertRegistrationRequest): Promise<RegistrationRequest> {
+    const [request] = await db.insert(schema.registrationRequests)
+      .values(insertRequest)
+      .returning();
+    return request;
+  }
+
+  async getRegistrationRequestByUsername(username: string): Promise<RegistrationRequest | undefined> {
+    const [request] = await db.select()
+      .from(schema.registrationRequests)
+      .where(eq(schema.registrationRequests.username, username));
+    return request;
+  }
+
+  async getAllRegistrationRequests(): Promise<RegistrationRequest[]> {
+    return await db.select()
+      .from(schema.registrationRequests)
+      .orderBy(desc(schema.registrationRequests.createdAt));
+  }
+
+  async getPendingRegistrationRequests(): Promise<RegistrationRequest[]> {
+    return await db.select()
+      .from(schema.registrationRequests)
+      .where(eq(schema.registrationRequests.status, 'pending'))
+      .orderBy(desc(schema.registrationRequests.createdAt));
+  }
+
+  async updateRegistrationRequest(id: string, updates: Partial<RegistrationRequest>): Promise<RegistrationRequest | undefined> {
+    const [updated] = await db.update(schema.registrationRequests)
+      .set(updates)
+      .where(eq(schema.registrationRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteRegistrationRequest(id: string): Promise<void> {
+    await db.delete(schema.registrationRequests)
+      .where(eq(schema.registrationRequests.id, id));
   }
 
   private getWeekNumber(date: Date): number {

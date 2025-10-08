@@ -26,6 +26,7 @@ import Metrics from "@/pages/Metrics";
 import Feedbacks from "@/pages/Feedbacks";
 import Users from "@/pages/Users";
 import AgentReports from "@/pages/AgentReports";
+import RegistrationRequests from "@/pages/RegistrationRequests";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -94,6 +95,9 @@ function Router() {
       </Route>
       <Route path="/users">
         {() => <ProtectedRoute component={Users} />}
+      </Route>
+      <Route path="/registration-requests">
+        {() => <ProtectedRoute component={RegistrationRequests} />}
       </Route>
       <Route component={NotFound} />
     </Switch>
