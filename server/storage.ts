@@ -654,7 +654,7 @@ export class MemStorage implements IStorage {
 }
 
 import { db } from "./db";
-import { eq, desc, and, or, gte, isNotNull, sql } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, isNotNull, sql } from "drizzle-orm";
 import * as schema from "@shared/schema";
 
 export class DbStorage implements IStorage {
@@ -1450,7 +1450,7 @@ export class DbStorage implements IStorage {
 
       // Calculate NPS
       const npsScore = data.feedbacks.length > 0
-        ? Math.round(data.feedbacks.reduce((sum, f) => sum + (f.score || 0), 0) / data.feedbacks.length)
+        ? Math.round(data.feedbacks.reduce((sum, f) => sum + (f.npsScore || 0), 0) / data.feedbacks.length)
         : 0;
 
       // Count transfers to human

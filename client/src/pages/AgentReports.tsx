@@ -32,12 +32,10 @@ export default function AgentReports() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  // Get all users for agent selection
-  const { data: users = [] } = useQuery({
-    queryKey: ["/api/users"]
+  // Get all agents for selection
+  const { data: agents = [] } = useQuery<any[]>({
+    queryKey: ["/api/agents/list"]
   });
-
-  const agents = users.filter((u: any) => u.role === "AGENT" || u.role === "SUPERVISOR");
 
   // Calculate date range based on preset
   const getDateRange = () => {

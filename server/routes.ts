@@ -2832,6 +2832,18 @@ A resposta deve:
   // AGENTS STATUS MONITOR
   // ============================================================================
 
+  // Get all agents list (for dropdowns and filters)
+  app.get("/api/agents/list", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      const agents = allUsers.filter(u => u.role === "AGENT" || u.role === "SUPERVISOR");
+      return res.json(agents);
+    } catch (error) {
+      console.error("❌ [Agents] Error getting agents list:", error);
+      return res.status(500).json({ error: "Error fetching agents list" });
+    }
+  });
+
   // Get all agents status (online/idle/offline) with metrics
   app.get("/api/agents/status", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
