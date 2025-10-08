@@ -22,7 +22,8 @@ import {
   TrendingUp,
   Wifi,
   Star,
-  Users as UsersIcon
+  Users as UsersIcon,
+  UserCog
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
@@ -39,6 +40,12 @@ const menuItems = [
     url: "/monitor",
     icon: MonitorIcon,
     roles: ["ADMIN", "SUPERVISOR"], // Gerenciamento
+  },
+  {
+    title: "Dashboard de Atendentes",
+    url: "/agent-monitor",
+    icon: UserCog,
+    roles: ["ADMIN", "SUPERVISOR"], // Supervisão de atendentes
   },
   {
     title: "Monitor Webhook",

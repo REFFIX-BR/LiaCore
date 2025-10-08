@@ -2797,7 +2797,7 @@ A resposta deve:
   // Agent Dashboard Metrics
   app.get("/api/dashboard/agent", authenticate, async (req, res) => {
     try {
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
       const metrics = await storage.getAgentMetrics(userId);
       return res.json(metrics);
     } catch (error) {

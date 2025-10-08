@@ -38,9 +38,9 @@ export function trackUserActivity(
   res: Response,
   next: NextFunction
 ) {
-  if (req.user?.id) {
+  if (req.user?.userId) {
     // Update activity asynchronously without blocking the request
-    storage.updateUserActivity(req.user.id).catch(err => {
+    storage.updateUserActivity(req.user.userId).catch(err => {
       console.error("Error updating user activity:", err);
     });
   }

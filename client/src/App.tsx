@@ -14,6 +14,7 @@ import Dashboard from "@/pages/Dashboard";
 import Conversations from "@/pages/Conversations";
 import Knowledge from "@/pages/Knowledge";
 import Monitor from "@/pages/Monitor";
+import AgentMonitor from "@/pages/AgentMonitor";
 import WebhookMonitor from "@/pages/WebhookMonitor";
 import TestChat from "@/pages/TestChat";
 import AgentEvolution from "@/pages/AgentEvolution";
@@ -54,6 +55,9 @@ function Router() {
       </Route>
       <Route path="/monitor">
         {() => <ProtectedRoute component={Monitor} />}
+      </Route>
+      <Route path="/agent-monitor">
+        {() => <ProtectedRoute component={AgentMonitor} />}
       </Route>
       <Route path="/webhook-monitor">
         {() => <ProtectedRoute component={WebhookMonitor} />}
