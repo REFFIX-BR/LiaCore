@@ -29,6 +29,20 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const registrationRequests = pgTable("registration_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  username: text("username").notNull(),
+  password: text("password").notNull(), // Hashed password
+  fullName: text("full_name").notNull(),
+  email: text("email").notNull(),
+  requestedRole: text("requested_role").notNull().default("AGENT"),
+  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected'
+  reviewedBy: varchar("reviewed_by"), // User ID of admin/supervisor who reviewed
+  reviewedAt: timestamp("reviewed_at"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const conversations = pgTable("conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   chatId: text("chat_id").notNull().unique(),
@@ -222,6 +236,14 @@ export const insertSuggestedResponseSchema = createInsertSchema(suggestedRespons
   approvedAt: true,
 });
 
+export const insertRegistrationRequestSchema = createInsertSchema(registrationRequests).omit({
+  id: true,
+  createdAt: true,
+  reviewedAt: true,
+  reviewedBy: true,
+  rejectionReason: true,
+});
+
 // Evolution API Configuration Schema
 export const evolutionConfigSchema = z.object({
   url: z.string()
@@ -256,3 +278,5 @@ export type SatisfactionFeedback = typeof satisfactionFeedback.$inferSelect;
 export type InsertSatisfactionFeedback = z.infer<typeof insertSatisfactionFeedbackSchema>;
 export type SuggestedResponse = typeof suggestedResponses.$inferSelect;
 export type InsertSuggestedResponse = z.infer<typeof insertSuggestedResponseSchema>;
+export type RegistrationRequest = typeof registrationRequests.$inferSelect;
+export type InsertRegistrationRequest = z.infer<typeof insertRegistrationRequestSchema>;
