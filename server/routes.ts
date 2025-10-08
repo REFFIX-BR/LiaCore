@@ -3190,6 +3190,7 @@ A resposta deve:
       await storage.updateConversation(id, {
         status: "resolved",
         resolvedAt: new Date(),
+        assignedTo: null, // Desatribuir conversa ao finalizar
         metadata: isWhatsApp ? { ...currentMetadata, awaitingNPS: true } : currentMetadata,
       });
 
