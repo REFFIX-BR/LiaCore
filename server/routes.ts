@@ -2790,5 +2790,43 @@ A resposta deve:
     return res.json({ success: true, message: "Logs cleared" });
   });
 
+  // ============================================================================
+  // DASHBOARD METRICS ROUTES
+  // ============================================================================
+
+  // Agent Dashboard Metrics
+  app.get("/api/dashboard/agent", authenticate, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const metrics = await storage.getAgentMetrics(userId);
+      return res.json(metrics);
+    } catch (error) {
+      console.error("❌ [Dashboard] Error getting agent metrics:", error);
+      return res.status(500).json({ error: "Error fetching agent metrics" });
+    }
+  });
+
+  // Supervisor Dashboard Metrics
+  app.get("/api/dashboard/supervisor", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const metrics = await storage.getSupervisorMetrics();
+      return res.json(metrics);
+    } catch (error) {
+      console.error("❌ [Dashboard] Error getting supervisor metrics:", error);
+      return res.status(500).json({ error: "Error fetching supervisor metrics" });
+    }
+  });
+
+  // Admin Dashboard Metrics
+  app.get("/api/dashboard/admin", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const metrics = await storage.getAdminMetrics();
+      return res.json(metrics);
+    } catch (error) {
+      console.error("❌ [Dashboard] Error getting admin metrics:", error);
+      return res.status(500).json({ error: "Error fetching admin metrics" });
+    }
+  });
+
   return httpServer;
 }

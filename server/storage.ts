@@ -91,6 +91,34 @@ export interface IStorage {
   createSuggestedResponse(response: InsertSuggestedResponse): Promise<SuggestedResponse>;
   getSuggestedResponsesByConversationId(conversationId: string): Promise<SuggestedResponse[]>;
   updateSuggestedResponse(id: string, updates: Partial<SuggestedResponse>): Promise<SuggestedResponse | undefined>;
+  
+  // Dashboard Metrics
+  getAgentMetrics(userId: string): Promise<{
+    conversationsInQueue: number;
+    conversationsFinishedToday: number;
+    avgResponseTime: number;
+    personalNPS: number;
+    sentimentTrend: Array<{ date: string; positive: number; neutral: number; negative: number }>;
+    recentFeedbacks: Array<{ score: number; comment: string; createdAt: Date | null }>;
+  }>;
+  
+  getSupervisorMetrics(): Promise<{
+    activeConversations: number;
+    queuedForTransfer: number;
+    avgResponseTime: number;
+    globalNPS: number;
+    volumeVsSuccess: Array<{ hour: string; volume: number; successRate: number }>;
+    teamStatus: Array<{ userId: string; userName: string; status: string; activeConversations: number; finishedToday: number; avgTime: number; nps: number }>;
+  }>;
+  
+  getAdminMetrics(): Promise<{
+    systemStatus: { api: boolean; database: boolean; workers: boolean };
+    estimatedCost: { total: number; openai: number; upstash: number };
+    activeUsers: { total: number; admins: number; supervisors: number; agents: number };
+    securityEvents: { total: number; failedLogins: number };
+    tokenUsage: Array<{ date: string; tokens: number }>;
+    recentActivity: Array<{ type: string; message: string; timestamp: Date | null }>;
+  }>;
 }
 
 export class MemStorage implements IStorage {
@@ -926,6 +954,251 @@ export class DbStorage implements IStorage {
       .where(eq(schema.suggestedResponses.id, id))
       .returning();
     return updated;
+  }
+
+  // Dashboard Metrics
+  async getAgentMetrics(userId: string) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Conversas atribuídas ao agente (em fila)
+    const queuedConversations = await db.select().from(schema.conversations)
+      .where(and(
+        eq(schema.conversations.assignedTo, userId),
+        eq(schema.conversations.status, 'active')
+      ));
+
+    // Conversas finalizadas hoje
+    const finishedToday = await db.select().from(schema.conversations)
+      .where(and(
+        eq(schema.conversations.assignedTo, userId),
+        eq(schema.conversations.status, 'resolved'),
+        gte(schema.conversations.resolvedAt, today)
+      ));
+
+    // NPS pessoal (últimas 30 conversas)
+    const personalFeedbacks = await db.select().from(schema.satisfactionFeedback)
+      .innerJoin(schema.conversations, eq(schema.satisfactionFeedback.conversationId, schema.conversations.id))
+      .where(eq(schema.conversations.assignedTo, userId))
+      .limit(30);
+
+    const avgNPS = personalFeedbacks.length > 0
+      ? personalFeedbacks.reduce((sum, f) => sum + f.satisfaction_feedback.npsScore, 0) / personalFeedbacks.length
+      : 0;
+
+    // Tendência de sentimento (últimos 7 dias)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const sentimentData = await db.select().from(schema.conversations)
+      .where(and(
+        eq(schema.conversations.assignedTo, userId),
+        gte(schema.conversations.createdAt, sevenDaysAgo)
+      ));
+
+    const sentimentTrend = this.calculateSentimentTrend(sentimentData);
+
+    // Feedbacks recentes
+    const recentFeedbacks = personalFeedbacks.slice(0, 4).map(f => ({
+      score: f.satisfaction_feedback.npsScore,
+      comment: f.satisfaction_feedback.comment || '',
+      createdAt: f.satisfaction_feedback.createdAt
+    }));
+
+    return {
+      conversationsInQueue: queuedConversations.length,
+      conversationsFinishedToday: finishedToday.length,
+      avgResponseTime: 0, // TODO: Implementar cálculo de TMA
+      personalNPS: Math.round(avgNPS),
+      sentimentTrend,
+      recentFeedbacks
+    };
+  }
+
+  async getSupervisorMetrics() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Conversas ativas
+    const activeConversations = await db.select().from(schema.conversations)
+      .where(eq(schema.conversations.status, 'active'));
+
+    // Conversas na fila de transferência
+    const queuedForTransfer = await db.select().from(schema.conversations)
+      .where(and(
+        eq(schema.conversations.status, 'active'),
+        eq(schema.conversations.transferredToHuman, true)
+      ));
+
+    // NPS global
+    const allFeedbacks = await db.select().from(schema.satisfactionFeedback);
+    const globalNPS = allFeedbacks.length > 0
+      ? allFeedbacks.reduce((sum, f) => sum + f.npsScore, 0) / allFeedbacks.length
+      : 0;
+
+    // Volume vs Sucesso (últimas 24h por hora)
+    const volumeVsSuccess = await this.calculateVolumeVsSuccess();
+
+    // Status da equipe
+    const agents = await db.select().from(schema.users)
+      .where(eq(schema.users.role, 'AGENT'));
+
+    const teamStatus = await Promise.all(agents.map(async (agent) => {
+      const activeConvs = await db.select().from(schema.conversations)
+        .where(and(
+          eq(schema.conversations.assignedTo, agent.id),
+          eq(schema.conversations.status, 'active')
+        ));
+
+      const finishedToday = await db.select().from(schema.conversations)
+        .where(and(
+          eq(schema.conversations.assignedTo, agent.id),
+          eq(schema.conversations.status, 'resolved'),
+          gte(schema.conversations.resolvedAt, today)
+        ));
+
+      return {
+        userId: agent.id,
+        userName: agent.fullName,
+        status: agent.lastLoginAt && new Date(agent.lastLoginAt) > new Date(Date.now() - 15 * 60 * 1000) ? 'Online' : 'Offline',
+        activeConversations: activeConvs.length,
+        finishedToday: finishedToday.length,
+        avgTime: 0, // TODO
+        nps: 0 // TODO
+      };
+    }));
+
+    return {
+      activeConversations: activeConversations.length,
+      queuedForTransfer: queuedForTransfer.length,
+      avgResponseTime: 0, // TODO
+      globalNPS: Math.round(globalNPS),
+      volumeVsSuccess,
+      teamStatus
+    };
+  }
+
+  async getAdminMetrics() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // System status (simplificado)
+    const systemStatus = {
+      api: true,
+      database: true,
+      workers: true
+    };
+
+    // Custo estimado (mock por enquanto)
+    const estimatedCost = {
+      total: 123.45,
+      openai: 80.10,
+      upstash: 43.35
+    };
+
+    // Usuários ativos
+    const allUsers = await db.select().from(schema.users);
+    const activeToday = allUsers.filter(u => 
+      u.lastLoginAt && new Date(u.lastLoginAt) > today
+    );
+
+    const activeUsers = {
+      total: activeToday.length,
+      admins: activeToday.filter(u => u.role === 'ADMIN').length,
+      supervisors: activeToday.filter(u => u.role === 'SUPERVISOR').length,
+      agents: activeToday.filter(u => u.role === 'AGENT').length
+    };
+
+    // Eventos de segurança (mock)
+    const securityEvents = {
+      total: 0,
+      failedLogins: 0
+    };
+
+    // Token usage (últimos 30 dias - mock)
+    const tokenUsage = this.generateMockTokenUsage();
+
+    // Atividade recente
+    const recentActions = await db.select().from(schema.supervisorActions)
+      .orderBy(desc(schema.supervisorActions.createdAt))
+      .limit(10);
+
+    const recentActivity = recentActions.map(action => ({
+      type: action.action,
+      message: `Ação: ${action.action} na conversa`,
+      timestamp: action.createdAt
+    }));
+
+    return {
+      systemStatus,
+      estimatedCost,
+      activeUsers,
+      securityEvents,
+      tokenUsage,
+      recentActivity
+    };
+  }
+
+  private calculateSentimentTrend(conversations: Conversation[]) {
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      const dayConvs = conversations.filter(c => 
+        c.createdAt && c.createdAt.toISOString().split('T')[0] === dateStr
+      );
+
+      last7Days.push({
+        date: dateStr,
+        positive: dayConvs.filter(c => c.sentiment === 'positive').length,
+        neutral: dayConvs.filter(c => c.sentiment === 'neutral').length,
+        negative: dayConvs.filter(c => c.sentiment === 'negative').length
+      });
+    }
+    return last7Days;
+  }
+
+  private async calculateVolumeVsSuccess() {
+    const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const conversations = await db.select().from(schema.conversations)
+      .where(gte(schema.conversations.createdAt, last24Hours));
+
+    const hourlyData = [];
+    for (let i = 0; i < 24; i++) {
+      const hour = new Date(last24Hours);
+      hour.setHours(hour.getHours() + i);
+      const hourStr = `${hour.getHours()}:00`;
+
+      const hourConvs = conversations.filter(c => {
+        if (!c.createdAt) return false;
+        const convHour = new Date(c.createdAt).getHours();
+        return convHour === hour.getHours();
+      });
+
+      const resolved = hourConvs.filter(c => c.status === 'resolved').length;
+      const successRate = hourConvs.length > 0 ? (resolved / hourConvs.length) * 100 : 0;
+
+      hourlyData.push({
+        hour: hourStr,
+        volume: hourConvs.length,
+        successRate: Math.round(successRate)
+      });
+    }
+
+    return hourlyData;
+  }
+
+  private generateMockTokenUsage() {
+    const usage = [];
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      usage.push({
+        date: date.toISOString().split('T')[0],
+        tokens: Math.floor(Math.random() * 50000) + 10000
+      });
+    }
+    return usage;
   }
 }
 
