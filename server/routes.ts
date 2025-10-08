@@ -2778,7 +2778,10 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
   // Get transferred conversations
   app.get("/api/conversations/transferred", authenticate, async (req, res) => {
     try {
-      const conversations = await storage.getTransferredConversations();
+      const userId = req.user?.userId;
+      const role = req.user?.role;
+      
+      const conversations = await storage.getTransferredConversations(userId, role);
       return res.json(conversations);
     } catch (error) {
       console.error("Get transferred conversations error:", error);

@@ -46,7 +46,7 @@ export interface IStorage {
   getAllActiveConversations(): Promise<Conversation[]>;
   getMonitorConversations(): Promise<Conversation[]>; // Ativas + Resolvidas (24h)
   getAllConversations(): Promise<Conversation[]>;
-  getTransferredConversations(): Promise<Conversation[]>;
+  getTransferredConversations(userId?: string, role?: string): Promise<Conversation[]>;
   createConversation(conversation: InsertConversation): Promise<Conversation>;
   updateConversation(id: string, updates: Partial<Conversation>): Promise<Conversation | undefined>;
   deleteConversation(chatId: string): Promise<void>;
@@ -297,7 +297,7 @@ export class MemStorage implements IStorage {
     }).sort((a, b) => (b.lastMessageTime?.getTime() || 0) - (a.lastMessageTime?.getTime() || 0));
   }
 
-  async getTransferredConversations(): Promise<Conversation[]> {
+  async getTransferredConversations(userId?: string, role?: string): Promise<Conversation[]> {
     const now = new Date();
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     
@@ -305,10 +305,21 @@ export class MemStorage implements IStorage {
       if (conv.transferredToHuman !== true) return false;
       
       // Show active, queued conversations OR resolved conversations from last 24h
-      if (conv.status === 'active' || conv.status === 'queued') return true;
-      if (conv.status === 'resolved' && conv.lastMessageTime && conv.lastMessageTime >= twentyFourHoursAgo) return true;
+      const isValidStatus = (
+        conv.status === 'active' || 
+        conv.status === 'queued' ||
+        (conv.status === 'resolved' && conv.lastMessageTime && conv.lastMessageTime >= twentyFourHoursAgo)
+      );
       
-      return false;
+      if (!isValidStatus) return false;
+      
+      // AGENT: conversas atribuídas a ele OU não atribuídas (para auto-atribuição)
+      if (role === 'AGENT' && userId) {
+        return conv.assignedTo === userId || conv.assignedTo === null;
+      }
+      
+      // SUPERVISOR e ADMIN: todas as conversas
+      return true;
     }).sort((a, b) => (b.transferredAt?.getTime() || 0) - (a.transferredAt?.getTime() || 0));
   }
 
@@ -863,22 +874,34 @@ export class DbStorage implements IStorage {
       .orderBy(desc(schema.conversations.lastMessageTime));
   }
 
-  async getTransferredConversations(): Promise<Conversation[]> {
+  async getTransferredConversations(userId?: string, role?: string): Promise<Conversation[]> {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     
-    return await db.select().from(schema.conversations)
-      .where(and(
-        eq(schema.conversations.transferredToHuman, true),
-        or(
-          eq(schema.conversations.status, 'active'),
-          eq(schema.conversations.status, 'queued'),
-          and(
-            eq(schema.conversations.status, 'resolved'),
-            isNotNull(schema.conversations.lastMessageTime),
-            gte(schema.conversations.lastMessageTime, twentyFourHoursAgo)
-          )
+    const conditions = [
+      eq(schema.conversations.transferredToHuman, true),
+      or(
+        eq(schema.conversations.status, 'active'),
+        eq(schema.conversations.status, 'queued'),
+        and(
+          eq(schema.conversations.status, 'resolved'),
+          isNotNull(schema.conversations.lastMessageTime),
+          gte(schema.conversations.lastMessageTime, twentyFourHoursAgo)
         )
-      ))
+      )
+    ];
+    
+    // AGENT: conversas atribuídas a ele OU não atribuídas (para auto-atribuição)
+    if (role === 'AGENT' && userId) {
+      conditions.push(
+        or(
+          eq(schema.conversations.assignedTo, userId),
+          isNull(schema.conversations.assignedTo)
+        )
+      );
+    }
+    
+    return await db.select().from(schema.conversations)
+      .where(and(...conditions))
       .orderBy(desc(schema.conversations.transferredAt));
   }
 
