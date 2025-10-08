@@ -65,7 +65,14 @@ The frontend is built with React and TypeScript using Vite, leveraging `shadcn/u
 - **3-Tier System**: ADMIN (full access), SUPERVISOR (operational access), AGENT (restricted to assigned conversations).
 - **User Management**: Complete CRUD interface at `/users` for ADMIN to invite, edit, activate/deactivate, and delete users. Includes email field, role assignment, and status toggle (ACTIVE/INACTIVE).
 - **Granular Permissions**: Middleware system with `authenticate`, `requireAdmin`, `requireAdminOrSupervisor`, and `requireAnyRole` for flexible route protection.
-- **Dynamic Navigation**: Sidebar automatically filters menu items based on user role - ADMIN sees all 12 items, SUPERVISOR sees 8 operational items (excludes Users, Settings, Webhook Monitor), AGENT sees 3 restricted items (Dashboard, Conversations only).
+- **Organized Navigation**: Sidebar with collapsible categories for better organization:
+  - **Visão Geral**: Dashboard (all roles)
+  - **Monitoramento**: Monitor Supervisor, Dashboard de Atendentes, Relatórios de Atendentes, Monitor Webhook (ADMIN/SUPERVISOR, webhook ADMIN-only)
+  - **Conversas**: Test Chat, Conversas (all roles, Test Chat ADMIN/SUPERVISOR only)
+  - **Conhecimento & IA**: Base de Conhecimento, Evolução dos Agentes, Assistentes (ADMIN/SUPERVISOR)
+  - **Análises**: Métricas, Feedbacks NPS (ADMIN/SUPERVISOR)
+  - **Administração**: Usuários, Configurações (ADMIN only)
+- **Category State Persistence**: User's expanded/collapsed category preferences saved in localStorage and maintained across sessions.
 - **Default Credentials**: admin/admin123 (change after first login for security).
 - **Test Users**: supervisor/supervisor123, agent/agent123 available for testing different permission levels.
 
@@ -74,6 +81,15 @@ The frontend is built with React and TypeScript using Vite, leveraging `shadcn/u
 - **Supervisor Dashboard**: Three tabs (Overview, AI Performance, Team). Overview tab shows global KPIs (active conversations, transfer queue, global TMA, global NPS), volume vs success chart (24h), and team status table with real-time metrics.
 - **Admin Dashboard**: System KPIs (API/DB/worker status, estimated monthly costs, active users by role, security events), token usage chart (30 days), and recent system activity log.
 - **Dashboard APIs**: Three protected endpoints (/api/dashboard/agent, /api/dashboard/supervisor, /api/dashboard/admin) with role-specific data aggregation and automatic refresh (30-60s intervals).
+
+**Agent Reports System**:
+- **Historical Analysis**: Temporal evolution tracking with flexible filtering (daily/weekly/monthly periods, custom date ranges).
+- **Metrics Tracked**: Total conversations, success rate, average NPS, transfer count, sentiment analysis per period.
+- **Visualization**: Recharts-powered line charts (evolution) and bar charts (performance), summary cards with key metrics.
+- **Granular Filtering**: Period presets (7/15/30 days, 4/8/12 weeks, 3/6/12 months) or custom dates with configurable grouping (day/week/month).
+- **Agent Selection**: View aggregated team data or filter by specific agent for individual performance tracking.
+- **API Endpoints**: `/api/reports/agents` (historical data), `/api/agents/list` (agent roster for dropdowns), both accessible to ADMIN/SUPERVISOR.
+- **Detailed Tables**: Period-by-period breakdown with all metrics for deep analysis.
 
 ## External Dependencies
 
