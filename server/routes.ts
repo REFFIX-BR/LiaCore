@@ -3153,6 +3153,93 @@ A resposta deve:
     }
   });
 
+  // Resolve conversation (agent can only resolve their own assigned conversations)
+  app.post("/api/conversations/:id/resolve", authenticate, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const currentUser = req.user!;
+
+      // Buscar conversa
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversa não encontrada" });
+      }
+
+      // Validação de permissão
+      const isAdminOrSupervisor = currentUser.role === 'ADMIN' || currentUser.role === 'SUPERVISOR';
+      const isAssignedAgent = conversation.assignedTo === currentUser.userId;
+
+      if (!isAdminOrSupervisor && !isAssignedAgent) {
+        return res.status(403).json({ 
+          error: "Você só pode finalizar conversas atribuídas a você" 
+        });
+      }
+
+      // Criar ação
+      await storage.createSupervisorAction({
+        conversationId: id,
+        action: "mark_resolved",
+        notes: `Conversa finalizada por ${currentUser.fullName}`,
+        createdBy: currentUser.username,
+      });
+
+      // Preparar metadata para aguardar NPS se for WhatsApp
+      const currentMetadata = conversation?.metadata as any || {};
+      const isWhatsApp = currentMetadata?.source === 'evolution_api';
+      
+      await storage.updateConversation(id, {
+        status: "resolved",
+        resolvedAt: new Date(),
+        metadata: isWhatsApp ? { ...currentMetadata, awaitingNPS: true } : currentMetadata,
+      });
+
+      // Create learning event for successful resolution
+      const messages = await storage.getMessagesByConversationId(id);
+      const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+      const lastAiMessage = messages.filter(m => m.role === 'assistant').pop();
+
+      if (lastUserMessage && lastAiMessage) {
+        await storage.createLearningEvent({
+          conversationId: id,
+          eventType: 'implicit_success',
+          assistantType: conversation.assistantType,
+          userMessage: lastUserMessage.content,
+          aiResponse: lastAiMessage.content,
+          sentiment: conversation.sentiment || 'positive',
+          resolution: 'success',
+        });
+        console.log("📚 [Learning] Evento de sucesso criado para", conversation.assistantType);
+      }
+
+      // Enviar pesquisa NPS para cliente via WhatsApp
+      const metadata = conversation.metadata as any;
+      if (metadata?.source === 'evolution_api' && conversation.clientId) {
+        // Buscar template de NPS
+        const npsTemplate = await storage.getMessageTemplateByKey('nps_survey');
+        let npsMessage = npsTemplate?.template || 
+          `Olá ${conversation.clientName}!\nSeu atendimento foi finalizado.\n\nPesquisa de Satisfação\n\nEm uma escala de 0 a 10, qual a satisfação com atendimento?\n\nDigite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
+        
+        // Substituir variáveis
+        npsMessage = npsMessage.replace(/{clientName}/g, conversation.clientName);
+
+        const sent = await sendWhatsAppMessage(conversation.clientId, npsMessage);
+        if (sent) {
+          console.log(`📊 [NPS] Pesquisa enviada para ${conversation.clientName} (${conversation.clientId})`);
+        }
+      }
+
+      console.log(`✅ [Resolve] Conversa ${id} finalizada por ${currentUser.fullName}`);
+
+      return res.json({ 
+        success: true,
+        resolvedBy: currentUser.fullName,
+      });
+    } catch (error) {
+      console.error("Resolve conversation error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // Setup WebSocket for real-time webhook logs
