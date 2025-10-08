@@ -644,43 +644,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Capture phoneNumber for async callback
         const clientPhoneNumber = phoneNumber;
 
+        // Capture conversation reference for async processing
+        const conversationRef = conversation;
+        
         // Process in background
         (async () => {
           try {
-            const { response: responseText, transferred, transferredTo } = await sendMessageAndGetResponse(
+            if (!conversationRef) {
+              console.error("❌ [Evolution] Conversation reference lost in async block");
+              return;
+            }
+            
+            const { response: responseText, transferred, transferredTo, resolved, resolveReason } = await sendMessageAndGetResponse(
               threadId!,
               assistantId,
-              messageText
+              messageText,
+              chatId  // CRÍTICO: Passar chatId para processar finalizar_conversa
             );
 
             // Store assistant response
             await storage.createMessage({
-              conversationId: conversation.id,
+              conversationId: conversationRef.id,
               role: "assistant",
               content: responseText,
-              assistant: conversation.assistantType,
+              assistant: conversationRef.assistantType,
             });
 
-            // Update conversation
-            await storage.updateConversation(conversation.id, {
-              lastMessage: responseText,
-              lastMessageTime: new Date(),
-            });
+            // Handle conversation resolution if requested by AI
+            if (resolved) {
+              console.log(`✅ [Evolution Resolve] IA finalizou conversa: ${chatId}`);
+              
+              // Create supervisor action for resolution
+              await storage.createSupervisorAction({
+                conversationId: conversationRef.id,
+                action: "resolve",
+                notes: `Finalização automática pela IA: ${resolveReason || 'Problema resolvido'}`,
+                createdBy: "IA Assistant",
+              });
 
-            // Handle transfer to human if requested
-            if (transferred) {
-              await storage.updateConversation(conversation.id, {
+              // Update conversation - mark as resolved and set awaitingNPS flag
+              const existingMetadata = typeof conversationRef.metadata === 'object' && conversationRef.metadata !== null 
+                ? conversationRef.metadata 
+                : {};
+                
+              await storage.updateConversation(conversationRef.id, {
+                status: 'resolved',
+                lastMessage: responseText,
+                lastMessageTime: new Date(),
+                metadata: {
+                  ...existingMetadata,
+                  awaitingNPS: true,
+                  resolvedBy: 'IA Assistant',
+                  resolvedAt: new Date().toISOString(),
+                  resolveReason: resolveReason || 'Problema resolvido',
+                },
+              });
+
+              console.log(`✅ [Evolution Resolve] Conversa ${conversationRef.id} marcada como resolvida, enviando NPS...`);
+
+              // Send NPS survey via WhatsApp
+              const npsSurveyMessage = "Obrigado pelo contato! Para nos ajudar a melhorar, por favor avalie nosso atendimento de 0 a 10:";
+              
+              try {
+                await sendWhatsAppMessage(clientPhoneNumber, npsSurveyMessage);
+                console.log(`📊 [NPS] Pesquisa enviada ao cliente ${clientName}`);
+              } catch (error) {
+                console.error("❌ [NPS] Erro ao enviar pesquisa:", error);
+              }
+              
+              webhookLogger.success('CONVERSATION_RESOLVED', `Conversa finalizada automaticamente pela IA`, {
+                conversationId: conversationRef.id,
+                resolveReason,
+                npsSent: true,
+              });
+            } else if (transferred) {
+              // Handle transfer to human if requested
+              await storage.updateConversation(conversationRef.id, {
                 transferredToHuman: true,
                 transferReason: transferredTo || 'Transferido pela IA',
                 transferredAt: new Date(),
+                lastMessage: responseText,
+                lastMessageTime: new Date(),
               });
               console.log(`🔄 [Evolution] Conversa transferida para humano: ${transferredTo}`);
+            } else {
+              // Normal update without transfer or resolve
+              await storage.updateConversation(conversationRef.id, {
+                lastMessage: responseText,
+                lastMessageTime: new Date(),
+              });
             }
 
             console.log(`✅ [Evolution] Resposta gerada: ${responseText.substring(0, 100)}...`);
             
-            webhookLogger.success('AI_RESPONSE', `Resposta da IA gerada (${conversation.assistantType})`, {
-              conversationId: conversation.id,
+            webhookLogger.success('AI_RESPONSE', `Resposta da IA gerada (${conversationRef.assistantType})`, {
+              conversationId: conversationRef.id,
               responsePreview: responseText.substring(0, 50),
               transferred: transferred || false,
             });
@@ -704,7 +762,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch (error) {
             webhookLogger.error('PROCESSING_ERROR', `Erro ao processar resposta`, {
               error: error instanceof Error ? error.message : String(error),
-              conversationId: conversation.id,
+              conversationId: conversationRef?.id,
             });
             console.error("❌ [Evolution] Erro ao processar resposta:", error);
           }
