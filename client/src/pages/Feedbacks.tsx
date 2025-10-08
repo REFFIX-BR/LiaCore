@@ -78,8 +78,11 @@ export default function Feedbacks() {
     cancelamento: "Cancelamento",
   };
 
-  const handleOpenConversation = (conversationId: string) => {
-    setLocation(`/conversations?highlight=${conversationId}`);
+  const handleOpenConversation = (feedback: FeedbackWithConversation) => {
+    if (!feedback.conversation) {
+      return; // Não navega se não há conversa associada
+    }
+    setLocation(`/conversations?highlight=${feedback.conversationId}`);
   };
 
   return (
@@ -144,8 +147,8 @@ export default function Feedbacks() {
               filteredFeedbacks.map((feedback) => (
                 <Card 
                   key={feedback.id} 
-                  className="hover-elevate cursor-pointer transition-all"
-                  onClick={() => handleOpenConversation(feedback.conversationId)}
+                  className={`transition-all ${feedback.conversation ? 'hover-elevate cursor-pointer' : 'opacity-60'}`}
+                  onClick={() => handleOpenConversation(feedback)}
                   data-testid={`feedback-card-${feedback.id}`}
                 >
                   <CardContent className="p-4">
@@ -161,6 +164,11 @@ export default function Feedbacks() {
                           <Badge variant="outline" data-testid="badge-assistant">
                             {assistantNames[feedback.assistantType] || feedback.assistantType}
                           </Badge>
+                          {!feedback.conversation && (
+                            <Badge variant="secondary" data-testid="badge-no-conversation">
+                              Conversa não disponível
+                            </Badge>
+                          )}
                         </div>
 
                         <div className="space-y-1">
@@ -181,9 +189,10 @@ export default function Feedbacks() {
                       <Button 
                         variant="ghost" 
                         size="icon"
+                        disabled={!feedback.conversation}
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleOpenConversation(feedback.conversationId);
+                          handleOpenConversation(feedback);
                         }}
                         data-testid="button-open-conversation"
                       >
