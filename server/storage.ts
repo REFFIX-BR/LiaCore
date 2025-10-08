@@ -54,6 +54,7 @@ export interface IStorage {
   // Messages
   getMessagesByConversationId(conversationId: string): Promise<Message[]>;
   getRecentMessagesByConversationId(conversationId: string, limit: number): Promise<Message[]>;
+  getMessagesPaginated(conversationId: string, options: { limit?: number; before?: string }): Promise<{ messages: Message[]; hasMore: boolean }>;
   createMessage(message: InsertMessage): Promise<Message>;
   
   // Alerts
@@ -418,6 +419,31 @@ export class MemStorage implements IStorage {
     return allMessages.slice(-limit).reverse();
   }
 
+  async getMessagesPaginated(conversationId: string, options: { limit?: number; before?: string }): Promise<{ messages: Message[]; hasMore: boolean }> {
+    const limit = options.limit || 15;
+    const allMessages = await this.getMessagesByConversationId(conversationId);
+    
+    if (!options.before) {
+      // Retornar as mais recentes
+      const messages = allMessages.slice(-limit);
+      const hasMore = allMessages.length > limit;
+      return { messages, hasMore };
+    }
+    
+    // Encontrar o índice da mensagem "before"
+    const beforeIndex = allMessages.findIndex(msg => msg.id === options.before);
+    if (beforeIndex === -1) {
+      return { messages: [], hasMore: false };
+    }
+    
+    // Pegar as mensagens antes desse índice
+    const startIndex = Math.max(0, beforeIndex - limit);
+    const messages = allMessages.slice(startIndex, beforeIndex);
+    const hasMore = startIndex > 0;
+    
+    return { messages, hasMore };
+  }
+
   async createMessage(insertMsg: InsertMessage): Promise<Message> {
     const id = randomUUID();
     const message: Message = {
@@ -749,7 +775,7 @@ export class MemStorage implements IStorage {
 }
 
 import { db } from "./db";
-import { eq, desc, and, or, gte, lte, isNotNull, sql } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, lt, isNotNull, sql } from "drizzle-orm";
 import * as schema from "@shared/schema";
 
 export class DbStorage implements IStorage {
@@ -903,6 +929,44 @@ export class DbStorage implements IStorage {
       .where(eq(schema.messages.conversationId, conversationId))
       .orderBy(desc(schema.messages.timestamp))
       .limit(limit);
+  }
+
+  async getMessagesPaginated(conversationId: string, options: { limit?: number; before?: string }): Promise<{ messages: Message[]; hasMore: boolean }> {
+    const limit = options.limit || 15;
+    
+    let query = db.select().from(schema.messages)
+      .where(eq(schema.messages.conversationId, conversationId))
+      .$dynamic();
+    
+    if (options.before) {
+      // Buscar a mensagem "before" para pegar seu timestamp
+      const beforeMessage = await db.select().from(schema.messages)
+        .where(eq(schema.messages.id, options.before))
+        .limit(1);
+      
+      if (beforeMessage.length === 0) {
+        return { messages: [], hasMore: false };
+      }
+      
+      // Buscar mensagens com timestamp menor que o before
+      query = query.where(
+        and(
+          eq(schema.messages.conversationId, conversationId),
+          lt(schema.messages.timestamp, beforeMessage[0].timestamp)
+        )
+      );
+    }
+    
+    // Ordenar DESC e pegar limit + 1 para saber se há mais
+    const messages = await query
+      .orderBy(desc(schema.messages.timestamp))
+      .limit(limit + 1);
+    
+    const hasMore = messages.length > limit;
+    const result = hasMore ? messages.slice(0, limit) : messages;
+    
+    // Retornar em ordem ASC (mais antigas primeiro)
+    return { messages: result.reverse(), hasMore };
   }
 
   async createMessage(insertMsg: InsertMessage): Promise<Message> {

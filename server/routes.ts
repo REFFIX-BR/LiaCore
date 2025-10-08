@@ -1722,13 +1722,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Conversation not found" });
       }
 
-      const messages = await storage.getMessagesByConversationId(conversation.id);
+      // Suporte a paginação de mensagens
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 15;
+      const before = req.query.before as string | undefined;
+      
+      const { messages, hasMore } = await storage.getMessagesPaginated(conversation.id, { limit, before });
       const alerts = await storage.getAlertsByConversationId(conversation.id);
       const actions = await storage.getActionsByConversationId(conversation.id);
 
       return res.json({
         conversation,
         messages,
+        hasMore,
         alerts,
         actions,
       });

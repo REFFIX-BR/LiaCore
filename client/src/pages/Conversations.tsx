@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ConversationList } from "@/components/ConversationList";
 import { ChatMessage, type Message } from "@/components/ChatMessage";
@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus } from "lucide-react";
+import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, ChevronDown } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -43,6 +43,12 @@ export default function Conversations() {
   const [isEditingAI, setIsEditingAI] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  const [allMessages, setAllMessages] = useState<Message[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasLoadedOlder, setHasLoadedOlder] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { isAgent, isSupervisor, isAdmin } = useAuth();
 
@@ -55,14 +61,105 @@ export default function Conversations() {
   // Filtrar conversas ATIVAS e AGUARDANDO atribuição (conversas resolvidas aparecem apenas como histórico)
   const activeConversations = conversations.filter(conv => conv.status === 'active' || conv.status === 'queued');
 
-  // Query mensagens da conversa ativa
-  const { data: conversationData } = useQuery<{ messages: Message[] }>({
+  // Query mensagens da conversa ativa (últimas 15)
+  const { data: conversationData } = useQuery<{ messages: Message[]; hasMore: boolean }>({
     queryKey: ["/api/monitor/conversations", activeId],
     enabled: !!activeId,
     refetchInterval: 3000,
   });
   
-  const messages = conversationData?.messages || [];
+  // Resetar mensagens quando conversa ativa muda
+  useEffect(() => {
+    if (activeId) {
+      setAllMessages([]);
+      setHasMore(false);
+      setHasLoadedOlder(false);
+    }
+  }, [activeId]);
+
+  // Atualizar mensagens quando dados mudam (mesclar novas sem perder antigas)
+  useEffect(() => {
+    if (!conversationData) return;
+
+    setAllMessages(prev => {
+      // Se não há mensagens anteriores, usar as novas diretamente
+      if (prev.length === 0) {
+        return conversationData.messages;
+      }
+
+      // Pegar IDs das mensagens que já temos
+      const existingIds = new Set(prev.map(m => m.id));
+      
+      // Adicionar apenas mensagens novas que não temos ainda
+      const newMessages = conversationData.messages.filter(m => !existingIds.has(m.id));
+      
+      if (newMessages.length === 0) {
+        return prev; // Nenhuma mensagem nova
+      }
+
+      // Adicionar novas mensagens ao final
+      return [...prev, ...newMessages];
+    });
+    
+    // Só atualizar hasMore do refetch automático se não carregamos mensagens antigas manualmente
+    // Se já carregamos manualmente, preservar o valor atual (pode ser false)
+    if (!hasLoadedOlder) {
+      setHasMore(conversationData.hasMore);
+    }
+  }, [conversationData, hasLoadedOlder]);
+
+  // Scroll automático APENAS quando: conversa muda OU novas mensagens chegam
+  useEffect(() => {
+    if (!activeId || !messagesEndRef.current) return;
+
+    // Verificar se estamos próximos do final antes de fazer scroll
+    const scrollContainer = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (!scrollContainer) {
+      // Se não conseguimos acessar o container, fazer scroll sempre (primeira vez)
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+
+    // Só fazer scroll se estiver próximo do final (para não interromper leitura de mensagens antigas)
+    if (isNearBottom || allMessages.length <= 15) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [allMessages, activeId]);
+
+  // Função para carregar mensagens anteriores
+  const loadMoreMessages = useCallback(async () => {
+    if (!activeId || !hasMore || loadingMore) return;
+    
+    setLoadingMore(true);
+    setHasLoadedOlder(true); // Marcar que carregamos manualmente
+    
+    try {
+      const oldestMessageId = allMessages[0]?.id;
+      if (!oldestMessageId) {
+        setHasMore(false);
+        return;
+      }
+      
+      const response = await fetch(`/api/monitor/conversations/${activeId}?before=${oldestMessageId}&limit=15`);
+      const data = await response.json();
+      
+      // Sempre atualizar hasMore, mesmo se não houver mensagens
+      setHasMore(data.hasMore);
+      
+      if (data.messages && data.messages.length > 0) {
+        setAllMessages(prev => [...data.messages, ...prev]);
+      }
+    } catch (error) {
+      console.error("Error loading more messages:", error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [activeId, hasMore, loadingMore, allMessages]);
+
+  const messages = allMessages;
 
   // Mutation para pedir sugestão da IA
   const suggestMutation = useMutation({
@@ -359,11 +456,35 @@ export default function Conversations() {
           </div>
 
           {/* Mensagens */}
-          <ScrollArea className="flex-1 p-4">
+          <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
             <div className="space-y-2">
+              {hasMore && (
+                <div className="flex justify-center py-2">
+                  <Button
+                    onClick={loadMoreMessages}
+                    variant="ghost"
+                    size="sm"
+                    disabled={loadingMore}
+                    data-testid="button-load-more"
+                  >
+                    {loadingMore ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Carregando...
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-4 w-4 mr-2 rotate-180" />
+                        Carregar mensagens anteriores
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
               {messages.map((msg) => (
                 <ChatMessage key={msg.id} message={msg} />
               ))}
+              <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
 
