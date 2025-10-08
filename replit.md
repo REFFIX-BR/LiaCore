@@ -21,6 +21,7 @@ The frontend is built with React and TypeScript using Vite, leveraging `shadcn/u
 **Frontend**:
 - **State Management**: TanStack Query for server state management with 5-second polling.
 - **Key Pages**: Dashboard, Monitor, Test Chat, Conversations, Knowledge, Assistants, Agent Evolution, Metrics, Feedbacks NPS, Settings.
+- **Header Controls**: Theme toggle (light/dark mode) and logout button with accessible tooltip, positioned in top-right header area.
 
 **Backend**:
 - **Runtime**: Node.js with Express.js, written in TypeScript.
