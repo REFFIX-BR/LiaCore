@@ -106,6 +106,18 @@ The frontend is built with React and TypeScript using Vite, leveraging `shadcn/u
 - **API Endpoints**: `/api/reports/agents` (historical data), `/api/agents/list` (agent roster for dropdowns), both accessible to ADMIN/SUPERVISOR.
 - **Detailed Tables**: Period-by-period breakdown with all metrics for deep analysis.
 
+**Conversation Assignment System**:
+- **Agent Assignment**: Supervisors/admins can assign transferred conversations to specific agents via dropdown interface.
+- **Assignment Flow**: Click "Atribuir Atendente" button → Select agent from dropdown → Conversation is assigned → Automatic welcome message sent via WhatsApp.
+- **Welcome Messages**: When assigned, system automatically sends WhatsApp message: "Olá! Meu nome é [Agent Name] e acabei de assumir esta conversa. Vou dar continuidade ao seu atendimento."
+- **Visual Indicators**: "Atribuído" badge displayed in conversation header after assignment; assignment button hidden after assignment.
+- **Permission Control**: Only the assigned agent can respond to the conversation after assignment (ADMIN/SUPERVISOR can override and respond to any conversation).
+- **Status Support**: System handles conversations with status 'active' and 'queued' in transferred conversations list.
+- **API Endpoints**:
+  - `POST /api/conversations/:id/assign` (admin/supervisor) - Assigns conversation to specific agent with agentId
+  - `GET /api/agents/list` (admin/supervisor) - Lists all active agents for assignment dropdown
+- **Database Integration**: Uses existing `assignedTo` field in conversations table (stores agent userId).
+
 ## External Dependencies
 
 **Third-Party Services**:
