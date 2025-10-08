@@ -209,6 +209,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get active agents list (for assignment dropdown)
+  app.get("/api/agents/list", authenticate, requireAdminOrSupervisor, async (_req, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      // Filter active agents and supervisors (who can take conversations)
+      const agents = allUsers
+        .filter(u => u.status === "ACTIVE" && (u.role === "AGENT" || u.role === "SUPERVISOR" || u.role === "ADMIN"))
+        .map(u => ({
+          id: u.id,
+          fullName: u.fullName,
+          username: u.username,
+          role: u.role,
+        }));
+      
+      res.json({ agents });
+    } catch (error) {
+      console.error("❌ [Agents] Error getting agents:", error);
+      res.status(500).json({ error: "Erro ao buscar atendentes" });
+    }
+  });
+
   // Create new user / Invite user (admin only)
   app.post("/api/users", authenticate, requireAdmin, async (req, res) => {
     try {
