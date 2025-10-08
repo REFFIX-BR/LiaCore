@@ -30,9 +30,9 @@ The frontend is built with React and TypeScript using Vite, leveraging `shadcn/u
 - **Data Persistence**: PostgreSQL via Drizzle ORM for permanent data.
 
 **AI & Knowledge Management**:
-- **AI Provider**: OpenAI (Assistants API for specialized assistants, GPT-5 for routing).
+- **AI Provider**: OpenAI (Assistants API for specialized assistants).
 - **Specialized Assistants**: Six assistants configured for specific roles (Support, Sales, Finance, Cancellation, Ombudsman, Presentation), each with detailed instructions, WhatsApp-friendly formatting, and domain-specific function calling. All assistants are configured for "text" response format.
-- **Routing Logic**: GPT-5 based intent classification using conversation summaries and recent messages.
+- **Receptionist-First Routing**: All new conversations start with LIA Recepcionista (APRESENTACAO_ASSISTANT_ID), who triages client needs and routes to the appropriate specialist using `transferir_para_humano`. The system automatically maps departments (Suporte Técnico, Comercial, Financeiro, Ouvidoria, Cancelamento) to their corresponding specialist assistants, updating the conversation's assistant type seamlessly without marking as transferred to human.
 - **Automatic Conversation Summarization**: Asynchronous summarization every 12 messages, generating structured JSON summaries to maintain context.
 - **RAG Implementation**: Knowledge chunks in Upstash Vector, accessible via `consultar_base_de_conhecimento` function.
 - **Function Calling**: Custom functions for tasks like connection verification, knowledge base queries, invoice lookups, and visit scheduling.
