@@ -61,6 +61,14 @@ The frontend is built with React and TypeScript using Vite, leveraging `shadcn/u
 - **Message Processing**: Extracts text from various message types, identifies clients, routes to AI, manages threads, and generates responses.
 - **Outbound Messaging**: AI responses are automatically sent back to WhatsApp via the Evolution API with a typing simulation delay.
 
+**Role-Based Access Control (RBAC)**:
+- **3-Tier System**: ADMIN (full access), SUPERVISOR (operational access), AGENT (restricted to assigned conversations).
+- **User Management**: Complete CRUD interface at `/users` for ADMIN to invite, edit, activate/deactivate, and delete users. Includes email field, role assignment, and status toggle (ACTIVE/INACTIVE).
+- **Granular Permissions**: Middleware system with `authenticate`, `requireAdmin`, `requireAdminOrSupervisor`, and `requireAnyRole` for flexible route protection.
+- **Dynamic Navigation**: Sidebar automatically filters menu items based on user role - ADMIN sees all 12 items, SUPERVISOR sees 8 operational items (excludes Users, Settings, Webhook Monitor), AGENT sees 3 restricted items (Dashboard, Conversations only).
+- **Default Credentials**: admin/admin123 (change after first login for security).
+- **Test Users**: supervisor/supervisor123, agent/agent123 available for testing different permission levels.
+
 ## External Dependencies
 
 **Third-Party Services**:
