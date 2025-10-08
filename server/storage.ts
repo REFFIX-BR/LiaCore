@@ -21,7 +21,10 @@ import {
   type SuggestedResponse,
   type InsertSuggestedResponse,
   type RegistrationRequest,
-  type InsertRegistrationRequest
+  type InsertRegistrationRequest,
+  type MessageTemplate,
+  type InsertMessageTemplate,
+  type UpdateMessageTemplate
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -164,6 +167,13 @@ export interface IStorage {
   getPendingRegistrationRequests(): Promise<RegistrationRequest[]>;
   updateRegistrationRequest(id: string, updates: Partial<RegistrationRequest>): Promise<RegistrationRequest | undefined>;
   deleteRegistrationRequest(id: string): Promise<void>;
+  
+  // Message Templates
+  getAllMessageTemplates(): Promise<MessageTemplate[]>;
+  getMessageTemplateByKey(key: string): Promise<MessageTemplate | undefined>;
+  getMessageTemplatesByCategory(category: string): Promise<MessageTemplate[]>;
+  updateMessageTemplate(key: string, updates: UpdateMessageTemplate): Promise<MessageTemplate | undefined>;
+  createMessageTemplate(template: InsertMessageTemplate): Promise<MessageTemplate>;
 }
 
 export class MemStorage implements IStorage {
@@ -707,6 +717,34 @@ export class MemStorage implements IStorage {
 
   async deleteRegistrationRequest(id: string): Promise<void> {
     this.registrationRequests.delete(id);
+  }
+
+  // Message Templates (stub implementation for MemStorage)
+  async getAllMessageTemplates(): Promise<MessageTemplate[]> {
+    return [];
+  }
+
+  async getMessageTemplateByKey(key: string): Promise<MessageTemplate | undefined> {
+    return undefined;
+  }
+
+  async getMessageTemplatesByCategory(category: string): Promise<MessageTemplate[]> {
+    return [];
+  }
+
+  async updateMessageTemplate(key: string, updates: UpdateMessageTemplate): Promise<MessageTemplate | undefined> {
+    return undefined;
+  }
+
+  async createMessageTemplate(template: InsertMessageTemplate): Promise<MessageTemplate> {
+    const id = randomUUID();
+    return {
+      id,
+      ...template,
+      variables: template.variables || [],
+      updatedAt: new Date(),
+      updatedBy: template.updatedBy || null,
+    };
   }
 }
 
@@ -1584,6 +1622,42 @@ export class DbStorage implements IStorage {
   async deleteRegistrationRequest(id: string): Promise<void> {
     await db.delete(schema.registrationRequests)
       .where(eq(schema.registrationRequests.id, id));
+  }
+
+  // Message Templates
+  async getAllMessageTemplates(): Promise<MessageTemplate[]> {
+    return await db.select()
+      .from(schema.messageTemplates)
+      .orderBy(schema.messageTemplates.category, schema.messageTemplates.name);
+  }
+
+  async getMessageTemplateByKey(key: string): Promise<MessageTemplate | undefined> {
+    const [template] = await db.select()
+      .from(schema.messageTemplates)
+      .where(eq(schema.messageTemplates.key, key));
+    return template;
+  }
+
+  async getMessageTemplatesByCategory(category: string): Promise<MessageTemplate[]> {
+    return await db.select()
+      .from(schema.messageTemplates)
+      .where(eq(schema.messageTemplates.category, category))
+      .orderBy(schema.messageTemplates.name);
+  }
+
+  async updateMessageTemplate(key: string, updates: UpdateMessageTemplate): Promise<MessageTemplate | undefined> {
+    const [updated] = await db.update(schema.messageTemplates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(schema.messageTemplates.key, key))
+      .returning();
+    return updated;
+  }
+
+  async createMessageTemplate(insertTemplate: InsertMessageTemplate): Promise<MessageTemplate> {
+    const [template] = await db.insert(schema.messageTemplates)
+      .values(insertTemplate)
+      .returning();
+    return template;
   }
 
   private getWeekNumber(date: Date): number {
