@@ -583,12 +583,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log(`✅ [NPS] Feedback salvo com ID:`, savedFeedback.id);
           
-          // Remover flag awaitingNPS
+          // Remover flag awaitingNPS e garantir que status permaneça resolved
           await storage.updateConversation(conversation.id, {
+            status: 'resolved',  // Explicitamente manter como resolved
             metadata: { ...metadata, awaitingNPS: false }
           });
           
-          console.log(`📊 [NPS] Cliente ${clientName} avaliou com nota ${npsScore}`);
+          // Atualizar objeto local para evitar que código subsequente veja estado antigo
+          conversation = { 
+            ...conversation, 
+            status: 'resolved',
+            metadata: { ...metadata, awaitingNPS: false }
+          };
+          
+          console.log(`📊 [NPS] Cliente ${clientName} avaliou com nota ${npsScore} - conversa mantida como resolved`);
           
           // Enviar mensagem de agradecimento (sem emoji)
           const thankYouMessage = `Obrigado pelo seu feedback!\n\nSua opinião é muito importante para nós.`;
