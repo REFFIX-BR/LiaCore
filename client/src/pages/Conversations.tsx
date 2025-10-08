@@ -50,7 +50,7 @@ export default function Conversations() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { isAgent, isSupervisor, isAdmin } = useAuth();
+  const { user, isAgent, isSupervisor, isAdmin } = useAuth();
 
   // Query conversas transferidas
   const { data: conversations = [], isLoading: conversationsLoading } = useQuery<Conversation[]>({
@@ -220,10 +220,10 @@ export default function Conversations() {
     },
   });
 
-  // Mutation para resolver conversa
+  // Mutation para resolver conversa (AGENT pode resolver suas próprias conversas)
   const resolveMutation = useMutation({
     mutationFn: async (conversationId: string) => {
-      const response = await apiRequest("/api/supervisor/resolve", "POST", { conversationId });
+      const response = await apiRequest(`/api/conversations/${conversationId}/resolve`, "POST", {});
       return await response.json();
     },
     onSuccess: () => {
@@ -231,7 +231,7 @@ export default function Conversations() {
       setActiveId(null);
       toast({
         title: "Conversa finalizada!",
-        description: "Atendimento encerrado com sucesso.",
+        description: "Atendimento encerrado com sucesso. Cliente receberá pesquisa de satisfação.",
       });
     },
   });
@@ -447,6 +447,7 @@ export default function Conversations() {
                 onClick={handleResolve}
                 variant="default"
                 size="sm"
+                disabled={isAgent && activeConversation.assignedTo !== user?.id}
                 data-testid="button-resolve"
               >
                 <CheckCircle2 className="h-4 w-4 mr-1" />
@@ -557,6 +558,18 @@ export default function Conversations() {
               <Textarea
                 value={messageContent}
                 onChange={(e) => setMessageContent(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (messageContent.trim() && !sendMutation.isPending) {
+                      if (isEditingAI) {
+                        handleEditAndSend();
+                      } else {
+                        handleManualSend();
+                      }
+                    }
+                  }
+                }}
                 placeholder={
                   isEditingAI
                     ? "Edite a sugestão da IA..."
