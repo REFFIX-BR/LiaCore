@@ -2843,5 +2843,39 @@ A resposta deve:
     }
   });
 
+  // ============================================================================
+  // AGENT REPORTS
+  // ============================================================================
+
+  // Get historical agent performance reports
+  app.get("/api/reports/agents", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { startDate, endDate, agentId, groupBy = 'day' } = req.query;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: "startDate and endDate are required" });
+      }
+
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return res.status(400).json({ error: "Invalid date format" });
+      }
+
+      const reports = await storage.getAgentReports({
+        startDate: start,
+        endDate: end,
+        agentId: agentId as string | undefined,
+        groupBy: groupBy as 'day' | 'week' | 'month'
+      });
+
+      return res.json(reports);
+    } catch (error) {
+      console.error("❌ [Reports] Error getting agent reports:", error);
+      return res.status(500).json({ error: "Error fetching agent reports" });
+    }
+  });
+
   return httpServer;
 }

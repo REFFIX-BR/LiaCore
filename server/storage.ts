@@ -135,6 +135,25 @@ export interface IStorage {
   }>>;
   
   updateUserActivity(userId: string): Promise<void>;
+
+  // Agent Reports
+  getAgentReports(params: {
+    startDate: Date;
+    endDate: Date;
+    agentId?: string;
+    groupBy: 'day' | 'week' | 'month';
+  }): Promise<Array<{
+    period: string;
+    agentId?: string;
+    agentName?: string;
+    totalConversations: number;
+    resolvedConversations: number;
+    successRate: number;
+    avgResponseTime: number;
+    avgSentiment: number;
+    npsScore: number;
+    transfersToHuman: number;
+  }>>;
 }
 
 export class MemStorage implements IStorage {
@@ -1303,6 +1322,164 @@ export class DbStorage implements IStorage {
     await db.update(schema.users)
       .set({ lastActivityAt: new Date() })
       .where(eq(schema.users.id, userId));
+  }
+
+  async getAgentReports(params: {
+    startDate: Date;
+    endDate: Date;
+    agentId?: string;
+    groupBy: 'day' | 'week' | 'month';
+  }) {
+    const { startDate, endDate, agentId, groupBy } = params;
+
+    // Get all conversations in the period
+    let conversationsQuery = db.select({
+      conversation: schema.conversations,
+      agent: schema.users
+    })
+      .from(schema.conversations)
+      .leftJoin(schema.users, eq(schema.conversations.assignedTo, schema.users.id))
+      .where(and(
+        gte(schema.conversations.createdAt, startDate),
+        lte(schema.conversations.createdAt, endDate),
+        agentId ? eq(schema.conversations.assignedTo, agentId) : sql`1=1`
+      ));
+
+    const conversations = await conversationsQuery;
+
+    // Get NPS feedbacks for the period
+    const feedbacks = await db.select()
+      .from(schema.satisfactionFeedback)
+      .where(and(
+        gte(schema.satisfactionFeedback.createdAt, startDate),
+        lte(schema.satisfactionFeedback.createdAt, endDate)
+      ));
+
+    // Group conversations by period
+    const groupedData = new Map<string, {
+      agentId?: string;
+      agentName?: string;
+      conversations: typeof conversations;
+      feedbacks: typeof feedbacks;
+    }>();
+
+    conversations.forEach(({ conversation, agent }) => {
+      if (!conversation.createdAt) return;
+
+      const date = new Date(conversation.createdAt);
+      let periodKey = '';
+
+      switch (groupBy) {
+        case 'day':
+          periodKey = date.toISOString().split('T')[0]; // YYYY-MM-DD
+          break;
+        case 'week':
+          const weekNum = this.getWeekNumber(date);
+          periodKey = `${date.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+          break;
+        case 'month':
+          periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          break;
+      }
+
+      // If filtering by agent, use single key; otherwise use agent-specific keys
+      const key = agentId ? periodKey : `${periodKey}-${conversation.assignedTo || 'unassigned'}`;
+
+      if (!groupedData.has(key)) {
+        groupedData.set(key, {
+          agentId: conversation.assignedTo || undefined,
+          agentName: agent?.fullName || 'Não Atribuído',
+          conversations: [],
+          feedbacks: []
+        });
+      }
+
+      groupedData.get(key)!.conversations.push({ conversation, agent });
+    });
+
+    // Add feedbacks to grouped data
+    feedbacks.forEach(feedback => {
+      if (!feedback.createdAt) return;
+
+      const date = new Date(feedback.createdAt);
+      let periodKey = '';
+
+      switch (groupBy) {
+        case 'day':
+          periodKey = date.toISOString().split('T')[0];
+          break;
+        case 'week':
+          const weekNum = this.getWeekNumber(date);
+          periodKey = `${date.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+          break;
+        case 'month':
+          periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          break;
+      }
+
+      // Find the conversation to get agent
+      const conv = conversations.find(c => c.conversation.id === feedback.conversationId);
+      const key = agentId ? periodKey : `${periodKey}-${conv?.conversation.assignedTo || 'unassigned'}`;
+
+      if (groupedData.has(key)) {
+        groupedData.get(key)!.feedbacks.push(feedback);
+      }
+    });
+
+    // Calculate metrics for each period
+    const reports = Array.from(groupedData.entries()).map(([key, data]) => {
+      const period = agentId ? key : key.split('-').slice(0, groupBy === 'week' ? 2 : groupBy === 'day' ? 3 : 2).join('-');
+      const convs = data.conversations.map(c => c.conversation);
+      
+      const totalConversations = convs.length;
+      const resolvedConversations = convs.filter(c => c.status === 'resolved').length;
+      const successRate = totalConversations > 0 
+        ? Math.round((resolvedConversations / totalConversations) * 100)
+        : 0;
+
+      // Calculate average sentiment
+      const convsWithSentiment = convs.filter(c => c.sentiment);
+      const sentimentScore = convsWithSentiment.reduce((sum, c) => {
+        if (c.sentiment === 'positive') return sum + 1;
+        if (c.sentiment === 'negative') return sum - 1;
+        return sum;
+      }, 0);
+      const avgSentiment = convsWithSentiment.length > 0
+        ? Math.round((sentimentScore / convsWithSentiment.length) * 100) / 100
+        : 0;
+
+      // Calculate NPS
+      const npsScore = data.feedbacks.length > 0
+        ? Math.round(data.feedbacks.reduce((sum, f) => sum + (f.score || 0), 0) / data.feedbacks.length)
+        : 0;
+
+      // Count transfers to human
+      const transfersToHuman = convs.filter(c => c.transferredToHuman).length;
+
+      return {
+        period,
+        agentId: data.agentId,
+        agentName: data.agentName,
+        totalConversations,
+        resolvedConversations,
+        successRate,
+        avgResponseTime: 0, // TODO: Calculate from message timestamps
+        avgSentiment,
+        npsScore,
+        transfersToHuman
+      };
+    });
+
+    // Sort by period
+    return reports.sort((a, b) => a.period.localeCompare(b.period));
+  }
+
+  private getWeekNumber(date: Date): number {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
   }
 }
 
