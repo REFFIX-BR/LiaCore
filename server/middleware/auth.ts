@@ -31,13 +31,30 @@ export function authenticate(
   next();
 }
 
-export function requireRole(role: "ADMIN" | "AGENT") {
+// Type for user roles
+type UserRole = "ADMIN" | "SUPERVISOR" | "AGENT";
+
+export function requireRole(role: UserRole) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ error: "Não autenticado" });
     }
 
     if (req.user.role !== role && req.user.role !== "ADMIN") {
+      return res.status(403).json({ error: "Sem permissão para acessar este recurso" });
+    }
+
+    next();
+  };
+}
+
+export function requireAnyRole(...roles: UserRole[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Não autenticado" });
+    }
+
+    if (!roles.includes(req.user.role as UserRole)) {
       return res.status(403).json({ error: "Sem permissão para acessar este recurso" });
     }
 
@@ -59,4 +76,28 @@ export function requireAdmin(
   }
 
   next();
+}
+
+// Admin or Supervisor can access (management operations)
+export function requireAdminOrSupervisor(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  if (!req.user) {
+    return res.status(401).json({ error: "Não autenticado" });
+  }
+
+  if (req.user.role !== "ADMIN" && req.user.role !== "SUPERVISOR") {
+    return res.status(403).json({ error: "Acesso restrito a supervisores e administradores" });
+  }
+
+  next();
+}
+
+// Check if user can manage a specific resource (e.g., assigned conversation)
+export function canManageResource(userId: string, resourceOwnerId?: string | null): boolean {
+  // Admin and Supervisor can manage any resource
+  // Agent can only manage their own resources
+  return !resourceOwnerId || resourceOwnerId === userId;
 }
