@@ -729,8 +729,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log(`📊 [NPS] Cliente ${clientName} avaliou com nota ${npsScore} - conversa mantida como resolved`);
           
-          // Enviar mensagem de agradecimento (sem emoji)
-          const thankYouMessage = `Obrigado pelo seu feedback!\n\nSua opinião é muito importante para nós.`;
+          // Enviar mensagem de agradecimento
+          const thankYouMessage = `Obrigado! Seu feedback já foi registrado!`;
           await sendWhatsAppMessage(phoneNumber, thankYouMessage);
           
           return res.json({ 
@@ -1524,17 +1524,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Enviar pesquisa NPS para cliente via WhatsApp
         const metadata = conversation.metadata as any;
         if (metadata?.source === 'evolution_api' && conversation.clientId) {
-          const npsMessage = `
-Olá ${conversation.clientName}!
+          const npsMessage = `Olá ${conversation.clientName}!
+Seu atendimento foi finalizado.
 
-Seu atendimento foi finalizado. 
+Pesquisa de Satisfação
 
-*Pesquisa de Satisfação*
+Em uma escala de 0 a 10, qual a satisfação com atendimento?
 
-Em uma escala de 0 a 10, qual a probabilidade de você recomendar nosso atendimento?
-
-Digite um número de *0* (muito improvável) a *10* (muito provável)
-          `.trim();
+Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
 
           const sent = await sendWhatsAppMessage(conversation.clientId, npsMessage);
           if (sent) {
