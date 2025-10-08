@@ -12,6 +12,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAuth } from "@/lib/auth-context";
 
 interface Agent {
   id: string;
@@ -43,6 +44,7 @@ export default function Conversations() {
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
   const { toast } = useToast();
+  const { isAgent, isSupervisor, isAdmin } = useAuth();
 
   // Query conversas transferidas
   const { data: conversations = [], isLoading: conversationsLoading } = useQuery<Conversation[]>({
@@ -145,10 +147,11 @@ export default function Conversations() {
 
   const agents = agentsData?.agents || [];
 
-  // Mutation para atribuir conversa a um atendente
+  // Mutation para atribuir conversa (auto-atribuição ou atribuição manual)
   const assignMutation = useMutation({
-    mutationFn: async ({ conversationId, agentId }: { conversationId: string; agentId: string }) => {
-      const response = await apiRequest(`/api/conversations/${conversationId}/assign`, "POST", { agentId });
+    mutationFn: async ({ conversationId, agentId }: { conversationId: string; agentId?: string }) => {
+      const body = agentId ? { agentId } : {};
+      const response = await apiRequest(`/api/conversations/${conversationId}/assign`, "POST", body);
       return await response.json();
     },
     onSuccess: (data: any) => {
@@ -207,7 +210,14 @@ export default function Conversations() {
     }
   };
 
-  const handleAssign = () => {
+  // Auto-atribuição (AGENT)
+  const handleSelfAssign = () => {
+    if (!activeId) return;
+    assignMutation.mutate({ conversationId: activeId });
+  };
+
+  // Atribuição manual (SUPERVISOR/ADMIN)
+  const handleManualAssign = () => {
     if (!activeId || !selectedAgentId) return;
     assignMutation.mutate({ conversationId: activeId, agentId: selectedAgentId });
   };
@@ -305,15 +315,36 @@ export default function Conversations() {
             </div>
             <div className="flex items-center gap-2">
               {!activeConversation.assignedTo && (
-                <Button
-                  onClick={() => setShowAssignDialog(true)}
-                  variant="outline"
-                  size="sm"
-                  data-testid="button-assign"
-                >
-                  <UserPlus className="h-4 w-4 mr-1" />
-                  Atribuir Atendente
-                </Button>
+                <>
+                  {isAgent ? (
+                    /* Auto-atribuição para AGENT */
+                    <Button
+                      onClick={handleSelfAssign}
+                      variant="outline"
+                      size="sm"
+                      disabled={assignMutation.isPending}
+                      data-testid="button-self-assign"
+                    >
+                      {assignMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <UserPlus className="h-4 w-4 mr-1" />
+                      )}
+                      Atribuir
+                    </Button>
+                  ) : (
+                    /* Atribuição manual para SUPERVISOR/ADMIN */
+                    <Button
+                      onClick={() => setShowAssignDialog(true)}
+                      variant="outline"
+                      size="sm"
+                      data-testid="button-manual-assign"
+                    >
+                      <UserPlus className="h-4 w-4 mr-1" />
+                      Atribuir Atendente
+                    </Button>
+                  )}
+                </>
               )}
               <Button
                 onClick={handleResolve}
@@ -484,7 +515,7 @@ export default function Conversations() {
               Cancelar
             </Button>
             <Button
-              onClick={handleAssign}
+              onClick={handleManualAssign}
               disabled={!selectedAgentId || assignMutation.isPending}
               data-testid="button-confirm-assign"
             >

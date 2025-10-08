@@ -2938,14 +2938,27 @@ A resposta deve:
     }
   });
 
-  // Assign conversation to agent
-  app.post("/api/conversations/:id/assign", authenticate, requireAdminOrSupervisor, async (req, res) => {
+  // Assign conversation to agent (self-assignment or manual assignment)
+  app.post("/api/conversations/:id/assign", authenticate, async (req, res) => {
     try {
       const { id } = req.params;
       const { agentId } = req.body;
+      const currentUser = req.user!;
 
-      if (!agentId) {
-        return res.status(400).json({ error: "agentId é obrigatório" });
+      // Determinar o tipo de atribuição
+      let targetAgentId: string;
+      
+      if (agentId) {
+        // Atribuição manual (apenas ADMIN/SUPERVISOR)
+        if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPERVISOR') {
+          return res.status(403).json({ 
+            error: "Apenas ADMIN ou SUPERVISOR podem atribuir conversas a outros atendentes" 
+          });
+        }
+        targetAgentId = agentId;
+      } else {
+        // Auto-atribuição (qualquer usuário autenticado)
+        targetAgentId = currentUser.userId;
       }
 
       // Buscar conversa
@@ -2954,15 +2967,27 @@ A resposta deve:
         return res.status(404).json({ error: "Conversa não encontrada" });
       }
 
+      // Validação: Prevenir roubo de conversas atribuídas
+      if (conversation.assignedTo) {
+        const isAdminOrSupervisor = currentUser.role === 'ADMIN' || currentUser.role === 'SUPERVISOR';
+        const isSameAgent = conversation.assignedTo === targetAgentId;
+        
+        if (!isAdminOrSupervisor && !isSameAgent) {
+          return res.status(403).json({ 
+            error: "Esta conversa já está atribuída a outro atendente" 
+          });
+        }
+      }
+
       // Buscar agente
-      const agent = await storage.getUserById(agentId);
+      const agent = await storage.getUserById(targetAgentId);
       if (!agent) {
         return res.status(404).json({ error: "Atendente não encontrado" });
       }
 
       // Atualizar conversa com agente atribuído
       await storage.updateConversation(id, {
-        assignedTo: agentId,
+        assignedTo: targetAgentId,
       });
 
       // Criar mensagem de boas-vindas
