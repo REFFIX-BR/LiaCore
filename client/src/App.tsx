@@ -18,6 +18,7 @@ import AgentEvolution from "@/pages/AgentEvolution";
 import Settings from "@/pages/Settings";
 import Assistants from "@/pages/Assistants";
 import Metrics from "@/pages/Metrics";
+import Feedbacks from "@/pages/Feedbacks";
 
 function Router() {
   return (
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/evolution" component={AgentEvolution} />
       <Route path="/assistants" component={Assistants} />
       <Route path="/metrics" component={Metrics} />
+      <Route path="/feedbacks" component={Feedbacks} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>

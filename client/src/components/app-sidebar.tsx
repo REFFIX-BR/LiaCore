@@ -20,7 +20,8 @@ import {
   Monitor as MonitorIcon,
   TestTube2,
   TrendingUp,
-  Wifi
+  Wifi,
+  Star
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -69,6 +70,11 @@ const menuItems = [
     title: "Métricas",
     url: "/metrics",
     icon: Activity,
+  },
+  {
+    title: "Feedbacks NPS",
+    url: "/feedbacks",
+    icon: Star,
   },
   {
     title: "Configurações",
