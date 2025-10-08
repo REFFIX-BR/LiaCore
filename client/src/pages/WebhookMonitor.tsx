@@ -62,7 +62,7 @@ export default function WebhookMonitor() {
   // Clear logs mutation
   const clearLogsMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest('POST', '/api/webhook-logs/clear');
+      return apiRequest('/api/webhook-logs/clear', 'POST');
     },
     onSuccess: () => {
       setLogs([]);

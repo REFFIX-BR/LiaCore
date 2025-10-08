@@ -53,7 +53,7 @@ export default function Conversations() {
   // Mutation para pedir sugestão da IA
   const suggestMutation = useMutation({
     mutationFn: async (conversationId: string) => {
-      const response = await apiRequest("POST", `/api/conversations/${conversationId}/suggest-response`, { 
+      const response = await apiRequest(`/api/conversations/${conversationId}/suggest-response`, "POST", { 
         supervisorName: "Supervisor" 
       });
       return await response.json();
@@ -81,7 +81,7 @@ export default function Conversations() {
     mutationFn: async ({ content, wasEdited }: { content: string; wasEdited: boolean }) => {
       if (!activeId) return null;
       
-      const response = await apiRequest("POST", `/api/conversations/${activeId}/send-message`, {
+      const response = await apiRequest(`/api/conversations/${activeId}/send-message`, "POST", {
         content,
         suggestionId,
         wasEdited,
@@ -112,7 +112,7 @@ export default function Conversations() {
   // Mutation para resolver conversa
   const resolveMutation = useMutation({
     mutationFn: async (conversationId: string) => {
-      const response = await apiRequest("POST", "/api/supervisor/resolve", { conversationId });
+      const response = await apiRequest("/api/supervisor/resolve", "POST", { conversationId });
       return await response.json();
     },
     onSuccess: () => {

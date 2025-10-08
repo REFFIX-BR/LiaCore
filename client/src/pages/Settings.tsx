@@ -126,7 +126,7 @@ export default function Settings() {
   // Mutation para atualizar configurações
   const updateConfigMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest('POST', '/api/system/config', data);
+      return apiRequest('/api/system/config', 'POST', data);
     },
     onSuccess: () => {
       toast({
@@ -140,7 +140,7 @@ export default function Settings() {
   // Mutation para trigger de análise manual
   const triggerAnalysisMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest('POST', '/api/learning/analyze');
+      return apiRequest('/api/learning/analyze', 'POST');
     },
     onSuccess: () => {
       toast({
@@ -153,7 +153,7 @@ export default function Settings() {
   // Mutation para limpar cache
   const clearCacheMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest('POST', '/api/system/clear-cache');
+      return apiRequest('/api/system/clear-cache', 'POST');
     },
     onSuccess: () => {
       toast({
@@ -166,7 +166,7 @@ export default function Settings() {
   // Mutation para atualizar configurações da Evolution API
   const updateEvolutionMutation = useMutation({
     mutationFn: async (data: EvolutionConfig) => {
-      return apiRequest('POST', '/api/system/evolution-config', data);
+      return apiRequest('/api/system/evolution-config', 'POST', data);
     },
     onSuccess: () => {
       toast({

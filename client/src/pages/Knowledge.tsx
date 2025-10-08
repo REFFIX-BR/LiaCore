@@ -29,7 +29,7 @@ export default function Knowledge() {
 
   const searchMutation = useMutation({
     mutationFn: async (query: string) => {
-      const response = await apiRequest("POST", "/api/knowledge/search", { query, topK: 20 });
+      const response = await apiRequest("/api/knowledge/search", "POST", { query, topK: 20 });
       return response.json();
     },
     onSuccess: (data: any) => {
@@ -57,7 +57,7 @@ export default function Knowledge() {
 
   const addDocumentMutation = useMutation({
     mutationFn: async (doc: any) => {
-      const response = await apiRequest("POST", "/api/knowledge/add", { chunks: [doc] });
+      const response = await apiRequest("/api/knowledge/add", "POST", { chunks: [doc] });
       return response.json();
     },
     onSuccess: (_, variables) => {
@@ -220,7 +220,7 @@ export default function Knowledge() {
       <KnowledgeBasePanel 
         chunks={searchResults} 
         onDelete={(id) => {
-          apiRequest("DELETE", `/api/knowledge/${id}`, {})
+          apiRequest(`/api/knowledge/${id}`, "DELETE", {})
             .then(() => {
               setSearchResults(prev => prev.filter(c => c.id !== id));
               toast({ title: "Documento excluído" });

@@ -321,6 +321,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/registration-requests/:id/approve", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
       const { id } = req.params;
+      const { role } = req.body;
+      
+      // Validate role
+      if (!role || !["ADMIN", "SUPERVISOR", "AGENT"].includes(role)) {
+        return res.status(400).json({ error: "Função inválida. Use ADMIN, SUPERVISOR ou AGENT" });
+      }
       
       // Get the registration request
       const requests = await storage.getAllRegistrationRequests();
@@ -334,13 +340,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Solicitação já foi processada" });
       }
 
-      // Create the user
+      // Create the user with the selected role
       const user = await storage.createUser({
         username: request.username,
         password: request.password, // Already hashed
         fullName: request.fullName,
         email: request.email,
-        role: request.requestedRole || "AGENT",
+        role: role, // Use the role selected by admin/supervisor
         status: "ACTIVE",
       });
 

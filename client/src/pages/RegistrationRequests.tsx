@@ -20,6 +20,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle2, XCircle, Clock, Mail, User } from "lucide-react";
@@ -40,8 +47,10 @@ interface RegistrationRequest {
 }
 
 export default function RegistrationRequests() {
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<RegistrationRequest | null>(null);
+  const [selectedRole, setSelectedRole] = useState<"ADMIN" | "SUPERVISOR" | "AGENT">("AGENT");
   const [rejectionReason, setRejectionReason] = useState("");
   const { toast } = useToast();
 
@@ -50,11 +59,14 @@ export default function RegistrationRequests() {
   });
 
   const approveMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiRequest("POST", `/api/registration-requests/${id}/approve`, {});
+    mutationFn: async ({ id, role }: { id: string; role: string }) => {
+      return apiRequest(`/api/registration-requests/${id}/approve`, "POST", { role });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/registration-requests"] });
+      setApproveDialogOpen(false);
+      setSelectedRequest(null);
+      setSelectedRole("AGENT");
       toast({
         title: "Solicitação aprovada",
         description: "Usuário criado com sucesso",
@@ -71,7 +83,7 @@ export default function RegistrationRequests() {
 
   const rejectMutation = useMutation({
     mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
-      return apiRequest("POST", `/api/registration-requests/${id}/reject`, { reason });
+      return apiRequest(`/api/registration-requests/${id}/reject`, "POST", { reason });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/registration-requests"] });
@@ -93,8 +105,17 @@ export default function RegistrationRequests() {
   });
 
   const handleApprove = (request: RegistrationRequest) => {
-    if (confirm(`Aprovar solicitação de ${request.fullName}?`)) {
-      approveMutation.mutate(request.id);
+    setSelectedRequest(request);
+    setSelectedRole("AGENT"); // Default role
+    setApproveDialogOpen(true);
+  };
+
+  const confirmApprove = () => {
+    if (selectedRequest) {
+      approveMutation.mutate({
+        id: selectedRequest.id,
+        role: selectedRole,
+      });
     }
   };
 
@@ -268,6 +289,53 @@ export default function RegistrationRequests() {
           </CardContent>
         </Card>
       )}
+
+      {/* Approve Dialog */}
+      <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Aprovar Solicitação</DialogTitle>
+            <DialogDescription>
+              Escolha a função para o usuário {selectedRequest?.fullName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="role-select">Função do Usuário</Label>
+              <Select value={selectedRole} onValueChange={(value: "ADMIN" | "SUPERVISOR" | "AGENT") => setSelectedRole(value)}>
+                <SelectTrigger id="role-select" data-testid="select-approve-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="AGENT">Atendente</SelectItem>
+                  <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
+                  <SelectItem value="ADMIN">Administrador</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setApproveDialogOpen(false);
+                setSelectedRequest(null);
+                setSelectedRole("AGENT");
+              }}
+              data-testid="button-cancel-approve"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={confirmApprove}
+              disabled={approveMutation.isPending}
+              data-testid="button-confirm-approve"
+            >
+              {approveMutation.isPending ? "Aprovando..." : "Aprovar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reject Dialog */}
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>

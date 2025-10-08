@@ -62,23 +62,23 @@ export const monitorAPI = {
   },
 
   transferToHuman: async (conversationId: string, department: string, notes: string) => {
-    return apiRequest("POST", `/api/supervisor/transfer`, { conversationId, department, notes, supervisorId: "supervisor" });
+    return apiRequest(`/api/supervisor/transfer`, "POST", { conversationId, department, notes, supervisorId: "supervisor" });
   },
 
   pauseAI: async (conversationId: string) => {
-    return apiRequest("POST", `/api/supervisor/pause`, { conversationId, supervisorId: "supervisor" });
+    return apiRequest(`/api/supervisor/pause`, "POST", { conversationId, supervisorId: "supervisor" });
   },
 
   addNote: async (conversationId: string, note: string) => {
-    return apiRequest("POST", `/api/supervisor/note`, { conversationId, note, supervisorId: "supervisor" });
+    return apiRequest(`/api/supervisor/note`, "POST", { conversationId, note, supervisorId: "supervisor" });
   },
 
   markResolved: async (conversationId: string) => {
-    return apiRequest("POST", `/api/supervisor/resolve`, { conversationId, supervisorId: "supervisor" });
+    return apiRequest(`/api/supervisor/resolve`, "POST", { conversationId, supervisorId: "supervisor" });
   },
 
   sendChatMessage: async (chatId: string, clientName: string, message: string) => {
-    const response = await apiRequest("POST", `/api/chat/message`, { chatId, clientName, message });
+    const response = await apiRequest(`/api/chat/message`, "POST", { chatId, clientName, message });
     return response.json();
   },
 };

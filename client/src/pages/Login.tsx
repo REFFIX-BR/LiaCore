@@ -51,7 +51,7 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      await apiRequest("POST", "/api/auth/register", {
+      await apiRequest("/api/auth/register", "POST", {
         username,
         password,
         fullName,
