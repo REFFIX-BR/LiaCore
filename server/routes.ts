@@ -212,7 +212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`✅ [AI Resolve] Conversa ${conversation.id} marcada como resolvida, enviando NPS...`);
 
         // Send NPS survey via WhatsApp
-        const npsSurveyMessage = "Obrigado pelo contato! Para nos ajudar a melhorar, por favor avalie nosso atendimento de 0 a 10:";
+        const npsSurveyMessage = `Olá ${conversation.clientName}!\n\nSeu atendimento foi finalizado.\n\n*Pesquisa de Satisfação*\n\nEm uma escala de 0 a 10, qual a probabilidade de você recomendar nosso atendimento?\n\nDigite um número de 0 (muito improvável) a 10 (muito provável)`;
         
         try {
           await sendWhatsAppMessage(chatId, npsSurveyMessage);
@@ -603,6 +603,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
+        // If conversation is resolved and message is NOT an NPS response, reopen it
+        // This handles two cases:
+        // 1. Resolved conversation without awaiting NPS - reopen normally
+        // 2. Resolved conversation awaiting NPS but client sent non-NPS message - clear flag and reopen
+        if (conversation.status === 'resolved') {
+          console.log(`🔄 [Evolution Reopen] Reabrindo conversa finalizada: ${chatId} (${clientName})`);
+          
+          const updateData: any = {
+            status: 'active',
+          };
+          
+          // Se estava aguardando NPS mas cliente enviou outra mensagem, limpar flag
+          if (metadata.awaitingNPS) {
+            console.log(`🔄 [Evolution Reopen] Cliente respondeu algo diferente de NPS - limpando flag`);
+            updateData.metadata = { ...metadata, awaitingNPS: false };
+          }
+          
+          // Se estava transferida, resetar para IA voltar a responder
+          if (conversation.transferredToHuman) {
+            console.log(`🤖 [Evolution Reopen] Resetando transferência - IA volta a responder`);
+            updateData.transferredToHuman = false;
+            updateData.transferReason = null;
+            updateData.transferredAt = null;
+          }
+          
+          await storage.updateConversation(conversation.id, updateData);
+          conversation = { ...conversation, ...updateData };
+        }
+
         // Store user message
         await storage.createMessage({
           conversationId: conversation.id,
@@ -696,7 +725,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.log(`✅ [Evolution Resolve] Conversa ${conversationRef.id} marcada como resolvida, enviando NPS...`);
 
               // Send NPS survey via WhatsApp
-              const npsSurveyMessage = "Obrigado pelo contato! Para nos ajudar a melhorar, por favor avalie nosso atendimento de 0 a 10:";
+              const npsSurveyMessage = `Olá ${conversationRef.clientName}!\n\nSeu atendimento foi finalizado.\n\n*Pesquisa de Satisfação*\n\nEm uma escala de 0 a 10, qual a probabilidade de você recomendar nosso atendimento?\n\nDigite um número de 0 (muito improvável) a 10 (muito provável)`;
               
               try {
                 await sendWhatsAppMessage(clientPhoneNumber, npsSurveyMessage);
