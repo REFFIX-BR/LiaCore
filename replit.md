@@ -107,16 +107,20 @@ The frontend is built with React and TypeScript using Vite, leveraging `shadcn/u
 - **Detailed Tables**: Period-by-period breakdown with all metrics for deep analysis.
 
 **Conversation Assignment System**:
-- **Agent Assignment**: Supervisors/admins can assign transferred conversations to specific agents via dropdown interface.
-- **Assignment Flow**: Click "Atribuir Atendente" button → Select agent from dropdown → Conversation is assigned → Automatic welcome message sent via WhatsApp.
-- **Welcome Messages**: When assigned, system automatically sends WhatsApp message: "Olá! Meu nome é [Agent Name] e acabei de assumir esta conversa. Vou dar continuidade ao seu atendimento."
+- **Self-Assignment (Agent)**: Agents can claim conversations by clicking "Atribuir" button - conversation is automatically assigned to them without dropdown selection.
+- **Manual Assignment (Supervisor/Admin)**: Supervisors/admins can assign transferred conversations to specific agents via "Atribuir Atendente" button with dropdown interface.
+- **Assignment Flow**: 
+  - **Agent**: Click "Atribuir" → Conversation automatically assigned to current user → Welcome message sent
+  - **Supervisor/Admin**: Click "Atribuir Atendente" → Select agent from dropdown → Conversation assigned → Welcome message sent
+- **Welcome Messages**: System automatically sends WhatsApp message: "Olá! Sou *[Agent Name]*, seu atendente. Assumí esta conversa e darei continuidade ao seu atendimento. Como posso ajudá-lo?"
 - **Visual Indicators**: "Atribuído" badge displayed in conversation header after assignment; assignment button hidden after assignment.
 - **Permission Control**: Only the assigned agent can respond to the conversation after assignment (ADMIN/SUPERVISOR can override and respond to any conversation).
+- **Security**: Conversations already assigned to another agent cannot be stolen by other agents (403 error). Only ADMIN/SUPERVISOR can reassign conversations.
 - **Status Support**: System handles conversations with status 'active' and 'queued' in transferred conversations list.
 - **API Endpoints**:
-  - `POST /api/conversations/:id/assign` (admin/supervisor) - Assigns conversation to specific agent with agentId
+  - `POST /api/conversations/:id/assign` (authenticated) - Self-assignment (no agentId) or manual assignment (with agentId for admin/supervisor only)
   - `GET /api/agents/list` (admin/supervisor) - Lists all active agents for assignment dropdown
-- **Database Integration**: Uses existing `assignedTo` field in conversations table (stores agent userId).
+- **Database Integration**: Uses existing `assignedTo` field in conversations table (stores agent userId as string).
 
 ## External Dependencies
 
