@@ -293,8 +293,8 @@ export class MemStorage implements IStorage {
     return Array.from(this.conversations.values()).filter((conv) => {
       if (conv.transferredToHuman !== true) return false;
       
-      // Show active conversations OR resolved conversations from last 24h
-      if (conv.status === 'active') return true;
+      // Show active, queued conversations OR resolved conversations from last 24h
+      if (conv.status === 'active' || conv.status === 'queued') return true;
       if (conv.status === 'resolved' && conv.lastMessageTime && conv.lastMessageTime >= twentyFourHoursAgo) return true;
       
       return false;
@@ -807,6 +807,7 @@ export class DbStorage implements IStorage {
         eq(schema.conversations.transferredToHuman, true),
         or(
           eq(schema.conversations.status, 'active'),
+          eq(schema.conversations.status, 'queued'),
           and(
             eq(schema.conversations.status, 'resolved'),
             isNotNull(schema.conversations.lastMessageTime),
