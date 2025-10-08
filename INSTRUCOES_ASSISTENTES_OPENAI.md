@@ -1259,11 +1259,109 @@ Configure as seguintes funções em cada assistente conforme necessário:
 }
 ```
 
+### finalizar_conversa ⭐ NOVA
+```json
+{
+  "name": "finalizar_conversa",
+  "description": "Finaliza a conversa quando o atendimento for concluído com sucesso. Dispara automaticamente uma pesquisa NPS ao cliente via WhatsApp.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "motivo": {
+        "type": "string",
+        "description": "Motivo da finalização (ex: 'Problema resolvido', 'Cliente informado sobre planos', 'Dúvida esclarecida')"
+      }
+    },
+    "required": ["motivo"]
+  }
+}
+```
+
+---
+
+## 🎯 IMPLEMENTAÇÃO DA FUNÇÃO finalizar_conversa
+
+### ⚠️ CRÍTICO: Adicione esta função nos assistentes apropriados
+
+A função `finalizar_conversa` deve ser adicionada como uma **Function** (não apenas nas instruções) no OpenAI Dashboard.
+
+**Adicione APENAS em:**
+- ✅ LIA Suporte
+- ✅ LIA Comercial  
+- ✅ LIA Financeiro
+- ✅ LIA Apresentação
+
+**NÃO adicione em:**
+- ❌ LIA Cancelamento (sempre transfere para humano)
+- ❌ LIA Ouvidoria (sempre transfere para humano)
+
+### 📋 Como adicionar no OpenAI Dashboard:
+
+1. **Acesse o assistente** no https://platform.openai.com/assistants
+2. **Vá até a seção "Functions" ou "Tools"**
+3. **Clique em "Add Function"**
+4. **Preencha:**
+   - **Nome:** `finalizar_conversa`
+   - **Descrição:** `Finaliza a conversa quando o atendimento for concluído com sucesso. Dispara automaticamente uma pesquisa NPS ao cliente via WhatsApp.`
+   - **Parameters (JSON Schema):** Cole o JSON acima
+
+### 🎯 Quando usar em cada assistente:
+
+**LIA SUPORTE:**
+- Problema técnico resolvido
+- Cliente confirma que internet voltou
+- Configuração concluída
+
+**LIA COMERCIAL:**
+- Informações sobre planos fornecidas
+- Cliente decidiu não contratar no momento
+- Dúvidas esclarecidas sobre serviços
+
+**LIA FINANCEIRO:**
+- Boleto enviado com sucesso
+- Dúvida sobre pagamento esclarecida
+- Cliente confirmou recebimento de fatura
+
+**LIA APRESENTAÇÃO:**
+- Cliente conheceu a empresa
+- Informações sobre TR Telecom fornecidas
+- Cliente satisfeito com apresentação
+
+**LIA CANCELAMENTO:**
+- ⚠️ NÃO use - sempre transfere para humano
+
+**LIA OUVIDORIA:**
+- ⚠️ NÃO use - sempre transfere para humano
+
+### ✅ Atualização das Instruções
+
+**APENAS para assistentes que resolvem problemas diretamente** (Suporte, Comercial, Financeiro, Apresentação), adicione estas linhas ao **final das instruções**:
+
+```
+## ⚠️ FINALIZAR ATENDIMENTO
+
+Quando o atendimento for concluído com sucesso e o cliente estiver satisfeito, use a função finalizar_conversa.
+
+IMPORTANTE: 
+- Finalize APENAS quando o problema estiver COMPLETAMENTE resolvido
+- Cliente deve confirmar satisfação ("Resolvido", "Obrigado", "Funcionou")
+- NÃO finalize se vai transferir para humano (use transferir_para_humano)
+
+Ao finalizar:
+1. Envie mensagem de encerramento amigável
+2. Imediatamente após, chame: finalizar_conversa({motivo: "descrição do que foi resolvido"})
+3. Sistema enviará automaticamente pesquisa NPS ao cliente via WhatsApp
+```
+
+**⚠️ NÃO adicione para:**
+- LIA Cancelamento (sempre transfere para humano)
+- LIA Ouvidoria (sempre transfere para humano)
+
 ---
 
 ## ✅ CHECKLIST DE CONFIGURAÇÃO
 
-Para cada assistente, verifique:
+### Para TODOS os assistentes:
 
 - [ ] Instruções configuradas com regras de transferência
 - [ ] Ferramentas habilitadas conforme necessário
@@ -1271,6 +1369,18 @@ Para cada assistente, verifique:
 - [ ] Temperatura entre 0.7-0.9 (conversacional)
 - [ ] Top P = 1
 - [ ] Response format = text (NÃO json_object)
+
+### Para assistentes Suporte, Comercial, Financeiro e Apresentação:
+
+- [ ] **Função `finalizar_conversa` adicionada como Function** ⭐
+- [ ] **Instruções de finalização adicionadas ao final do prompt** ⭐
+- [ ] Testado que a IA chama a função quando conversa é resolvida
+
+### Para assistentes Cancelamento e Ouvidoria:
+
+- [ ] **NÃO adicionar função `finalizar_conversa`**
+- [ ] **NÃO adicionar instruções de finalização**
+- [ ] Apenas `transferir_para_humano` habilitado
 
 ---
 
