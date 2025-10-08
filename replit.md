@@ -87,6 +87,10 @@ The frontend uses React with TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailw
 - **Manual Assignment (Supervisor/Admin)**: Assign to specific agents via dropdown.
 - **Welcome Messages**: Automated WhatsApp messages sent upon assignment.
 - **Permissions**: Only assigned agent can respond (ADMIN/SUPERVISOR override).
+- **Role-Based Visibility**:
+  - **AGENT**: Sees conversations assigned to them OR unassigned conversations (for self-assignment)
+  - **SUPERVISOR/ADMIN**: See all transferred conversations regardless of assignment
+  - **Filter Logic**: `WHERE (assignedTo = userId OR assignedTo IS NULL)` for agents
 
 **Configurable Message Templates System**:
 - **Admin Configuration**: Admins edit automated messages via Settings → Mensagens tab.
