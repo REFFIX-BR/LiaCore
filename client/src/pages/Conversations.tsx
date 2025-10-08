@@ -50,8 +50,8 @@ export default function Conversations() {
     refetchInterval: 5000,
   });
 
-  // Filtrar apenas conversas ATIVAS (conversas resolvidas devem aparecer só em "Finalizadas")
-  const activeConversations = conversations.filter(conv => conv.status === 'active');
+  // Filtrar conversas ATIVAS e AGUARDANDO atribuição (conversas resolvidas aparecem apenas como histórico)
+  const activeConversations = conversations.filter(conv => conv.status === 'active' || conv.status === 'queued');
 
   // Query mensagens da conversa ativa
   const { data: conversationData } = useQuery<{ messages: Message[] }>({
