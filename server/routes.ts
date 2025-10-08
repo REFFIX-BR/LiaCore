@@ -93,26 +93,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let threadId = await getConversationThread(chatId);
 
       if (!conversation) {
-        // New conversation - route to appropriate assistant (sem contexto ainda)
-        const routing = await routeMessage(message);
+        // New conversation - SEMPRE inicia com a Recepcionista (Apresentação)
+        console.log(`🎭 [New Conversation] Iniciando com Recepcionista para ${clientName}`);
         
         // Create thread
         threadId = await createThread();
         await storeConversationThread(chatId, threadId);
 
-        // Create conversation record
+        // Create conversation record with Recepcionista
         conversation = await storage.createConversation({
           chatId,
           clientName: clientName || "Cliente",
           clientId,
           threadId,
-          assistantType: routing.assistantType,
+          assistantType: "apresentacao",  // SEMPRE inicia com recepcionista
           status: "active",
           sentiment: "neutral",
           urgency: "normal",
           duration: 0,
           lastMessage: message,
-          metadata: { routing },
+          metadata: { 
+            routing: {
+              assistantType: "apresentacao",
+              assistantId: (await import("./lib/openai")).ASSISTANT_IDS.apresentacao,
+              confidence: 1.0
+            }
+          },
         });
       } else if (!threadId) {
         // Existing conversation but no thread - create one
@@ -235,6 +241,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (result.transferred) {
         console.log("🔀 [Transfer] Processando transferência automática da IA");
         
+        // SPECIAL CASE: Se é a RECEPCIONISTA transferindo, rotear para assistente especializado
+        if (conversation.assistantType === "apresentacao") {
+          console.log("🎭 [Receptionist Routing] Recepcionista está roteando para assistente especializado");
+          
+          // Map department to assistant type
+          const departmentMap: Record<string, string> = {
+            "Suporte Técnico": "suporte",
+            "Suporte": "suporte",
+            "Técnico": "suporte",
+            "Comercial": "comercial",
+            "Vendas": "comercial",
+            "Financeiro": "financeiro",
+            "Finanças": "financeiro",
+            "Pagamento": "financeiro",
+            "Ouvidoria": "ouvidoria",
+            "SAC": "ouvidoria",
+            "Cancelamento": "cancelamento",
+            "Cancelar": "cancelamento",
+          };
+          
+          // Find matching assistant type
+          const transferredTo = result.transferredTo || "";
+          let newAssistantType = "suporte"; // fallback
+          
+          for (const [dept, type] of Object.entries(departmentMap)) {
+            if (transferredTo.toLowerCase().includes(dept.toLowerCase())) {
+              newAssistantType = type;
+              break;
+            }
+          }
+          
+          const { ASSISTANT_IDS } = await import("./lib/openai");
+          const newAssistantId = ASSISTANT_IDS[newAssistantType as keyof typeof ASSISTANT_IDS];
+          
+          console.log(`🔄 [Routing] Trocando de 'apresentacao' para '${newAssistantType}' (${newAssistantId})`);
+          
+          // Update conversation to use new assistant
+          const updatedMetadata = {
+            ...(typeof conversation.metadata === 'object' && conversation.metadata !== null ? conversation.metadata : {}),
+            routing: {
+              assistantType: newAssistantType,
+              assistantId: newAssistantId,
+              confidence: 1.0,
+              routedBy: "recepcionista",
+              routedAt: new Date().toISOString(),
+            },
+          };
+          
+          await storage.updateConversation(conversation.id, {
+            assistantType: newAssistantType,
+            lastMessage: message,
+            lastMessageTime: new Date(),
+            duration: (conversation.duration || 0) + 30,
+            sentiment,
+            urgency,
+            metadata: updatedMetadata,
+          });
+          
+          // Create supervisor action for tracking
+          await storage.createSupervisorAction({
+            conversationId: conversation.id,
+            action: "note",
+            notes: `Recepcionista roteou para ${newAssistantType}`,
+            createdBy: "Sistema",
+          });
+          
+          console.log(`✅ [Routing Complete] Conversa agora será atendida por ${newAssistantType}`);
+          
+          return res.json({
+            success: true,
+            response: responseText,
+            assistantType: newAssistantType,
+            chatId,
+            routed: true,
+            routedTo: newAssistantType,
+          });
+        }
+        
+        // NORMAL CASE: Other assistants transferring to human supervisors
         // Create supervisor action
         await storage.createSupervisorAction({
           conversationId: conversation.id,
@@ -488,27 +573,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let threadId = await getConversationThread(chatId);
 
         if (!conversation) {
-          // New conversation - route to appropriate assistant
-          const routing = await routeMessage(messageText);
+          // New conversation - SEMPRE inicia com a Recepcionista (Apresentação)
+          console.log(`🎭 [Evolution New Conversation] Iniciando com Recepcionista para ${clientName}`);
           
           // Create thread
           threadId = await createThread();
           await storeConversationThread(chatId, threadId);
 
-          // Create conversation record
+          // Create conversation record with Recepcionista
+          const { ASSISTANT_IDS } = await import("./lib/openai");
           conversation = await storage.createConversation({
             chatId,
             clientName,
             clientId: phoneNumber,
             threadId,
-            assistantType: routing.assistantType,
+            assistantType: "apresentacao",  // SEMPRE inicia com recepcionista
             status: "active",
             sentiment: "neutral",
             urgency: "normal",
             duration: 0,
             lastMessage: messageText,
             metadata: { 
-              routing,
+              routing: {
+                assistantType: "apresentacao",
+                assistantId: ASSISTANT_IDS.apresentacao,
+                confidence: 1.0
+              },
               source: 'evolution_api',
               instance,
               remoteJid,
@@ -748,15 +838,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 npsSent: true,
               });
             } else if (transferred) {
-              // Handle transfer to human if requested
-              await storage.updateConversation(conversationRef.id, {
-                transferredToHuman: true,
-                transferReason: transferredTo || 'Transferido pela IA',
-                transferredAt: new Date(),
-                lastMessage: responseText,
-                lastMessageTime: new Date(),
-              });
-              console.log(`🔄 [Evolution] Conversa transferida para humano: ${transferredTo}`);
+              // SPECIAL CASE: Se é a RECEPCIONISTA transferindo, rotear para assistente especializado
+              if (conversationRef.assistantType === "apresentacao") {
+                console.log("🎭 [Evolution Receptionist Routing] Recepcionista está roteando para assistente especializado");
+                
+                // Map department to assistant type
+                const departmentMap: Record<string, string> = {
+                  "Suporte Técnico": "suporte",
+                  "Suporte": "suporte",
+                  "Técnico": "suporte",
+                  "Comercial": "comercial",
+                  "Vendas": "comercial",
+                  "Financeiro": "financeiro",
+                  "Finanças": "financeiro",
+                  "Pagamento": "financeiro",
+                  "Ouvidoria": "ouvidoria",
+                  "SAC": "ouvidoria",
+                  "Cancelamento": "cancelamento",
+                  "Cancelar": "cancelamento",
+                };
+                
+                // Find matching assistant type
+                const transferDestination = transferredTo || "";
+                let newAssistantType = "suporte"; // fallback
+                
+                for (const [dept, type] of Object.entries(departmentMap)) {
+                  if (transferDestination.toLowerCase().includes(dept.toLowerCase())) {
+                    newAssistantType = type;
+                    break;
+                  }
+                }
+                
+                const { ASSISTANT_IDS } = await import("./lib/openai");
+                const newAssistantId = ASSISTANT_IDS[newAssistantType as keyof typeof ASSISTANT_IDS];
+                
+                console.log(`🔄 [Evolution Routing] Trocando de 'apresentacao' para '${newAssistantType}' (${newAssistantId})`);
+                
+                // Update conversation to use new assistant
+                const updatedMetadata = {
+                  ...(typeof conversationRef.metadata === 'object' && conversationRef.metadata !== null ? conversationRef.metadata : {}),
+                  routing: {
+                    assistantType: newAssistantType,
+                    assistantId: newAssistantId,
+                    confidence: 1.0,
+                    routedBy: "recepcionista",
+                    routedAt: new Date().toISOString(),
+                  },
+                };
+                
+                await storage.updateConversation(conversationRef.id, {
+                  assistantType: newAssistantType,
+                  lastMessage: responseText,
+                  lastMessageTime: new Date(),
+                  metadata: updatedMetadata,
+                });
+                
+                // Create supervisor action for tracking
+                await storage.createSupervisorAction({
+                  conversationId: conversationRef.id,
+                  action: "note",
+                  notes: `Recepcionista roteou para ${newAssistantType}`,
+                  createdBy: "Sistema",
+                });
+                
+                console.log(`✅ [Evolution Routing Complete] Conversa agora será atendida por ${newAssistantType}`);
+                
+                webhookLogger.success('CONVERSATION_ROUTED', `Recepcionista roteou para ${newAssistantType}`, {
+                  conversationId: conversationRef.id,
+                  newAssistantType,
+                });
+              } else {
+                // NORMAL CASE: Other assistants transferring to human supervisors
+                await storage.updateConversation(conversationRef.id, {
+                  transferredToHuman: true,
+                  transferReason: transferredTo || 'Transferido pela IA',
+                  transferredAt: new Date(),
+                  lastMessage: responseText,
+                  lastMessageTime: new Date(),
+                });
+                console.log(`🔄 [Evolution] Conversa transferida para humano: ${transferredTo}`);
+                
+                webhookLogger.warning('TRANSFER_TO_HUMAN', `Conversa transferida para supervisor humano`, {
+                  conversationId: conversationRef.id,
+                  transferredTo,
+                });
+              }
             } else {
               // Normal update without transfer or resolve
               await storage.updateConversation(conversationRef.id, {
