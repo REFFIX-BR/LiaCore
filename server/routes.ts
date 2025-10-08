@@ -309,14 +309,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log(`✅ [Routing Complete] Conversa agora será atendida por ${newAssistantType}`);
           
-          return res.json({
-            success: true,
-            response: responseText,
-            assistantType: newAssistantType,
-            chatId,
-            routed: true,
-            routedTo: newAssistantType,
-          });
+          // Generate welcome message from the new specialized assistant
+          console.log(`👋 [Welcome Message] Gerando mensagem de boas-vindas do ${newAssistantType}...`);
+          
+          try {
+            // Send a context message to the new assistant to generate welcome
+            const welcomePrompt = `[CONTEXTO: Cliente foi encaminhado pela recepcionista. Apresente-se brevemente e mostre que está pronto para ajudar com base no histórico da conversa]`;
+            
+            const welcomeResult = await sendMessageAndGetResponse(
+              threadId!,
+              newAssistantId,
+              welcomePrompt,
+              chatId
+            );
+            
+            const welcomeMessage = typeof welcomeResult.response === 'string' 
+              ? welcomeResult.response 
+              : ((welcomeResult.response as any)?.response || 'Olá! Estou aqui para ajudar.');
+            
+            // Store the welcome message
+            await storage.createMessage({
+              conversationId: conversation.id,
+              role: "assistant",
+              content: welcomeMessage,
+              assistant: newAssistantType,
+            });
+            
+            console.log(`✅ [Welcome Message] Mensagem gerada: ${welcomeMessage.substring(0, 100)}...`);
+            
+            return res.json({
+              success: true,
+              response: `${responseText}\n\n${welcomeMessage}`,
+              assistantType: newAssistantType,
+              chatId,
+              routed: true,
+              routedTo: newAssistantType,
+            });
+          } catch (error) {
+            console.error(`❌ [Welcome Message] Erro ao gerar mensagem:`, error);
+            
+            // Fallback: return just the receptionist message
+            return res.json({
+              success: true,
+              response: responseText,
+              assistantType: newAssistantType,
+              chatId,
+              routed: true,
+              routedTo: newAssistantType,
+            });
+          }
         }
         
         // NORMAL CASE: Other assistants transferring to human supervisors
@@ -907,6 +948,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   conversationId: conversationRef.id,
                   newAssistantType,
                 });
+                
+                // Generate welcome message from the new specialized assistant
+                console.log(`👋 [Evolution Welcome] Gerando mensagem de boas-vindas do ${newAssistantType}...`);
+                
+                try {
+                  // Send a context message to the new assistant to generate welcome
+                  const welcomePrompt = `[CONTEXTO: Cliente foi encaminhado pela recepcionista. Apresente-se brevemente e mostre que está pronto para ajudar com base no histórico da conversa]`;
+                  
+                  const welcomeResult = await sendMessageAndGetResponse(
+                    threadId!,
+                    newAssistantId,
+                    welcomePrompt,
+                    chatId
+                  );
+                  
+                  const welcomeMessage = typeof welcomeResult.response === 'string' 
+                    ? welcomeResult.response 
+                    : ((welcomeResult.response as any)?.response || 'Olá! Estou aqui para ajudar.');
+                  
+                  // Store the welcome message
+                  await storage.createMessage({
+                    conversationId: conversationRef.id,
+                    role: "assistant",
+                    content: welcomeMessage,
+                    assistant: newAssistantType,
+                  });
+                  
+                  console.log(`✅ [Evolution Welcome] Mensagem gerada: ${welcomeMessage.substring(0, 100)}...`);
+                  
+                  // Send welcome message to WhatsApp
+                  await sendWhatsAppMessage(clientPhoneNumber, welcomeMessage);
+                  
+                  webhookLogger.success('WELCOME_MESSAGE_SENT', `Mensagem de boas-vindas do ${newAssistantType} enviada`, {
+                    conversationId: conversationRef.id,
+                    newAssistantType,
+                  });
+                } catch (error) {
+                  console.error(`❌ [Evolution Welcome] Erro ao gerar/enviar mensagem:`, error);
+                  webhookLogger.error('WELCOME_MESSAGE_ERROR', `Erro ao enviar boas-vindas`, {
+                    error: error instanceof Error ? error.message : String(error),
+                    conversationId: conversationRef.id,
+                  });
+                }
               } else {
                 // NORMAL CASE: Other assistants transferring to human supervisors
                 await storage.updateConversation(conversationRef.id, {
