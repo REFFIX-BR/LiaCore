@@ -2903,6 +2903,109 @@ A resposta deve:
     }
   });
 
+  // Assign conversation to agent
+  app.post("/api/conversations/:id/assign", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { agentId } = req.body;
+
+      if (!agentId) {
+        return res.status(400).json({ error: "agentId é obrigatório" });
+      }
+
+      // Buscar conversa
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversa não encontrada" });
+      }
+
+      // Buscar agente
+      const agent = await storage.getUserById(agentId);
+      if (!agent) {
+        return res.status(404).json({ error: "Atendente não encontrado" });
+      }
+
+      // Atualizar conversa com agente atribuído
+      await storage.updateConversation(id, {
+        assignedTo: agentId,
+      });
+
+      // Criar mensagem de boas-vindas
+      const welcomeMessage = `Olá! Sou *${agent.fullName}*, seu atendente. Assumí esta conversa e darei continuidade ao seu atendimento. Como posso ajudá-lo?`;
+
+      // Salvar mensagem no histórico
+      await storage.createMessage({
+        conversationId: id,
+        role: "assistant",
+        content: welcomeMessage,
+        assistant: `Atendente: ${agent.fullName}`,
+      });
+
+      // Atualizar última mensagem da conversa
+      await storage.updateConversation(id, {
+        lastMessage: welcomeMessage,
+        lastMessageTime: new Date(),
+      });
+
+      // Enviar mensagem de boas-vindas via WhatsApp
+      let whatsappSent = false;
+      const phoneNumber = conversation.clientId || conversation.chatId;
+      
+      if (phoneNumber) {
+        try {
+          whatsappSent = await sendWhatsAppMessage(phoneNumber, welcomeMessage);
+          
+          if (whatsappSent) {
+            webhookLogger.success('AGENT_ASSIGNED', `Conversa atribuída a ${agent.fullName}`, {
+              conversationId: id,
+              agentId: agent.id,
+              agentName: agent.fullName,
+              phoneNumber,
+            });
+            console.log(`✅ [Assignment] Mensagem de boas-vindas enviada ao WhatsApp: ${phoneNumber}`);
+          } else {
+            webhookLogger.error('WHATSAPP_SEND_FAILED', `Falha ao enviar mensagem de atribuição`, {
+              conversationId: id,
+              agentId: agent.id,
+              phoneNumber,
+            });
+          }
+        } catch (error) {
+          console.error("❌ [Assignment] Erro ao enviar mensagem ao WhatsApp:", error);
+          webhookLogger.error('WHATSAPP_SEND_ERROR', `Erro ao enviar mensagem de atribuição`, {
+            conversationId: id,
+            agentId: agent.id,
+            phoneNumber,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
+      // Criar ação de supervisor
+      await storage.createSupervisorAction({
+        conversationId: id,
+        action: "assign",
+        notes: `Conversa atribuída a ${agent.fullName}`,
+        createdBy: req.user!.username,
+      });
+
+      console.log(`👤 [Assignment] Conversa ${id} atribuída a ${agent.fullName}`);
+
+      return res.json({
+        success: true,
+        agent: {
+          id: agent.id,
+          fullName: agent.fullName,
+          username: agent.username,
+        },
+        whatsappSent,
+      });
+    } catch (error) {
+      console.error("Assign conversation error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // Setup WebSocket for real-time webhook logs
