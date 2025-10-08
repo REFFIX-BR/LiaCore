@@ -72,10 +72,24 @@ The frontend is built with React and TypeScript using Vite, leveraging `shadcn/u
   - **Conversas**: Test Chat, Conversas (all roles, Test Chat ADMIN/SUPERVISOR only)
   - **Conhecimento & IA**: Base de Conhecimento, Evolução dos Agentes, Assistentes (ADMIN/SUPERVISOR)
   - **Análises**: Métricas, Feedbacks NPS (ADMIN/SUPERVISOR)
-  - **Administração**: Usuários, Configurações (ADMIN only)
+  - **Administração**: Usuários (ADMIN only), Solicitações de Registro (ADMIN/SUPERVISOR), Configurações (ADMIN only)
 - **Category State Persistence**: User's expanded/collapsed category preferences saved in localStorage and maintained across sessions.
 - **Default Credentials**: admin/admin123 (change after first login for security).
 - **Test Users**: supervisor/supervisor123, agent/agent123 available for testing different permission levels.
+
+**User Registration System**:
+- **Public Registration**: Self-service registration form on login page for new users to request access.
+- **Approval Workflow**: All registration requests require admin/supervisor approval before user account creation.
+- **Database Schema**: `registration_requests` table stores pending and processed requests with username, hashed password, full name, email, status, reviewer info, and timestamps.
+- **Security Model**: Public endpoint ALWAYS forces `requestedRole = "AGENT"` regardless of client input to prevent privilege escalation. Admin/Supervisor roles can only be assigned through the Users management page by existing admins.
+- **Management Interface**: `/registration-requests` page (accessible by ADMIN and SUPERVISOR) displays pending requests with approve/reject actions. Processed requests shown in historical table.
+- **API Endpoints**: 
+  - `POST /api/auth/register` (public) - Creates registration request with validated email/password
+  - `GET /api/registration-requests` (admin/supervisor) - Lists all requests
+  - `POST /api/registration-requests/:id/approve` (admin/supervisor) - Approves request and creates user
+  - `POST /api/registration-requests/:id/reject` (admin/supervisor) - Rejects with reason
+- **Navigation**: "Solicitações de Registro" menu item under Administração section (UserPlus icon), visible to ADMIN and SUPERVISOR.
+- **Validation**: Email format and password length (min 6 characters) enforced on backend.
 
 **Personalized Dashboards by Role**:
 - **Agent Dashboard**: Personal KPIs (conversations in queue, finished today, personal TMA, personal NPS), sentiment trend chart (7 days), recent feedback list with scores.
