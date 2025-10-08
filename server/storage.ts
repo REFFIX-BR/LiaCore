@@ -78,6 +78,7 @@ export interface IStorage {
   getAllSatisfactionFeedback(): Promise<SatisfactionFeedback[]>;
   getSatisfactionFeedbackByConversationId(conversationId: string): Promise<SatisfactionFeedback | undefined>;
   getSatisfactionFeedbackByAssistantType(assistantType: string): Promise<SatisfactionFeedback[]>;
+  getSatisfactionFeedbackWithConversations(): Promise<Array<SatisfactionFeedback & { conversation?: Conversation }>>;
   
   // Suggested Responses
   createSuggestedResponse(response: InsertSuggestedResponse): Promise<SuggestedResponse>;
@@ -489,6 +490,14 @@ export class MemStorage implements IStorage {
     ).sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
   }
 
+  async getSatisfactionFeedbackWithConversations(): Promise<Array<SatisfactionFeedback & { conversation?: Conversation }>> {
+    const feedbacks = await this.getAllSatisfactionFeedback();
+    return feedbacks.map(feedback => ({
+      ...feedback,
+      conversation: this.conversations.get(feedback.conversationId)
+    }));
+  }
+
   // Suggested Responses
   async createSuggestedResponse(insertResponse: InsertSuggestedResponse): Promise<SuggestedResponse> {
     const id = randomUUID();
@@ -799,6 +808,24 @@ export class DbStorage implements IStorage {
     return await db.select().from(schema.satisfactionFeedback)
       .where(eq(schema.satisfactionFeedback.assistantType, assistantType))
       .orderBy(desc(schema.satisfactionFeedback.createdAt));
+  }
+
+  async getSatisfactionFeedbackWithConversations(): Promise<Array<SatisfactionFeedback & { conversation?: Conversation }>> {
+    const feedbacks = await db.select().from(schema.satisfactionFeedback)
+      .orderBy(desc(schema.satisfactionFeedback.createdAt));
+    
+    const results = [];
+    for (const feedback of feedbacks) {
+      const [conversation] = await db.select().from(schema.conversations)
+        .where(eq(schema.conversations.id, feedback.conversationId));
+      
+      results.push({
+        ...feedback,
+        conversation
+      });
+    }
+    
+    return results;
   }
 
   // Suggested Responses
