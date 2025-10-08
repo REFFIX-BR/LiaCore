@@ -23,6 +23,7 @@ import Assistants from "@/pages/Assistants";
 import Metrics from "@/pages/Metrics";
 import Feedbacks from "@/pages/Feedbacks";
 import Users from "@/pages/Users";
+import AgentReports from "@/pages/AgentReports";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -58,6 +59,9 @@ function Router() {
       </Route>
       <Route path="/agent-monitor">
         {() => <ProtectedRoute component={AgentMonitor} />}
+      </Route>
+      <Route path="/agent-reports">
+        {() => <ProtectedRoute component={AgentReports} />}
       </Route>
       <Route path="/webhook-monitor">
         {() => <ProtectedRoute component={WebhookMonitor} />}

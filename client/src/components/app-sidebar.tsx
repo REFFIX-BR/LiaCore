@@ -23,7 +23,8 @@ import {
   Wifi,
   Star,
   Users as UsersIcon,
-  UserCog
+  UserCog,
+  FileText
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
@@ -46,6 +47,12 @@ const menuItems = [
     url: "/agent-monitor",
     icon: UserCog,
     roles: ["ADMIN", "SUPERVISOR"], // Supervisão de atendentes
+  },
+  {
+    title: "Relatórios de Atendentes",
+    url: "/agent-reports",
+    icon: FileText,
+    roles: ["ADMIN", "SUPERVISOR"], // Análise histórica
   },
   {
     title: "Monitor Webhook",
