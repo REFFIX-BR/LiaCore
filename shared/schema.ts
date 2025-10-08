@@ -25,6 +25,7 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("AGENT"), // 'ADMIN', 'SUPERVISOR', or 'AGENT'
   status: text("status").notNull().default("ACTIVE"), // 'ACTIVE' or 'INACTIVE'
   lastLoginAt: timestamp("last_login_at"),
+  lastActivityAt: timestamp("last_activity_at"), // Track real-time activity for status
   createdAt: timestamp("created_at").defaultNow(),
 });
 
