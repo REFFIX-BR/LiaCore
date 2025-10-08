@@ -2820,6 +2820,20 @@ A resposta deve:
         return res.status(404).json({ error: "Conversation not found" });
       }
 
+      // Validação: Se conversa está atribuída, apenas o atendente atribuído pode responder
+      // (a menos que seja ADMIN ou SUPERVISOR)
+      if (conversation.assignedTo) {
+        const user = req.user!;
+        const isAssignedAgent = user.userId === conversation.assignedTo;
+        const isAdminOrSupervisor = user.role === 'ADMIN' || user.role === 'SUPERVISOR';
+        
+        if (!isAssignedAgent && !isAdminOrSupervisor) {
+          return res.status(403).json({ 
+            error: "Apenas o atendente atribuído pode responder a esta conversa" 
+          });
+        }
+      }
+
       // Criar mensagem do supervisor
       const message = await storage.createMessage({
         conversationId: id,
