@@ -1227,7 +1227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DEBUG: Get all conversations (including resolved) for troubleshooting
-  app.get("/api/debug/all-conversations", async (req, res) => {
+  app.get("/api/debug/all-conversations", authenticate, requireAdmin, async (req, res) => {
     try {
       const conversations = await storage.getAllConversations();
       return res.json(conversations);
@@ -1249,7 +1249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DEBUG: Simular fluxo completo de conversa (criar, transferir, finalizar)
-  app.post("/api/debug/simulate-conversation", async (req, res) => {
+  app.post("/api/debug/simulate-conversation", authenticate, requireAdmin, async (req, res) => {
     try {
       console.log("🧪 [DEBUG] Iniciando simulação de conversa completa");
       
@@ -1372,7 +1372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ADMIN: Resolver conversas transferidas em lote
-  app.post("/api/admin/resolve-transferred-conversations", async (req, res) => {
+  app.post("/api/admin/resolve-transferred-conversations", authenticate, requireAdmin, async (req, res) => {
     try {
       const { conversationIds, resolveAll } = req.body;
 
@@ -1446,7 +1446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all active conversations for monitoring (includes resolved from last 24h)
-  app.get("/api/monitor/conversations", async (req, res) => {
+  app.get("/api/monitor/conversations", authenticate, async (req, res) => {
     try {
       const conversations = await storage.getMonitorConversations();
       
@@ -1478,7 +1478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get conversation details
-  app.get("/api/monitor/conversations/:id", async (req, res) => {
+  app.get("/api/monitor/conversations/:id", authenticate, async (req, res) => {
     try {
       const conversation = await storage.getConversation(req.params.id);
       if (!conversation) {
@@ -1502,7 +1502,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get active alerts
-  app.get("/api/monitor/alerts", async (req, res) => {
+  app.get("/api/monitor/alerts", authenticate, async (req, res) => {
     try {
       const alerts = await storage.getActiveAlerts();
       return res.json(alerts);
@@ -1513,7 +1513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Supervisor actions
-  app.post("/api/supervisor/transfer", async (req, res) => {
+  app.post("/api/supervisor/transfer", authenticate, requireAdmin, async (req, res) => {
     try {
       const { conversationId, department, notes, supervisorId } = req.body;
 
@@ -1569,7 +1569,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/supervisor/pause", async (req, res) => {
+  app.post("/api/supervisor/pause", authenticate, requireAdmin, async (req, res) => {
     try {
       const { conversationId, supervisorId } = req.body;
 
@@ -1587,7 +1587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/supervisor/note", async (req, res) => {
+  app.post("/api/supervisor/note", authenticate, requireAdmin, async (req, res) => {
     try {
       const { conversationId, note, supervisorId } = req.body;
 
@@ -1605,7 +1605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/supervisor/resolve", async (req, res) => {
+  app.post("/api/supervisor/resolve", authenticate, requireAdmin, async (req, res) => {
     try {
       const { conversationId, supervisorId } = req.body;
 
@@ -1673,7 +1673,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   });
 
   // Knowledge base search
-  app.post("/api/knowledge/search", async (req, res) => {
+  app.post("/api/knowledge/search", authenticate, async (req, res) => {
     try {
       const { query, topK = 20 } = req.body;
 
@@ -1690,7 +1690,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   });
 
   // Add knowledge chunks
-  app.post("/api/knowledge/add", async (req, res) => {
+  app.post("/api/knowledge/add", authenticate, requireAdmin, async (req, res) => {
     try {
       const { chunks } = req.body;
 
@@ -1709,7 +1709,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   });
 
   // Populate knowledge base with initial data
-  app.post("/api/knowledge/populate", async (req, res) => {
+  app.post("/api/knowledge/populate", authenticate, requireAdmin, async (req, res) => {
     try {
       const { addKnowledgeChunks } = await import("./lib/upstash");
       
@@ -1807,7 +1807,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   });
 
   // Clear knowledge base
-  app.post("/api/knowledge/clear", async (req, res) => {
+  app.post("/api/knowledge/clear", authenticate, requireAdmin, async (req, res) => {
     try {
       const { clearKnowledgeBase } = await import("./lib/upstash");
       await clearKnowledgeBase();
@@ -1820,7 +1820,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   });
 
   // Delete single knowledge chunk
-  app.delete("/api/knowledge/:id", async (req, res) => {
+  app.delete("/api/knowledge/:id", authenticate, requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const { deleteKnowledgeChunk } = await import("./lib/upstash");
@@ -1837,7 +1837,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   // ==================== LEARNING SYSTEM ROUTES ====================
 
   // Create learning event
-  app.post("/api/learning/events", async (req, res) => {
+  app.post("/api/learning/events", authenticate, async (req, res) => {
     try {
       const validatedData = insertLearningEventSchema.parse(req.body);
       const event = await storage.createLearningEvent(validatedData);
@@ -1849,7 +1849,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   });
 
   // Get learning events by conversation
-  app.get("/api/learning/events/:conversationId", async (req, res) => {
+  app.get("/api/learning/events/:conversationId", authenticate, async (req, res) => {
     try {
       const { conversationId } = req.params;
       const events = await storage.getLearningEventsByConversationId(conversationId);
@@ -1861,7 +1861,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   });
 
   // Get recent learning events for analysis
-  app.get("/api/learning/events", async (req, res) => {
+  app.get("/api/learning/events", authenticate, requireAdmin, async (req, res) => {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
       const events = await storage.getRecentLearningEvents(limit);
@@ -1873,7 +1873,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   });
 
   // Get all prompt suggestions
-  app.get("/api/learning/suggestions", async (req, res) => {
+  app.get("/api/learning/suggestions", authenticate, requireAdmin, async (req, res) => {
     try {
       const status = req.query.status as string | undefined;
       const suggestions = status 
@@ -1887,7 +1887,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   });
 
   // Get single prompt suggestion
-  app.get("/api/learning/suggestions/:id", async (req, res) => {
+  app.get("/api/learning/suggestions/:id", authenticate, requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const suggestion = await storage.getPromptSuggestion(id);
@@ -1902,7 +1902,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   });
 
   // Update prompt suggestion (approve/reject)
-  app.put("/api/learning/suggestions/:id", async (req, res) => {
+  app.put("/api/learning/suggestions/:id", authenticate, requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const { status, reviewedBy, reviewNotes } = req.body;
@@ -1925,7 +1925,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   });
 
   // Apply prompt suggestion (update assistant)
-  app.post("/api/learning/suggestions/:id/apply", async (req, res) => {
+  app.post("/api/learning/suggestions/:id/apply", authenticate, requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const { appliedBy } = req.body;
@@ -1964,7 +1964,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   });
 
   // Get all prompt updates (audit log)
-  app.get("/api/learning/updates", async (req, res) => {
+  app.get("/api/learning/updates", authenticate, requireAdmin, async (req, res) => {
     try {
       const assistantType = req.query.assistantType as string | undefined;
       const updates = assistantType
@@ -1978,7 +1978,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   });
 
   // Trigger analysis manually
-  app.post("/api/learning/analyze", async (req, res) => {
+  app.post("/api/learning/analyze", authenticate, requireAdmin, async (req, res) => {
     try {
       // TODO: Implement cortex-analysis module
       console.log("🧠 [Analysis] Triggered manual analysis");
@@ -1994,7 +1994,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   });
 
   // System configuration endpoints
-  app.get("/api/system/config", async (req, res) => {
+  app.get("/api/system/config", authenticate, requireAdmin, async (req, res) => {
     try {
       const { ASSISTANT_IDS, CONTEXT_CONFIG } = await import("./lib/openai");
       const { redis, vectorIndex } = await import("./lib/upstash");
@@ -2081,7 +2081,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   });
 
   // Update system configuration
-  app.post("/api/system/config", async (req, res) => {
+  app.post("/api/system/config", authenticate, requireAdmin, async (req, res) => {
     try {
       const { summarizeEvery, keepRecent, contextWindow, analysisInterval } = req.body;
       
@@ -2105,7 +2105,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   });
 
   // Update Evolution API configuration
-  app.post("/api/system/evolution-config", async (req, res) => {
+  app.post("/api/system/evolution-config", authenticate, requireAdmin, async (req, res) => {
     try {
       const { url, apiKey, instance } = req.body;
       
@@ -2160,7 +2160,7 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
   });
 
   // Clear Redis cache
-  app.post("/api/system/clear-cache", async (req, res) => {
+  app.post("/api/system/clear-cache", authenticate, requireAdmin, async (req, res) => {
     try {
       const { redis } = await import("./lib/upstash");
       
@@ -2183,7 +2183,7 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
   });
 
   // Get assistants metrics
-  app.get("/api/assistants/metrics", async (req, res) => {
+  app.get("/api/assistants/metrics", authenticate, async (req, res) => {
     try {
       const allConversations = await storage.getAllConversations();
       const allPromptUpdates = await storage.getAllPromptUpdates();
@@ -2351,7 +2351,7 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
   });
 
   // Get all satisfaction feedback with conversation data
-  app.get("/api/satisfaction-feedback", async (req, res) => {
+  app.get("/api/satisfaction-feedback", authenticate, async (req, res) => {
     try {
       const feedbackWithConversations = await storage.getSatisfactionFeedbackWithConversations();
       return res.json(feedbackWithConversations);
@@ -2362,7 +2362,7 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
   });
 
   // Get NPS metrics
-  app.get("/api/metrics/nps", async (req, res) => {
+  app.get("/api/metrics/nps", authenticate, async (req, res) => {
     try {
       const allFeedback = await storage.getAllSatisfactionFeedback();
       const allConversations = await storage.getAllConversations();
@@ -2476,7 +2476,7 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
   });
 
   // Get transferred conversations
-  app.get("/api/conversations/transferred", async (req, res) => {
+  app.get("/api/conversations/transferred", authenticate, async (req, res) => {
     try {
       const conversations = await storage.getTransferredConversations();
       return res.json(conversations);
@@ -2487,7 +2487,7 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
   });
 
   // Get single conversation by ID
-  app.get("/api/conversations/:id", async (req, res) => {
+  app.get("/api/conversations/:id", authenticate, async (req, res) => {
     try {
       const { id } = req.params;
       const conversation = await storage.getConversation(id);
@@ -2502,7 +2502,7 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
   });
 
   // Get feedback by conversation ID
-  app.get("/api/feedback/:conversationId", async (req, res) => {
+  app.get("/api/feedback/:conversationId", authenticate, async (req, res) => {
     try {
       const { conversationId } = req.params;
       const feedback = await storage.getSatisfactionFeedbackByConversationId(conversationId);
@@ -2515,7 +2515,7 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
   });
 
   // AI suggest response based on context
-  app.post("/api/conversations/:id/suggest-response", async (req, res) => {
+  app.post("/api/conversations/:id/suggest-response", authenticate, async (req, res) => {
     try {
       const { id } = req.params;
       const { supervisorName } = req.body;
@@ -2589,7 +2589,7 @@ A resposta deve:
   });
 
   // Send supervisor message (approved or edited)
-  app.post("/api/conversations/:id/send-message", async (req, res) => {
+  app.post("/api/conversations/:id/send-message", authenticate, async (req, res) => {
     try {
       const { id } = req.params;
       const { content, suggestionId, wasEdited, supervisorName } = req.body;
@@ -2709,19 +2709,19 @@ A resposta deve:
   webhookLogger.setupWebSocket(httpServer);
 
   // Endpoint to get webhook logs
-  app.get("/api/webhook-logs", (req, res) => {
+  app.get("/api/webhook-logs", authenticate, requireAdmin, (req, res) => {
     const logs = webhookLogger.getLogs();
     return res.json({ logs });
   });
 
   // Endpoint to get webhook stats
-  app.get("/api/webhook-logs/stats", (req, res) => {
+  app.get("/api/webhook-logs/stats", authenticate, requireAdmin, (req, res) => {
     const stats = webhookLogger.getStats();
     return res.json(stats);
   });
 
   // Endpoint to clear webhook logs
-  app.post("/api/webhook-logs/clear", (req, res) => {
+  app.post("/api/webhook-logs/clear", authenticate, requireAdmin, (req, res) => {
     webhookLogger.clearLogs();
     return res.json({ success: true, message: "Logs cleared" });
   });
