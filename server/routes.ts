@@ -212,7 +212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`✅ [AI Resolve] Conversa ${conversation.id} marcada como resolvida, enviando NPS...`);
 
         // Send NPS survey via WhatsApp
-        const npsSurveyMessage = `Olá ${conversation.clientName}!\n\nSeu atendimento foi finalizado.\n\n*Pesquisa de Satisfação*\n\nEm uma escala de 0 a 10, qual a probabilidade de você recomendar a TR Telecom?\n\nDigite um número de 0 (muito improvável) a 10 (muito provável)`;
+        const npsSurveyMessage = `Olá ${conversation.clientName}!\n\nSeu atendimento foi finalizado.\n\nPesquisa de Satisfação\n\nEm uma escala de 0 a 10, qual a satisfação com atendimento?\n\nDigite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
         
         try {
           await sendWhatsAppMessage(chatId, npsSurveyMessage);
@@ -733,7 +733,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.log(`✅ [Evolution Resolve] Conversa ${conversationRef.id} marcada como resolvida, enviando NPS...`);
 
               // Send NPS survey via WhatsApp
-              const npsSurveyMessage = `Olá ${conversationRef.clientName}!\n\nSeu atendimento foi finalizado.\n\n*Pesquisa de Satisfação*\n\nEm uma escala de 0 a 10, qual a probabilidade de você recomendar a TR Telecom?\n\nDigite um número de 0 (muito improvável) a 10 (muito provável)`;
+              const npsSurveyMessage = `Olá ${conversationRef.clientName}!\n\nSeu atendimento foi finalizado.\n\nPesquisa de Satisfação\n\nEm uma escala de 0 a 10, qual a satisfação com atendimento?\n\nDigite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
               
               try {
                 await sendWhatsAppMessage(clientPhoneNumber, npsSurveyMessage);
