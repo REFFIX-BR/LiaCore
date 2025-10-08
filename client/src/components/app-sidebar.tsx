@@ -21,70 +21,95 @@ import {
   TestTube2,
   TrendingUp,
   Wifi,
-  Star
+  Star,
+  Users as UsersIcon
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
+import { useAuth } from "@/lib/auth-context";
 
 const menuItems = [
   {
     title: "Dashboard",
     url: "/",
     icon: LayoutDashboard,
+    roles: ["ADMIN", "SUPERVISOR", "AGENT"], // Todos veem dashboard
   },
   {
     title: "Monitor Supervisor",
     url: "/monitor",
     icon: MonitorIcon,
+    roles: ["ADMIN", "SUPERVISOR"], // Gerenciamento
   },
   {
     title: "Monitor Webhook",
     url: "/webhook-monitor",
     icon: Wifi,
+    roles: ["ADMIN"], // Apenas Admin
   },
   {
     title: "Test Chat",
     url: "/test-chat",
     icon: TestTube2,
+    roles: ["ADMIN", "SUPERVISOR"], // Testes gerenciais
   },
   {
     title: "Conversas",
     url: "/conversations",
     icon: MessageSquare,
+    roles: ["ADMIN", "SUPERVISOR", "AGENT"], // Todos veem conversas
   },
   {
     title: "Base de Conhecimento",
     url: "/knowledge",
     icon: Database,
+    roles: ["ADMIN", "SUPERVISOR"], // Admin e Supervisor gerenciam
   },
   {
     title: "Evolução dos Agentes",
     url: "/evolution",
     icon: TrendingUp,
+    roles: ["ADMIN", "SUPERVISOR"], // Curadoria de IA
   },
   {
     title: "Assistentes",
     url: "/assistants",
     icon: Brain,
+    roles: ["ADMIN", "SUPERVISOR"], // Configuração de IA
   },
   {
     title: "Métricas",
     url: "/metrics",
     icon: Activity,
+    roles: ["ADMIN", "SUPERVISOR"], // Visão gerencial
   },
   {
     title: "Feedbacks NPS",
     url: "/feedbacks",
     icon: Star,
+    roles: ["ADMIN", "SUPERVISOR"], // Análise de satisfação
+  },
+  {
+    title: "Usuários",
+    url: "/users",
+    icon: UsersIcon,
+    roles: ["ADMIN"], // Apenas Admin gerencia usuários
   },
   {
     title: "Configurações",
     url: "/settings",
     icon: Settings,
+    roles: ["ADMIN"], // Apenas Admin gerencia configurações
   },
 ];
 
 export function AppSidebar() {
   const [location] = useLocation();
+  const { user } = useAuth();
+
+  // Filter menu items based on user role
+  const visibleMenuItems = menuItems.filter((item) => 
+    user && item.roles.includes(user.role)
+  );
 
   return (
     <Sidebar>
@@ -105,7 +130,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navegação</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {visibleMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild

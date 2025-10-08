@@ -21,6 +21,7 @@ import Settings from "@/pages/Settings";
 import Assistants from "@/pages/Assistants";
 import Metrics from "@/pages/Metrics";
 import Feedbacks from "@/pages/Feedbacks";
+import Users from "@/pages/Users";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -81,6 +82,9 @@ function Router() {
       <Route path="/settings">
         {() => <ProtectedRoute component={Settings} />}
       </Route>
+      <Route path="/users">
+        {() => <ProtectedRoute component={Users} />}
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -113,7 +117,9 @@ function AppContent() {
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground">
-                {user.fullName} ({user.role === "ADMIN" ? "Supervisor" : "Atendente"})
+                {user.fullName} (
+                {user.role === "ADMIN" ? "Administrador" : user.role === "SUPERVISOR" ? "Supervisor" : "Atendente"}
+                )
               </span>
               <ThemeToggle />
             </div>

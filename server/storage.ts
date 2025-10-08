@@ -1,6 +1,7 @@
 import { 
   type User, 
   type InsertUser,
+  type UpdateUser,
   type Conversation,
   type InsertConversation,
   type Message,
@@ -29,8 +30,10 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, updates: UpdateUser): Promise<User>;
   updateUserLastLogin(id: string): Promise<void>;
   updateUserStatus(id: string, status: string): Promise<User>;
+  deleteUser(id: string): Promise<void>;
   
   // Conversations
   getConversation(id: string): Promise<Conversation | undefined>;
@@ -140,12 +143,22 @@ export class MemStorage implements IStorage {
       ...insertUser, 
       id,
       role: insertUser.role || "AGENT",
-      status: insertUser.status || "active",
+      status: insertUser.status || "ACTIVE",
+      email: insertUser.email || null,
       createdAt: new Date(),
       lastLoginAt: null,
     };
     this.users.set(id, user);
     return user;
+  }
+
+  async updateUser(id: string, updates: UpdateUser): Promise<User> {
+    const user = this.users.get(id);
+    if (!user) throw new Error("User not found");
+    
+    const updated = { ...user, ...updates };
+    this.users.set(id, updated);
+    return updated;
   }
 
   async updateUserLastLogin(id: string): Promise<void> {
@@ -163,6 +176,10 @@ export class MemStorage implements IStorage {
     const updated = { ...user, status };
     this.users.set(id, updated);
     return updated;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    this.users.delete(id);
   }
 
   async getConversation(id: string): Promise<Conversation | undefined> {

@@ -6,7 +6,7 @@ export interface User {
   id: string;
   username: string;
   fullName: string;
-  role: "ADMIN" | "AGENT";
+  role: "ADMIN" | "SUPERVISOR" | "AGENT";
   status: string;
   lastLoginAt: Date | null;
   createdAt: Date | null;
@@ -18,6 +18,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isAdmin: boolean;
+  isSupervisor: boolean;
   isAgent: boolean;
 }
 
@@ -90,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     isAdmin: user?.role === "ADMIN",
+    isSupervisor: user?.role === "SUPERVISOR",
     isAgent: user?.role === "AGENT",
   };
 

@@ -1,11 +1,11 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema, insertSatisfactionFeedbackSchema, loginSchema, insertUserSchema, type Conversation } from "@shared/schema";
+import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema, insertSatisfactionFeedbackSchema, loginSchema, insertUserSchema, updateUserSchema, type Conversation } from "@shared/schema";
 import { routeMessage, createThread, sendMessageAndGetResponse, summarizeConversation, routeMessageWithContext, CONTEXT_CONFIG } from "./lib/openai";
 import { storeConversationThread, getConversationThread, searchKnowledge } from "./lib/upstash";
 import { webhookLogger } from "./lib/webhook-logger";
-import { authenticate, requireAdmin } from "./middleware/auth";
+import { authenticate, requireAdmin, requireAdminOrSupervisor } from "./middleware/auth";
 import { hashPassword, comparePasswords, generateToken, getUserFromUser } from "./lib/auth";
 import OpenAI from "openai";
 
@@ -182,14 +182,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create new user / Invite user (admin only)
+  app.post("/api/users", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const data = insertUserSchema.parse(req.body);
+
+      // Check if username already exists
+      const existingUser = await storage.getUserByUsername(data.username);
+      if (existingUser) {
+        return res.status(400).json({ error: "Usuário já existe" });
+      }
+
+      // Hash password
+      const hashedPassword = await hashPassword(data.password);
+
+      // Create user
+      const user = await storage.createUser({
+        ...data,
+        password: hashedPassword,
+      });
+
+      res.json({ user: getUserFromUser(user) });
+    } catch (error: any) {
+      console.error("❌ [Users] Error creating user:", error);
+      res.status(400).json({ error: error?.message || "Erro ao criar usuário" });
+    }
+  });
+
+  // Update user (admin only)
+  app.patch("/api/users/:id", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = updateUserSchema.parse(req.body);
+
+      // If password is being updated, hash it
+      if (updates.password) {
+        updates.password = await hashPassword(updates.password);
+      }
+
+      const user = await storage.updateUser(id, updates);
+      res.json({ user: getUserFromUser(user) });
+    } catch (error: any) {
+      console.error("❌ [Users] Error updating user:", error);
+      res.status(400).json({ error: error?.message || "Erro ao atualizar usuário" });
+    }
+  });
+
   // Update user status (admin only)
   app.patch("/api/users/:id/status", authenticate, requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const { status } = req.body;
 
-      if (!["active", "inactive", "offline"].includes(status)) {
-        return res.status(400).json({ error: "Status inválido" });
+      if (!["ACTIVE", "INACTIVE"].includes(status)) {
+        return res.status(400).json({ error: "Status inválido. Use ACTIVE ou INACTIVE" });
       }
 
       const user = await storage.updateUserStatus(id, status);
@@ -197,6 +243,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("❌ [Users] Error updating user status:", error);
       res.status(500).json({ error: "Erro ao atualizar status do usuário" });
+    }
+  });
+
+  // Delete user (admin only)
+  app.delete("/api/users/:id", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Prevent deleting yourself
+      if (id === req.user!.userId) {
+        return res.status(400).json({ error: "Você não pode deletar sua própria conta" });
+      }
+
+      await storage.deleteUser(id);
+      res.json({ message: "Usuário deletado com sucesso" });
+    } catch (error) {
+      console.error("❌ [Users] Error deleting user:", error);
+      res.status(500).json({ error: "Erro ao deletar usuário" });
     }
   });
 

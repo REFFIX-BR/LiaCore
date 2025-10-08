@@ -157,7 +157,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
 }).extend({
   role: z.enum(["ADMIN", "SUPERVISOR", "AGENT"]).default("AGENT"),
   status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
-  email: z.string().email("Email inválido").optional(),
+  email: z.string().email("Email inválido").nullable().optional(),
 });
 
 export const updateUserSchema = z.object({
