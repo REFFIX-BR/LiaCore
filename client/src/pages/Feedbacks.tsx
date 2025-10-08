@@ -2,23 +2,31 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star, MessageSquare, ExternalLink, Filter } from "lucide-react";
+import { Star, MessageSquare, ExternalLink, Filter, X, User, Bot } from "lucide-react";
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { SatisfactionFeedback, Conversation } from "@shared/schema";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import type { SatisfactionFeedback, Conversation, Message } from "@shared/schema";
 
 type FeedbackWithConversation = SatisfactionFeedback & { conversation?: Conversation };
 
 export default function Feedbacks() {
   const [, setLocation] = useLocation();
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
 
   const { data: feedbacks, isLoading, error } = useQuery<FeedbackWithConversation[]>({
     queryKey: ["/api/satisfaction-feedback"],
     refetchInterval: 10000,
+  });
+
+  const { data: conversationData } = useQuery<{ conversation: Conversation; messages: Message[] }>({
+    queryKey: ["/api/conversations", selectedConversationId],
+    enabled: !!selectedConversationId,
   });
 
   if (isLoading) {
@@ -80,9 +88,13 @@ export default function Feedbacks() {
 
   const handleOpenConversation = (feedback: FeedbackWithConversation) => {
     if (!feedback.conversation) {
-      return; // Não navega se não há conversa associada
+      return; // Não abre se não há conversa associada
     }
-    setLocation(`/conversations?highlight=${feedback.conversationId}`);
+    setSelectedConversationId(feedback.conversationId);
+  };
+
+  const handleCloseDialog = () => {
+    setSelectedConversationId(null);
   };
 
   return (
@@ -227,6 +239,64 @@ export default function Feedbacks() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={!!selectedConversationId} onOpenChange={handleCloseDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Histórico da Conversa</span>
+              {conversationData?.conversation && (
+                <Badge variant="outline">
+                  {assistantNames[conversationData.conversation.assistantType] || conversationData.conversation.assistantType}
+                </Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {conversationData ? (
+            <ScrollArea className="h-[60vh] pr-4">
+              <div className="space-y-4">
+                {conversationData.messages.map((message, index) => (
+                  <div
+                    key={message.id || index}
+                    className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    data-testid={`message-${index}`}
+                  >
+                    {message.role === 'assistant' && (
+                      <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                        <Bot className="h-4 w-4 text-primary-foreground" />
+                      </div>
+                    )}
+                    <div
+                      className={`rounded-lg p-3 max-w-[70%] ${
+                        message.role === 'user'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted'
+                      }`}
+                    >
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      {message.timestamp && (
+                        <p className="text-xs mt-1 opacity-70">
+                          {format(new Date(message.timestamp), "HH:mm", { locale: ptBR })}
+                        </p>
+                      )}
+                    </div>
+                    {message.role === 'user' && (
+                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                        <User className="h-4 w-4" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          ) : (
+            <div className="flex items-center justify-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
