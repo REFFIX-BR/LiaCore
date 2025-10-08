@@ -1958,6 +1958,17 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
     }
   });
 
+  // Get all satisfaction feedback with conversation data
+  app.get("/api/satisfaction-feedback", async (req, res) => {
+    try {
+      const feedbackWithConversations = await storage.getSatisfactionFeedbackWithConversations();
+      return res.json(feedbackWithConversations);
+    } catch (error) {
+      console.error("Get satisfaction feedback error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Get NPS metrics
   app.get("/api/metrics/nps", async (req, res) => {
     try {
