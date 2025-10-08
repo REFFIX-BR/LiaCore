@@ -26,6 +26,16 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string): Promise<b
   }
 
   try {
+    // Normalizar número do WhatsApp
+    // Aceita: "5522997074180", "whatsapp_5522997074180", "5522997074180@s.whatsapp.net"
+    let normalizedNumber = phoneNumber;
+    
+    if (phoneNumber.startsWith('whatsapp_')) {
+      normalizedNumber = phoneNumber.replace('whatsapp_', '');
+    } else if (phoneNumber.includes('@s.whatsapp.net')) {
+      normalizedNumber = phoneNumber.split('@')[0];
+    }
+    
     // Ensure URL has protocol
     let baseUrl = EVOLUTION_CONFIG.apiUrl.trim();
     if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
@@ -34,7 +44,7 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string): Promise<b
     
     const url = `${baseUrl}/message/sendText/${EVOLUTION_CONFIG.instance}`;
     
-    console.log(`📤 [Evolution] Enviando mensagem para ${phoneNumber} via ${url}`);
+    console.log(`📤 [Evolution] Enviando mensagem para ${normalizedNumber} (original: ${phoneNumber}) via ${url}`);
     
     const response = await fetch(url, {
       method: 'POST',
@@ -43,7 +53,7 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string): Promise<b
         'apikey': EVOLUTION_CONFIG.apiKey,
       },
       body: JSON.stringify({
-        number: phoneNumber,
+        number: normalizedNumber,
         text: text,
         delay: 1200, // Simula digitação natural
       }),
@@ -56,7 +66,7 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string): Promise<b
     }
 
     const result = await response.json();
-    console.log(`✅ [Evolution] Mensagem enviada para ${phoneNumber}`, {
+    console.log(`✅ [Evolution] Mensagem enviada para ${normalizedNumber}`, {
       messageId: result.key?.id,
       status: result.status,
     });
@@ -2200,6 +2210,46 @@ A resposta deve:
         lastMessageTime: new Date(),
       });
 
+      // ENVIAR MENSAGEM VIA WHATSAPP
+      let whatsappSent = false;
+      
+      // Priorizar clientId, depois chatId (sendWhatsAppMessage normaliza automaticamente)
+      const phoneNumber = conversation.clientId || conversation.chatId;
+      
+      if (phoneNumber) {
+        try {
+          whatsappSent = await sendWhatsAppMessage(phoneNumber, content);
+          
+          if (whatsappSent) {
+            webhookLogger.success('SUPERVISOR_MESSAGE_SENT', `Supervisor enviou mensagem ao cliente`, {
+              conversationId: id,
+              supervisorName,
+              phoneNumber,
+              messagePreview: content.substring(0, 50),
+            });
+            console.log(`✅ [Supervisor] Mensagem enviada ao WhatsApp: ${phoneNumber}`);
+          } else {
+            webhookLogger.error('WHATSAPP_SEND_FAILED', `Falha ao enviar mensagem do supervisor`, {
+              conversationId: id,
+              phoneNumber,
+            });
+          }
+        } catch (error) {
+          console.error("❌ [Supervisor] Erro ao enviar mensagem ao WhatsApp:", error);
+          webhookLogger.error('WHATSAPP_SEND_ERROR', `Erro ao enviar mensagem do supervisor`, {
+            conversationId: id,
+            phoneNumber,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      } else {
+        console.warn(`⚠️ [Supervisor] Sem número disponível. chatId: ${conversation.chatId}, clientId: ${conversation.clientId}`);
+        webhookLogger.warn('NO_PHONE_NUMBER', `Sem número disponível para envio`, {
+          conversationId: id,
+          chatId: conversation.chatId,
+        });
+      }
+
       // Se foi baseado em sugestão, atualizar o registro
       if (suggestionId) {
         await storage.updateSuggestedResponse(suggestionId, {
@@ -2236,11 +2286,12 @@ A resposta deve:
         }
       }
 
-      console.log(`✉️ [Supervisor] Mensagem enviada na conversa ${id}`);
+      console.log(`✉️ [Supervisor] Mensagem salva na conversa ${id}`);
 
       return res.json({ 
         success: true, 
         message,
+        whatsappSent,
         learningEventCreated: wasEdited,
       });
     } catch (error) {
