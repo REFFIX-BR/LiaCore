@@ -96,6 +96,19 @@ The frontend uses React with TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailw
 - **Resilience**: Automated flows use templates with hard-coded fallbacks.
 - **API Endpoints**: CRUD for `/api/message-templates`.
 
+**Message Pagination & Auto-Scroll System**:
+- **Optimized Loading**: Only 15 most recent messages loaded initially per conversation to reduce bandwidth and improve client-side performance.
+- **Cursor-Based Pagination**: Backend uses `before` cursor (message ID) for efficient historical message retrieval without offset issues.
+- **Load More UI**: "Carregar mensagens anteriores" button appears at top of chat when older messages exist (`hasMore` flag).
+- **Smart Auto-Scroll**: 
+  - Automatically scrolls to bottom when conversation opens
+  - Scrolls to bottom on new messages only if user is near bottom (<100px from end)
+  - Preserves scroll position when loading older messages to avoid interrupting user
+- **State Preservation**: Previously loaded messages persist across automatic 3-second refetches (not overwritten by polling).
+- **hasMore Management**: Uses `hasLoadedOlder` flag to prevent refetch from resetting pagination state after manual loads.
+- **API Endpoint**: `GET /api/monitor/conversations/:id?limit=15&before={messageId}` returns `{messages, hasMore, conversation, alerts, actions}`.
+- **Storage Method**: `getMessagesPaginated(conversationId, {limit, before})` optimized for both MemStorage and DbStorage.
+
 ## External Dependencies
 
 **Third-Party Services**:
