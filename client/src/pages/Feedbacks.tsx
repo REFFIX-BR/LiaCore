@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { SatisfactionFeedback, Conversation, Message } from "@shared/schema";
 
@@ -24,8 +24,13 @@ export default function Feedbacks() {
     refetchInterval: 10000,
   });
 
-  const { data: conversationData } = useQuery<{ conversation: Conversation; messages: Message[] }>({
-    queryKey: ["/api/conversations", selectedConversationId],
+  const { 
+    data: conversationData, 
+    isLoading: isLoadingConversation,
+    isError: isConversationError,
+    error: conversationError
+  } = useQuery<{ conversation: Conversation; messages: Message[] }>({
+    queryKey: ["/api/monitor/conversations", selectedConversationId],
     enabled: !!selectedConversationId,
   });
 
@@ -93,8 +98,10 @@ export default function Feedbacks() {
     setSelectedConversationId(feedback.conversationId);
   };
 
-  const handleCloseDialog = () => {
-    setSelectedConversationId(null);
+  const handleCloseDialog = (open: boolean) => {
+    if (!open) {
+      setSelectedConversationId(null);
+    }
   };
 
   return (
@@ -251,9 +258,31 @@ export default function Feedbacks() {
                 </Badge>
               )}
             </DialogTitle>
+            <DialogDescription>
+              Visualize todas as mensagens trocadas nesta conversa
+            </DialogDescription>
           </DialogHeader>
           
-          {conversationData ? (
+          {isConversationError ? (
+            <div className="flex flex-col items-center justify-center h-40 text-center p-4">
+              <p className="text-destructive mb-2">Erro ao carregar conversa</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                {(conversationError as Error)?.message || "Não foi possível carregar o histórico da conversa"}
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={() => handleCloseDialog(false)}
+                data-testid="button-close-error-dialog"
+              >
+                Fechar
+              </Button>
+            </div>
+          ) : isLoadingConversation ? (
+            <div className="flex flex-col items-center justify-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
+              <p className="text-sm text-muted-foreground">Carregando histórico...</p>
+            </div>
+          ) : conversationData ? (
             <ScrollArea className="h-[60vh] pr-4">
               <div className="space-y-4">
                 {conversationData.messages.map((message, index) => (
@@ -290,11 +319,7 @@ export default function Feedbacks() {
                 ))}
               </div>
             </ScrollArea>
-          ) : (
-            <div className="flex items-center justify-center h-40">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          )}
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>
