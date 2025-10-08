@@ -20,7 +20,7 @@ The frontend is built with React and TypeScript using Vite, leveraging `shadcn/u
 
 **Frontend**:
 - **State Management**: TanStack Query for server state management with 5-second polling.
-- **Key Pages**: Dashboard, Monitor, Test Chat, Conversations, Knowledge, Assistants, Agent Evolution, Metrics, Settings.
+- **Key Pages**: Dashboard, Monitor, Test Chat, Conversations, Knowledge, Assistants, Agent Evolution, Metrics, Feedbacks NPS, Settings.
 
 **Backend**:
 - **Runtime**: Node.js with Express.js, written in TypeScript.
@@ -48,7 +48,8 @@ The frontend is built with React and TypeScript using Vite, leveraging `shadcn/u
 
 **NPS & Customer Satisfaction System**:
 - **WhatsApp-based Feedback**: Automated NPS surveys sent to clients via WhatsApp upon conversation resolution.
-- **Feedback Processing**: Extracts scores using flexible regex, saves to database, and feeds detractors into the learning pipeline.
+- **Feedback Processing**: Extracts scores using flexible regex, saves to database with conversation linkage, and feeds detractors into the learning pipeline.
+- **Feedbacks NPS Page**: Supervisors can view all NPS feedback linked to conversations, filter by category (Detratores 0-6, Neutros 7-8, Promotores 9-10), and click to open the related conversation for context. Includes visual indicators for missing conversations.
 
 **Hybrid Supervised Mode (Conversations Tab)**:
 - **Transferred Conversation Queue**: Manages conversations escalated to human supervisors.
