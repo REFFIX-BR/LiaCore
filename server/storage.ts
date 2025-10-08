@@ -786,7 +786,7 @@ export class MemStorage implements IStorage {
 }
 
 import { db } from "./db";
-import { eq, desc, and, or, gte, lte, lt, isNotNull, sql } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, lt, isNotNull, isNull, sql } from "drizzle-orm";
 import * as schema from "@shared/schema";
 
 export class DbStorage implements IStorage {
