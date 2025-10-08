@@ -510,7 +510,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const assistantId = (conversation.metadata as any)?.routing?.assistantId;
-      const result = await sendMessageAndGetResponse(threadId, assistantId, message, chatId);
+      const result = await sendMessageAndGetResponse(threadId, assistantId, message, chatId, conversation.id);
 
       // Store assistant response (ensure it's always a string)
       const responseText = typeof result.response === 'string' 
@@ -671,7 +671,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               threadId!,
               newAssistantId,
               welcomePrompt,
-              chatId
+              chatId,
+              conversation.id
             );
             
             const welcomeMessage = typeof welcomeResult.response === 'string' 
@@ -1177,7 +1178,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               threadId!,
               assistantId,
               messageText,
-              chatId  // CRÍTICO: Passar chatId para processar finalizar_conversa
+              chatId,  // CRÍTICO: Passar chatId para processar finalizar_conversa
+              conversationRef.id  // CRÍTICO: Passar conversationId para consulta_boleto_cliente
             );
 
             // Store assistant response
@@ -1322,7 +1324,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     threadId!,
                     newAssistantId,
                     welcomePrompt,
-                    chatId
+                    chatId,
+                    conversationRef.id
                   );
                   
                   const welcomeMessage = typeof welcomeResult.response === 'string' 

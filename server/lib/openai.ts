@@ -83,7 +83,8 @@ export async function sendMessageAndGetResponse(
   threadId: string,
   assistantId: string,
   userMessage: string,
-  chatId?: string
+  chatId?: string,
+  conversationId?: string
 ): Promise<{ 
   response: string; 
   transferred?: boolean; 
@@ -140,7 +141,7 @@ export async function sendMessageAndGetResponse(
         const toolCalls = run.required_action.submit_tool_outputs.tool_calls;
         const toolOutputs = await Promise.all(
           toolCalls.map(async (toolCall) => {
-            const result = await handleToolCall(toolCall.function.name, toolCall.function.arguments, chatId);
+            const result = await handleToolCall(toolCall.function.name, toolCall.function.arguments, chatId, conversationId);
             
             // Check if this was a transfer call
             if (toolCall.function.name === "transferir_para_humano") {
@@ -256,7 +257,7 @@ export async function sendMessageAndGetResponse(
   }
 }
 
-async function handleToolCall(functionName: string, argsString: string, chatId?: string): Promise<string> {
+async function handleToolCall(functionName: string, argsString: string, chatId?: string, conversationId?: string): Promise<string> {
   try {
     const args = JSON.parse(argsString);
 
@@ -346,6 +347,34 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
             { nome: "Fibra Gamer", velocidade: "1 Gbps", valor: "R$ 199,90" },
           ],
         });
+
+      case "consulta_boleto_cliente":
+        if (!conversationId) {
+          console.error("❌ [AI Tool] consulta_boleto_cliente chamada sem conversationId");
+          return JSON.stringify({
+            error: "Contexto de conversa não disponível para consulta de boletos"
+          });
+        }
+        
+        const { executeAssistantTool } = await import("../ai-tools");
+        const { storage } = await import("../storage");
+        
+        try {
+          const boletos = await executeAssistantTool(
+            "consulta_boleto_cliente",
+            args,
+            { conversationId },
+            storage
+          );
+          
+          console.log(`✅ [AI Tool] Boletos consultados com sucesso`);
+          return JSON.stringify(boletos);
+        } catch (error) {
+          console.error("❌ [AI Tool] Erro ao consultar boletos:", error);
+          return JSON.stringify({
+            error: error instanceof Error ? error.message : "Erro ao consultar boletos"
+          });
+        }
 
       default:
         return JSON.stringify({
