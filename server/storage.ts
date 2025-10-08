@@ -25,8 +25,12 @@ import { randomUUID } from "crypto";
 export interface IStorage {
   // Users
   getUser(id: string): Promise<User | undefined>;
+  getUserById(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserLastLogin(id: string): Promise<void>;
+  updateUserStatus(id: string, status: string): Promise<User>;
   
   // Conversations
   getConversation(id: string): Promise<Conversation | undefined>;
@@ -115,17 +119,50 @@ export class MemStorage implements IStorage {
     return this.users.get(id);
   }
 
+  async getUserById(id: string): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
   async getUserByUsername(username: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(
       (user) => user.username === username,
     );
   }
 
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values())
+      .sort((a, b) => (a.fullName || "").localeCompare(b.fullName || ""));
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
+    const user: User = { 
+      ...insertUser, 
+      id,
+      role: insertUser.role || "AGENT",
+      status: insertUser.status || "active",
+      createdAt: new Date(),
+      lastLoginAt: null,
+    };
     this.users.set(id, user);
     return user;
+  }
+
+  async updateUserLastLogin(id: string): Promise<void> {
+    const user = this.users.get(id);
+    if (user) {
+      const updated = { ...user, lastLoginAt: new Date() };
+      this.users.set(id, updated);
+    }
+  }
+
+  async updateUserStatus(id: string, status: string): Promise<User> {
+    const user = this.users.get(id);
+    if (!user) throw new Error("User not found");
+    
+    const updated = { ...user, status };
+    this.users.set(id, updated);
+    return updated;
   }
 
   async getConversation(id: string): Promise<Conversation | undefined> {
@@ -195,6 +232,9 @@ export class MemStorage implements IStorage {
       transferredToHuman: insertConv.transferredToHuman ?? null,
       transferReason: insertConv.transferReason ?? null,
       transferredAt: insertConv.transferredAt ?? null,
+      assignedTo: insertConv.assignedTo ?? null,
+      resolvedAt: insertConv.resolvedAt ?? null,
+      resolutionTime: insertConv.resolutionTime ?? null,
       createdAt: new Date(),
       lastMessageTime: new Date(),
       metadata: insertConv.metadata || null,
@@ -544,14 +584,37 @@ export class DbStorage implements IStorage {
     return user;
   }
 
+  async getUserById(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(schema.users).where(eq(schema.users.id, id));
+    return user;
+  }
+
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db.select().from(schema.users).where(eq(schema.users.username, username));
     return user;
   }
 
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(schema.users).orderBy(schema.users.fullName);
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(schema.users).values(insertUser).returning();
     return user;
+  }
+
+  async updateUserLastLogin(id: string): Promise<void> {
+    await db.update(schema.users)
+      .set({ lastLoginAt: new Date() })
+      .where(eq(schema.users.id, id));
+  }
+
+  async updateUserStatus(id: string, status: string): Promise<User> {
+    const [updated] = await db.update(schema.users)
+      .set({ status })
+      .where(eq(schema.users.id, id))
+      .returning();
+    return updated;
   }
 
   // Conversations

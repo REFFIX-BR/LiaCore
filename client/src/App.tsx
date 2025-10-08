@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -7,7 +7,9 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AuthProvider, useAuth } from "@/lib/auth-context";
 import NotFound from "@/pages/not-found";
+import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Conversations from "@/pages/Conversations";
 import Knowledge from "@/pages/Knowledge";
@@ -19,51 +21,121 @@ import Settings from "@/pages/Settings";
 import Assistants from "@/pages/Assistants";
 import Metrics from "@/pages/Metrics";
 import Feedbacks from "@/pages/Feedbacks";
+import { useEffect } from "react";
+
+function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+  const { user, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      setLocation("/login");
+    }
+  }, [user, isLoading, setLocation]);
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  return <Component />;
+}
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/monitor" component={Monitor} />
-      <Route path="/webhook-monitor" component={WebhookMonitor} />
-      <Route path="/test-chat" component={TestChat} />
-      <Route path="/conversations" component={Conversations} />
-      <Route path="/knowledge" component={Knowledge} />
-      <Route path="/evolution" component={AgentEvolution} />
-      <Route path="/assistants" component={Assistants} />
-      <Route path="/metrics" component={Metrics} />
-      <Route path="/feedbacks" component={Feedbacks} />
-      <Route path="/settings" component={Settings} />
+      <Route path="/login" component={Login} />
+      <Route path="/">
+        {() => <ProtectedRoute component={Dashboard} />}
+      </Route>
+      <Route path="/monitor">
+        {() => <ProtectedRoute component={Monitor} />}
+      </Route>
+      <Route path="/webhook-monitor">
+        {() => <ProtectedRoute component={WebhookMonitor} />}
+      </Route>
+      <Route path="/test-chat">
+        {() => <ProtectedRoute component={TestChat} />}
+      </Route>
+      <Route path="/conversations">
+        {() => <ProtectedRoute component={Conversations} />}
+      </Route>
+      <Route path="/knowledge">
+        {() => <ProtectedRoute component={Knowledge} />}
+      </Route>
+      <Route path="/evolution">
+        {() => <ProtectedRoute component={AgentEvolution} />}
+      </Route>
+      <Route path="/assistants">
+        {() => <ProtectedRoute component={Assistants} />}
+      </Route>
+      <Route path="/metrics">
+        {() => <ProtectedRoute component={Metrics} />}
+      </Route>
+      <Route path="/feedbacks">
+        {() => <ProtectedRoute component={Feedbacks} />}
+      </Route>
+      <Route path="/settings">
+        {() => <ProtectedRoute component={Settings} />}
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-function App() {
+function AppContent() {
+  const { user } = useAuth();
+  const [location] = useLocation();
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   };
 
+  // If on login page, don't show sidebar
+  if (location === "/login") {
+    return <Router />;
+  }
+
+  // If not logged in, show only router (will redirect to login)
+  if (!user) {
+    return <Router />;
+  }
+
+  return (
+    <SidebarProvider style={style as React.CSSProperties}>
+      <div className="flex h-screen w-full">
+        <AppSidebar />
+        <div className="flex flex-col flex-1">
+          <header className="flex items-center justify-between p-4 border-b">
+            <SidebarTrigger data-testid="button-sidebar-toggle" />
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-muted-foreground">
+                {user.fullName} ({user.role === "ADMIN" ? "Supervisor" : "Atendente"})
+              </span>
+              <ThemeToggle />
+            </div>
+          </header>
+          <main className="flex-1 overflow-auto p-6">
+            <Router />
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
+  );
+}
+
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ThemeProvider>
-          <SidebarProvider style={style as React.CSSProperties}>
-            <div className="flex h-screen w-full">
-              <AppSidebar />
-              <div className="flex flex-col flex-1">
-                <header className="flex items-center justify-between p-4 border-b">
-                  <SidebarTrigger data-testid="button-sidebar-toggle" />
-                  <ThemeToggle />
-                </header>
-                <main className="flex-1 overflow-auto p-6">
-                  <Router />
-                </main>
-              </div>
-            </div>
-          </SidebarProvider>
-          <Toaster />
+          <AuthProvider>
+            <AppContent />
+            <Toaster />
+          </AuthProvider>
         </ThemeProvider>
       </TooltipProvider>
     </QueryClientProvider>

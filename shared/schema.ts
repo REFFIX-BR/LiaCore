@@ -7,6 +7,11 @@ export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  fullName: text("full_name").notNull(),
+  role: text("role").notNull().default("AGENT"), // 'ADMIN' or 'AGENT'
+  status: text("status").notNull().default("active"), // 'active', 'inactive', 'offline'
+  lastLoginAt: timestamp("last_login_at"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const conversations = pgTable("conversations", {
@@ -16,7 +21,7 @@ export const conversations = pgTable("conversations", {
   clientId: text("client_id"),
   threadId: text("thread_id"),
   assistantType: text("assistant_type").notNull(),
-  status: text("status").notNull().default("active"),
+  status: text("status").notNull().default("active"), // 'active', 'transferred', 'resolved'
   sentiment: text("sentiment").default("neutral"),
   urgency: text("urgency").default("normal"),
   duration: integer("duration").default(0),
@@ -30,6 +35,9 @@ export const conversations = pgTable("conversations", {
   transferredToHuman: boolean("transferred_to_human").default(false),
   transferReason: text("transfer_reason"),
   transferredAt: timestamp("transferred_at"),
+  assignedTo: varchar("assigned_to"), // User ID of the agent assigned
+  resolvedAt: timestamp("resolved_at"),
+  resolutionTime: integer("resolution_time"), // Time in seconds from transfer to resolution
 });
 
 export const messages = pgTable("messages", {
@@ -128,9 +136,15 @@ export const suggestedResponses = pgTable("suggested_responses", {
   approvedAt: timestamp("approved_at"),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  lastLoginAt: true,
+});
+
+export const loginSchema = z.object({
+  username: z.string().min(3, "Usuário deve ter no mínimo 3 caracteres"),
+  password: z.string().min(4, "Senha deve ter no mínimo 4 caracteres"),
 });
 
 export const insertConversationSchema = createInsertSchema(conversations).omit({

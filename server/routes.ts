@@ -1,10 +1,12 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema, insertSatisfactionFeedbackSchema, type Conversation } from "@shared/schema";
+import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema, insertSatisfactionFeedbackSchema, loginSchema, insertUserSchema, type Conversation } from "@shared/schema";
 import { routeMessage, createThread, sendMessageAndGetResponse, summarizeConversation, routeMessageWithContext, CONTEXT_CONFIG } from "./lib/openai";
 import { storeConversationThread, getConversationThread, searchKnowledge } from "./lib/upstash";
 import { webhookLogger } from "./lib/webhook-logger";
+import { authenticate, requireAdmin } from "./middleware/auth";
+import { hashPassword, comparePasswords, generateToken, getUserFromUser } from "./lib/auth";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -78,6 +80,129 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string): Promise<b
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  
+  // ============================================================================
+  // AUTHENTICATION ROUTES
+  // ============================================================================
+
+  // Login
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = loginSchema.parse(req.body);
+
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        return res.status(401).json({ error: "Usuário ou senha inválidos" });
+      }
+
+      const isValid = await comparePasswords(password, user.password);
+      if (!isValid) {
+        return res.status(401).json({ error: "Usuário ou senha inválidos" });
+      }
+
+      // Update last login
+      await storage.updateUserLastLogin(user.id);
+
+      // Generate token and set cookie
+      const token = generateToken(user);
+      res.cookie("auth_token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+
+      res.json({ user: getUserFromUser(user) });
+    } catch (error) {
+      console.error("❌ [Auth] Login error:", error);
+      res.status(400).json({ error: "Erro ao fazer login" });
+    }
+  });
+
+  // Logout
+  app.post("/api/auth/logout", (_req, res) => {
+    res.clearCookie("auth_token");
+    res.json({ message: "Logout realizado com sucesso" });
+  });
+
+  // Get current user
+  app.get("/api/auth/me", authenticate, async (req, res) => {
+    try {
+      const user = await storage.getUserById(req.user!.userId);
+      if (!user) {
+        res.clearCookie("auth_token");
+        return res.status(401).json({ error: "Usuário não encontrado" });
+      }
+
+      res.json({ user: getUserFromUser(user) });
+    } catch (error) {
+      console.error("❌ [Auth] Error getting current user:", error);
+      res.status(500).json({ error: "Erro ao obter usuário" });
+    }
+  });
+
+  // Register new user (admin only)
+  app.post("/api/auth/register", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const { username, password, fullName, role } = insertUserSchema.parse(req.body);
+
+      // Check if username already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ error: "Usuário já existe" });
+      }
+
+      // Hash password
+      const hashedPassword = await hashPassword(password);
+
+      // Create user
+      const user = await storage.createUser({
+        username,
+        password: hashedPassword,
+        fullName,
+        role: role || "AGENT",
+        status: "active",
+      });
+
+      res.json({ user: getUserFromUser(user) });
+    } catch (error) {
+      console.error("❌ [Auth] Registration error:", error);
+      res.status(400).json({ error: "Erro ao criar usuário" });
+    }
+  });
+
+  // Get all users (admin only)
+  app.get("/api/users", authenticate, requireAdmin, async (_req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json({ users: users.map(getUserFromUser) });
+    } catch (error) {
+      console.error("❌ [Users] Error getting users:", error);
+      res.status(500).json({ error: "Erro ao buscar usuários" });
+    }
+  });
+
+  // Update user status (admin only)
+  app.patch("/api/users/:id/status", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      if (!["active", "inactive", "offline"].includes(status)) {
+        return res.status(400).json({ error: "Status inválido" });
+      }
+
+      const user = await storage.updateUserStatus(id, status);
+      res.json({ user: getUserFromUser(user) });
+    } catch (error) {
+      console.error("❌ [Users] Error updating user status:", error);
+      res.status(500).json({ error: "Erro ao atualizar status do usuário" });
+    }
+  });
+
+  // ============================================================================
+  // CHAT ROUTES
+  // ============================================================================
   
   // Chat endpoint - Main entry point for TR Chat messages
   app.post("/api/chat/message", async (req, res) => {
