@@ -48,6 +48,7 @@ export const conversations = pgTable("conversations", {
   chatId: text("chat_id").notNull().unique(),
   clientName: text("client_name").notNull(),
   clientId: text("client_id"),
+  clientDocument: text("client_document"), // CPF ou CNPJ do cliente (para validação de segurança)
   threadId: text("thread_id"),
   assistantType: text("assistant_type").notNull(),
   status: text("status").notNull().default("active"), // 'active', 'transferred', 'resolved'
