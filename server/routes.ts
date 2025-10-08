@@ -2789,6 +2789,49 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
     }
   });
 
+  // Get assigned conversations (conversas atribuídas ao usuário atual)
+  app.get("/api/conversations/assigned", authenticate, async (req, res) => {
+    try {
+      const userId = req.user?.userId;
+      const role = req.user?.role;
+      
+      // ADMIN e SUPERVISOR veem todas as conversas atribuídas
+      // AGENT vê apenas suas próprias conversas atribuídas
+      const isAdminOrSupervisor = role === 'ADMIN' || role === 'SUPERVISOR';
+      
+      const allConversations = await storage.getAllConversations();
+      const assignedConversations = allConversations.filter(conv => {
+        // Deve estar transferida para humano
+        if (!conv.transferredToHuman) return false;
+        
+        // Deve estar ativa ou em fila (não resolvida)
+        if (conv.status !== 'active' && conv.status !== 'queued') return false;
+        
+        // Deve ter alguém atribuído
+        if (!conv.assignedTo) return false;
+        
+        // ADMIN/SUPERVISOR veem todas, AGENT vê apenas as suas
+        if (isAdminOrSupervisor) {
+          return true;
+        } else {
+          return conv.assignedTo === userId;
+        }
+      });
+      
+      // Ordenar por última mensagem (mais recente primeiro)
+      const sorted = assignedConversations.sort((a, b) => {
+        const timeA = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
+        const timeB = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
+        return timeB - timeA;
+      });
+      
+      return res.json(sorted);
+    } catch (error) {
+      console.error("Get assigned conversations error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Get single conversation by ID
   app.get("/api/conversations/:id", authenticate, async (req, res) => {
     try {

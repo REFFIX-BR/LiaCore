@@ -304,6 +304,9 @@ export class MemStorage implements IStorage {
     return Array.from(this.conversations.values()).filter((conv) => {
       if (conv.transferredToHuman !== true) return false;
       
+      // Apenas conversas NÃO atribuídas (disponíveis para atribuição)
+      if (conv.assignedTo !== null) return false;
+      
       // Show active, queued conversations OR resolved conversations from last 24h
       const isValidStatus = (
         conv.status === 'active' || 
@@ -311,15 +314,7 @@ export class MemStorage implements IStorage {
         (conv.status === 'resolved' && conv.lastMessageTime && conv.lastMessageTime >= twentyFourHoursAgo)
       );
       
-      if (!isValidStatus) return false;
-      
-      // AGENT: conversas atribuídas a ele OU não atribuídas (para auto-atribuição)
-      if (role === 'AGENT' && userId) {
-        return conv.assignedTo === userId || conv.assignedTo === null;
-      }
-      
-      // SUPERVISOR e ADMIN: todas as conversas
-      return true;
+      return isValidStatus;
     }).sort((a, b) => (b.transferredAt?.getTime() || 0) - (a.transferredAt?.getTime() || 0));
   }
 
@@ -879,6 +874,8 @@ export class DbStorage implements IStorage {
     
     const conditions = [
       eq(schema.conversations.transferredToHuman, true),
+      // Apenas conversas NÃO atribuídas (disponíveis para atribuição)
+      isNull(schema.conversations.assignedTo),
       or(
         eq(schema.conversations.status, 'active'),
         eq(schema.conversations.status, 'queued'),
@@ -889,16 +886,6 @@ export class DbStorage implements IStorage {
         )
       )
     ];
-    
-    // AGENT: conversas atribuídas a ele OU não atribuídas (para auto-atribuição)
-    if (role === 'AGENT' && userId) {
-      conditions.push(
-        or(
-          eq(schema.conversations.assignedTo, userId),
-          isNull(schema.conversations.assignedTo)
-        )
-      );
-    }
     
     return await db.select().from(schema.conversations)
       .where(and(...conditions))

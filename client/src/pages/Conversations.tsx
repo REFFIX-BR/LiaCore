@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, ChevronDown } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +38,7 @@ interface Conversation {
 
 export default function Conversations() {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"transferred" | "assigned">("transferred");
   const [messageContent, setMessageContent] = useState("");
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
   const [suggestionId, setSuggestionId] = useState<string | null>(null);
@@ -52,11 +54,21 @@ export default function Conversations() {
   const { toast } = useToast();
   const { user, isAgent, isSupervisor, isAdmin } = useAuth();
 
-  // Query conversas transferidas
-  const { data: conversations = [], isLoading: conversationsLoading } = useQuery<Conversation[]>({
+  // Query conversas transferidas (não atribuídas)
+  const { data: transferredConversations = [], isLoading: transferredLoading } = useQuery<Conversation[]>({
     queryKey: ["/api/conversations/transferred"],
     refetchInterval: 5000,
   });
+
+  // Query conversas atribuídas
+  const { data: assignedConversations = [], isLoading: assignedLoading } = useQuery<Conversation[]>({
+    queryKey: ["/api/conversations/assigned"],
+    refetchInterval: 5000,
+  });
+
+  // Usar a lista correta baseada na aba ativa
+  const conversations = activeTab === "transferred" ? transferredConversations : assignedConversations;
+  const conversationsLoading = activeTab === "transferred" ? transferredLoading : assignedLoading;
 
   // Filtrar conversas ATIVAS e AGUARDANDO atribuição (conversas resolvidas aparecem apenas como histórico)
   const activeConversations = conversations.filter(conv => conv.status === 'active' || conv.status === 'queued');
@@ -253,9 +265,14 @@ export default function Conversations() {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations/transferred"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations/assigned"] });
       queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations", activeId] });
       setShowAssignDialog(false);
       setSelectedAgentId("");
+      
+      // Mudar para aba "Atribuídas" automaticamente
+      setActiveTab("assigned");
+      
       toast({
         title: "Conversa atribuída!",
         description: `${data.agent.fullName} assumiu a conversa e o cliente foi notificado.`,
@@ -326,65 +343,133 @@ export default function Conversations() {
     return <div className="flex items-center justify-center h-full">Carregando...</div>;
   }
 
-  if (activeConversations.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center space-y-2">
-          <h3 className="font-semibold text-lg">Nenhuma conversa ativa transferida</h3>
-          <p className="text-sm text-muted-foreground">
-            As conversas encaminhadas pela IA ou supervisor aparecerão aqui
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const transferredActiveConversations = transferredConversations.filter(conv => conv.status === 'active' || conv.status === 'queued');
+  const assignedActiveConversations = assignedConversations.filter(conv => conv.status === 'active' || conv.status === 'queued');
 
   return (
     <div className="h-[calc(100vh-8rem)] flex gap-4">
-      {/* Lista de conversas transferidas */}
+      {/* Lista de conversas com abas */}
       <Card className="w-80 flex flex-col">
-        <div className="p-4 border-b">
-          <h2 className="font-semibold">Conversas Transferidas</h2>
-          <p className="text-xs text-muted-foreground mt-1">
-            {activeConversations.length} {activeConversations.length === 1 ? 'conversa ativa' : 'conversas ativas'}
-          </p>
-        </div>
-        <ScrollArea className="flex-1">
-          <div className="p-2 space-y-2">
-            {activeConversations.map((conv) => (
-              <div
-                key={conv.id}
-                onClick={() => setActiveId(conv.id)}
-                className={`p-3 rounded-md cursor-pointer transition-colors hover-elevate ${
-                  activeId === conv.id ? "bg-accent" : ""
-                }`}
-                data-testid={`conversation-item-${conv.id}`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{conv.clientName}</div>
-                    {conv.transferReason && (
-                      <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                        {conv.transferReason}
-                      </div>
-                    )}
-                    {conv.lastMessage && (
-                      <div className="text-sm text-muted-foreground mt-1 truncate">
-                        {conv.lastMessage}
-                      </div>
-                    )}
-                  </div>
-                  <Badge variant="outline" className="shrink-0 text-xs">
-                    {conv.assistantType}
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "transferred" | "assigned")} className="flex flex-col h-full">
+          <div className="p-4 pb-0 border-b">
+            <TabsList className="grid w-full grid-cols-2" data-testid="tabs-conversations">
+              <TabsTrigger value="transferred" data-testid="tab-transferred">
+                Transferidas
+                {transferredActiveConversations.length > 0 && (
+                  <Badge variant="secondary" className="ml-2 h-5 px-1.5">
+                    {transferredActiveConversations.length}
                   </Badge>
-                </div>
-                <div className="text-xs text-muted-foreground mt-2">
-                  {new Date(conv.transferredAt || conv.lastMessageTime).toLocaleString("pt-BR")}
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="assigned" data-testid="tab-assigned">
+                Atribuídas
+                {assignedActiveConversations.length > 0 && (
+                  <Badge variant="secondary" className="ml-2 h-5 px-1.5">
+                    {assignedActiveConversations.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="transferred" className="flex-1 mt-0 h-full">
+            {transferredActiveConversations.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center space-y-2 p-4">
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma conversa transferida disponível
+                  </p>
                 </div>
               </div>
-            ))}
-          </div>
-        </ScrollArea>
+            ) : (
+              <ScrollArea className="h-full">
+                <div className="p-2 space-y-2">
+                  {transferredActiveConversations.map((conv) => (
+                    <div
+                      key={conv.id}
+                      onClick={() => setActiveId(conv.id)}
+                      className={`p-3 rounded-md cursor-pointer transition-colors hover-elevate ${
+                        activeId === conv.id ? "bg-accent" : ""
+                      }`}
+                      data-testid={`conversation-item-${conv.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{conv.clientName}</div>
+                          {conv.transferReason && (
+                            <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                              {conv.transferReason}
+                            </div>
+                          )}
+                          {conv.lastMessage && (
+                            <div className="text-sm text-muted-foreground mt-1 truncate">
+                              {conv.lastMessage}
+                            </div>
+                          )}
+                        </div>
+                        <Badge variant="outline" className="shrink-0 text-xs">
+                          {conv.assistantType}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-2">
+                        {new Date(conv.transferredAt || conv.lastMessageTime).toLocaleString("pt-BR")}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+          </TabsContent>
+
+          <TabsContent value="assigned" className="flex-1 mt-0 h-full">
+            {assignedActiveConversations.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center space-y-2 p-4">
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma conversa atribuída
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <ScrollArea className="h-full">
+                <div className="p-2 space-y-2">
+                  {assignedActiveConversations.map((conv) => (
+                    <div
+                      key={conv.id}
+                      onClick={() => setActiveId(conv.id)}
+                      className={`p-3 rounded-md cursor-pointer transition-colors hover-elevate ${
+                        activeId === conv.id ? "bg-accent" : ""
+                      }`}
+                      data-testid={`conversation-item-${conv.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{conv.clientName}</div>
+                          {conv.transferReason && (
+                            <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                              {conv.transferReason}
+                            </div>
+                          )}
+                          {conv.lastMessage && (
+                            <div className="text-sm text-muted-foreground mt-1 truncate">
+                              {conv.lastMessage}
+                            </div>
+                          )}
+                        </div>
+                        <Badge variant="outline" className="shrink-0 text-xs">
+                          {conv.assistantType}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-2">
+                        {new Date(conv.transferredAt || conv.lastMessageTime).toLocaleString("pt-BR")}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+          </TabsContent>
+        </Tabs>
       </Card>
 
       {/* Área de chat */}
