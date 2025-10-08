@@ -41,7 +41,7 @@ interface ConsultaBoletoResult {
  */
 export async function consultaBoletoCliente(
   documento: string,
-  conversationContext: { conversationId: string; clientDocument?: string },
+  conversationContext: { conversationId: string },
   storage: IStorage
 ): Promise<ConsultaBoletoResult[]> {
   try {
@@ -58,9 +58,10 @@ export async function consultaBoletoCliente(
       throw new Error("Conversa não encontrada - contexto de segurança inválido");
     }
 
-    // Validação adicional: se documento do cliente estiver disponível, deve corresponder
-    if (conversationContext.clientDocument && conversationContext.clientDocument !== documento) {
-      console.warn(`⚠️ [AI Tool Security] Tentativa de consulta de documento diferente do cliente da conversa`);
+    // CRÍTICO: Validação de documento usando valor do BANCO DE DADOS (fonte confiável)
+    // Não confiar em parâmetros do caller - usar apenas dados persistidos
+    if (conversation.clientDocument && conversation.clientDocument !== documento) {
+      console.error(`❌ [AI Tool Security] Tentativa de consulta de documento diferente do cliente da conversa`);
       throw new Error("Não é permitido consultar documentos de outros clientes");
     }
 
@@ -94,14 +95,14 @@ export async function consultaBoletoCliente(
  * Executa uma tool do assistente OpenAI
  * @param toolName Nome da tool a ser executada
  * @param args Argumentos da tool
- * @param context Contexto OBRIGATÓRIO de segurança da conversa
+ * @param context Contexto OBRIGATÓRIO de segurança da conversa (apenas conversationId)
  * @param storage Interface de storage para validação
  * @returns Resultado da execução
  */
 export async function executeAssistantTool(
   toolName: string, 
   args: any,
-  context: { conversationId: string; clientDocument?: string },
+  context: { conversationId: string },
   storage: IStorage
 ): Promise<any> {
   // Validação de segurança: contexto é obrigatório
