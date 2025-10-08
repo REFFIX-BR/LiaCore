@@ -165,6 +165,18 @@ export const suggestedResponses = pgTable("suggested_responses", {
   approvedAt: timestamp("approved_at"),
 });
 
+export const messageTemplates = pgTable("message_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: text("key").notNull().unique(), // Identificador único da mensagem (ex: 'agent_welcome', 'nps_survey', etc)
+  name: text("name").notNull(), // Nome amigável da mensagem
+  description: text("description"), // Descrição do que é a mensagem
+  template: text("template").notNull(), // Texto da mensagem com variáveis (ex: "Olá! Sou *{agentName}*, seu atendente")
+  variables: text("variables").array().default(sql`'{}'::text[]`), // Lista de variáveis disponíveis (ex: ['agentName', 'clientName'])
+  category: text("category").notNull(), // Categoria da mensagem (ex: 'assignment', 'nps', 'system')
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: varchar("updated_by"), // User ID de quem fez a última atualização
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -244,6 +256,16 @@ export const insertRegistrationRequestSchema = createInsertSchema(registrationRe
   rejectionReason: true,
 });
 
+export const insertMessageTemplateSchema = createInsertSchema(messageTemplates).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export const updateMessageTemplateSchema = z.object({
+  template: z.string().min(1, "Mensagem não pode estar vazia"),
+  updatedBy: z.string().optional(),
+});
+
 // Evolution API Configuration Schema
 export const evolutionConfigSchema = z.object({
   url: z.string()
@@ -280,3 +302,6 @@ export type SuggestedResponse = typeof suggestedResponses.$inferSelect;
 export type InsertSuggestedResponse = z.infer<typeof insertSuggestedResponseSchema>;
 export type RegistrationRequest = typeof registrationRequests.$inferSelect;
 export type InsertRegistrationRequest = z.infer<typeof insertRegistrationRequestSchema>;
+export type MessageTemplate = typeof messageTemplates.$inferSelect;
+export type InsertMessageTemplate = z.infer<typeof insertMessageTemplateSchema>;
+export type UpdateMessageTemplate = z.infer<typeof updateMessageTemplateSchema>;
