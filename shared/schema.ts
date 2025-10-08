@@ -3,13 +3,27 @@ import { pgTable, text, varchar, timestamp, integer, jsonb, boolean } from "driz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// User Role enum
+export const UserRole = {
+  ADMIN: "ADMIN",
+  SUPERVISOR: "SUPERVISOR",
+  AGENT: "AGENT",
+} as const;
+
+// User Status enum
+export const UserStatus = {
+  ACTIVE: "ACTIVE",
+  INACTIVE: "INACTIVE",
+} as const;
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   fullName: text("full_name").notNull(),
-  role: text("role").notNull().default("AGENT"), // 'ADMIN' or 'AGENT'
-  status: text("status").notNull().default("active"), // 'active', 'inactive', 'offline'
+  email: text("email").unique(), // Added for user invites
+  role: text("role").notNull().default("AGENT"), // 'ADMIN', 'SUPERVISOR', or 'AGENT'
+  status: text("status").notNull().default("ACTIVE"), // 'ACTIVE' or 'INACTIVE'
   lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -140,6 +154,18 @@ export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
   lastLoginAt: true,
+}).extend({
+  role: z.enum(["ADMIN", "SUPERVISOR", "AGENT"]).default("AGENT"),
+  status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
+  email: z.string().email("Email inválido").optional(),
+});
+
+export const updateUserSchema = z.object({
+  fullName: z.string().min(1).optional(),
+  email: z.string().email("Email inválido").optional(),
+  role: z.enum(["ADMIN", "SUPERVISOR", "AGENT"]).optional(),
+  status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+  password: z.string().min(6, "Senha deve ter no mínimo 6 caracteres").optional(),
 });
 
 export const loginSchema = z.object({
@@ -209,6 +235,7 @@ export const evolutionConfigSchema = z.object({
 export type EvolutionConfig = z.infer<typeof evolutionConfigSchema>;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpdateUser = z.infer<typeof updateUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Conversation = typeof conversations.$inferSelect;
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
