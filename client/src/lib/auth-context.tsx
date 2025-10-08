@@ -59,8 +59,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (data) => {
       setUser(data.user);
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      // Redirect to home after successful login
-      window.location.href = "/";
     },
   });
 
