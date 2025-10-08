@@ -69,6 +69,12 @@ The frontend is built with React and TypeScript using Vite, leveraging `shadcn/u
 - **Default Credentials**: admin/admin123 (change after first login for security).
 - **Test Users**: supervisor/supervisor123, agent/agent123 available for testing different permission levels.
 
+**Personalized Dashboards by Role**:
+- **Agent Dashboard**: Personal KPIs (conversations in queue, finished today, personal TMA, personal NPS), sentiment trend chart (7 days), recent feedback list with scores.
+- **Supervisor Dashboard**: Three tabs (Overview, AI Performance, Team). Overview tab shows global KPIs (active conversations, transfer queue, global TMA, global NPS), volume vs success chart (24h), and team status table with real-time metrics.
+- **Admin Dashboard**: System KPIs (API/DB/worker status, estimated monthly costs, active users by role, security events), token usage chart (30 days), and recent system activity log.
+- **Dashboard APIs**: Three protected endpoints (/api/dashboard/agent, /api/dashboard/supervisor, /api/dashboard/admin) with role-specific data aggregation and automatic refresh (30-60s intervals).
+
 ## External Dependencies
 
 **Third-Party Services**:
