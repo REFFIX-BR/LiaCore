@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,8 +13,15 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const [, setLocation] = useLocation();
+
+  // Redirect when user is authenticated
+  useEffect(() => {
+    if (user) {
+      setLocation("/");
+    }
+  }, [user, setLocation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,11 +30,9 @@ export default function Login() {
 
     try {
       await login(username, password);
-      // Force redirect to home
-      setLocation("/");
+      // Don't redirect here - useEffect will handle it when user is set
     } catch (err: any) {
       setError(err?.message || "Usuário ou senha inválidos");
-    } finally {
       setIsLoading(false);
     }
   };
