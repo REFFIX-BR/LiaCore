@@ -58,8 +58,13 @@ The frontend uses React with TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailw
 - **Feedbacks NPS Page**: Supervisors view and filter NPS feedback linked to conversations.
 
 **Hybrid Supervised Mode (Conversations Tab)**:
-- **Transferred Conversation Queue**: Manages human-escalated conversations.
-- **AI-Assisted Responses**: Supervisors get AI suggestions, can approve or edit, creating learning events.
+- **Tabbed Interface**: Two tabs for conversation management:
+  - **"Transferidas" Tab**: Shows unassigned transferred conversations (assignedTo IS NULL) available for agent assignment
+  - **"Atribuídas" Tab**: Shows conversations assigned to current user (assignedTo = userId)
+- **Automatic Tab Switching**: When agent assigns conversation, UI automatically switches to "Atribuídas" tab
+- **Badge Counters**: Real-time conversation count displayed on each tab
+- **Mutual Exclusivity**: Backend filtering ensures conversations appear in only one tab at a time
+- **AI-Assisted Responses**: Agents get AI suggestions, can approve or edit, creating learning events.
 
 **WhatsApp Integration**:
 - **Evolution API**: Native integration for real-time message processing via webhooks.
@@ -95,9 +100,11 @@ The frontend uses React with TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailw
 - **Welcome Messages**: Automated WhatsApp messages sent upon assignment.
 - **Permissions**: Only assigned agent can respond (ADMIN/SUPERVISOR override).
 - **Role-Based Visibility**:
-  - **AGENT**: Sees conversations assigned to them OR unassigned conversations (for self-assignment)
-  - **SUPERVISOR/ADMIN**: See all transferred conversations regardless of assignment
-  - **Filter Logic**: `WHERE (assignedTo = userId OR assignedTo IS NULL)` for agents
+  - **AGENT**: Sees conversations assigned to them in "Atribuídas" tab OR unassigned in "Transferidas" tab
+  - **SUPERVISOR/ADMIN**: See all transferred conversations regardless of assignment in both tabs
+  - **Filter Logic**: 
+    - "Transferidas" tab: `WHERE assignedTo IS NULL` (all roles)
+    - "Atribuídas" tab: `WHERE assignedTo = userId` (for agents) or all assigned (for admins/supervisors)
 
 **Configurable Message Templates System**:
 - **Admin Configuration**: Admins edit automated messages via Settings → Mensagens tab.
