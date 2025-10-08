@@ -9,6 +9,9 @@ import {
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
 import { 
   LayoutDashboard, 
@@ -24,106 +27,202 @@ import {
   Star,
   Users as UsersIcon,
   UserCog,
-  FileText
+  FileText,
+  ChevronRight,
+  Eye,
+  MessagesSquare,
+  Lightbulb,
+  BarChart3,
+  Cog
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useState, useEffect } from "react";
 
-const menuItems = [
+interface MenuItem {
+  title: string;
+  url: string;
+  icon: any;
+  roles: string[];
+}
+
+interface MenuCategory {
+  title: string;
+  icon: any;
+  roles: string[];
+  items: MenuItem[];
+}
+
+const menuCategories: MenuCategory[] = [
   {
-    title: "Dashboard",
-    url: "/",
+    title: "Visão Geral",
     icon: LayoutDashboard,
-    roles: ["ADMIN", "SUPERVISOR", "AGENT"], // Todos veem dashboard
+    roles: ["ADMIN", "SUPERVISOR", "AGENT"],
+    items: [
+      {
+        title: "Dashboard",
+        url: "/",
+        icon: LayoutDashboard,
+        roles: ["ADMIN", "SUPERVISOR", "AGENT"],
+      },
+    ],
   },
   {
-    title: "Monitor Supervisor",
-    url: "/monitor",
-    icon: MonitorIcon,
-    roles: ["ADMIN", "SUPERVISOR"], // Gerenciamento
-  },
-  {
-    title: "Dashboard de Atendentes",
-    url: "/agent-monitor",
-    icon: UserCog,
-    roles: ["ADMIN", "SUPERVISOR"], // Supervisão de atendentes
-  },
-  {
-    title: "Relatórios de Atendentes",
-    url: "/agent-reports",
-    icon: FileText,
-    roles: ["ADMIN", "SUPERVISOR"], // Análise histórica
-  },
-  {
-    title: "Monitor Webhook",
-    url: "/webhook-monitor",
-    icon: Wifi,
-    roles: ["ADMIN"], // Apenas Admin
-  },
-  {
-    title: "Test Chat",
-    url: "/test-chat",
-    icon: TestTube2,
-    roles: ["ADMIN", "SUPERVISOR"], // Testes gerenciais
+    title: "Monitoramento",
+    icon: Eye,
+    roles: ["ADMIN", "SUPERVISOR"],
+    items: [
+      {
+        title: "Monitor Supervisor",
+        url: "/monitor",
+        icon: MonitorIcon,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Dashboard de Atendentes",
+        url: "/agent-monitor",
+        icon: UserCog,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Relatórios de Atendentes",
+        url: "/agent-reports",
+        icon: FileText,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Monitor Webhook",
+        url: "/webhook-monitor",
+        icon: Wifi,
+        roles: ["ADMIN"],
+      },
+    ],
   },
   {
     title: "Conversas",
-    url: "/conversations",
-    icon: MessageSquare,
-    roles: ["ADMIN", "SUPERVISOR", "AGENT"], // Todos veem conversas
+    icon: MessagesSquare,
+    roles: ["ADMIN", "SUPERVISOR", "AGENT"],
+    items: [
+      {
+        title: "Test Chat",
+        url: "/test-chat",
+        icon: TestTube2,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Conversas",
+        url: "/conversations",
+        icon: MessageSquare,
+        roles: ["ADMIN", "SUPERVISOR", "AGENT"],
+      },
+    ],
   },
   {
-    title: "Base de Conhecimento",
-    url: "/knowledge",
-    icon: Database,
-    roles: ["ADMIN", "SUPERVISOR"], // Admin e Supervisor gerenciam
+    title: "Conhecimento & IA",
+    icon: Lightbulb,
+    roles: ["ADMIN", "SUPERVISOR"],
+    items: [
+      {
+        title: "Base de Conhecimento",
+        url: "/knowledge",
+        icon: Database,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Evolução dos Agentes",
+        url: "/evolution",
+        icon: TrendingUp,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Assistentes",
+        url: "/assistants",
+        icon: Brain,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+    ],
   },
   {
-    title: "Evolução dos Agentes",
-    url: "/evolution",
-    icon: TrendingUp,
-    roles: ["ADMIN", "SUPERVISOR"], // Curadoria de IA
+    title: "Análises",
+    icon: BarChart3,
+    roles: ["ADMIN", "SUPERVISOR"],
+    items: [
+      {
+        title: "Métricas",
+        url: "/metrics",
+        icon: Activity,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Feedbacks NPS",
+        url: "/feedbacks",
+        icon: Star,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+    ],
   },
   {
-    title: "Assistentes",
-    url: "/assistants",
-    icon: Brain,
-    roles: ["ADMIN", "SUPERVISOR"], // Configuração de IA
-  },
-  {
-    title: "Métricas",
-    url: "/metrics",
-    icon: Activity,
-    roles: ["ADMIN", "SUPERVISOR"], // Visão gerencial
-  },
-  {
-    title: "Feedbacks NPS",
-    url: "/feedbacks",
-    icon: Star,
-    roles: ["ADMIN", "SUPERVISOR"], // Análise de satisfação
-  },
-  {
-    title: "Usuários",
-    url: "/users",
-    icon: UsersIcon,
-    roles: ["ADMIN"], // Apenas Admin gerencia usuários
-  },
-  {
-    title: "Configurações",
-    url: "/settings",
-    icon: Settings,
-    roles: ["ADMIN"], // Apenas Admin gerencia configurações
+    title: "Administração",
+    icon: Cog,
+    roles: ["ADMIN"],
+    items: [
+      {
+        title: "Usuários",
+        url: "/users",
+        icon: UsersIcon,
+        roles: ["ADMIN"],
+      },
+      {
+        title: "Configurações",
+        url: "/settings",
+        icon: Settings,
+        roles: ["ADMIN"],
+      },
+    ],
   },
 ];
 
 export function AppSidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
+  
+  // Load initial state from localStorage or use defaults
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(() => {
+    const stored = localStorage.getItem("sidebar-categories-state");
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return { "Visão Geral": true };
+      }
+    }
+    return { "Visão Geral": true }; // Dashboard sempre aberto por padrão
+  });
 
-  // Filter menu items based on user role
-  const visibleMenuItems = menuItems.filter((item) => 
-    user && item.roles.includes(user.role)
-  );
+  // Persist state to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("sidebar-categories-state", JSON.stringify(openCategories));
+  }, [openCategories]);
+
+  // Filter categories and items based on user role
+  const visibleCategories = menuCategories
+    .map((category) => ({
+      ...category,
+      items: category.items.filter((item) => 
+        user && item.roles.includes(user.role)
+      ),
+    }))
+    .filter((category) => 
+      user && category.roles.includes(user.role) && category.items.length > 0
+    );
+
+  const toggleCategory = (categoryTitle: string) => {
+    setOpenCategories((prev) => ({
+      ...prev,
+      [categoryTitle]: !prev[categoryTitle],
+    }));
+  };
 
   return (
     <Sidebar>
@@ -144,19 +243,47 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navegação</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {visibleMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === item.url}
-                    data-testid={`nav-${item.title.toLowerCase()}`}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+              {visibleCategories.map((category) => (
+                <Collapsible
+                  key={category.title}
+                  open={openCategories[category.title]}
+                  onOpenChange={() => toggleCategory(category.title)}
+                >
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton
+                        className="w-full"
+                        data-testid={`category-${category.title.toLowerCase()}`}
+                      >
+                        <category.icon className="h-4 w-4" />
+                        <span>{category.title}</span>
+                        <ChevronRight
+                          className={`ml-auto h-4 w-4 transition-transform duration-200 ${
+                            openCategories[category.title] ? "rotate-90" : ""
+                          }`}
+                        />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {category.items.map((item) => (
+                          <SidebarMenuSubItem key={item.title}>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={location === item.url}
+                              data-testid={`nav-${item.title.toLowerCase()}`}
+                            >
+                              <Link href={item.url}>
+                                <item.icon className="h-4 w-4" />
+                                <span>{item.title}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
