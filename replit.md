@@ -35,6 +35,13 @@ The frontend uses React with TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailw
 - **Conversation Summarization**: Asynchronous summarization every 12 messages into structured JSON.
 - **RAG**: Knowledge base in Upstash Vector via `consultar_base_de_conhecimento`.
 - **Function Calling**: Custom functions for verification, knowledge queries, invoice lookups, and scheduling.
+- **Secure AI Tools System** (`server/ai-tools.ts`):
+  - Internal-only functions (no HTTP endpoints) for OpenAI assistant function calling
+  - Mandatory conversation context validation against database
+  - Document authorization using database-stored `clientDocument` field
+  - PII-free logging (CPF/CNPJ masked in all logs)
+  - Functions: `consulta_boleto_cliente` (boleto queries with security validation)
+  - Security layers: Context required → DB conversation exists → Document matches DB record
 
 **Real-Time Monitoring**:
 - **Supervisor Dashboard**: KPIs, live conversation queue (urgency/sentiment), alerts, transcripts, human intervention controls.
