@@ -563,8 +563,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`✅ [AI Resolve] Conversa ${conversation.id} marcada como resolvida, enviando NPS...`);
 
-        // Send NPS survey via WhatsApp
-        const npsSurveyMessage = `Olá ${conversation.clientName}!\n\nSeu atendimento foi finalizado.\n\nPesquisa de Satisfação\n\nEm uma escala de 0 a 10, qual a satisfação com atendimento?\n\nDigite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
+        // Buscar template de NPS survey
+        const npsTemplate = await storage.getMessageTemplateByKey('nps_survey');
+        let npsSurveyMessage = npsTemplate?.template || 
+          `Olá ${conversation.clientName}!\n\nSeu atendimento foi finalizado.\n\nPesquisa de Satisfação\n\nEm uma escala de 0 a 10, qual a satisfação com atendimento?\n\nDigite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
+        
+        // Substituir variáveis no template
+        npsSurveyMessage = npsSurveyMessage.replace(/{clientName}/g, conversation.clientName || 'Cliente');
         
         try {
           await sendWhatsAppMessage(chatId, npsSurveyMessage);
@@ -1024,7 +1029,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const existingFeedback = await storage.getSatisfactionFeedbackByConversationId(conversation.id);
           if (existingFeedback) {
             console.log(`⚠️ [NPS] Feedback duplicado ignorado para ${clientName}`);
-            const alreadyMessage = `Obrigado! Seu feedback já foi registrado anteriormente.`;
+            
+            // Buscar template de feedback já registrado
+            const alreadyTemplate = await storage.getMessageTemplateByKey('nps_already_submitted');
+            const alreadyMessage = alreadyTemplate?.template || `Obrigado! Seu feedback já foi registrado anteriormente.`;
+            
             await sendWhatsAppMessage(phoneNumber, alreadyMessage);
             return res.json({ 
               success: true, 
@@ -1075,8 +1084,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log(`📊 [NPS] Cliente ${clientName} avaliou com nota ${npsScore} - conversa mantida como resolved`);
           
-          // Enviar mensagem de agradecimento
-          const thankYouMessage = `Obrigado! Seu feedback já foi registrado!`;
+          // Buscar template de agradecimento
+          const thankYouTemplate = await storage.getMessageTemplateByKey('nps_thank_you');
+          const thankYouMessage = thankYouTemplate?.template || `Obrigado! Seu feedback já foi registrado!`;
+          
           await sendWhatsAppMessage(phoneNumber, thankYouMessage);
           
           return res.json({ 
@@ -1209,8 +1220,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
               console.log(`✅ [Evolution Resolve] Conversa ${conversationRef.id} marcada como resolvida, enviando NPS...`);
 
-              // Send NPS survey via WhatsApp
-              const npsSurveyMessage = `Olá ${conversationRef.clientName}!\n\nSeu atendimento foi finalizado.\n\nPesquisa de Satisfação\n\nEm uma escala de 0 a 10, qual a satisfação com atendimento?\n\nDigite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
+              // Buscar template de NPS survey
+              const npsTemplate = await storage.getMessageTemplateByKey('nps_survey');
+              let npsSurveyMessage = npsTemplate?.template || 
+                `Olá ${conversationRef.clientName}!\n\nSeu atendimento foi finalizado.\n\nPesquisa de Satisfação\n\nEm uma escala de 0 a 10, qual a satisfação com atendimento?\n\nDigite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
+              
+              // Substituir variáveis no template
+              npsSurveyMessage = npsSurveyMessage.replace(/{clientName}/g, conversationRef.clientName || 'Cliente');
               
               try {
                 await sendWhatsAppMessage(clientPhoneNumber, npsSurveyMessage);
@@ -2403,6 +2419,64 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
     }
   });
 
+  // ==================== MESSAGE TEMPLATES ENDPOINTS ====================
+  
+  // Get all message templates
+  app.get("/api/message-templates", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const templates = await storage.getAllMessageTemplates();
+      return res.json(templates);
+    } catch (error) {
+      console.error("Get message templates error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get message template by key
+  app.get("/api/message-templates/:key", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const { key } = req.params;
+      const template = await storage.getMessageTemplateByKey(key);
+      
+      if (!template) {
+        return res.status(404).json({ error: "Template não encontrado" });
+      }
+      
+      return res.json(template);
+    } catch (error) {
+      console.error("Get message template error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update message template
+  app.patch("/api/message-templates/:key", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const { key } = req.params;
+      const { template } = req.body;
+      const userId = req.user?.userId;
+
+      if (!template) {
+        return res.status(400).json({ error: "Mensagem é obrigatória" });
+      }
+
+      const updated = await storage.updateMessageTemplate(key, {
+        template,
+        updatedBy: userId,
+      });
+
+      if (!updated) {
+        return res.status(404).json({ error: "Template não encontrado" });
+      }
+
+      console.log(`📝 [Message Template] Atualizado: ${key}`);
+      return res.json(updated);
+    } catch (error) {
+      console.error("Update message template error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Get assistants metrics
   app.get("/api/assistants/metrics", authenticate, async (req, res) => {
     try {
@@ -2990,8 +3064,13 @@ A resposta deve:
         assignedTo: targetAgentId,
       });
 
-      // Criar mensagem de boas-vindas
-      const welcomeMessage = `Olá! Sou *${agent.fullName}*, seu atendente. Assumí esta conversa e darei continuidade ao seu atendimento. Como posso ajudá-lo?`;
+      // Buscar template de mensagem de boas-vindas
+      const welcomeTemplate = await storage.getMessageTemplateByKey('agent_welcome');
+      let welcomeMessage = welcomeTemplate?.template || 
+        `Olá! Sou *${agent.fullName}*, seu atendente. Assumí esta conversa e darei continuidade ao seu atendimento. Como posso ajudá-lo?`;
+      
+      // Substituir variáveis no template
+      welcomeMessage = welcomeMessage.replace(/{agentName}/g, agent.fullName);
 
       // Salvar mensagem no histórico
       await storage.createMessage({

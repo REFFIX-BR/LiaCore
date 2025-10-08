@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Settings as SettingsIcon, 
   Bot, 
@@ -26,7 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { evolutionConfigSchema, type EvolutionConfig } from "@shared/schema";
+import { evolutionConfigSchema, type EvolutionConfig, type MessageTemplate } from "@shared/schema";
 import {
   Form,
   FormControl,
@@ -87,6 +88,7 @@ export default function Settings() {
   });
   
   const [isEditingEvolution, setIsEditingEvolution] = useState(false);
+  const [editedTemplates, setEditedTemplates] = useState<Record<string, string>>({});
 
   // Form Evolution API usando useForm + Zod
   const evolutionForm = useForm<EvolutionConfig>({
@@ -101,6 +103,11 @@ export default function Settings() {
   // Query para buscar configurações do sistema
   const { data: systemConfig } = useQuery<SystemConfig>({
     queryKey: ['/api/system/config'],
+  });
+
+  // Query para buscar templates de mensagens
+  const { data: messageTemplates } = useQuery<MessageTemplate[]>({
+    queryKey: ['/api/message-templates'],
   });
 
   // Sincronizar valores do backend quando dados carregarem
@@ -201,6 +208,27 @@ export default function Settings() {
     },
   });
 
+  // Mutation para atualizar template de mensagem
+  const updateMessageTemplateMutation = useMutation({
+    mutationFn: async ({ key, template }: { key: string; template: string }) => {
+      return apiRequest(`/api/message-templates/${key}`, 'PATCH', { template });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Mensagem atualizada",
+        description: "A configuração foi salva com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/message-templates'] });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Erro ao Salvar",
+        description: error.message || "Não foi possível atualizar a mensagem.",
+      });
+    },
+  });
+
   const assistantIds = [
     { name: "Suporte", env: "OPENAI_SUPORTE_ASSISTANT_ID", key: "suporte" },
     { name: "Comercial", env: "OPENAI_COMMRCIAL_ASSISTANT_ID", key: "comercial" },
@@ -230,7 +258,7 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="assistants" className="w-full">
-        <TabsList className="grid w-full grid-cols-5" data-testid="tabs-settings">
+        <TabsList className="grid w-full grid-cols-6" data-testid="tabs-settings">
           <TabsTrigger value="assistants" data-testid="tab-assistants">
             <Bot className="w-4 h-4 mr-2" />
             Assistentes
@@ -238,6 +266,10 @@ export default function Settings() {
           <TabsTrigger value="summarization" data-testid="tab-summarization">
             <Brain className="w-4 h-4 mr-2" />
             Resumos
+          </TabsTrigger>
+          <TabsTrigger value="messages" data-testid="tab-messages">
+            <SettingsIcon className="w-4 h-4 mr-2" />
+            Mensagens
           </TabsTrigger>
           <TabsTrigger value="apis" data-testid="tab-apis">
             <Key className="w-4 h-4 mr-2" />
@@ -427,6 +459,77 @@ export default function Settings() {
                   <strong>Acumulação:</strong> Resumos são mesclados preservando fatos-chave, ações, datas e histórico de assistentes sem duplicação
                 </p>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab: Mensagens Configuráveis */}
+        <TabsContent value="messages" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Mensagens Automatizadas</CardTitle>
+              <CardDescription>
+                Configure as mensagens que o sistema envia automaticamente
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {messageTemplates?.map((template) => (
+                <div key={template.key} className="space-y-3">
+                  <div>
+                    <Label htmlFor={`template-${template.key}`} className="text-base font-medium">
+                      {template.name}
+                    </Label>
+                    {template.description && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {template.description}
+                      </p>
+                    )}
+                    {template.variables && template.variables.length > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Variáveis disponíveis: {template.variables.map(v => `{${v}}`).join(', ')}
+                      </p>
+                    )}
+                  </div>
+                  <Textarea
+                    id={`template-${template.key}`}
+                    value={editedTemplates[template.key] ?? template.template}
+                    onChange={(e) => setEditedTemplates({ ...editedTemplates, [template.key]: e.target.value })}
+                    rows={4}
+                    data-testid={`textarea-template-${template.key}`}
+                    className="font-mono text-sm"
+                  />
+                  {editedTemplates[template.key] && editedTemplates[template.key] !== template.template && (
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => {
+                          updateMessageTemplateMutation.mutate({
+                            key: template.key,
+                            template: editedTemplates[template.key],
+                          });
+                        }}
+                        disabled={updateMessageTemplateMutation.isPending}
+                        size="sm"
+                        data-testid={`button-save-${template.key}`}
+                      >
+                        {updateMessageTemplateMutation.isPending ? "Salvando..." : "Salvar"}
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          const newEdited = { ...editedTemplates };
+                          delete newEdited[template.key];
+                          setEditedTemplates(newEdited);
+                        }}
+                        variant="outline"
+                        size="sm"
+                        data-testid={`button-cancel-${template.key}`}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  )}
+                  <Separator className="mt-4" />
+                </div>
+              ))}
             </CardContent>
           </Card>
         </TabsContent>
