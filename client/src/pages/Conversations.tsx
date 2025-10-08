@@ -7,9 +7,18 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Send, CheckCircle2, Edit3, Loader2 } from "lucide-react";
+import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+interface Agent {
+  id: string;
+  fullName: string;
+  username: string;
+  role: string;
+}
 
 interface Conversation {
   id: string;
@@ -22,6 +31,7 @@ interface Conversation {
   transferReason: string | null;
   transferredAt: Date | null;
   status: string;
+  assignedTo: string | null;
 }
 
 export default function Conversations() {
@@ -30,6 +40,8 @@ export default function Conversations() {
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
   const [suggestionId, setSuggestionId] = useState<string | null>(null);
   const [isEditingAI, setIsEditingAI] = useState(false);
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
   const { toast } = useToast();
 
   // Query conversas transferidas
@@ -125,6 +137,39 @@ export default function Conversations() {
     },
   });
 
+  // Query para buscar agentes ativos
+  const { data: agentsData } = useQuery<{ agents: Agent[] }>({
+    queryKey: ["/api/agents/list"],
+    enabled: showAssignDialog,
+  });
+
+  const agents = agentsData?.agents || [];
+
+  // Mutation para atribuir conversa a um atendente
+  const assignMutation = useMutation({
+    mutationFn: async ({ conversationId, agentId }: { conversationId: string; agentId: string }) => {
+      const response = await apiRequest(`/api/conversations/${conversationId}/assign`, "POST", { agentId });
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations/transferred"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations", activeId] });
+      setShowAssignDialog(false);
+      setSelectedAgentId("");
+      toast({
+        title: "Conversa atribuída!",
+        description: `${data.agent.fullName} assumiu a conversa e o cliente foi notificado.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível atribuir a conversa.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleRequestSuggestion = () => {
     if (activeId) {
       suggestMutation.mutate(activeId);
@@ -160,6 +205,11 @@ export default function Conversations() {
       // Supervisor apenas finaliza - NPS será enviado ao cliente via WhatsApp
       resolveMutation.mutate(activeId);
     }
+  };
+
+  const handleAssign = () => {
+    if (!activeId || !selectedAgentId) return;
+    assignMutation.mutate({ conversationId: activeId, agentId: selectedAgentId });
   };
 
   const activeConversation = activeConversations.find(c => c.id === activeId);
@@ -246,17 +296,35 @@ export default function Conversations() {
                     • {activeConversation.transferReason}
                   </span>
                 )}
+                {activeConversation.assignedTo && (
+                  <Badge variant="outline" className="text-xs bg-green-500/10 text-green-700 dark:text-green-400">
+                    Atribuído
+                  </Badge>
+                )}
               </div>
             </div>
-            <Button
-              onClick={handleResolve}
-              variant="default"
-              size="sm"
-              data-testid="button-resolve"
-            >
-              <CheckCircle2 className="h-4 w-4 mr-1" />
-              Finalizar
-            </Button>
+            <div className="flex items-center gap-2">
+              {!activeConversation.assignedTo && (
+                <Button
+                  onClick={() => setShowAssignDialog(true)}
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-assign"
+                >
+                  <UserPlus className="h-4 w-4 mr-1" />
+                  Atribuir Atendente
+                </Button>
+              )}
+              <Button
+                onClick={handleResolve}
+                variant="default"
+                size="sm"
+                data-testid="button-resolve"
+              >
+                <CheckCircle2 className="h-4 w-4 mr-1" />
+                Finalizar
+              </Button>
+            </div>
           </div>
 
           {/* Mensagens */}
@@ -377,6 +445,61 @@ export default function Conversations() {
           </div>
         </Card>
       )}
+
+      {/* Dialog de atribuição */}
+      <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+        <DialogContent data-testid="dialog-assign">
+          <DialogHeader>
+            <DialogTitle>Atribuir Conversa a Atendente</DialogTitle>
+            <DialogDescription>
+              Selecione um atendente para assumir esta conversa. O cliente será notificado automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Atendente</label>
+              <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                <SelectTrigger data-testid="select-agent">
+                  <SelectValue placeholder="Selecione um atendente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {agents.map((agent) => (
+                    <SelectItem key={agent.id} value={agent.id} data-testid={`agent-option-${agent.id}`}>
+                      {agent.fullName} ({agent.role})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowAssignDialog(false);
+                setSelectedAgentId("");
+              }}
+              data-testid="button-cancel-assign"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleAssign}
+              disabled={!selectedAgentId || assignMutation.isPending}
+              data-testid="button-confirm-assign"
+            >
+              {assignMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Atribuindo...
+                </>
+              ) : (
+                "Atribuir Conversa"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
