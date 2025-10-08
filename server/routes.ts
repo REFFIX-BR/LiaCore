@@ -2427,7 +2427,7 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
   // ==================== MESSAGE TEMPLATES ENDPOINTS ====================
   
   // Get all message templates
-  app.get("/api/message-templates", authenticate, requireAdmin, async (req, res) => {
+  app.get("/api/message-templates", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
       const templates = await storage.getAllMessageTemplates();
       return res.json(templates);
@@ -2438,7 +2438,7 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
   });
 
   // Get message template by key
-  app.get("/api/message-templates/:key", authenticate, requireAdmin, async (req, res) => {
+  app.get("/api/message-templates/:key", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
       const { key } = req.params;
       const template = await storage.getMessageTemplateByKey(key);
@@ -2455,7 +2455,7 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
   });
 
   // Update message template
-  app.patch("/api/message-templates/:key", authenticate, requireAdmin, async (req, res) => {
+  app.patch("/api/message-templates/:key", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
       const { key } = req.params;
       const { template } = req.body;

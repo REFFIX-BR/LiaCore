@@ -184,7 +184,7 @@ const menuCategories: MenuCategory[] = [
         title: "Configurações",
         url: "/settings",
         icon: Settings,
-        roles: ["ADMIN"],
+        roles: ["ADMIN", "SUPERVISOR"],
       },
     ],
   },

@@ -106,7 +106,7 @@ export default function Settings() {
   });
 
   // Query para buscar templates de mensagens
-  const { data: messageTemplates } = useQuery<MessageTemplate[]>({
+  const { data: messageTemplates, isLoading: isLoadingTemplates, error: templatesError } = useQuery<MessageTemplate[]>({
     queryKey: ['/api/message-templates'],
   });
 
@@ -473,63 +473,84 @@ export default function Settings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {messageTemplates?.map((template) => (
-                <div key={template.key} className="space-y-3">
-                  <div>
-                    <Label htmlFor={`template-${template.key}`} className="text-base font-medium">
-                      {template.name}
-                    </Label>
-                    {template.description && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {template.description}
-                      </p>
-                    )}
-                    {template.variables && template.variables.length > 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Variáveis disponíveis: {template.variables.map(v => `{${v}}`).join(', ')}
-                      </p>
-                    )}
-                  </div>
-                  <Textarea
-                    id={`template-${template.key}`}
-                    value={editedTemplates[template.key] ?? template.template}
-                    onChange={(e) => setEditedTemplates({ ...editedTemplates, [template.key]: e.target.value })}
-                    rows={4}
-                    data-testid={`textarea-template-${template.key}`}
-                    className="font-mono text-sm"
-                  />
-                  {editedTemplates[template.key] && editedTemplates[template.key] !== template.template && (
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => {
-                          updateMessageTemplateMutation.mutate({
-                            key: template.key,
-                            template: editedTemplates[template.key],
-                          });
-                        }}
-                        disabled={updateMessageTemplateMutation.isPending}
-                        size="sm"
-                        data-testid={`button-save-${template.key}`}
-                      >
-                        {updateMessageTemplateMutation.isPending ? "Salvando..." : "Salvar"}
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          const newEdited = { ...editedTemplates };
-                          delete newEdited[template.key];
-                          setEditedTemplates(newEdited);
-                        }}
-                        variant="outline"
-                        size="sm"
-                        data-testid={`button-cancel-${template.key}`}
-                      >
-                        Cancelar
-                      </Button>
-                    </div>
-                  )}
-                  <Separator className="mt-4" />
+              {isLoadingTemplates ? (
+                <div className="flex items-center justify-center py-12">
+                  <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+                  <span className="ml-3 text-muted-foreground">Carregando mensagens...</span>
                 </div>
-              ))}
+              ) : templatesError ? (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <XCircle className="w-12 h-12 text-destructive" />
+                  <div className="text-center">
+                    <p className="font-medium text-destructive">Erro ao carregar mensagens</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Você precisa ser ADMIN ou SUPERVISOR para acessar esta funcionalidade
+                    </p>
+                  </div>
+                </div>
+              ) : !messageTemplates || messageTemplates.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <p className="text-muted-foreground">Nenhuma mensagem configurada</p>
+                </div>
+              ) : (
+                messageTemplates.map((template) => (
+                  <div key={template.key} className="space-y-3">
+                    <div>
+                      <Label htmlFor={`template-${template.key}`} className="text-base font-medium">
+                        {template.name}
+                      </Label>
+                      {template.description && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {template.description}
+                        </p>
+                      )}
+                      {template.variables && template.variables.length > 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Variáveis disponíveis: {template.variables.map(v => `{${v}}`).join(', ')}
+                        </p>
+                      )}
+                    </div>
+                    <Textarea
+                      id={`template-${template.key}`}
+                      value={editedTemplates[template.key] ?? template.template}
+                      onChange={(e) => setEditedTemplates({ ...editedTemplates, [template.key]: e.target.value })}
+                      rows={4}
+                      data-testid={`textarea-template-${template.key}`}
+                      className="font-mono text-sm"
+                    />
+                    {editedTemplates[template.key] && editedTemplates[template.key] !== template.template && (
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => {
+                            updateMessageTemplateMutation.mutate({
+                              key: template.key,
+                              template: editedTemplates[template.key],
+                            });
+                          }}
+                          disabled={updateMessageTemplateMutation.isPending}
+                          size="sm"
+                          data-testid={`button-save-${template.key}`}
+                        >
+                          {updateMessageTemplateMutation.isPending ? "Salvando..." : "Salvar"}
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            const newEdited = { ...editedTemplates };
+                            delete newEdited[template.key];
+                            setEditedTemplates(newEdited);
+                          }}
+                          variant="outline"
+                          size="sm"
+                          data-testid={`button-cancel-${template.key}`}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    )}
+                    <Separator className="mt-4" />
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </TabsContent>
