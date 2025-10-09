@@ -165,11 +165,16 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
 
   // Enviar mensagem
   const sendMutation = useMutation({
-    mutationFn: async ({ content, suggestionId }: { content: string; suggestionId?: string | null }) => {
+    mutationFn: async ({ content, suggestionId, wasEdited }: { content: string; suggestionId?: string | null; wasEdited?: boolean }) => {
       const response = await apiRequest(
-        `/api/conversations/${conversation.id}/messages`, 
+        `/api/conversations/${conversation.id}/send-message`, 
         "POST",
-        { content, suggestionId }
+        { 
+          content, 
+          suggestionId,
+          wasEdited,
+          supervisorName: user?.fullName || 'Atendente'
+        }
       );
       return response.json();
     },
@@ -237,13 +242,13 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
 
   const handleApprove = () => {
     if (aiSuggestion) {
-      sendMutation.mutate({ content: aiSuggestion, suggestionId });
+      sendMutation.mutate({ content: aiSuggestion, suggestionId, wasEdited: false });
     }
   };
 
   const handleEditAndSend = () => {
     if (messageContent.trim()) {
-      sendMutation.mutate({ content: messageContent, suggestionId });
+      sendMutation.mutate({ content: messageContent, suggestionId, wasEdited: true });
     }
   };
 
