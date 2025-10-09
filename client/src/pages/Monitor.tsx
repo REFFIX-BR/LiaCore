@@ -87,6 +87,7 @@ export default function Monitor() {
   const filters = [
     { id: "all", label: "Todas" },
     { id: "transfer", label: "Transferidas" },
+    { id: "ouvidoria", label: "Ouvidoria" },
     { id: "alerts", label: "Com Alertas" },
     { id: "resolved", label: "Finalizadas" },
   ];
@@ -102,6 +103,8 @@ export default function Monitor() {
       passesStatusFilter = conv.status === "active" && !conv.transferredToHuman;
     } else if (activeFilter === "transfer") {
       passesStatusFilter = conv.transferredToHuman === true && conv.assignedTo === null;
+    } else if (activeFilter === "ouvidoria") {
+      passesStatusFilter = conv.assistantType === "ouvidoria";
     } else if (activeFilter === "resolved") {
       passesStatusFilter = conv.status === "resolved";
     }
@@ -125,6 +128,21 @@ export default function Monitor() {
       return conversations.filter(c => c.status === "active").length;
     }
     return conversations.filter(c => c.assistantType === deptValue && c.status === "active").length;
+  };
+
+  const getConversationCountByFilter = (filterId: string) => {
+    if (filterId === "all") {
+      return conversations.filter(c => c.status === "active" && !c.transferredToHuman).length;
+    } else if (filterId === "transfer") {
+      return conversations.filter(c => c.transferredToHuman === true && c.assignedTo === null).length;
+    } else if (filterId === "ouvidoria") {
+      return conversations.filter(c => c.assistantType === "ouvidoria").length;
+    } else if (filterId === "alerts") {
+      return alerts.length;
+    } else if (filterId === "resolved") {
+      return conversations.filter(c => c.status === "resolved").length;
+    }
+    return 0;
   };
 
   const conversationCards = filteredConversations.map(conv => ({
@@ -232,8 +250,12 @@ export default function Monitor() {
             size="sm"
             onClick={() => setActiveFilter(filter.id)}
             data-testid={`filter-${filter.id}`}
+            className="gap-2"
           >
             {filter.label}
+            <Badge variant={activeFilter === filter.id ? "secondary" : "outline"} className="ml-1">
+              {getConversationCountByFilter(filter.id)}
+            </Badge>
           </Button>
         ))}
       </div>
