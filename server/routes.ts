@@ -1244,7 +1244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
             
-            const { response: responseText, transferred, transferredTo, resolved, resolveReason } = await sendMessageAndGetResponse(
+            const { response: responseText, transferred, transferredTo, resolved, resolveReason, routed, assistantTarget, routingReason } = await sendMessageAndGetResponse(
               threadId!,
               assistantId,
               enrichedMessage,  // Usa mensagem enriquecida com boletos se detectado
@@ -1260,8 +1260,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
               assistant: conversationRef.assistantType,
             });
 
-            // Handle conversation resolution if requested by AI
-            if (resolved) {
+            // 🎭 PRIORIDADE 1: Handle internal routing between AI assistants (NÃO marca como transferido para humano)
+            if (routed && assistantTarget) {
+              console.log(`🎭 [Evolution Internal Routing] IA solicitou roteamento interno para ${assistantTarget}`);
+              
+              // Map department to assistant type
+              const departmentMap: Record<string, string> = {
+                "Suporte Técnico": "suporte",
+                "Suporte": "suporte",
+                "Técnico": "suporte",
+                "Comercial": "comercial",
+                "Vendas": "comercial",
+                "Financeiro": "financeiro",
+                "Finanças": "financeiro",
+                "Pagamento": "financeiro",
+                "Boleto": "financeiro",
+                "Fatura": "financeiro",
+                "Ouvidoria": "ouvidoria",
+                "SAC": "ouvidoria",
+                "Cancelamento": "cancelamento",
+                "Cancelar": "cancelamento",
+              };
+              
+              // Find matching assistant type
+              let newAssistantType = "suporte"; // fallback
+              
+              for (const [dept, type] of Object.entries(departmentMap)) {
+                if (assistantTarget.toLowerCase().includes(dept.toLowerCase())) {
+                  newAssistantType = type;
+                  break;
+                }
+              }
+              
+              const { ASSISTANT_IDS, createThread } = await import("./lib/openai");
+              const newAssistantId = ASSISTANT_IDS[newAssistantType as keyof typeof ASSISTANT_IDS];
+              
+              console.log(`🔄 [Evolution Internal Routing] Trocando de '${conversationRef.assistantType}' para '${newAssistantType}' (${newAssistantId})`);
+              
+              // 🔥 CRÍTICO: Criar NOVA thread para o novo assistente
+              console.log(`🧵 [Evolution Routing] Criando nova thread para ${newAssistantType}...`);
+              const newThreadId = await createThread();
+              
+              // 📋 IMPORTANTE: Injetar contexto da conversa anterior na nova thread
+              console.log(`📋 [Evolution Routing] Injetando contexto da conversa anterior...`);
+              const previousMessages = await storage.getMessagesByConversationId(conversationRef.id);
+              
+              // Criar resumo do histórico (últimas 5 mensagens ou menos)
+              const recentMessages = previousMessages.slice(-5);
+              const contextSummary = recentMessages
+                .map(msg => `${msg.role === 'user' ? 'Cliente' : 'Assistente'}: ${msg.content}`)
+                .join('\n');
+              
+              // Injetar contexto na nova thread
+              const { sendMessageAndGetResponse } = await import("./lib/openai");
+              const contextMessage = `[CONTEXTO DA CONVERSA ANTERIOR - USO INTERNO]\n\nVocê está assumindo esta conversa. Aqui está o histórico recente:\n\n${contextSummary}\n\nMotivo do roteamento: ${routingReason}\n\nApresente-se brevemente e continue ajudando o cliente com base no contexto acima.`;
+              
+              await sendMessageAndGetResponse(
+                newThreadId,
+                newAssistantId,
+                contextMessage,
+                chatId,
+                conversationRef.id
+              );
+              
+              console.log(`✅ [Evolution Routing] Contexto injetado na nova thread`);
+              
+              // Atualizar mapeamento chatId → threadId
+              await storeConversationThread(chatId, newThreadId);
+              console.log(`✅ [Evolution Routing] Nova thread criada: ${newThreadId}`);
+              
+              // Update conversation to use new assistant (NÃO marca como transferredToHuman)
+              const updatedMetadata = {
+                ...(typeof conversationRef.metadata === 'object' && conversationRef.metadata !== null ? conversationRef.metadata : {}),
+                routing: {
+                  assistantType: newAssistantType,
+                  assistantId: newAssistantId,
+                  confidence: 1.0,
+                  routedBy: conversationRef.assistantType,
+                  routedAt: new Date().toISOString(),
+                  routingReason: routingReason || 'Roteamento interno',
+                  previousThreadId: threadId, // Guardar thread antiga
+                  newThreadId: newThreadId,
+                },
+              };
+              
+              await storage.updateConversation(conversationRef.id, {
+                assistantType: newAssistantType,
+                threadId: newThreadId, // ✅ Atualizar threadId no banco
+                lastMessage: responseText,
+                lastMessageTime: new Date(),
+                metadata: updatedMetadata,
+                // ⚠️ NÃO marca transferredToHuman - IA continua respondendo
+              });
+              
+              // Create supervisor action for tracking
+              await storage.createSupervisorAction({
+                conversationId: conversationRef.id,
+                action: "note",
+                notes: `Roteamento interno: ${conversationRef.assistantType} → ${newAssistantType}. Motivo: ${routingReason || 'Roteamento interno'}`,
+                createdBy: "Sistema",
+              });
+              
+              console.log(`✅ [Evolution Internal Routing Complete] Conversa agora será atendida por ${newAssistantType} (IA continua ativa)`);
+              
+              webhookLogger.success('CONVERSATION_ROUTED_INTERNAL', `Roteado internamente para ${newAssistantType}`, {
+                conversationId: conversationRef.id,
+                newAssistantType,
+                previousAssistant: conversationRef.assistantType,
+              });
+              
+              // Send routing message to WhatsApp
+              await sendWhatsAppMessage(clientPhoneNumber, responseText);
+              
+            } // Handle conversation resolution if requested by AI
+            else if (resolved) {
               console.log(`✅ [Evolution Resolve] IA finalizou conversa: ${chatId}`);
               
               // Create supervisor action for resolution

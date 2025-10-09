@@ -92,6 +92,26 @@ export async function consultaBoletoCliente(
 }
 
 /**
+ * Roteia conversa para assistente especializado (NÃO marca como transferido para humano)
+ * @param departamento Nome do departamento/assistente especializado
+ * @param motivo Motivo do roteamento
+ * @returns Confirmação do roteamento
+ */
+export async function rotearParaAssistenteEspecializado(
+  departamento: string,
+  motivo: string
+): Promise<{ roteado: boolean; assistente: string; motivo: string }> {
+  console.log(`🎭 [AI Tool] Roteamento interno: ${departamento} - Motivo: ${motivo}`);
+  
+  // Retorna estrutura que será processada pelo handler
+  return {
+    roteado: true,
+    assistente: departamento,
+    motivo: motivo
+  };
+}
+
+/**
  * Executa uma tool do assistente OpenAI
  * @param toolName Nome da tool a ser executada
  * @param args Argumentos da tool
@@ -119,6 +139,12 @@ export async function executeAssistantTool(
         throw new Error("Parâmetro 'documento' é obrigatório para consulta_boleto_cliente");
       }
       return await consultaBoletoCliente(args.documento, context, storage);
+
+    case 'rotear_para_assistente':
+      if (!args.departamento || !args.motivo) {
+        throw new Error("Parâmetros 'departamento' e 'motivo' são obrigatórios para rotear_para_assistente");
+      }
+      return await rotearParaAssistenteEspecializado(args.departamento, args.motivo);
 
     default:
       throw new Error(`Tool não implementada: ${toolName}`);

@@ -91,6 +91,9 @@ export async function sendMessageAndGetResponse(
   transferredTo?: string;
   resolved?: boolean;
   resolveReason?: string;
+  routed?: boolean;
+  assistantTarget?: string;
+  routingReason?: string;
 }> {
   try {
     if (!threadId) {
@@ -128,6 +131,7 @@ export async function sendMessageAndGetResponse(
     const runId = run.id;
     let transferData: { transferred?: boolean; transferredTo?: string } = {};
     let resolveData: { resolved?: boolean; resolveReason?: string } = {};
+    let routingData: { routed?: boolean; assistantTarget?: string; routingReason?: string } = {};
 
     while (run.status === "queued" || run.status === "in_progress" || run.status === "requires_action") {
       if (attempts >= maxAttempts) {
@@ -143,13 +147,25 @@ export async function sendMessageAndGetResponse(
           toolCalls.map(async (toolCall) => {
             const result = await handleToolCall(toolCall.function.name, toolCall.function.arguments, chatId, conversationId);
             
-            // Check if this was a transfer call
+            // Check if this was a transfer call (para HUMANO - bloqueia IA)
             if (toolCall.function.name === "transferir_para_humano") {
               const transferResult = JSON.parse(result);
               if (transferResult.success) {
                 transferData = {
                   transferred: true,
                   transferredTo: transferResult.departamento
+                };
+              }
+            }
+            
+            // Check if this was a routing call (para ASSISTENTE - continua com IA)
+            if (toolCall.function.name === "rotear_para_assistente") {
+              const routingResult = JSON.parse(result);
+              if (routingResult.roteado) {
+                routingData = {
+                  routed: true,
+                  assistantTarget: routingResult.assistente,
+                  routingReason: routingResult.motivo
                 };
               }
             }
@@ -225,7 +241,8 @@ export async function sendMessageAndGetResponse(
         return {
           response: responseText,
           ...transferData,
-          ...resolveData
+          ...resolveData,
+          ...routingData
         };
       }
     }
@@ -237,6 +254,15 @@ export async function sendMessageAndGetResponse(
         response: `Entendido! Vou transferir você para ${transferData.transferredTo || 'um atendente humano'}. Em instantes você será atendido por nossa equipe.`,
         ...transferData,
         ...resolveData
+      };
+    }
+
+    // If routing was requested but no assistant message, return routing confirmation
+    if (routingData.routed) {
+      console.log("✅ [OpenAI] Routing requested but no response - using fallback message");
+      return {
+        response: `Perfeito! Vou conectar você com nosso time de ${routingData.assistantTarget}. Um momento!`,
+        ...routingData
       };
     }
 
@@ -308,14 +334,28 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
         const departamento = args.departamento || args.department || "Suporte Geral";
         const motivo = args.motivo || args.reason || "Solicitação do cliente";
         
-        console.log("🔀 [Transfer] IA solicitou transferência:", { chatId, departamento, motivo });
+        console.log("🔀 [Transfer] IA solicitou transferência para HUMANO:", { chatId, departamento, motivo });
         
         // Mark conversation for transfer (will be processed in routes.ts)
         return JSON.stringify({
           success: true,
           departamento,
           motivo,
-          mensagem: "Transferência iniciada com sucesso",
+          mensagem: "Transferência para atendimento humano iniciada com sucesso",
+        });
+
+      case "rotear_para_assistente":
+        const assistente = args.departamento || args.department || args.assistente || "Suporte";
+        const motivo_roteamento = args.motivo || args.reason || "Roteamento interno";
+        
+        console.log("🎭 [Routing] IA solicitou roteamento para ASSISTENTE:", { chatId, assistente, motivo: motivo_roteamento });
+        
+        // Mark conversation for internal routing (will be processed in routes.ts)
+        return JSON.stringify({
+          roteado: true,
+          assistente,
+          motivo: motivo_roteamento,
+          mensagem: `Roteando para assistente ${assistente}`,
         });
 
       case "finalizar_conversa":
