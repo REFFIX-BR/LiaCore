@@ -264,6 +264,71 @@ export async function solicitarDesbloqueio(
   }
 }
 
+// Mapeamento válido de setor -> motivos permitidos
+const SETOR_MOTIVO_MAP: Record<string, string[]> = {
+  "ADMINISTRAÇÃO": [
+    "INFORMAÇÃO", "RECLAMAÇÃO", "CONTRATO", "PONTO ELÉTRICO", "NOTA FISCAL", "PERMUTA"
+  ],
+  "SUPORTE": [
+    "SEM CONEXÃO", "SEM INTERNET", "LENTIDÃO", "CABO DESCONECTADO", "TROCA DE EQUIPAMENTO",
+    "PROBLEMA EMAIL", "TROCA MAC", "TROCA LOGIN", "TROCA SENHA", "INTERMITÊNCIA",
+    "INFORMAÇÃO LOGIN/SENHA", "RECONFIGURAÇÃO PPPOE", "REPARO NA REDE", "INFORMAÇÃO", "TELEFONIA"
+  ],
+  "FINANCEIRO": [
+    "2.VIA BOLETO", "MUDANÇA ENDEREÇO DE COBRANÇA", "SOLICITAÇÃO DE DESCONTO",
+    "INFORMAR PAGAMENTO", "BLOQUEIO", "SEMIBLOQUEIO", "PROMOÇÃO BANDA EM DOBRO",
+    "PAGAMENTO", "INFORMAÇÃO", "DESBLOQUEIO", "MUDANÇA DE VENCIMENTO"
+  ],
+  "COMERCIAL": [
+    "PEDIDO DE INSTALAÇÃO", "MUDANÇA DE PLANO", "MUDANÇA DE ENDEREÇO", "EXTENSÃO DE CABO",
+    "INFORMAÇÃO PLANOS/INSTALAÇÃO", "PEDIDO VIABILIDADE", "PONTO ADICIONAL",
+    "REATIVAÇÃO", "UPGRADE", "MUDANÇA DE CÔMODO", "VENDA REALIZADA"
+  ],
+  "RECEPÇÃO": [
+    "ATENDIMENTO", "RECLAMAÇÃO", "CANCELAMENTO", "SUSPENSÃO", "MUDANÇA TITULARIDADE", "2.VIA BOLETO"
+  ],
+  "COBRANÇA": [
+    "RENEGOCIAÇÃO / ACORDO", "RECOLHIMENTO DE EQUIPAMENTOS", "COBRANÇA INADIMPLÊNCIA"
+  ],
+  "TÉCNICO": [
+    "ATENDIMENTO", "RETIRADA DE MATERIAL", "RECONFIGURAÇÃO/TROCA CONECTOR", "LINK LOSS", "LENTIDÃO", "POTÊNCIA ALTA"
+  ],
+  "OUVIDORIA": [
+    "ATENDIMENTO", "RECLAMAÇÃO"
+  ],
+  "LOCAÇÃO": [
+    "INSTALAÇAO DE CAMERA", "MANUNTENÇAO DE CAMERA", "INSTALAÇAO TVBOX", "REPARO TVBOX"
+  ]
+};
+
+/**
+ * Valida se a combinação setor/motivo é válida
+ */
+function validarSetorMotivo(setor: string, motivo: string): { valido: boolean; erro?: string } {
+  const setorUpper = setor.toUpperCase();
+  const motivoUpper = motivo.toUpperCase();
+  
+  // Verifica se setor existe
+  if (!SETOR_MOTIVO_MAP[setorUpper]) {
+    const setoresValidos = Object.keys(SETOR_MOTIVO_MAP).join(", ");
+    return {
+      valido: false,
+      erro: `Setor "${setor}" não é válido. Setores válidos: ${setoresValidos}`
+    };
+  }
+  
+  // Verifica se motivo é compatível com o setor
+  const motivosValidos = SETOR_MOTIVO_MAP[setorUpper];
+  if (!motivosValidos.includes(motivoUpper)) {
+    return {
+      valido: false,
+      erro: `Motivo "${motivo}" não é compatível com setor "${setor}". Motivos válidos para ${setor}: ${motivosValidos.join(", ")}`
+    };
+  }
+  
+  return { valido: true };
+}
+
 /**
  * Abre ticket no CRM externo ao finalizar atendimento
  * @param resumo Resumo breve do atendimento e resolução
@@ -297,7 +362,14 @@ export async function abrirTicketCRM(
     // CRÍTICO: clientDocument deve existir OBRIGATORIAMENTE
     if (!conversation.clientDocument) {
       console.error(`❌ [AI Tool Security] Tentativa de abrir ticket sem documento do cliente armazenado`);
-      throw new Error("Para abrir ticket, preciso do CPF ou CNPJ do cliente registrado no atendimento.");
+      throw new Error("Não é possível abrir ticket sem o CPF ou CNPJ do cliente. Por favor, solicite o documento ao cliente primeiro usando: 'Para finalizar e registrar seu atendimento, preciso do seu CPF ou CNPJ.'");
+    }
+
+    // Validação de setor/motivo ANTES de enviar ao webhook
+    const validacao = validarSetorMotivo(setor, motivo);
+    if (!validacao.valido) {
+      console.error(`❌ [AI Tool] Combinação setor/motivo inválida: ${validacao.erro}`);
+      throw new Error(validacao.erro);
     }
 
     console.log(`🎫 [AI Tool] Abrindo ticket no CRM (conversação: ${conversationContext.conversationId}, setor: ${setor}, motivo: ${motivo})`);
@@ -310,8 +382,8 @@ export async function abrirTicketCRM(
       body: JSON.stringify({
         documento: conversation.clientDocument,
         resumo: resumo,
-        setor: setor,
-        motivo: motivo,
+        setor: setor.toUpperCase(),
+        motivo: motivo.toUpperCase(),
         finalizar: "S"
       }),
     });
