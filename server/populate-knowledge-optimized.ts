@@ -219,7 +219,7 @@ Motivo: "Mudança de cômodo - agendamento necessário"`,
     content: `## PROCEDIMENTO DE ENVIO DE FATURAS
 
 **1. Seleção do boleto:**
-- Usar consultar_boleto_cliente
+- Usar consulta_boleto_cliente
 - Escolher o boleto com vencimento mais próximo
 - Se houver empates de data, confirmar endereço do cliente antes de enviar
 
