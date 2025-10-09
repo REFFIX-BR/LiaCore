@@ -1,0 +1,152 @@
+5-10-08 22:22:49.36
+8f307a2c
+User
+❓ [Evolution] Evento desconhecido: contacts.update
+2025-10-08 22:22:49.36
+8f307a2c
+User
+1:22:49 AM [express] POST /api/webhooks/evolution 200 in 1ms :: {"success":true,"processed":false,"r…
+2025-10-08 22:22:49.51
+8f307a2c
+User
+🔍 [NPS Debug] Conversa ca5714ea-8b97-4fe6-85c4-72b86c440997: {
+2025-10-08 22:22:49.51
+8f307a2c
+User
+awaitingNPS: false,
+2025-10-08 22:22:49.51
+8f307a2c
+User
+messageText: 'verifica no prompt e em Functions como conseguir o boleto',
+2025-10-08 22:22:49.51
+8f307a2c
+User
+npsMatch: null,
+2025-10-08 22:22:49.51
+8f307a2c
+User
+status: 'active'
+2025-10-08 22:22:49.51
+8f307a2c
+User
+}
+2025-10-08 22:22:49.55
+8f307a2c
+User
+🔵 [OpenAI] Sending message: {
+2025-10-08 22:22:49.55
+8f307a2c
+User
+threadId: 'thread_IYwmk5ngFmTeZv7SIzmyG4ll',
+2025-10-08 22:22:49.55
+8f307a2c
+User
+assistantId: 'asst_pRXVhoy1o4YxNxVmaRiNOTMX',
+2025-10-08 22:22:49.55
+8f307a2c
+User
+providedAssistantId: 'asst_pRXVhoy1o4YxNxVmaRiNOTMX',
+2025-10-08 22:22:49.55
+8f307a2c
+User
+usedFallback: false
+2025-10-08 22:22:49.55
+8f307a2c
+User
+}
+2025-10-08 22:22:49.56
+8f307a2c
+User
+1:22:49 AM [express] POST /api/webhooks/evolution 200 in 410ms :: {"success":true,"processed":true,"…
+2025-10-08 22:22:52.87
+8f307a2c
+User
+🔵 [OpenAI] Run created: {
+2025-10-08 22:22:52.87
+8f307a2c
+User
+runId: 'run_GnYBWuWxdD3CekLqlFgMTupK',
+2025-10-08 22:22:52.87
+8f307a2c
+User
+threadId: 'thread_IYwmk5ngFmTeZv7SIzmyG4ll'
+2025-10-08 22:22:52.87
+8f307a2c
+User
+}
+2025-10-08 22:22:52.87
+8f307a2c
+User
+🔄 [OpenAI] Polling run: {
+2025-10-08 22:22:52.87
+8f307a2c
+User
+status: 'queued',
+2025-10-08 22:22:52.87
+8f307a2c
+User
+runId: 'run_GnYBWuWxdD3CekLqlFgMTupK',
+2025-10-08 22:22:52.87
+8f307a2c
+User
+threadId: 'thread_IYwmk5ngFmTeZv7SIzmyG4ll',
+2025-10-08 22:22:52.87
+8f307a2c
+User
+attempt: 0
+2025-10-08 22:22:52.87
+8f307a2c
+User
+}
+2025-10-08 22:22:53.12
+a992751f
+System
+system: received signal terminated
+2025-10-08 22:22:54.47
+8f307a2c
+User
+🔄 [OpenAI] Polling run: {
+2025-10-08 22:22:54.47
+8f307a2c
+User
+status: 'in_progress',
+2025-10-08 22:22:54.47
+8f307a2c
+User
+runId: 'run_GnYBWuWxdD3CekLqlFgMTupK',
+2025-10-08 22:22:54.47
+8f307a2c
+User
+threadId: 'thread_IYwmk5ngFmTeZv7SIzmyG4ll',
+2025-10-08 22:22:54.47
+8f307a2c
+User
+attempt: 1
+2025-10-08 22:22:54.47
+8f307a2c
+User
+}
+2025-10-08 22:22:55.97
+8f307a2c
+User
+🔄 [OpenAI] Polling run: {
+2025-10-08 22:22:55.97
+8f307a2c
+User
+status: 'requires_action',
+2025-10-08 22:22:55.97
+8f307a2c
+User
+runId: 'run_GnYBWuWxdD3CekLqlFgMTupK',
+2025-10-08 22:22:55.97
+8f307a2c
+User
+threadId: 'thread_IYwmk5ngFmTeZv7SIzmyG4ll',
+2025-10-08 22:22:55.97
+8f307a2c
+User
+attempt: 2
+2025-10-08 22:22:55.97
+8f307a2c
+User
+}
