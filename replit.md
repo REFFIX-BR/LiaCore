@@ -2,7 +2,7 @@
 
 ## Overview
 
-LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Telecom's customer service, acting as an intelligent router and coordinator for specialized AI assistants powered by OpenAI's Assistants API. It integrates a RAG knowledge base using Upstash Vector for dynamic Q&A and action execution via structured APIs. The platform features automated boleto consultation, PPPoE connection diagnosis, and customer unlock/unblock requests for blocked connections. It includes a real-time supervisor monitoring dashboard for human intervention and an autonomous continuous learning system that evolves assistant prompts based on feedback. The business vision is to significantly enhance customer service efficiency and satisfaction through intelligent automation and continuous AI improvement.
+LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed for TR Telecom's customer service. It functions as an intelligent router and coordinator for specialized AI assistants, powered by OpenAI's Assistants API. The platform integrates a RAG knowledge base for dynamic Q&A and action execution via structured APIs, including automated boleto consultation, PPPoE connection diagnosis, and customer unlock/unblock requests. It features a real-time supervisor monitoring dashboard for human intervention and an autonomous continuous learning system that evolves AI assistant prompts based on feedback. The primary goal is to significantly enhance customer service efficiency and satisfaction through intelligent automation and continuous AI improvement.
 
 ## User Preferences
 
@@ -12,185 +12,81 @@ Preferred communication style: Simple, everyday language.
 
 ### UI/UX Decisions
 
-The frontend uses React with TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailwind CSS. The design is inspired by Carbon Design System and Linear, optimized for data-dense enterprise interfaces, supporting dark/light modes. Wouter handles client-side routing.
+The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailwind CSS, drawing inspiration from Carbon Design System and Linear for data-dense enterprise interfaces, supporting dark/light modes. Client-side routing is managed by Wouter.
 
 ### Technical Implementations
 
 **Frontend**:
-- **State Management**: TanStack Query for server state (5-second polling).
+- **State Management**: TanStack Query for server state.
 - **Key Pages**: Dashboard, Monitor, Test Chat, Conversations, Knowledge, Assistants, Agent Evolution, Metrics, Feedbacks NPS, Settings.
-- **Header**: Theme toggle and logout.
 
 **Backend**:
 - **Runtime**: Node.js with Express.js (TypeScript).
-- **API**: RESTful, under `/api`.
-- **Core**: GPT-5 for intelligent routing, OpenAI Assistants API, Upstash Vector for RAG, Upstash Redis for conversation threads.
-- **Session Management**: OpenAI thread-based conversations (7-day expiry) in Redis.
-- **Data Persistence**: PostgreSQL via Drizzle ORM.
+- **Core**: GPT-5 for intelligent routing, OpenAI Assistants API, Upstash Vector for RAG, Upstash Redis for conversation threads, and PostgreSQL via Drizzle ORM for data persistence.
+- **Session Management**: OpenAI thread-based conversations stored in Redis.
 
 **AI & Knowledge Management**:
 - **AI Provider**: OpenAI Assistants API.
-- **Specialized Assistants**: Six roles (Support, Sales, Finance, Cancellation, Ombudsman, Presentation) with specific instructions, WhatsApp formatting, and domain-specific function calling. All use "text" response format.
-- **Receptionist-First Routing**: `APRESENTACAO_ASSISTANT_ID` triages and routes to specialists, seamlessly updating assistant types.
-- **Conversation Summarization**: Asynchronous summarization every 12 messages into structured JSON.
-- **RAG**: Knowledge base in Upstash Vector via `consultar_base_de_conhecimento`.
-- **Function Calling**: Custom functions for verification, knowledge queries, invoice lookups, and scheduling.
-- **Secure AI Tools System** (`server/ai-tools.ts`):
-  - Internal-only functions (no HTTP endpoints) for OpenAI assistant function calling
-  - Mandatory conversation context validation against database
-  - Document authorization using database-stored `clientDocument` field
-  - PII-free logging (CPF/CNPJ masked in all logs)
-  - Functions: `consulta_boleto_cliente` (boleto queries with security validation)
-  - Security layers: Context required → DB conversation exists → Document matches DB record
-- **Automatic CPF/CNPJ Detection & Storage** (`server/routes.ts`):
-  - Regex-based detection in incoming messages (supports formatted/unformatted)
-  - CPF pattern: `\b(\d{3}\.?\d{3}\.?\d{3}-?\d{2})\b` (11 digits)
-  - CNPJ pattern: `\b(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})\b` (14 digits)
-  - Auto-storage in `conversations.clientDocument` (cleaned, no formatting)
-  - Security logging: CPF masked as `***.***. ***-**`, CNPJ as `**.***.***/****-**`
-- **Boleto Consultation System**:
-  - `consulta_boleto_cliente` function registered in OpenAI Financeiro assistant (see `BOLETO_FUNCTION_SETUP.md`)
-  - Zero-parameter design: document auto-injected from conversation context
-  - Handles tool call in `server/lib/openai.ts` → fetches `clientDocument` from DB → validates → calls `executeAssistantTool`
-  - Returns user-friendly error if CPF/CNPJ not yet provided
-  - Full security validation chain prevents unauthorized access
-  - **TypeScript Production-Ready**: All 54 LSP errors resolved (spread operators, missing types, schema mismatches)
-  - **JWT Enhancement**: Added `fullName` to JWT payload for complete user context
-- **PPPoE Connection Status System** (`CONEXAO_PPPOE_SETUP.md`):
-  - Auto-detects connection-related keywords (internet, conexão, velocidade, lento, desconectado, wifi, sinal)
-  - POST to `check_pppoe_status` with documento → returns complete diagnostic data
-  - Field-specific interpretation: statusIP (financial blocks), onu_run_state (equipment), massiva (regional), os_aberta (technician)
-  - Diagnostic priority: Check statusIP first (BLOQUEIO/SEMIBLOQUEIO = financial, not technical)
-  - Enriched context with interpretation guide for AI to diagnose and respond naturally
-  - 3-5x faster than function calling via auto-fetch on keyword detection
-- **Unlock/Unblock System** (`DESBLOQUEIO_SETUP.md`):
-  - Auto-detects unlock requests via keywords (desbloquear, liberar, confiança, urgente, emergência, bloqueado)
-  - POST to `consulta_desbloqueio` with documento → returns status + message
-  - Response structure: `data[0].status[0].status` (S/N) + `data[0].resposta[0].obs` (message)
-  - Possible outcomes:
-    * "desbloqueio realizado" → Success (connection liberates in 15min)
-    * "desbloqueio já efetuado esse mês" → Monthly limit reached (1x/month)
-    * "CLIENTE COM MAIS DE 1 BOLETO EM ABERTO" → Multiple unpaid invoices
-    * "DESBLOQUEIO NAO EFETUADO" → Not blocked or not eligible
-  - Mandatory `clientDocument` validation: BLOCKS if document not stored (security-critical)
-  - AI interpretation guide provides empathetic responses with next steps
-  - Follows same security pattern as boleto/conexão systems
+- **Specialized Assistants**: Six roles (Support, Sales, Finance, Cancellation, Ombudsman, Presentation) with specific instructions and function calling capabilities. A "Receptionist-First" routing model triages and routes to specialists.
+- **Conversation Summarization**: Asynchronous summarization of conversations.
+- **RAG**: Knowledge base implemented using Upstash Vector.
+- **Function Calling**: Custom functions for verification, knowledge queries, invoice lookups, and scheduling, with a secure internal-only system for tool execution.
+- **Automated Document Detection**: Regex-based CPF/CNPJ detection and storage in conversation context.
+- **Mandatory CPF Verification**: All specialized assistants require CPF/CNPJ verification before proceeding with sensitive operations.
+- **Automated Systems**: Includes "Boleto Consultation", "PPPoE Connection Status", and "Unlock/Unblock" systems with integrated security and AI interpretation.
 
 **Real-Time Monitoring**:
-- **Supervisor Dashboard**: KPIs, live conversation queue (urgency/sentiment), alerts, transcripts, human intervention controls.
-- **Monitor Page**: High-density display of concurrent conversations with responsive grid and floating dialogs.
+- **Supervisor Dashboard**: Provides KPIs, live conversation queues, alerts, transcripts, and human intervention controls.
+- **Monitor Page**: Displays concurrent conversations for supervisors.
 
 **Continuous Learning System**:
-- **Autonomous Learning**: GPT-4 agent identifies patterns from supervisor interventions and feedback.
-- **Feedback**: Implicit (resolutions, transfers) and explicit (supervisor corrections, NPS).
-- **Prompt Evolution**: Supervisor-approved suggestions update OpenAI assistant instructions.
+- **Autonomous Learning**: GPT-4 agent identifies patterns from supervisor interventions and feedback to suggest prompt improvements.
+- **Feedback**: Incorporates both implicit (resolutions, transfers) and explicit (supervisor corrections, NPS) feedback.
 
 **NPS & Customer Satisfaction**:
-- **WhatsApp Feedback**: Automated NPS surveys post-conversation.
-- **Feedback Processing**: Extracts scores, saves to DB, feeds detractors into learning.
-- **Feedbacks NPS Page**: Supervisors view and filter NPS feedback linked to conversations.
+- **WhatsApp Feedback**: Automated NPS surveys post-conversation, with feedback processing for learning.
 
-**Hybrid Supervised Mode (Conversations Tab)**:
-- **Tabbed Interface**: Two tabs for conversation management:
-  - **"Transferidas" Tab**: Shows unassigned transferred conversations (assignedTo IS NULL) available for agent assignment
-  - **"Atribuídas" Tab**: Shows conversations assigned to current user (assignedTo = userId)
-- **Automatic Tab Switching**: When agent assigns conversation, UI automatically switches to "Atribuídas" tab
-- **Badge Counters**: Real-time conversation count displayed on each tab
-- **Mutual Exclusivity**: Backend filtering ensures conversations appear in only one tab at a time
-- **AI-Assisted Responses**: Agents get AI suggestions, can approve or edit, creating learning events.
+**Hybrid Supervised Mode**:
+- **Conversation Management**: Tabbed interface for "Transferred" (unassigned) and "Assigned" conversations, with real-time counters and AI-assisted agent responses.
 
 **WhatsApp Integration**:
-- **Evolution API**: Native integration for real-time message processing via webhooks.
-- **Message Processing**: Handles various message types, client identification, AI routing, thread management, and response generation.
-- **Outbound Messaging**: AI responses sent via Evolution API with typing simulation.
+- **Evolution API**: Native integration for real-time message processing, AI routing, and outbound messaging.
 
 **Role-Based Access Control (RBAC)**:
-- **3-Tier System**: ADMIN, SUPERVISOR, AGENT.
-- **User Management**: ADMIN CRUD interface at `/users`.
-- **Granular Permissions**: Middleware for route protection.
-- **Navigation**: Sidebar with role-based visibility and category state persistence.
+- **3-Tier System**: ADMIN, SUPERVISOR, AGENT with granular permissions and role-based navigation.
+- **User Management**: ADMIN interface for user creation and approval workflow for new AGENT role requests.
 
-**User Registration System**:
-- **Public Registration**: Self-service form for new users requesting AGENT role.
-- **Approval Workflow**: Admin/Supervisor approval required for account creation.
-- **Management Interface**: `/registration-requests` page for viewing and acting on requests.
-
-**Personalized Dashboards by Role**:
-- **Agent**: Personal KPIs, sentiment, recent feedback.
-- **Supervisor**: Global KPIs, AI performance, team status.
-- **Admin**: System KPIs, token usage, activity log.
-- **API Endpoints**: Role-specific `/api/dashboard/*` endpoints with refresh.
+**Personalized Dashboards**:
+- Role-specific dashboards (Agent, Supervisor, Admin) with relevant KPIs and data.
 
 **Agent Reports System**:
-- **Historical Analysis**: Temporal tracking with filtering (daily/weekly/monthly, custom ranges).
-- **Metrics**: Total conversations, success rate, NPS, transfers, sentiment.
-- **Visualization**: Recharts-powered charts, summary cards, detailed tables.
-- **Filtering**: Period presets, custom dates, agent selection.
+- Historical analysis of agent performance with metrics, charts, and filtering capabilities.
 
 **Activity Logs System**:
-- **Session Tracking**: Comprehensive login/logout logging with session duration calculation.
-- **Data Captured**: IP address, user agent (browser/OS detection), login timestamp, logout timestamp, session duration (minutes).
-- **Database Schema**: `activity_logs` table with userId, action (LOGIN/LOGOUT), ipAddress, userAgent, sessionDuration, metadata, createdAt.
-- **Storage Layer**: Methods in IStorage/MemStorage/DbStorage: `createActivityLog`, `getActivityLogsByUserId`, `getRecentActivityLogs`, `getLastLoginLog`.
-- **Authentication Integration**: Login route captures IP/User-Agent, logout calculates duration (logoutAt - loginAt) and logs complete session.
-- **API Endpoints**: 
-  - `GET /api/activity-logs` (ADMIN/SUPERVISOR only) - All recent activity logs
-  - `GET /api/activity-logs/:userId` - User-specific logs (agents see own, admins/supervisors see all)
-- **Activity Logs Page** (`/activity-logs`):
-  - Summary cards: Total sessions today, average duration, currently active users
-  - Detailed table: User, action, IP address, browser/OS, session duration, timestamp
-  - Auto-refresh every 10 seconds
-  - Browser detection from user agent string
-  - Human-readable duration formatting
-  - Role-based access (ADMIN/SUPERVISOR only in sidebar)
-- **Status Accuracy**: Activity logs provide reliable audit trail to validate online/offline/idle status with precise session duration data.
+- Comprehensive session tracking (login/logout, IP, user agent, duration) for auditing and validating user status.
 
 **Conversation Assignment System**:
-- **Self-Assignment (Agent)**: Agents claim conversations with an "Atribuir" button.
-- **Manual Assignment (Supervisor/Admin)**: Assign to specific agents via dropdown.
-- **Welcome Messages**: Automated WhatsApp messages sent upon assignment.
-- **Permissions**: Only assigned agent can respond (ADMIN/SUPERVISOR override).
-- **Role-Based Visibility**:
-  - **AGENT**: Sees conversations assigned to them in "Atribuídas" tab OR unassigned in "Transferidas" tab
-  - **SUPERVISOR/ADMIN**: See all transferred conversations regardless of assignment in both tabs
-  - **Filter Logic**: 
-    - "Transferidas" tab: `WHERE assignedTo IS NULL` (all roles)
-    - "Atribuídas" tab: `WHERE assignedTo = userId` (for agents) or all assigned (for admins/supervisors)
+- Supports self-assignment by agents and manual assignment by supervisors/admins, with automated welcome messages and role-based access to conversations.
 
 **Configurable Message Templates System**:
-- **Admin Configuration**: Admins edit automated messages via Settings → Mensagens tab.
-- **Template Storage**: Database-backed `message_templates` table.
-- **Variable Substitution**: Templates support dynamic variables (`{agentName}`, `{clientName}`).
-- **Categories**: Messages organized by category (assignment, nps, welcome).
-- **Resilience**: Automated flows use templates with hard-coded fallbacks.
-- **API Endpoints**: CRUD for `/api/message-templates`.
+- Admin-managed message templates for automated communications, supporting dynamic variable substitution and categorized storage.
 
 **Message Pagination & Auto-Scroll System**:
-- **Optimized Loading**: Only 15 most recent messages loaded initially per conversation to reduce bandwidth and improve client-side performance.
-- **Cursor-Based Pagination**: Backend uses `before` cursor (message ID) for efficient historical message retrieval without offset issues.
-- **Load More UI**: "Carregar mensagens anteriores" button appears at top of chat when older messages exist (`hasMore` flag).
-- **Smart Auto-Scroll**: 
-  - Automatically scrolls to bottom when conversation opens
-  - Scrolls to bottom on new messages only if user is near bottom (<100px from end)
-  - Preserves scroll position when loading older messages to avoid interrupting user
-- **State Preservation**: Previously loaded messages persist across automatic 3-second refetches (not overwritten by polling).
-- **hasMore Management**: Uses `hasLoadedOlder` flag to prevent refetch from resetting pagination state after manual loads.
-- **API Endpoint**: `GET /api/monitor/conversations/:id?limit=15&before={messageId}` returns `{messages, hasMore, conversation, alerts, actions}`.
-- **Storage Method**: `getMessagesPaginated(conversationId, {limit, before})` optimized for both MemStorage and DbStorage.
+- Optimized loading of conversation messages with cursor-based pagination for historical data, smart auto-scroll, and state preservation during refetches.
 
 ## External Dependencies
 
 **Third-Party Services**:
-- **OpenAI**: Assistants API.
-- **Upstash Vector**: Serverless vector database.
-- **Upstash Redis**: Serverless Redis.
-- **Neon Database**: Serverless PostgreSQL.
-- **Evolution API**: WhatsApp integration.
+- **OpenAI**: For AI Assistants API.
+- **Upstash Vector**: Serverless vector database for RAG.
+- **Upstash Redis**: Serverless Redis for conversation threads and caching.
+- **Neon Database**: Serverless PostgreSQL for primary data persistence.
+- **Evolution API**: For WhatsApp integration.
 
 **Key NPM Packages**:
-- `@radix-ui/*`: Headless UI.
+- `@radix-ui/*`: Headless UI components.
 - `@tanstack/react-query`: Server state management.
-- `drizzle-orm`: Type-safe ORM.
-- `express`: Web server.
+- `drizzle-orm`: Type-safe ORM for database interactions.
+- `express`: Web server framework.
 - `react-hook-form`, `zod`: Form handling and validation.
 - `tailwindcss`: CSS framework.
