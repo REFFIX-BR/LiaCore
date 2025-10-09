@@ -68,6 +68,7 @@ export const conversations = pgTable("conversations", {
   assignedTo: varchar("assigned_to"), // User ID of the agent assigned
   resolvedAt: timestamp("resolved_at"),
   resolutionTime: integer("resolution_time"), // Time in seconds from transfer to resolution
+  evolutionInstance: text("evolution_instance"), // Nome da instância Evolution API (para multi-instância)
 });
 
 export const messages = pgTable("messages", {
