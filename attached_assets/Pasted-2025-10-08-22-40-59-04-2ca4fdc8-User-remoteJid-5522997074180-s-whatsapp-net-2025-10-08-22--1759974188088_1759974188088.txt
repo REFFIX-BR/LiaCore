@@ -1,0 +1,160 @@
+2025-10-08 22:40:59.04
+2ca4fdc8
+User
+"remoteJid": "5522997074180@s.whatsapp.net",
+2025-10-08 22:40:59.04
+2ca4fdc8
+User
+"fromMe": true,
+2025-10-08 22:40:59.04
+2ca4fdc8
+User
+"participant": "5522997074180@s.whatsapp.net",
+2025-10-08 22:40:59.04
+2ca4fdc8
+User
+"status": "SERVER_ACK",
+2025-10-08 22:40:59.04
+2ca4fdc8
+User
+"instanceId": "0db0ae3d-d694-4e04-b66c-9b25bc521c6c",
+2025-10-08 22:40:59.04
+2ca4fdc8
+User
+"messageId": "cmgir42np1qmws45pj2vx5ayn"
+2025-10-08 22:40:59.04
+2ca4fdc8
+User
+},
+2025-10-08 22:40:59.04
+2ca4fdc8
+User
+"destination": "https://health-link-connect-mczebende.replit.app/api/webhooks/evolution",
+2025-10-08 22:40:59.04
+2ca4fdc8
+User
+"date_time": "2025-10-08T22:40:58.906Z",
+2025-10-08 22:40:59.04
+2ca4fdc8
+User
+"sender": "552425000000@s.whatsapp.net",
+2025-10-08 22:40:59.04
+2ca4fdc8
+User
+"server_url": "https://evolutionapi.trtelecom.net",
+2025-10-08 22:40:59.04
+2ca4fdc8
+User
+"apikey": "A91F3A59E6C4-488E-9877-AC157EE13011"
+2025-10-08 22:40:59.04
+2ca4fdc8
+User
+}
+2025-10-08 22:40:59.04
+2ca4fdc8
+User
+ℹ️ [Webhook Monitor] [CONNECTION] Webhook recebido: messages.update { instance: 'testecortex1', timestamp: '2025-10-09T01:40:59.048Z' }
+2025-10-08 22:40:59.04
+2ca4fdc8
+User
+📱 [Evolution Webhook] Evento recebido: messages.update { instance: 'testecortex1', event: 'messages.update' }
+2025-10-08 22:40:59.04
+2ca4fdc8
+User
+📨 [Evolution] Evento de mensagem: messages.update
+2025-10-08 22:40:59.04
+2ca4fdc8
+User
+1:40:59 AM [express] POST /api/webhooks/evolution 200 in 1ms :: {"success":true,"processed":true,"ev…
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+🔍 [Evolution DEBUG] Payload completo: {
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+"event": "messages.update",
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+"instance": "testecortex1",
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+"data": {
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+"keyId": "3EB0DEBD4E9DD77F3756311D161943A58301185E",
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+"remoteJid": "5522997074180:63@s.whatsapp.net",
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+"fromMe": true,
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+"participant": "5522997074180:63@s.whatsapp.net",
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+"status": "READ",
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+"instanceId": "0db0ae3d-d694-4e04-b66c-9b25bc521c6c",
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+"messageId": "cmgir42np1qmws45pj2vx5ayn"
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+},
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+"destination": "https://health-link-connect-mczebende.replit.app/api/webhooks/evolution",
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+"date_time": "2025-10-08T22:41:03.357Z",
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+"sender": "552425000000@s.whatsapp.net",
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+"server_url": "https://evolutionapi.trtelecom.net",
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+"apikey": "A91F3A59E6C4-488E-9877-AC157EE13011"
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+}
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+ℹ️ [Webhook Monitor] [CONNECTION] Webhook recebido: messages.update { instance: 'testecortex1', timestamp: '2025-10-09T01:41:03.383Z' }
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+📱 [Evolution Webhook] Evento recebido: messages.update { instance: 'testecortex1', event: 'messages.update' }
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+📨 [Evolution] Evento de mensagem: messages.update
+2025-10-08 22:41:03.38
+2ca4fdc8
+User
+1:41:03 AM [express] POST /api/webhooks/evolution 200 in 1ms :: {"success":true,"processed":true,"ev…
+
+Wrap
+
+Colors
