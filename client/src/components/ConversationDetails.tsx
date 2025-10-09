@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { User, Bot, Pause, Play, FileText, UserPlus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -86,6 +86,14 @@ export function ConversationDetails({
   const [transferNotes, setTransferNotes] = useState("");
   const [internalNote, setInternalNote] = useState("");
   const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll para última mensagem quando abrir ou mensagens mudarem
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+  }, [messages]);
 
   const handleTransfer = () => {
     if (transferDept && transferNotes) {
@@ -149,6 +157,7 @@ export function ConversationDetails({
                   </div>
                 </div>
               ))}
+              <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
         </TabsContent>
