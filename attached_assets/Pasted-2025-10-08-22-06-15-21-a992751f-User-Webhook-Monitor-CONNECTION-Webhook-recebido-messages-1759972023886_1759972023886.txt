@@ -1,0 +1,148 @@
+2025-10-08 22:06:15.21
+a992751f
+User
+ℹ️ [Webhook Monitor] [CONNECTION] Webhook recebido: messages.update { instance: 'testecortex1', timestamp: '2025-10-09T01:06:15.217Z' }
+2025-10-08 22:06:15.21
+a992751f
+User
+📱 [Evolution Webhook] Evento recebido: messages.update { instance: 'testecortex1', event: 'messages.update' }
+2025-10-08 22:06:15.21
+a992751f
+User
+📨 [Evolution] Evento de mensagem: messages.update
+2025-10-08 22:06:15.21
+a992751f
+User
+1:06:15 AM [express] POST /api/webhooks/evolution 200 in 1ms :: {"success":true,"processed":true,"ev…
+2025-10-08 22:06:15.24
+a992751f
+User
+🔍 [Evolution DEBUG] Payload completo: {
+2025-10-08 22:06:15.24
+a992751f
+User
+"event": "chats.upsert",
+2025-10-08 22:06:15.24
+a992751f
+User
+"instance": "testecortex1",
+2025-10-08 22:06:15.24
+a992751f
+User
+"data": [
+2025-10-08 22:06:15.24
+a992751f
+User
+{
+2025-10-08 22:06:15.24
+a992751f
+User
+"remoteJid": "5522997074180@s.whatsapp.net",
+2025-10-08 22:06:15.24
+a992751f
+User
+"instanceId": "0db0ae3d-d694-4e04-b66c-9b25bc521c6c",
+2025-10-08 22:06:15.24
+a992751f
+User
+"unreadMessages": 0
+2025-10-08 22:06:15.24
+a992751f
+User
+}
+2025-10-08 22:06:15.24
+a992751f
+User
+],
+2025-10-08 22:06:15.24
+a992751f
+User
+"destination": "https://health-link-connect-mczebende.replit.app/api/webhooks/evolution",
+2025-10-08 22:06:15.24
+a992751f
+User
+"date_time": "2025-10-08T22:06:15.194Z",
+2025-10-08 22:06:15.24
+a992751f
+User
+"sender": "552425000000@s.whatsapp.net",
+2025-10-08 22:06:15.24
+a992751f
+User
+"server_url": "https://evolutionapi.trtelecom.net",
+2025-10-08 22:06:15.24
+a992751f
+User
+"apikey": "A91F3A59E6C4-488E-9877-AC157EE13011"
+2025-10-08 22:06:15.24
+a992751f
+User
+}
+2025-10-08 22:06:15.24
+a992751f
+User
+ℹ️ [Webhook Monitor] [CONNECTION] Webhook recebido: chats.upsert { instance: 'testecortex1', timestamp: '2025-10-09T01:06:15.246Z' }
+2025-10-08 22:06:15.24
+a992751f
+User
+📱 [Evolution Webhook] Evento recebido: chats.upsert { instance: 'testecortex1', event: 'chats.upsert' }
+2025-10-08 22:06:15.24
+a992751f
+User
+💬 [Evolution] Evento de chat: chats.upsert { chatId: undefined, name: undefined }
+2025-10-08 22:06:15.24
+a992751f
+User
+1:06:15 AM [express] POST /api/webhooks/evolution 200 in 2ms :: {"success":true,"processed":true,"ev…
+2025-10-08 22:06:17.93
+a992751f
+User
+🔍 [NPS Debug] Conversa ca5714ea-8b97-4fe6-85c4-72b86c440997: {
+2025-10-08 22:06:17.93
+a992751f
+User
+awaitingNPS: false,
+2025-10-08 22:06:17.93
+a992751f
+User
+messageText: 'Meu CPF é 171.686.447-00\nPreciso consultar meu boleto',
+2025-10-08 22:06:17.93
+a992751f
+User
+npsMatch: null,
+2025-10-08 22:06:17.93
+a992751f
+User
+status: 'active'
+2025-10-08 22:06:17.93
+a992751f
+User
+}
+2025-10-08 22:06:17.98
+a992751f
+User
+🔵 [OpenAI] Sending message: {
+2025-10-08 22:06:17.98
+a992751f
+User
+threadId: 'thread_IYwmk5ngFmTeZv7SIzmyG4ll',
+2025-10-08 22:06:17.98
+a992751f
+User
+assistantId: 'asst_pRXVhoy1o4YxNxVmaRiNOTMX',
+2025-10-08 22:06:17.98
+a992751f
+User
+providedAssistantId: 'asst_pRXVhoy1o4YxNxVmaRiNOTMX',
+2025-10-08 22:06:17.98
+a992751f
+User
+usedFallback: false
+2025-10-08 22:06:17.98
+a992751f
+User
+}
+2025-10-08 22:06:17.99
+a992751f
+User
+1:06:17 AM [express] POST /api/webhooks/evolution 200 in 3042ms :: {"success":true,"processed":true,…
