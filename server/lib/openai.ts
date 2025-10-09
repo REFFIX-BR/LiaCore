@@ -360,9 +360,32 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
         const { storage } = await import("../storage");
         
         try {
+          // Buscar documento do cliente automaticamente da conversa
+          const conversation = await storage.getConversation(conversationId);
+          
+          if (!conversation) {
+            console.error("❌ [AI Tool] Conversa não encontrada:", conversationId);
+            return JSON.stringify({
+              error: "Conversa não encontrada"
+            });
+          }
+          
+          if (!conversation.clientDocument) {
+            console.warn("⚠️ [AI Tool] Cliente ainda não forneceu CPF/CNPJ");
+            return JSON.stringify({
+              error: "Para consultar seus boletos, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
+            });
+          }
+          
+          // Injetar documento automaticamente nos args
+          const argsWithDocument = {
+            ...args,
+            documento: conversation.clientDocument
+          };
+          
           const boletos = await executeAssistantTool(
             "consulta_boleto_cliente",
-            args,
+            argsWithDocument,
             { conversationId },
             storage
           );
