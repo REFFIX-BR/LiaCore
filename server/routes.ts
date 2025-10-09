@@ -492,7 +492,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         await storage.updateConversation(conversation.id, updateData);
-        conversation = { ...conversation, ...updateData };
+        // Update local object
+        Object.assign(conversation, updateData);
       }
 
       // Store user message
@@ -1126,7 +1127,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           await storage.updateConversation(conversation.id, updateData);
-          conversation = { ...conversation, ...updateData };
+          // Update local object
+          Object.assign(conversation, updateData);
         }
 
         // Detect and store CPF/CNPJ if present in message
@@ -1531,7 +1533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conversation = await storage.createConversation({
         chatId: testChatId,
         clientName: testName,
-        clientPhone: testPhone,
+        clientId: testPhone,
         status: "active",
         assistantType: "Suporte Técnico",
         sentiment: "neutral",
@@ -3039,7 +3041,7 @@ A resposta deve:
         }
       } else {
         console.warn(`⚠️ [Supervisor] Sem número disponível. chatId: ${conversation.chatId}, clientId: ${conversation.clientId}`);
-        webhookLogger.warn('NO_PHONE_NUMBER', `Sem número disponível para envio`, {
+        webhookLogger.error('NO_PHONE_NUMBER', `Sem número disponível para envio`, {
           conversationId: id,
           chatId: conversation.chatId,
         });

@@ -9,6 +9,7 @@ export interface JWTPayload {
   userId: string;
   username: string;
   role: string;
+  fullName: string;
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -27,6 +28,7 @@ export function generateToken(user: User): string {
     userId: user.id,
     username: user.username,
     role: user.role,
+    fullName: user.fullName,
   };
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRY });
 }
