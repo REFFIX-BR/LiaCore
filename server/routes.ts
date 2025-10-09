@@ -3226,10 +3226,9 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
       }
 
       const messages = await storage.getMessagesByConversationId(id);
-      const lastUserMessage = messages.filter(m => m.role === "user").pop();
-
-      if (!lastUserMessage) {
-        return res.status(400).json({ error: "No user message found" });
+      
+      if (!messages || messages.length === 0) {
+        return res.status(400).json({ error: "Não há mensagens nesta conversa para gerar sugestão" });
       }
 
       // Preparar contexto da conversa
@@ -3238,20 +3237,24 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
         content: m.content,
       }));
 
+      // Pegar a última mensagem (independente do role) como contexto principal
+      const lastMessage = messages[messages.length - 1];
+      const lastMessageContext = `${lastMessage.role === 'user' ? 'Cliente' : 'Assistente'}: ${lastMessage.content}`;
+
       // Usar OpenAI para sugerir resposta baseada no contexto
       const suggestionPrompt = `Você é um assistente experiente da TR Telecom. 
       
-Analise o histórico da conversa abaixo e sugira a melhor resposta para a última mensagem do cliente.
+Analise o histórico da conversa abaixo e sugira a melhor resposta para dar continuidade ao atendimento.
 
 Histórico da conversa:
 ${conversationHistory.map(m => `${m.role === 'user' ? 'Cliente' : 'Assistente'}: ${m.content}`).join('\n')}
 
-Baseado no contexto completo da conversa, sugira uma resposta profissional, empática e que resolva a questão do cliente. 
+Baseado no contexto completo da conversa, sugira uma resposta profissional, empática e que ajude o cliente. 
 A resposta deve:
 - Ser direta e objetiva
 - Manter tom profissional e empático
-- Oferecer solução clara
-- Se necessário, pedir informações adicionais`;
+- Oferecer solução clara ou dar continuidade ao atendimento
+- Se necessário, pedir informações adicionais para melhor ajudar`;
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4",
@@ -3269,7 +3272,7 @@ A resposta deve:
       // Salvar sugestão
       const suggestion = await storage.createSuggestedResponse({
         conversationId: id,
-        messageContext: lastUserMessage.content,
+        messageContext: lastMessageContext,
         suggestedResponse,
         supervisorName,
         wasEdited: false,
