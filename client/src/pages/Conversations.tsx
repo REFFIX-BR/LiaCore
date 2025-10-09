@@ -26,6 +26,7 @@ interface Conversation {
   id: string;
   chatId: string;
   clientName: string;
+  clientDocument: string | null;
   assistantType: string;
   lastMessage: string | null;
   lastMessageTime: Date;
