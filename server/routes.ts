@@ -2262,7 +2262,7 @@ Em uma escala de 0 a 10, qual a satisfação com atendimento?
 
 Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
 
-          const sent = await sendWhatsAppMessage(conversation.clientId, npsMessage);
+          const sent = await sendWhatsAppMessage(conversation.clientId, npsMessage, conversation.evolutionInstance || undefined);
           if (sent) {
             console.log(`📊 [NPS] Pesquisa enviada para ${conversation.clientName} (${conversation.clientId})`);
           }
