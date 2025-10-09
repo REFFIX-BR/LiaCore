@@ -43,8 +43,12 @@ export default function Conversations() {
   const conversations = activeTab === "transferred" ? transferredConversations : assignedConversations;
   const conversationsLoading = activeTab === "transferred" ? transferredLoading : assignedLoading;
 
-  // Filtrar conversas ATIVAS
-  const activeConversations = conversations.filter(conv => conv.status === 'active' || conv.status === 'queued');
+  // Filtrar conversas ATIVAS (inclui resolved das últimas 24h, conforme backend)
+  const activeConversations = conversations.filter(conv => 
+    conv.status === 'active' || 
+    conv.status === 'queued' ||
+    conv.status === 'resolved'
+  );
 
   // Função para selecionar conversa
   const handleSelectConversation = (id: string) => {
@@ -82,8 +86,16 @@ export default function Conversations() {
     return <div className="flex items-center justify-center h-full">Carregando...</div>;
   }
 
-  const transferredActiveConversations = transferredConversations.filter(conv => conv.status === 'active' || conv.status === 'queued');
-  const assignedActiveConversations = assignedConversations.filter(conv => conv.status === 'active' || conv.status === 'queued');
+  const transferredActiveConversations = transferredConversations.filter(conv => 
+    conv.status === 'active' || 
+    conv.status === 'queued' ||
+    conv.status === 'resolved'
+  );
+  const assignedActiveConversations = assignedConversations.filter(conv => 
+    conv.status === 'active' || 
+    conv.status === 'queued' ||
+    conv.status === 'resolved'
+  );
 
   return (
     <div className="h-[calc(100vh-8rem)] flex gap-4">

@@ -216,7 +216,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
       const response = await apiRequest(
         `/api/conversations/${conversation.id}/assign`, 
         "POST",
-        { agentId: user?.id }
+        {} // Body vazio para auto-atribuição (backend usa currentUser.userId)
       );
       return response.json();
     },
