@@ -2,7 +2,7 @@
 
 ## Overview
 
-LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Telecom's customer service, acting as an intelligent router and coordinator for specialized AI assistants powered by OpenAI's Assistants API. It integrates a RAG knowledge base using Upstash Vector for dynamic Q&A and action execution via structured APIs. The platform features a real-time supervisor monitoring dashboard for human intervention and an autonomous continuous learning system that evolves assistant prompts based on feedback. The business vision is to significantly enhance customer service efficiency and satisfaction through intelligent automation and continuous AI improvement.
+LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Telecom's customer service, acting as an intelligent router and coordinator for specialized AI assistants powered by OpenAI's Assistants API. It integrates a RAG knowledge base using Upstash Vector for dynamic Q&A and action execution via structured APIs. The platform features automated boleto consultation, PPPoE connection diagnosis, and customer unlock/unblock requests for blocked connections. It includes a real-time supervisor monitoring dashboard for human intervention and an autonomous continuous learning system that evolves assistant prompts based on feedback. The business vision is to significantly enhance customer service efficiency and satisfaction through intelligent automation and continuous AI improvement.
 
 ## User Preferences
 
@@ -56,6 +56,25 @@ The frontend uses React with TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailw
   - Full security validation chain prevents unauthorized access
   - **TypeScript Production-Ready**: All 54 LSP errors resolved (spread operators, missing types, schema mismatches)
   - **JWT Enhancement**: Added `fullName` to JWT payload for complete user context
+- **PPPoE Connection Status System** (`CONEXAO_PPPOE_SETUP.md`):
+  - Auto-detects connection-related keywords (internet, conexão, velocidade, lento, desconectado, wifi, sinal)
+  - POST to `check_pppoe_status` with documento → returns complete diagnostic data
+  - Field-specific interpretation: statusIP (financial blocks), onu_run_state (equipment), massiva (regional), os_aberta (technician)
+  - Diagnostic priority: Check statusIP first (BLOQUEIO/SEMIBLOQUEIO = financial, not technical)
+  - Enriched context with interpretation guide for AI to diagnose and respond naturally
+  - 3-5x faster than function calling via auto-fetch on keyword detection
+- **Unlock/Unblock System** (`DESBLOQUEIO_SETUP.md`):
+  - Auto-detects unlock requests via keywords (desbloquear, liberar, confiança, urgente, emergência, bloqueado)
+  - POST to `consulta_desbloqueio` with documento → returns status + message
+  - Response structure: `data[0].status[0].status` (S/N) + `data[0].resposta[0].obs` (message)
+  - Possible outcomes:
+    * "desbloqueio realizado" → Success (connection liberates in 15min)
+    * "desbloqueio já efetuado esse mês" → Monthly limit reached (1x/month)
+    * "CLIENTE COM MAIS DE 1 BOLETO EM ABERTO" → Multiple unpaid invoices
+    * "DESBLOQUEIO NAO EFETUADO" → Not blocked or not eligible
+  - Mandatory `clientDocument` validation: BLOCKS if document not stored (security-critical)
+  - AI interpretation guide provides empathetic responses with next steps
+  - Follows same security pattern as boleto/conexão systems
 
 **Real-Time Monitoring**:
 - **Supervisor Dashboard**: KPIs, live conversation queue (urgency/sentiment), alerts, transcripts, human intervention controls.
