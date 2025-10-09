@@ -1129,6 +1129,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversation = { ...conversation, ...updateData };
         }
 
+        // Detect and store CPF/CNPJ if present in message
+        if (!conversation.clientDocument) {
+          // Regex para CPF (com ou sem formatação): 000.000.000-00 ou 00000000000
+          const cpfMatch = messageText.match(/\b(\d{3}\.?\d{3}\.?\d{3}-?\d{2})\b/);
+          // Regex para CNPJ (com ou sem formatação): 00.000.000/0000-00 ou 00000000000000
+          const cnpjMatch = messageText.match(/\b(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})\b/);
+          
+          const documentMatch = cpfMatch || cnpjMatch;
+          
+          if (documentMatch) {
+            // Remove formatação (pontos, traços, barras)
+            const cleanDocument = documentMatch[1].replace(/[.\-\/]/g, '');
+            
+            // Mascara segura: CPF (11 dígitos) ou CNPJ (14 dígitos)
+            const maskedDocument = cleanDocument.length === 11
+              ? cleanDocument.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '***.***.***-**')  // CPF: ***.***.***: -**
+              : cleanDocument.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '**.***.***/****-**');  // CNPJ: **.***.***/****-**
+            
+            console.log(`📝 [CPF/CNPJ Detected] Cliente ${clientName} forneceu documento: ${maskedDocument}`);
+            
+            await storage.updateConversation(conversation.id, {
+              clientDocument: cleanDocument
+            });
+            
+            // Update local conversation object
+            conversation = { ...conversation, clientDocument: cleanDocument };
+          }
+        }
+
         // Store user message
         await storage.createMessage({
           conversationId: conversation.id,
