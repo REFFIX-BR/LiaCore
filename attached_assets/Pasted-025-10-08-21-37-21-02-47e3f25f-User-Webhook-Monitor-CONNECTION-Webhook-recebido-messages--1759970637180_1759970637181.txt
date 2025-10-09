@@ -1,0 +1,140 @@
+025-10-08 21:37:21.02
+47e3f25f
+User
+ℹ️ [Webhook Monitor] [CONNECTION] Webhook recebido: messages.upsert { instance: 'testecortex1', timestamp: '2025-10-09T00:37:21.019Z' }
+2025-10-08 21:37:21.02
+47e3f25f
+User
+📱 [Evolution Webhook] Evento recebido: messages.upsert { instance: 'testecortex1', event: 'messages.upsert' }
+2025-10-08 21:37:21.02
+47e3f25f
+User
+✅ [Webhook Monitor] [MESSAGE_RECEIVED] Mensagem de Marcio Zebende {
+2025-10-08 21:37:21.02
+47e3f25f
+User
+phoneNumber: '5522997074180',
+2025-10-08 21:37:21.02
+47e3f25f
+User
+messagePreview: 'Verifica agora novamente meu boleto cpf 171.686.44',
+2025-10-08 21:37:21.02
+47e3f25f
+User
+chatId: 'whatsapp_5522997074180'
+2025-10-08 21:37:21.02
+47e3f25f
+User
+}
+2025-10-08 21:37:21.02
+47e3f25f
+User
+💬 [Evolution] Mensagem recebida de Marcio Zebende (5522997074180): Verifica agora novamente meu boleto cpf 171.686.447-00
+2025-10-08 21:37:21.17
+47e3f25f
+User
+🔍 [Evolution DEBUG] Payload completo: {
+2025-10-08 21:37:21.17
+47e3f25f
+User
+"event": "contacts.update",
+2025-10-08 21:37:21.17
+47e3f25f
+User
+"instance": "testecortex1",
+2025-10-08 21:37:21.17
+47e3f25f
+User
+"data": [
+2025-10-08 21:37:21.17
+47e3f25f
+User
+{
+2025-10-08 21:37:21.17
+47e3f25f
+User
+"remoteJid": "5522997074180@s.whatsapp.net",
+2025-10-08 21:37:21.17
+47e3f25f
+User
+"profilePicUrl": "https://pps.whatsapp.net/v/t61.24694-24/511550335_1769908343883243_7926235056357273546_n.jpg?ccb=11-4&oh=01_Q5Aa2wGHP4En8trWvhgt5pjo5LBcHQfRH5kiCdeO8CASlWNkCQ&oe=68F42317&_nc_sid=5e03e0&_nc_cat=101",
+2025-10-08 21:37:21.17
+47e3f25f
+User
+"instanceId": "0db0ae3d-d694-4e04-b66c-9b25bc521c6c"
+2025-10-08 21:37:21.17
+47e3f25f
+User
+}
+2025-10-08 21:37:21.17
+47e3f25f
+User
+],
+2025-10-08 21:37:21.17
+47e3f25f
+User
+"destination": "https://health-link-connect-mczebende.replit.app/api/webhooks/evolution",
+2025-10-08 21:37:21.17
+47e3f25f
+User
+"date_time": "2025-10-08T21:37:21.171Z",
+2025-10-08 21:37:21.17
+47e3f25f
+User
+"sender": "552425000000@s.whatsapp.net",
+2025-10-08 21:37:21.17
+47e3f25f
+User
+"server_url": "https://evolutionapi.trtelecom.net",
+2025-10-08 21:37:21.17
+47e3f25f
+User
+"apikey": "A91F3A59E6C4-488E-9877-AC157EE13011"
+2025-10-08 21:37:21.17
+47e3f25f
+User
+}
+2025-10-08 21:37:21.17
+47e3f25f
+User
+ℹ️ [Webhook Monitor] [CONNECTION] Webhook recebido: contacts.update { instance: 'testecortex1', timestamp: '2025-10-09T00:37:21.177Z' }
+2025-10-08 21:37:21.17
+47e3f25f
+User
+📱 [Evolution Webhook] Evento recebido: contacts.update { instance: 'testecortex1', event: 'contacts.update' }
+2025-10-08 21:37:21.17
+47e3f25f
+User
+❓ [Evolution] Evento desconhecido: contacts.update
+2025-10-08 21:37:21.17
+47e3f25f
+User
+12:37:21 AM [express] POST /api/webhooks/evolution 200 in 1ms :: {"success":true,"processed":false,"r…
+2025-10-08 21:37:21.20
+47e3f25f
+User
+🔍 [Evolution DEBUG] Payload completo: {
+2025-10-08 21:37:21.20
+47e3f25f
+User
+"event": "contacts.update",
+2025-10-08 21:37:21.20
+47e3f25f
+User
+"instance": "testecortex1",
+2025-10-08 21:37:21.20
+47e3f25f
+User
+"data": {
+2025-10-08 21:37:21.20
+47e3f25f
+User
+"remoteJid": "5522997074180@s.whatsapp.net",
+2025-10-08 21:37:21.20
+47e3f25f
+User
+"pushName": "Marcio Zebende",
+2025-10-08 21:37:21.20
+47e3f25f
+User
+"profilePicUrl": "https://pps.whatsapp.net/v/t61.24694-24/511550335_1769908343883243_7926235056357273546_n.jpg?ccb=11-4&oh=01_Q5Aa2wGHP4En8trWvhgt5pjo5LBcHQfRH5kiCdeO8CASlWNkCQ&oe=68F42317&_nc_sid=5e03e0&_nc_cat=101",
