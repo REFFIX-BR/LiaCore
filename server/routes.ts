@@ -1154,7 +1154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             
             // Update local conversation object
-            conversation = { ...conversation, clientDocument: cleanDocument };
+            conversation.clientDocument = cleanDocument;
           }
         }
 
