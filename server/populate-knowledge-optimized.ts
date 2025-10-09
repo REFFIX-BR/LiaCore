@@ -574,6 +574,65 @@ transferir_para_humano({
 - Sugerir procedimentos técnicos avançados (exceto Suporte)`,
     source: "Manual Geral TR Telecom",
     metadata: { category: "geral", topic: "regras-absolutas", priority: "critical" }
+  },
+
+  {
+    id: "kb-geral-005",
+    name: "Verificação Obrigatória de CPF para Encaminhamentos",
+    content: `## VERIFICAÇÃO DE CPF ANTES DE ENCAMINHAR PARA ASSISTENTES ESPECIALIZADOS
+
+**REGRA CRÍTICA:**
+Antes de encaminhar o cliente para qualquer assistente especializado (Suporte, Financeiro, Ouvidoria, Comercial upgrade, ou Cancelamento), é OBRIGATÓRIO verificar se o CPF/CNPJ do cliente já está registrado no sistema.
+
+**ASSISTENTES QUE EXIGEM CPF:**
+- ✅ Suporte Técnico
+- ✅ Financeiro
+- ✅ Ouvidoria
+- ✅ Comercial (upgrade de velocidade)
+- ✅ Cancelamento
+
+**PROCESSO DE VERIFICAÇÃO:**
+
+**1. Revisar histórico:**
+- SEMPRE verificar o histórico completo da conversa
+- Se o CPF já foi informado anteriormente, NÃO pedir novamente
+- O sistema detecta e armazena CPF/CNPJ automaticamente quando mencionado
+
+**2. Se CPF NÃO estiver registrado:**
+- Solicitar de forma natural:
+  > "Para prosseguir, preciso do seu CPF ou CNPJ, por favor 😊"
+  
+- Aguardar resposta do cliente
+- Sistema detectará automaticamente via regex e armazenará
+- Após cliente fornecer, pode encaminhar
+
+**3. Se CPF JÁ estiver registrado:**
+- Encaminhar diretamente para o assistente especializado
+- Não solicitar novamente
+
+**4. Se cliente recusar fornecer CPF:**
+- Mensagem: "Entendo. Vou encaminhar seu atendimento a um atendente humano que poderá te ajudar."
+- Transferir para: departamento apropriado com motivo "Cliente recusou fornecer CPF"
+
+**IMPORTANTE:**
+- CPF é detectado automaticamente pelo sistema nos formatos:
+  * 000.000.000-00 (formatado)
+  * 00000000000 (sem formatação)
+- CNPJ é detectado automaticamente nos formatos:
+  * 00.000.000/0000-00 (formatado)
+  * 00000000000000 (sem formatação)
+- Sistema armazena o documento limpo (sem formatação)
+- NUNCA peça CPF se já constar no histórico da conversa
+
+**FLUXO RECOMENDADO:**
+1. Cliente manifesta necessidade
+2. Assistente identifica departamento apropriado
+3. ANTES de rotear → verificar histórico
+4. Se CPF ausente → solicitar
+5. Após receber CPF → confirmar e rotear
+6. Se CPF presente → rotear diretamente`,
+    source: "Manual de Segurança e Compliance TR Telecom",
+    metadata: { category: "geral", topic: "verificacao-cpf", priority: "critical" }
   }
 ];
 
