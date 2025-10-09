@@ -1205,10 +1205,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return;
             }
             
+            // 🎯 DETECÇÃO INTELIGENTE DE CONSULTA DE BOLETO
+            // Detecta se cliente está perguntando sobre boletos e enriquece contexto
+            let enrichedMessage = messageText;
+            const boletoKeywords = /\b(boleto|fatura|segunda via|pagamento|débito|vencimento|código.*barras|pix|mensalidade|conta)\b/i;
+            
+            if (boletoKeywords.test(messageText) && conversationRef.clientDocument) {
+              console.log(`🔍 [Boleto Auto-Fetch] Detectada consulta de boleto - buscando dados automaticamente...`);
+              
+              try {
+                // Buscar TODOS os boletos do cliente via API
+                const response = await fetch("https://webhook.trtelecom.net/webhook/consulta_boleto", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ documento: conversationRef.clientDocument }),
+                });
+
+                if (response.ok) {
+                  const boletos = await response.json();
+                  console.log(`✅ [Boleto Auto-Fetch] ${boletos?.length || 0} boletos encontrados`);
+                  
+                  if (boletos && boletos.length > 0) {
+                    // Enriquecer mensagem com TODOS os dados de boletos
+                    enrichedMessage = `${messageText}\n\n[DADOS DO SISTEMA - USO INTERNO DA IA]\nBoletos disponíveis do cliente:\n${JSON.stringify(boletos, null, 2)}\n\nInstruções: Analise a pergunta do cliente e responda APENAS com os boletos relevantes ao que foi perguntado. Formate de forma natural e conversacional.`;
+                    
+                    console.log(`📋 [Boleto Auto-Fetch] Contexto enriquecido com ${boletos.length} boletos`);
+                  } else {
+                    console.log(`ℹ️ [Boleto Auto-Fetch] Nenhum boleto encontrado para o cliente`);
+                  }
+                } else {
+                  console.error(`❌ [Boleto Auto-Fetch] Erro na API: ${response.status}`);
+                }
+              } catch (error) {
+                console.error("❌ [Boleto Auto-Fetch] Erro ao buscar boletos:", error);
+                // Continua normalmente sem enriquecimento se falhar
+              }
+            }
+            
             const { response: responseText, transferred, transferredTo, resolved, resolveReason } = await sendMessageAndGetResponse(
               threadId!,
               assistantId,
-              messageText,
+              enrichedMessage,  // Usa mensagem enriquecida com boletos se detectado
               chatId,  // CRÍTICO: Passar chatId para processar finalizar_conversa
               conversationRef.id  // CRÍTICO: Passar conversationId para consulta_boleto_cliente
             );
