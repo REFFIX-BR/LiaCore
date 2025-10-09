@@ -42,6 +42,18 @@ The frontend uses React with TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailw
   - PII-free logging (CPF/CNPJ masked in all logs)
   - Functions: `consulta_boleto_cliente` (boleto queries with security validation)
   - Security layers: Context required → DB conversation exists → Document matches DB record
+- **Automatic CPF/CNPJ Detection & Storage** (`server/routes.ts`):
+  - Regex-based detection in incoming messages (supports formatted/unformatted)
+  - CPF pattern: `\b(\d{3}\.?\d{3}\.?\d{3}-?\d{2})\b` (11 digits)
+  - CNPJ pattern: `\b(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})\b` (14 digits)
+  - Auto-storage in `conversations.clientDocument` (cleaned, no formatting)
+  - Security logging: CPF masked as `***.***. ***-**`, CNPJ as `**.***.***/****-**`
+- **Boleto Consultation System**:
+  - `consulta_boleto_cliente` function registered in OpenAI Financeiro assistant (see `BOLETO_FUNCTION_SETUP.md`)
+  - Zero-parameter design: document auto-injected from conversation context
+  - Handles tool call in `server/lib/openai.ts` → fetches `clientDocument` from DB → validates → calls `executeAssistantTool`
+  - Returns user-friendly error if CPF/CNPJ not yet provided
+  - Full security validation chain prevents unauthorized access
 
 **Real-Time Monitoring**:
 - **Supervisor Dashboard**: KPIs, live conversation queue (urgency/sentiment), alerts, transcripts, human intervention controls.
