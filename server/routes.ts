@@ -1267,7 +1267,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   
                   if (conexoes && conexoes.length > 0) {
                     // Enriquecer mensagem com TODOS os dados de conexão
-                    enrichedMessage = `${messageText}\n\n[DADOS DO SISTEMA - USO INTERNO DA IA]\nStatus de conexão do cliente:\n${JSON.stringify(conexoes, null, 2)}\n\nInstruções: Analise a pergunta do cliente e interprete os dados técnicos. Responda de forma clara e natural, explicando o status da conexão. Se statusPPPoE='ONLINE' e onu_run_state='online', a conexão está funcionando. Se houver problema, identifique e oriente o cliente.`;
+                    enrichedMessage = `${messageText}\n\n[DADOS DO SISTEMA - USO INTERNO DA IA]\nStatus de conexão do cliente:\n${JSON.stringify(conexoes, null, 2)}\n\n🔍 GUIA DE INTERPRETAÇÃO:
+1. PRIORIDADE: Verificar 'statusIP' primeiro - BLOQUEIO/SEMIBLOQUEIO = problema financeiro (não técnico)
+2. Se massiva=true: Problema regional afetando vários clientes
+3. Se os_aberta="TRUE": Técnico já foi acionado
+4. Diagnóstico técnico:
+   - statusPPPoE='ONLINE' + onu_run_state='online' + statusIP='ATIVO' = Tudo OK
+   - statusPPPoE='OFFLINE' + onu_run_state='online' + statusIP='BLOQUEIO' = Bloqueio financeiro
+   - Ambos OFFLINE + dying-gasp = Queda de energia no cliente
+   - Ambos OFFLINE + los/LOSS/LOFI = Problema na fibra (rompimento físico)
+5. Responda naturalmente, traduzindo termos técnicos para linguagem simples.`;
                     
                     console.log(`🔌 [Conexão Auto-Fetch] Contexto enriquecido com ${conexoes.length} conexão(ões)`);
                   } else {

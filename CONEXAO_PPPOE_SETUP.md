@@ -52,21 +52,24 @@ instável|wi-fi|wifi|sinal|offline|online|pppoe|ip|fibra|rede
 
 ### **Campos de Status de Conexão:**
 
-#### ✅ **statusPPPoE** (PRINCIPAL)
-- **ONLINE:** Cliente conectado no momento
-- **OFFLINE:** Cliente desconectado
+#### ✅ **statusPPPoE** (SESSÃO DE DADOS)
+- **ONLINE:** Cliente possui sessão PPPoE ativa - pode navegar na internet
+- **OFFLINE:** Cliente SEM sessão PPPoE - sem tráfego de dados
 
-#### ✅ **onu_run_state** (EQUIPAMENTO ONU)
-- **online:** ONU (equipamento fibra) funcionando
-- **offline:** ONU com problema ou desligada
+#### 🔌 **onu_run_state** (EQUIPAMENTO ONU - Conversor Fibra/UTP)
+- **online:** ONU (conversor de fibra para cabo) funcionando normalmente
+- **offline:** ONU com problema, desligada ou sem sinal
+- **Divergência:** Se statusPPPoE e onu_run_state estiverem diferentes, investigar causa
 
-#### ⚠️ **statusIP**
-- **ATIVO:** IP atribuído e ativo
-- **INATIVO:** Sem IP atribuído
+#### 💳 **statusIP** (STATUS FINANCEIRO/BLOQUEIO)
+- **ATIVO:** Cliente sem restrições de pagamento - conexão liberada
+- **SEMIBLOQUEIO:** Cliente com restrição parcial por inadimplência
+- **BLOQUEIO:** Cliente bloqueado por inadimplência - sem internet
+- **Importante:** Relacionado a PAGAMENTOS, não a problemas técnicos
 
-#### 🔧 **onu_last_down_cause** (Última Causa de Queda)
-- **dying-gasp:** Queda de energia no cliente
-- **los:** Perda de sinal óptico (problema na fibra)
+#### 🔧 **onu_last_down_cause** (Última Causa de Queda da ONU)
+- **dying-gasp:** Equipamento desligado ou queda de energia no cliente
+- **los / LOFI / LOSS:** Problema físico no sinal da fibra (rompimento, conector solto, etc.)
 - **manual:** Desconexão manual
 
 ### **Campos de Tempo:**
@@ -88,18 +91,20 @@ instável|wi-fi|wifi|sinal|offline|online|pppoe|ip|fibra|rede
 
 ### **Campos de Suporte:**
 
-#### 🎫 **os_aberta** (Ordem de Serviço)
-- **"TRUE":** Há chamado técnico aberto
-- **"FALSE":** Sem chamados abertos
+#### 🎫 **os_aberta** (Ordem de Serviço Técnica)
+- **"TRUE":** Existe chamado técnico aberto com visita agendada/pendente ao local do cliente
+- **"FALSE":** Nenhum chamado técnico presencial aberto
 
 #### 🌐 **massiva** (Problema em Massa)
-- **true:** Problema afetando vários clientes
-- **false:** Problema isolado do cliente
+- **true:** Problema generalizado afetando vários clientes da região (problema na rede)
+- **false:** Problema isolado apenas deste cliente
 
-#### 📍 **STATUS_TIPO**
-- **ATIVO:** Cliente com contrato ativo
-- **SUSPENSO:** Cliente suspenso (inadimplência)
+#### 📍 **STATUS_TIPO** (Status do Cadastro)
+- **ATIVO:** Cliente ativo com contrato regular
+- **PERMUTA:** Cliente em processo de permuta
+- **INADIMPLENTE:** Cliente inadimplente mas ainda não bloqueado
 - **CANCELADO:** Cliente cancelado
+- **Outros:** Podem existir outros status
 
 ---
 
@@ -113,60 +118,78 @@ instável|wi-fi|wifi|sinal|offline|online|pppoe|ip|fibra|rede
   "statusIP": "ATIVO"
 }
 ```
-**Significado:** Tudo funcionando normalmente
+**Significado:** Tudo funcionando - cliente navegando normalmente
 
-### ❌ **Problema no Cliente:**
+### 💳 **Bloqueio Financeiro:**
+```json
+{
+  "statusPPPoE": "OFFLINE",
+  "onu_run_state": "online",
+  "statusIP": "BLOQUEIO"
+}
+```
+**Significado:** ONU funcionando MAS cliente bloqueado por inadimplência - orientar pagamento
+
+### ⚡ **Queda de Energia no Cliente:**
 ```json
 {
   "statusPPPoE": "OFFLINE",
   "onu_run_state": "offline",
-  "onu_last_down_cause": "dying-gasp"
+  "onu_last_down_cause": "dying-gasp",
+  "statusIP": "ATIVO"
 }
 ```
-**Significado:** Queda de energia no local do cliente
+**Significado:** Equipamento desligado/sem energia - pedir para cliente verificar tomada e equipamento
 
-### 🔧 **Problema Técnico:**
+### 🔧 **Problema na Fibra:**
 ```json
 {
   "statusPPPoE": "OFFLINE",
   "onu_run_state": "offline", 
   "onu_last_down_cause": "los",
-  "os_aberta": "TRUE"
+  "os_aberta": "TRUE",
+  "statusIP": "ATIVO"
 }
 ```
-**Significado:** Problema na fibra, técnico já foi acionado
+**Significado:** Problema físico na fibra (rompimento/conector) - técnico já acionado
 
 ### 🌐 **Problema Massivo:**
 ```json
 {
   "statusPPPoE": "OFFLINE",
+  "onu_run_state": "offline",
   "massiva": true
 }
 ```
-**Significado:** Problema generalizado afetando região
-
-### 💳 **Suspensão:**
-```json
-{
-  "STATUS_TIPO": "SUSPENSO",
-  "statusPPPoE": "OFFLINE"
-}
-```
-**Significado:** Cliente suspenso por inadimplência
+**Significado:** Problema generalizado afetando vários clientes da região - equipe trabalhando
 
 ---
 
 ## 💬 **Instruções para Resposta da IA**
 
-### **Priorização de Diagnóstico:**
-1. Verificar `massiva` → Informar que é problema regional
-2. Verificar `STATUS_TIPO` → Se SUSPENSO, orientar pagamento
-3. Verificar `os_aberta` → Se TRUE, informar que técnico foi acionado
-4. Verificar `statusPPPoE` + `onu_run_state`:
-   - Ambos ONLINE → Conexão OK
-   - Ambos OFFLINE + dying-gasp → Queda de energia
-   - Ambos OFFLINE + los → Problema na fibra
-5. Se apenas `statusPPPoE` OFFLINE → Problema de autenticação
+### **Priorização de Diagnóstico (ORDEM OBRIGATÓRIA):**
+
+1. **PRIMEIRO: Verificar `statusIP` (PRIORIDADE MÁXIMA - Financeiro):**
+   - Se `BLOQUEIO` ou `SEMIBLOQUEIO` → Cliente bloqueado por inadimplência
+   - Orientar sobre pagamento/regularização
+   - **NÃO é problema técnico! NÃO investigar causas técnicas se bloqueado**
+   
+2. **SEGUNDO: Verificar `massiva`:**
+   - Se `true` → Problema regional, equipe já trabalhando
+   - Informar que afeta vários clientes, sem previsão específica
+   
+3. **TERCEIRO: Verificar `os_aberta`:**
+   - Se `TRUE` → Técnico já foi acionado, visita agendada/pendente
+   - Informar que chamado existe e aguardar atendimento
+   
+4. **QUARTO: Diagnosticar pela combinação `statusPPPoE` + `onu_run_state`:**
+   - **Ambos ONLINE + statusIP ATIVO** → Conexão OK
+   - **PPPoE OFFLINE + ONU online + statusIP ATIVO** → Problema de autenticação PPPoE
+   - **Ambos OFFLINE + dying-gasp + statusIP ATIVO** → Queda de energia no cliente
+   - **Ambos OFFLINE + los/LOSS/LOFI + statusIP ATIVO** → Problema na fibra (rompimento)
+   
+5. **QUINTO: Verificar `STATUS_TIPO`:**
+   - Se INADIMPLENTE ou CANCELADO → Orientar sobre situação cadastral
 
 ### **Tom de Resposta:**
 - ✅ Natural e conversacional
@@ -175,20 +198,53 @@ instável|wi-fi|wifi|sinal|offline|online|pppoe|ip|fibra|rede
 - ❌ Não expor JSON ou termos técnicos crus
 - ❌ Não inventar informações não presentes nos dados
 
-### **Exemplo de Resposta:**
-**Cliente:** "Minha internet está caindo"
+### **Exemplos de Resposta:**
+
+#### **Exemplo 1 - Bloqueio Financeiro:**
+**Cliente:** "Minha internet não está funcionando"
 
 **Dados:**
 ```json
 {
   "statusPPPoE": "OFFLINE",
+  "onu_run_state": "online",
+  "statusIP": "BLOQUEIO"
+}
+```
+
+**IA Responde:**
+> "Identifiquei que sua conexão está bloqueada devido a pendências financeiras. Seu equipamento está funcionando normalmente, mas a conexão foi suspensa por inadimplência. Para restabelecer o serviço, é necessário regularizar os pagamentos. Posso te ajudar a verificar seus boletos em aberto ou te transferir para o financeiro?"
+
+#### **Exemplo 2 - Queda de Energia:**
+**Cliente:** "Internet caiu aqui"
+
+**Dados:**
+```json
+{
+  "statusPPPoE": "OFFLINE",
+  "onu_run_state": "offline",
   "onu_last_down_cause": "dying-gasp",
+  "statusIP": "ATIVO",
   "os_aberta": "FALSE"
 }
 ```
 
 **IA Responde:**
-> "Entendi sua situação. Identifiquei que houve uma queda de energia no seu local, o que desconectou o equipamento. Por favor, verifique se todos os equipamentos estão ligados corretamente. Se o problema persistir após verificar, posso abrir um chamado técnico para você."
+> "Identifiquei que houve uma queda de energia no seu local, o que desligou o equipamento de internet. Por favor, verifique se o modem/roteador está ligado corretamente na tomada e se as luzes estão acesas. Aguarde alguns minutos para o equipamento reiniciar. Se não voltar, me avise que abro um chamado técnico."
+
+#### **Exemplo 3 - Problema Massivo:**
+**Cliente:** "A internet está fora"
+
+**Dados:**
+```json
+{
+  "statusPPPoE": "OFFLINE",
+  "massiva": true
+}
+```
+
+**IA Responde:**
+> "Identificamos que há um problema generalizado na região que está afetando vários clientes, incluindo você. Nossa equipe técnica já está trabalhando para restabelecer o serviço o mais rápido possível. Pedimos desculpas pelo transtorno e agradecemos a compreensão."
 
 ---
 
