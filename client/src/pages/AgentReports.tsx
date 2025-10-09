@@ -33,9 +33,12 @@ export default function AgentReports() {
   const [endDate, setEndDate] = useState("");
 
   // Get all agents for selection
-  const { data: agents = [] } = useQuery<any[]>({
-    queryKey: ["/api/agents/list"]
+  const { data: agentsData, isLoading: isLoadingAgents } = useQuery<any>({
+    queryKey: ["/api/agents/list"],
+    retry: 1,
   });
+  
+  const agents = Array.isArray(agentsData) ? agentsData : (agentsData?.agents || []);
 
   // Calculate date range based on preset
   const getDateRange = () => {
