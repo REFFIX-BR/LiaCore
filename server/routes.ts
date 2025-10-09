@@ -1244,6 +1244,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
 
+            // 🔓 DETECÇÃO INTELIGENTE DE SOLICITAÇÃO DE DESBLOQUEIO
+            // Detecta se cliente está pedindo desbloqueio e enriquece contexto
+            // IMPORTANTE: Só processa se clientDocument JÁ estiver armazenado (segurança)
+            const desbloqueioKeywords = /\b(desbloque(ar|io)?|libera(r|ção)?|confiança|urgente|emergência|bloqueado|bloqueio|preciso.*internet|preciso.*conexão)\b/i;
+            
+            if (desbloqueioKeywords.test(messageText) && conversationRef.clientDocument) {
+              console.log(`🔍 [Desbloqueio Auto-Fetch] Detectada solicitação de desbloqueio - processando...`);
+              
+              try {
+                // Solicitar desbloqueio via API
+                const response = await fetch("https://webhook.trtelecom.net/webhook/consulta_desbloqueio", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ documento: conversationRef.clientDocument }),
+                });
+
+                if (response.ok) {
+                  const resultado = await response.json();
+                  const desbloqueio = resultado[0];
+                  const status = desbloqueio?.data?.[0]?.status?.[0]?.status || 'N';
+                  const obs = desbloqueio?.data?.[0]?.resposta?.[0]?.obs || 'Erro ao processar';
+                  
+                  console.log(`✅ [Desbloqueio Auto-Fetch] Status: ${status} - Obs: ${obs}`);
+                  
+                  // Enriquecer mensagem com resultado do desbloqueio
+                  enrichedMessage = `${messageText}\n\n[DADOS DO SISTEMA - USO INTERNO DA IA]\nResultado do desbloqueio:\n${JSON.stringify(desbloqueio, null, 2)}\n\n🔍 GUIA DE INTERPRETAÇÃO:
+- Se status='S' e obs='desbloqueio realizado': SUCESSO! Informar que conexão será liberada em até 15 minutos
+- Se obs='desbloqueio já efetuado esse mês': Cliente já utilizou desbloqueio mensal. Orientar sobre limite
+- Se obs='CLIENTE COM MAIS DE 1 BOLETO EM ABERTO': Múltiplas faturas pendentes - orientar pagamento
+- Se obs='DESBLOQUEIO NAO EFETUADO': Cliente não possui bloqueio ativo ou não é elegível
+- Sempre responder de forma empática e natural`;
+                  
+                  console.log(`🔓 [Desbloqueio Auto-Fetch] Contexto enriquecido com resultado`);
+                } else {
+                  console.error(`❌ [Desbloqueio Auto-Fetch] Erro na API: ${response.status}`);
+                }
+              } catch (error) {
+                console.error("❌ [Desbloqueio Auto-Fetch] Erro ao processar desbloqueio:", error);
+                // Continua normalmente sem enriquecimento se falhar
+              }
+            }
+
             // 🔌 DETECÇÃO INTELIGENTE DE CONSULTA DE CONEXÃO/INTERNET
             // Detecta se cliente está perguntando sobre conexão e enriquece contexto
             const conexaoKeywords = /\b(internet|conexão|conex[aã]o|velocidade|lent(o|a)|desconect(ado|ou)|caindo|instável|instavel|wi-?fi|wifi|sinal|offline|online|pppoe|ip|fibra|rede)\b/i;

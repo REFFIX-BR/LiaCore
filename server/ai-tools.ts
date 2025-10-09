@@ -59,6 +59,17 @@ interface StatusConexaoResult {
   massiva: boolean;
 }
 
+interface DesbloqueioResult {
+  data: Array<{
+    resposta: Array<{
+      obs: string;
+    }>;
+    status: Array<{
+      status: string;
+    }>;
+  }>;
+}
+
 /**
  * Consulta boletos do cliente no sistema externo
  * @param documento CPF ou CNPJ do cliente
@@ -176,6 +187,76 @@ export async function consultaStatusConexao(
 }
 
 /**
+ * Solicita desbloqueio/liberação em confiança da conexão do cliente
+ * @param documento CPF ou CNPJ do cliente
+ * @param conversationContext Contexto OBRIGATÓRIO da conversa para validação de segurança
+ * @param storage Interface de storage para validação da conversa
+ * @returns Resultado da solicitação de desbloqueio
+ */
+export async function solicitarDesbloqueio(
+  documento: string,
+  conversationContext: { conversationId: string },
+  storage: IStorage
+): Promise<DesbloqueioResult> {
+  try {
+    // Validação de segurança OBRIGATÓRIA
+    if (!conversationContext || !conversationContext.conversationId) {
+      console.error(`❌ [AI Tool Security] Tentativa de desbloqueio sem contexto de conversa`);
+      throw new Error("Contexto de segurança é obrigatório para desbloqueio");
+    }
+
+    // Validação: conversa deve existir no banco
+    const conversation = await storage.getConversation(conversationContext.conversationId);
+    if (!conversation) {
+      console.error(`❌ [AI Tool Security] Tentativa de desbloqueio com conversationId inválido`);
+      throw new Error("Conversa não encontrada - contexto de segurança inválido");
+    }
+
+    // CRÍTICO: clientDocument deve existir OBRIGATORIAMENTE
+    if (!conversation.clientDocument) {
+      console.error(`❌ [AI Tool Security] Tentativa de desbloqueio sem documento do cliente armazenado`);
+      throw new Error("Para solicitar desbloqueio, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento.");
+    }
+
+    // CRÍTICO: Validação de documento usando valor do BANCO DE DADOS (fonte confiável)
+    if (conversation.clientDocument !== documento) {
+      console.error(`❌ [AI Tool Security] Tentativa de desbloqueio de documento diferente do cliente da conversa`);
+      throw new Error("Não é permitido desbloquear conexão de outros clientes");
+    }
+
+    console.log(`🔓 [AI Tool] Solicitando desbloqueio (conversação: ${conversationContext.conversationId})`);
+
+    const response = await fetch("https://webhook.trtelecom.net/webhook/consulta_desbloqueio", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ documento }),
+    });
+
+    if (!response.ok) {
+      console.error(`❌ [AI Tool] Erro na solicitação de desbloqueio: ${response.status} ${response.statusText}`);
+      throw new Error(`Erro ao solicitar desbloqueio: ${response.statusText}`);
+    }
+
+    const resultado = await response.json() as DesbloqueioResult[];
+    
+    // A API retorna um array, pegamos o primeiro item
+    const desbloqueio = resultado[0];
+    
+    const status = desbloqueio?.data?.[0]?.status?.[0]?.status || 'N';
+    const obs = desbloqueio?.data?.[0]?.resposta?.[0]?.obs || 'Erro ao processar desbloqueio';
+    
+    console.log(`✅ [AI Tool] Desbloqueio processado - Status: ${status} - Obs: ${obs}`);
+
+    return desbloqueio;
+  } catch (error) {
+    console.error("❌ [AI Tool] Erro ao solicitar desbloqueio:", error);
+    throw error;
+  }
+}
+
+/**
  * Roteia conversa para assistente especializado (NÃO marca como transferido para humano)
  * @param departamento Nome do departamento/assistente especializado
  * @param motivo Motivo do roteamento
@@ -235,6 +316,12 @@ export async function executeAssistantTool(
         throw new Error("Parâmetro 'documento' é obrigatório para verificar_conexao");
       }
       return await consultaStatusConexao(args.documento, context, storage);
+
+    case 'solicitar_desbloqueio':
+      if (!args.documento) {
+        throw new Error("Parâmetro 'documento' é obrigatório para solicitar_desbloqueio");
+      }
+      return await solicitarDesbloqueio(args.documento, context, storage);
 
     default:
       throw new Error(`Tool não implementada: ${toolName}`);
