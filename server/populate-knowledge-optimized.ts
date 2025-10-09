@@ -633,6 +633,204 @@ Antes de encaminhar o cliente para qualquer assistente especializado (Suporte, F
 6. Se CPF presente → rotear diretamente`,
     source: "Manual de Segurança e Compliance TR Telecom",
     metadata: { category: "geral", topic: "verificacao-cpf", priority: "critical" }
+  },
+  
+  {
+    id: "kb-geral-006",
+    title: "Sistema de Abertura de Tickets no CRM - Finalização de Atendimentos",
+    content: `# ABERTURA AUTOMÁTICA DE TICKETS NO CRM
+
+## OBJETIVO
+Ao FINALIZAR um atendimento resolvido pela IA, você DEVE abrir um ticket no CRM externo registrando a resolução.
+
+## QUANDO ABRIR TICKET
+✅ **SEMPRE abrir ticket quando:**
+- Atendimento foi CONCLUÍDO pela IA (problema resolvido)
+- Cliente teve sua demanda ATENDIDA completamente
+- NÃO houve necessidade de transferência para humano
+- CPF/CNPJ do cliente está registrado no sistema
+
+❌ **NÃO abrir ticket quando:**
+- Atendimento foi TRANSFERIDO para humano (agente/supervisor abrirá)
+- Conversa foi apenas informativa (sem ação concreta)
+- Cliente apenas fez uma pergunta simples sem resolução
+- CPF/CNPJ não foi fornecido pelo cliente
+
+## FUNÇÃO DISPONÍVEL
+\`\`\`
+abrir_ticket_crm(
+  resumo: string,     // Resumo breve do atendimento e resolução
+  setor: string,      // Setor responsável 
+  motivo: string      // Motivo específico do atendimento
+)
+\`\`\`
+
+## COMBINAÇÕES VÁLIDAS DE SETOR/MOTIVO
+
+### ADMINISTRAÇÃO
+- INFORMAÇÃO, RECLAMAÇÃO, CONTRATO, PONTO ELÉTRICO, NOTA FISCAL, PERMUTA
+
+### SUPORTE
+- SEM CONEXÃO, SEM INTERNET, LENTIDÃO, CABO DESCONECTADO, TROCA DE EQUIPAMENTO
+- PROBLEMA EMAIL, TROCA MAC, TROCA LOGIN, TROCA SENHA, INTERMITÊNCIA
+- INFORMAÇÃO LOGIN/SENHA, RECONFIGURAÇÃO PPPOE, REPARO NA REDE, INFORMAÇÃO, TELEFONIA
+
+### FINANCEIRO
+- 2.VIA BOLETO, MUDANÇA ENDEREÇO DE COBRANÇA, SOLICITAÇÃO DE DESCONTO
+- INFORMAR PAGAMENTO, BLOQUEIO, SEMIBLOQUEIO, PROMOÇÃO BANDA EM DOBRO
+- PAGAMENTO, INFORMAÇÃO, DESBLOQUEIO, MUDANÇA DE VENCIMENTO
+
+### COMERCIAL
+- PEDIDO DE INSTALAÇÃO, MUDANÇA DE PLANO, MUDANÇA DE ENDEREÇO, EXTENSÃO DE CABO
+- INFORMAÇÃO PLANOS/INSTALAÇÃO, PEDIDO VIABILIDADE, PONTO ADICIONAL
+- REATIVAÇÃO, UPGRADE, MUDANÇA DE CÔMODO, VENDA REALIZADA
+
+### RECEPÇÃO
+- ATENDIMENTO, RECLAMAÇÃO, CANCELAMENTO, SUSPENSÃO, MUDANÇA TITULARIDADE, 2.VIA BOLETO
+
+### COBRANÇA
+- RENEGOCIAÇÃO / ACORDO, RECOLHIMENTO DE EQUIPAMENTOS, COBRANÇA INADIMPLÊNCIA
+
+### TÉCNICO
+- ATENDIMENTO, RETIRADA DE MATERIAL, RECONFIGURAÇÃO/TROCA CONECTOR, LINK LOSS, LENTIDÃO, POTÊNCIA ALTA
+
+### OUVIDORIA
+- ATENDIMENTO, RECLAMAÇÃO
+
+### LOCAÇÃO
+- INSTALAÇAO DE CAMERA, MANUNTENÇAO DE CAMERA, INSTALAÇAO TVBOX, REPARO TVBOX
+
+## COMO ESCREVER O RESUMO
+O resumo deve ser BREVE e OBJETIVO, contendo:
+
+1. **O que o cliente solicitou** (em 1 linha)
+2. **O que foi feito/resolvido** (em 1-2 linhas)
+
+**Exemplo 1 - Consulta de Boleto:**
+\`\`\`
+resumo: "Cliente solicitou 2ª via de boleto vencido.
+Fornecido boleto via PIX e código de barras. Valor: R$ 85,00, vencimento 15/10/2025."
+\`\`\`
+
+**Exemplo 2 - Problema de Conexão:**
+\`\`\`
+resumo: "Cliente sem conexão desde ontem.
+Identificado bloqueio por inadimplência. Orientado sobre pagamento e desbloqueio automático."
+\`\`\`
+
+**Exemplo 3 - Consulta de Planos:**
+\`\`\`
+resumo: "Cliente interessado em upgrade de plano.
+Informado planos disponíveis (200MB a 1GB). Solicitado callback comercial."
+\`\`\`
+
+**Exemplo 4 - Desbloqueio de Confiança:**
+\`\`\`
+resumo: "Cliente solicitou desbloqueio emergencial.
+Desbloqueio de confiança realizado com sucesso. Conexão liberada por 15 dias."
+\`\`\`
+
+## FLUXO COMPLETO DE FINALIZAÇÃO
+
+**1. Resolver o problema do cliente**
+- Executar funções necessárias (consulta_boleto, verificar_conexao, etc.)
+- Fornecer informações/soluções ao cliente
+- Confirmar que atendimento está completo
+
+**2. Abrir ticket no CRM**
+\`\`\`javascript
+abrir_ticket_crm(
+  resumo: "Cliente solicitou... Foi realizado...",
+  setor: "FINANCEIRO", // ou SUPORTE, COMERCIAL, etc.
+  motivo: "2.VIA BOLETO" // motivo compatível com o setor
+)
+\`\`\`
+
+**3. Informar protocolo ao cliente**
+- A função retorna um número de protocolo
+- Informar: "Seu atendimento foi registrado sob o protocolo [NÚMERO]"
+- Agradecer e se despedir
+
+## EXEMPLOS PRÁTICOS
+
+### Exemplo 1: Assistente Financeiro
+\`\`\`
+Cliente: "Preciso da 2ª via do boleto"
+Assistente: [consulta boleto] → [fornece dados]
+
+// ANTES de finalizar:
+abrir_ticket_crm(
+  resumo: "Cliente solicitou 2ª via de boleto. Fornecido boleto via PIX (chave: xxx) e código de barras. Valor R$ 85,00.",
+  setor: "FINANCEIRO",
+  motivo: "2.VIA BOLETO"
+)
+
+// Resposta final:
+"Seu atendimento foi registrado sob o protocolo 2510091234567. 
+Qualquer dúvida, estamos à disposição! 😊"
+\`\`\`
+
+### Exemplo 2: Assistente Suporte
+\`\`\`
+Cliente: "Minha internet está lenta"
+Assistente: [verifica conexão] → [identifica problema] → [orienta solução]
+
+// ANTES de finalizar:
+abrir_ticket_crm(
+  resumo: "Cliente relatou lentidão. Verificada conexão - ONU online, sinal OK. Orientado reiniciar equipamento. Problema resolvido.",
+  setor: "SUPORTE",
+  motivo: "LENTIDÃO"
+)
+\`\`\`
+
+### Exemplo 3: Assistente Comercial
+\`\`\`
+Cliente: "Quero melhorar meu plano"
+Assistente: [informa planos] → [cliente decide]
+
+// ANTES de finalizar:
+abrir_ticket_crm(
+  resumo: "Cliente consultou upgrade de plano. Informados planos 300MB a 1GB. Cliente optou por 500MB. Upgrade solicitado.",
+  setor: "COMERCIAL",
+  motivo: "UPGRADE"
+)
+\`\`\`
+
+## VALIDAÇÕES IMPORTANTES
+
+✅ **Verificar ANTES de chamar a função:**
+1. CPF/CNPJ está registrado? (obrigatório)
+2. Setor escolhido é apropriado?
+3. Motivo é COMPATÍVEL com o setor? (ver lista acima)
+4. Resumo está claro e objetivo?
+
+❌ **Erros comuns a evitar:**
+- Usar motivo incompatível com setor (ex: "SEM CONEXÃO" com setor "FINANCEIRO")
+- Abrir ticket para atendimentos transferidos para humano
+- Resumo muito longo ou muito vago
+- Esquecer de informar protocolo ao cliente
+
+## RESPOSTA DA FUNÇÃO
+A função retorna protocolo no formato:
+\`\`\`json
+{
+  "data": [{
+    "resposta": [{
+      "protocolo": "2510091425634908"
+    }]
+  }]
+}
+\`\`\`
+
+**SEMPRE informar este protocolo ao cliente na mensagem de finalização!**
+
+## SEGURANÇA
+- Função valida automaticamente se CPF/CNPJ está registrado
+- Só permite abertura de ticket com documento do cliente da conversa
+- Registra log de auditoria com conversationId
+- Documento é obtido do banco de dados (não do parâmetro)`,
+    source: "Manual de Processos TR Telecom - Sistema CRM",
+    metadata: { category: "geral", topic: "abertura-tickets", priority: "high" }
   }
 ];
 

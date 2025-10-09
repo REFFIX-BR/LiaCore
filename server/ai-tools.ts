@@ -70,6 +70,14 @@ interface DesbloqueioResult {
   }>;
 }
 
+interface AbrirTicketResult {
+  data: Array<{
+    resposta: Array<{
+      protocolo: string;
+    }>;
+  }>;
+}
+
 /**
  * Consulta boletos do cliente no sistema externo
  * @param documento CPF ou CNPJ do cliente
@@ -257,6 +265,78 @@ export async function solicitarDesbloqueio(
 }
 
 /**
+ * Abre ticket no CRM externo ao finalizar atendimento
+ * @param resumo Resumo breve do atendimento e resolução
+ * @param setor Setor responsável pelo atendimento
+ * @param motivo Motivo do atendimento (deve ser compatível com o setor)
+ * @param conversationContext Contexto OBRIGATÓRIO da conversa para validação de segurança
+ * @param storage Interface de storage para validação da conversa
+ * @returns Protocolo do ticket criado
+ */
+export async function abrirTicketCRM(
+  resumo: string,
+  setor: string,
+  motivo: string,
+  conversationContext: { conversationId: string },
+  storage: IStorage
+): Promise<AbrirTicketResult> {
+  try {
+    // Validação de segurança OBRIGATÓRIA
+    if (!conversationContext || !conversationContext.conversationId) {
+      console.error(`❌ [AI Tool Security] Tentativa de abrir ticket sem contexto de conversa`);
+      throw new Error("Contexto de segurança é obrigatório para abertura de ticket");
+    }
+
+    // Validação: conversa deve existir no banco
+    const conversation = await storage.getConversation(conversationContext.conversationId);
+    if (!conversation) {
+      console.error(`❌ [AI Tool Security] Tentativa de abrir ticket com conversationId inválido`);
+      throw new Error("Conversa não encontrada - contexto de segurança inválido");
+    }
+
+    // CRÍTICO: clientDocument deve existir OBRIGATORIAMENTE
+    if (!conversation.clientDocument) {
+      console.error(`❌ [AI Tool Security] Tentativa de abrir ticket sem documento do cliente armazenado`);
+      throw new Error("Para abrir ticket, preciso do CPF ou CNPJ do cliente registrado no atendimento.");
+    }
+
+    console.log(`🎫 [AI Tool] Abrindo ticket no CRM (conversação: ${conversationContext.conversationId}, setor: ${setor}, motivo: ${motivo})`);
+
+    const response = await fetch("https://webhook.trtelecom.net/webhook/abrir_ticket", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        documento: conversation.clientDocument,
+        resumo: resumo,
+        setor: setor,
+        motivo: motivo,
+        finalizar: "S"
+      }),
+    });
+
+    if (!response.ok) {
+      console.error(`❌ [AI Tool] Erro na abertura de ticket: ${response.status} ${response.statusText}`);
+      throw new Error(`Erro ao abrir ticket no CRM: ${response.statusText}`);
+    }
+
+    const resultado = await response.json() as AbrirTicketResult[];
+    
+    // A API retorna um array, pegamos o primeiro item
+    const ticket = resultado[0];
+    const protocolo = ticket?.data?.[0]?.resposta?.[0]?.protocolo || 'ERRO';
+    
+    console.log(`✅ [AI Tool] Ticket criado com sucesso - Protocolo: ${protocolo}`);
+
+    return ticket;
+  } catch (error) {
+    console.error("❌ [AI Tool] Erro ao abrir ticket no CRM:", error);
+    throw error;
+  }
+}
+
+/**
  * Roteia conversa para assistente especializado (NÃO marca como transferido para humano)
  * @param departamento Nome do departamento/assistente especializado
  * @param motivo Motivo do roteamento
@@ -322,6 +402,12 @@ export async function executeAssistantTool(
         throw new Error("Parâmetro 'documento' é obrigatório para solicitar_desbloqueio");
       }
       return await solicitarDesbloqueio(args.documento, context, storage);
+
+    case 'abrir_ticket_crm':
+      if (!args.resumo || !args.setor || !args.motivo) {
+        throw new Error("Parâmetros 'resumo', 'setor' e 'motivo' são obrigatórios para abrir_ticket_crm");
+      }
+      return await abrirTicketCRM(args.resumo, args.setor, args.motivo, context, storage);
 
     default:
       throw new Error(`Tool não implementada: ${toolName}`);
