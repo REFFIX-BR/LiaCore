@@ -21,9 +21,16 @@ const EVOLUTION_CONFIG = {
 };
 
 // Helper function to send WhatsApp message via Evolution API
-async function sendWhatsAppMessage(phoneNumber: string, text: string): Promise<boolean> {
-  if (!EVOLUTION_CONFIG.apiUrl || !EVOLUTION_CONFIG.apiKey || !EVOLUTION_CONFIG.instance) {
-    console.error("❌ [Evolution] Credenciais não configuradas");
+async function sendWhatsAppMessage(phoneNumber: string, text: string, instanceName?: string): Promise<boolean> {
+  // Use instance específica da conversa ou fallback para env var
+  const instance = instanceName || EVOLUTION_CONFIG.instance;
+  
+  if (!EVOLUTION_CONFIG.apiUrl || !EVOLUTION_CONFIG.apiKey || !instance) {
+    console.error("❌ [Evolution] Credenciais não configuradas", { 
+      hasUrl: !!EVOLUTION_CONFIG.apiUrl, 
+      hasKey: !!EVOLUTION_CONFIG.apiKey, 
+      instance: instance || 'undefined' 
+    });
     return false;
   }
 
@@ -44,9 +51,9 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string): Promise<b
       baseUrl = `https://${baseUrl}`;
     }
     
-    const url = `${baseUrl}/message/sendText/${EVOLUTION_CONFIG.instance}`;
+    const url = `${baseUrl}/message/sendText/${instance}`;
     
-    console.log(`📤 [Evolution] Enviando mensagem para ${normalizedNumber} (original: ${phoneNumber}) via ${url}`);
+    console.log(`📤 [Evolution] Enviando mensagem para ${normalizedNumber} via instância ${instance} (${url})`);
     
     const response = await fetch(url, {
       method: 'POST',
@@ -68,7 +75,7 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string): Promise<b
     }
 
     const result = await response.json();
-    console.log(`✅ [Evolution] Mensagem enviada para ${normalizedNumber}`, {
+    console.log(`✅ [Evolution] Mensagem enviada para ${normalizedNumber} via ${instance}`, {
       messageId: result.key?.id,
       status: result.status,
     });
@@ -643,7 +650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         npsSurveyMessage = npsSurveyMessage.replace(/{clientName}/g, conversation.clientName || 'Cliente');
         
         try {
-          await sendWhatsAppMessage(chatId, npsSurveyMessage);
+          await sendWhatsAppMessage(chatId, npsSurveyMessage, conversation.evolutionInstance || undefined);
           console.log(`📊 [NPS] Pesquisa enviada ao cliente ${clientName}`);
         } catch (error) {
           console.error("❌ [NPS] Erro ao enviar pesquisa:", error);
@@ -1065,6 +1072,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             urgency: "normal",
             duration: 0,
             lastMessage: messageText,
+            evolutionInstance: instance, // Armazena qual instância Evolution API está usando
             metadata: { 
               routing: {
                 assistantType: "apresentacao",
@@ -1114,7 +1122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const alreadyTemplate = await storage.getMessageTemplateByKey('nps_already_submitted');
             const alreadyMessage = alreadyTemplate?.template || `Obrigado! Seu feedback já foi registrado anteriormente.`;
             
-            await sendWhatsAppMessage(phoneNumber, alreadyMessage);
+            await sendWhatsAppMessage(phoneNumber, alreadyMessage, conversation.evolutionInstance || undefined);
             return res.json({ 
               success: true, 
               processed: true, 
@@ -1168,7 +1176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const thankYouTemplate = await storage.getMessageTemplateByKey('nps_thank_you');
           const thankYouMessage = thankYouTemplate?.template || `Obrigado! Seu feedback já foi registrado!`;
           
-          await sendWhatsAppMessage(phoneNumber, thankYouMessage);
+          await sendWhatsAppMessage(phoneNumber, thankYouMessage, conversation.evolutionInstance || undefined);
           
           return res.json({ 
             success: true, 
@@ -1539,7 +1547,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
               
               // Send routing message to WhatsApp
-              await sendWhatsAppMessage(clientPhoneNumber, responseText);
+              await sendWhatsAppMessage(clientPhoneNumber, responseText, conversationRef.evolutionInstance || undefined);
               
             } // Handle conversation resolution if requested by AI
             else if (resolved) {
@@ -1582,7 +1590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               npsSurveyMessage = npsSurveyMessage.replace(/{clientName}/g, conversationRef.clientName || 'Cliente');
               
               try {
-                await sendWhatsAppMessage(clientPhoneNumber, npsSurveyMessage);
+                await sendWhatsAppMessage(clientPhoneNumber, npsSurveyMessage, conversationRef.evolutionInstance || undefined);
                 console.log(`📊 [NPS] Pesquisa enviada ao cliente ${clientName}`);
               } catch (error) {
                 console.error("❌ [NPS] Erro ao enviar pesquisa:", error);
@@ -1694,7 +1702,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   console.log(`✅ [Evolution Welcome] Mensagem gerada: ${welcomeMessage.substring(0, 100)}...`);
                   
                   // Send welcome message to WhatsApp
-                  await sendWhatsAppMessage(clientPhoneNumber, welcomeMessage);
+                  await sendWhatsAppMessage(clientPhoneNumber, welcomeMessage, conversationRef.evolutionInstance || undefined);
                   
                   webhookLogger.success('WELCOME_MESSAGE_SENT', `Mensagem de boas-vindas do ${newAssistantType} enviada`, {
                     conversationId: conversationRef.id,
@@ -1740,7 +1748,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             
             // Send response back to WhatsApp via Evolution API
-            const sent = await sendWhatsAppMessage(clientPhoneNumber, responseText);
+            const sent = await sendWhatsAppMessage(clientPhoneNumber, responseText, conversationRef.evolutionInstance || undefined);
             if (sent) {
               webhookLogger.success('MESSAGE_SENT', `Mensagem enviada ao WhatsApp`, {
                 phoneNumber: clientPhoneNumber,
@@ -3338,7 +3346,7 @@ A resposta deve:
       
       if (phoneNumber) {
         try {
-          whatsappSent = await sendWhatsAppMessage(phoneNumber, content);
+          whatsappSent = await sendWhatsAppMessage(phoneNumber, content, conversation.evolutionInstance || undefined);
           
           if (whatsappSent) {
             webhookLogger.success('SUPERVISOR_MESSAGE_SENT', `Supervisor enviou mensagem ao cliente`, {
@@ -3500,7 +3508,7 @@ A resposta deve:
       
       if (phoneNumber) {
         try {
-          whatsappSent = await sendWhatsAppMessage(phoneNumber, welcomeMessage);
+          whatsappSent = await sendWhatsAppMessage(phoneNumber, welcomeMessage, conversation.evolutionInstance || undefined);
           
           if (whatsappSent) {
             webhookLogger.success('AGENT_ASSIGNED', `Conversa atribuída a ${agent.fullName}`, {
@@ -3623,7 +3631,7 @@ A resposta deve:
         // Substituir variáveis
         npsMessage = npsMessage.replace(/{clientName}/g, conversation.clientName);
 
-        const sent = await sendWhatsAppMessage(conversation.clientId, npsMessage);
+        const sent = await sendWhatsAppMessage(conversation.clientId, npsMessage, conversation.evolutionInstance || undefined);
         if (sent) {
           console.log(`📊 [NPS] Pesquisa enviada para ${conversation.clientName} (${conversation.clientId})`);
         }
