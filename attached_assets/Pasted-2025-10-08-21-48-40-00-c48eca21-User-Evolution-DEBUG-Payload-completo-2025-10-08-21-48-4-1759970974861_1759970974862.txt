@@ -1,0 +1,144 @@
+2025-10-08 21:48:40.00
+c48eca21
+User
+🔍 [Evolution DEBUG] Payload completo: {
+2025-10-08 21:48:40.00
+c48eca21
+User
+"event": "contacts.update",
+2025-10-08 21:48:40.00
+c48eca21
+User
+"instance": "testecortex1",
+2025-10-08 21:48:40.00
+c48eca21
+User
+"data": {
+2025-10-08 21:48:40.00
+c48eca21
+User
+"remoteJid": "5522997074180@s.whatsapp.net",
+2025-10-08 21:48:40.00
+c48eca21
+User
+"pushName": "Marcio Zebende",
+2025-10-08 21:48:40.00
+c48eca21
+User
+"profilePicUrl": "https://pps.whatsapp.net/v/t61.24694-24/511550335_1769908343883243_7926235056357273546_n.jpg?ccb=11-4&oh=01_Q5Aa2wGHP4En8trWvhgt5pjo5LBcHQfRH5kiCdeO8CASlWNkCQ&oe=68F42317&_nc_sid=5e03e0&_nc_cat=101",
+2025-10-08 21:48:40.00
+c48eca21
+User
+"instanceId": "0db0ae3d-d694-4e04-b66c-9b25bc521c6c"
+2025-10-08 21:48:40.00
+c48eca21
+User
+},
+2025-10-08 21:48:40.00
+c48eca21
+User
+"destination": "https://health-link-connect-mczebende.replit.app/api/webhooks/evolution",
+2025-10-08 21:48:40.00
+c48eca21
+User
+"date_time": "2025-10-08T21:48:39.988Z",
+2025-10-08 21:48:40.00
+c48eca21
+User
+"sender": "552425000000@s.whatsapp.net",
+2025-10-08 21:48:40.00
+c48eca21
+User
+"server_url": "https://evolutionapi.trtelecom.net",
+2025-10-08 21:48:40.00
+c48eca21
+User
+"apikey": "A91F3A59E6C4-488E-9877-AC157EE13011"
+2025-10-08 21:48:40.00
+c48eca21
+User
+}
+2025-10-08 21:48:40.00
+c48eca21
+User
+ℹ️ [Webhook Monitor] [CONNECTION] Webhook recebido: contacts.update { instance: 'testecortex1', timestamp: '2025-10-09T00:48:40.008Z' }
+2025-10-08 21:48:40.00
+c48eca21
+User
+📱 [Evolution Webhook] Evento recebido: contacts.update { instance: 'testecortex1', event: 'contacts.update' }
+2025-10-08 21:48:40.00
+c48eca21
+User
+❓ [Evolution] Evento desconhecido: contacts.update
+2025-10-08 21:48:40.00
+c48eca21
+User
+12:48:40 AM [express] POST /api/webhooks/evolution 200 in 1ms :: {"success":true,"processed":false,"r…
+2025-10-08 21:48:42.31
+c48eca21
+User
+🔍 [NPS Debug] Conversa ca5714ea-8b97-4fe6-85c4-72b86c440997: {
+2025-10-08 21:48:42.31
+c48eca21
+User
+awaitingNPS: false,
+2025-10-08 21:48:42.31
+c48eca21
+User
+messageText: 'preciso do meu boleto meu cpf 171.686.447-00',
+2025-10-08 21:48:42.31
+c48eca21
+User
+npsMatch: null,
+2025-10-08 21:48:42.31
+c48eca21
+User
+status: 'active'
+2025-10-08 21:48:42.31
+c48eca21
+User
+}
+2025-10-08 21:48:42.34
+c48eca21
+User
+🔵 [OpenAI] Sending message: {
+2025-10-08 21:48:42.34
+c48eca21
+User
+threadId: 'thread_IYwmk5ngFmTeZv7SIzmyG4ll',
+2025-10-08 21:48:42.34
+c48eca21
+User
+assistantId: 'asst_pRXVhoy1o4YxNxVmaRiNOTMX',
+2025-10-08 21:48:42.34
+c48eca21
+User
+providedAssistantId: 'asst_pRXVhoy1o4YxNxVmaRiNOTMX',
+2025-10-08 21:48:42.34
+c48eca21
+User
+usedFallback: false
+2025-10-08 21:48:42.34
+c48eca21
+User
+}
+2025-10-08 21:48:42.35
+c48eca21
+User
+12:48:42 AM [express] POST /api/webhooks/evolution 200 in 2531ms :: {"success":true,"processed":true,…
+2025-10-08 21:48:46.99
+c48eca21
+User
+🔵 [OpenAI] Run created: {
+2025-10-08 21:48:46.99
+c48eca21
+User
+runId: 'run_r7wejRoV3pV15XkKTL5MSJ4P',
+2025-10-08 21:48:46.99
+c48eca21
+User
+threadId: 'thread_IYwmk5ngFmTeZv7SIzmyG4ll'
+2025-10-08 21:48:46.99
+c48eca21
+User
+}
