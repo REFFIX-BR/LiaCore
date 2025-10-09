@@ -219,8 +219,8 @@ export default function Conversations() {
             <div className={activeConversation2 ? "flex-1" : "flex-1"}>
               <ChatPanel
                 conversation={activeConversation1}
-                onClose={activeIds.length > 1 ? () => handleCloseConversation(activeConversation1.id) : undefined}
-                showCloseButton={activeIds.length > 1}
+                onClose={() => handleCloseConversation(activeConversation1.id)}
+                showCloseButton={true}
               />
             </div>
 
