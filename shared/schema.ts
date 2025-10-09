@@ -189,6 +189,22 @@ export const activityLogs = pgTable("activity_logs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const complaints = pgTable("complaints", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull(), // Referência à conversa da Ouvidoria
+  complaintType: text("complaint_type").notNull(), // 'atendimento', 'produto', 'tecnico', 'comercial', 'financeiro', 'outro'
+  severity: text("severity").notNull().default("media"), // 'baixa', 'media', 'alta', 'critica'
+  description: text("description").notNull(), // Descrição completa da reclamação
+  status: text("status").notNull().default("novo"), // 'novo', 'em_investigacao', 'resolvido', 'fechado'
+  assignedTo: varchar("assigned_to"), // User ID do responsável pela investigação
+  resolution: text("resolution"), // Resolução/resposta final
+  resolutionNotes: text("resolution_notes"), // Notas adicionais sobre a resolução
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+  metadata: jsonb("metadata"), // Dados adicionais (contexto, tags, etc)
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -283,6 +299,30 @@ export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({
   createdAt: true,
 });
 
+export const insertComplaintSchema = createInsertSchema(complaints).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  resolvedAt: true,
+}).extend({
+  complaintType: z.enum(["atendimento", "produto", "tecnico", "comercial", "financeiro", "outro"]),
+  severity: z.enum(["baixa", "media", "alta", "critica"]).default("media"),
+  status: z.enum(["novo", "em_investigacao", "resolvido", "fechado"]).default("novo"),
+});
+
+export const updateComplaintSchema = z.object({
+  complaintType: z.enum(["atendimento", "produto", "tecnico", "comercial", "financeiro", "outro"]).optional(),
+  severity: z.enum(["baixa", "media", "alta", "critica"]).optional(),
+  description: z.string().optional(),
+  status: z.enum(["novo", "em_investigacao", "resolvido", "fechado"]).optional(),
+  assignedTo: z.string().optional(),
+  resolution: z.string().optional(),
+  resolutionNotes: z.string().optional(),
+  resolvedAt: z.date().optional(),
+  updatedAt: z.date().optional(),
+  metadata: z.any().optional(),
+});
+
 // Evolution API Configuration Schema
 export const evolutionConfigSchema = z.object({
   url: z.string()
@@ -324,3 +364,6 @@ export type InsertMessageTemplate = z.infer<typeof insertMessageTemplateSchema>;
 export type UpdateMessageTemplate = z.infer<typeof updateMessageTemplateSchema>;
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
+export type Complaint = typeof complaints.$inferSelect;
+export type InsertComplaint = z.infer<typeof insertComplaintSchema>;
+export type UpdateComplaint = z.infer<typeof updateComplaintSchema>;

@@ -82,6 +82,13 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 **Message Pagination & Auto-Scroll System**:
 - Optimized loading of conversation messages with cursor-based pagination for historical data, smart auto-scroll, and state preservation during refetches.
 
+**Ouvidoria (Ombudsman) System**:
+- Dedicated tab in Monitor page for filtering and viewing all customer complaints handled by Ouvidoria assistant.
+- Complaint tracking database with fields for type, severity, status, assigned investigator, and resolution.
+- Complaint types: atendimento, produto, técnico, comercial, financeiro, outro.
+- Status tracking: novo, em_investigação, resolvido, fechado.
+- Severity levels: baixa, média, alta, crítica.
+
 ## External Dependencies
 
 **Third-Party Services**:
