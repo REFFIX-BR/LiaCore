@@ -99,9 +99,9 @@ export default function Monitor() {
     if (activeFilter === "alerts") {
       passesStatusFilter = alerts.some(alert => alert.conversationId === conv.id);
     } else if (activeFilter === "all") {
-      passesStatusFilter = conv.status === "active" && !conv.metadata?.transferred;
+      passesStatusFilter = conv.status === "active" && !conv.transferredToHuman;
     } else if (activeFilter === "transfer") {
-      passesStatusFilter = conv.metadata?.transferred === true;
+      passesStatusFilter = conv.transferredToHuman === true && conv.assignedTo === null;
     } else if (activeFilter === "resolved") {
       passesStatusFilter = conv.status === "resolved";
     }

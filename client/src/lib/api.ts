@@ -11,6 +11,8 @@ export interface ConversationData {
   duration: number;
   lastMessage: string | null;
   lastMessageTime: Date;
+  transferredToHuman?: boolean | null;
+  assignedTo?: string | null;
   metadata?: {
     transferred?: boolean;
     transferredTo?: string;

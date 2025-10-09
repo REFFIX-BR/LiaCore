@@ -1718,6 +1718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               } else {
                 // NORMAL CASE: Other assistants transferring to human supervisors
                 await storage.updateConversation(conversationRef.id, {
+                  status: 'queued', // Marca como na fila para atendimento humano
                   transferredToHuman: true,
                   transferReason: transferredTo || 'Transferido pela IA',
                   transferredAt: new Date(),
@@ -2862,9 +2863,9 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
         // Conversas resolvidas (status = resolved)
         const resolvedConversations = conversations.filter((c: Conversation) => c.status === "resolved").length;
         
-        // Conversas transferidas (metadata.transferred = true ou supervisor action de transfer)
+        // Conversas transferidas para humanos
         const transferredConversations = conversations.filter((c: Conversation) => 
-          (c.metadata as any)?.transferred === true
+          c.transferredToHuman === true
         ).length;
         
         // Taxa de sucesso
