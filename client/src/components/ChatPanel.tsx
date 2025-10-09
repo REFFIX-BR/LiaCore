@@ -139,11 +139,12 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   // Sugestão da IA
   const suggestMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest(`/api/conversations/${conversation.id}/suggest-response`, {
-        method: "POST",
-        body: { supervisorName: user?.fullName },
-      });
-      return response;
+      const response = await apiRequest(
+        `/api/conversations/${conversation.id}/suggest-response`, 
+        "POST",
+        { supervisorName: user?.fullName }
+      );
+      return response.json();
     },
     onSuccess: (data) => {
       setAiSuggestion(data.suggestion);
@@ -165,10 +166,12 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   // Enviar mensagem
   const sendMutation = useMutation({
     mutationFn: async ({ content, suggestionId }: { content: string; suggestionId?: string | null }) => {
-      return apiRequest(`/api/conversations/${conversation.id}/messages`, {
-        method: "POST",
-        body: { content, suggestionId },
-      });
+      const response = await apiRequest(
+        `/api/conversations/${conversation.id}/messages`, 
+        "POST",
+        { content, suggestionId }
+      );
+      return response.json();
     },
     onSuccess: () => {
       setMessageContent("");
@@ -190,10 +193,12 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   // Resolver conversa
   const resolveMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest(`/api/conversations/${conversation.id}/resolve`, {
-        method: "POST",
-        body: { resolvedBy: user?.fullName },
-      });
+      const response = await apiRequest(
+        `/api/conversations/${conversation.id}/resolve`, 
+        "POST",
+        { resolvedBy: user?.fullName }
+      );
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -208,10 +213,12 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   // Auto-atribuir
   const assignMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest(`/api/conversations/${conversation.id}/assign`, {
-        method: "POST",
-        body: { agentId: user?.id },
-      });
+      const response = await apiRequest(
+        `/api/conversations/${conversation.id}/assign`, 
+        "POST",
+        { agentId: user?.id }
+      );
+      return response.json();
     },
     onSuccess: () => {
       toast({
