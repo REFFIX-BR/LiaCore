@@ -147,9 +147,9 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
       return response.json();
     },
     onSuccess: (data) => {
-      setAiSuggestion(data.suggestion);
-      setSuggestionId(data.id);
-      setMessageContent(data.suggestion);
+      setAiSuggestion(data.suggestedResponse);
+      setSuggestionId(data.suggestionId);
+      setMessageContent(data.suggestedResponse);
       toast({
         title: "Sugestão gerada!",
         description: "Você pode editar ou aprovar a sugestão",
