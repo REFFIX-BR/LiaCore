@@ -989,10 +989,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else if (message?.extendedTextMessage?.text) {
           messageText = message.extendedTextMessage.text;
         } else if (message?.imageMessage) {
-          // Handle images with or without caption
-          messageText = message.imageMessage.caption 
-            ? `[Imagem] ${message.imageMessage.caption}` 
-            : `[Imagem recebida]`;
+          // Process image with Vision API
+          const { processWhatsAppImage } = await import("./lib/vision");
+          
+          console.log(`📸 [Evolution] Imagem detectada - iniciando análise com Vision...`);
+          
+          messageText = await processWhatsAppImage(
+            key,
+            instance,
+            message.imageMessage.caption
+          );
+          
+          console.log(`✅ [Evolution] Imagem processada: ${messageText.substring(0, 100)}...`);
         } else if (message?.videoMessage) {
           // Handle videos with or without caption
           messageText = message.videoMessage.caption 

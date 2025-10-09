@@ -34,6 +34,14 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 - **Automated Document Detection**: Regex-based CPF/CNPJ detection and storage in conversation context.
 - **Mandatory CPF Verification**: All specialized assistants require CPF/CNPJ verification before proceeding with sensitive operations.
 - **Automated Systems**: Includes "Boleto Consultation", "PPPoE Connection Status", and "Unlock/Unblock" systems with integrated security and AI interpretation.
+- **Vision System** (`server/lib/vision.ts`, `VISION_SETUP.md`):
+  - GPT-4o Vision integration for automatic WhatsApp image analysis
+  - Downloads images via Evolution API `/chat/getBase64FromMediaMessage` endpoint
+  - Intelligent extraction: boletos (ID, due date, amount, fees), documents (CPF/CNPJ, RG), screenshots (transcription), technical photos (description)
+  - Context-aware analysis considering client captions and conversation history
+  - Performance: 3-8 seconds per image, ~$0.002 cost per analysis
+  - Supports JPEG, PNG, WebP, GIF (non-animated), up to 20MB
+  - Graceful fallback if analysis fails, conversation continues normally
 
 **Real-Time Monitoring**:
 - **Supervisor Dashboard**: Provides KPIs, live conversation queues, alerts, transcripts, and human intervention controls.

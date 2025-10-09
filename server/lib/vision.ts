@@ -70,6 +70,13 @@ export async function analyzeImageWithVision(
   try {
     console.log(`🔍 [Vision] Analisando imagem com GPT-4o Vision...`);
 
+    let imageUrl = base64Image;
+    
+    if (!base64Image.startsWith('data:image/')) {
+      console.log(`🔧 [Vision] Adicionando prefixo data URI ao base64...`);
+      imageUrl = `data:image/jpeg;base64,${base64Image}`;
+    }
+
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
@@ -80,7 +87,7 @@ export async function analyzeImageWithVision(
             {
               type: 'image_url',
               image_url: {
-                url: base64Image,
+                url: imageUrl,
                 detail: 'high',
               },
             },
