@@ -5,7 +5,7 @@ import { insertConversationSchema, insertMessageSchema, insertAlertSchema, inser
 import { routeMessage, createThread, sendMessageAndGetResponse, summarizeConversation, routeMessageWithContext, CONTEXT_CONFIG } from "./lib/openai";
 import { storeConversationThread, getConversationThread, searchKnowledge } from "./lib/upstash";
 import { webhookLogger } from "./lib/webhook-logger";
-import { authenticate, requireAdmin, requireAdminOrSupervisor } from "./middleware/auth";
+import { authenticate, authenticateWithTracking, requireAdmin, requireAdminOrSupervisor } from "./middleware/auth";
 import { hashPassword, comparePasswords, generateToken, getUserFromUser } from "./lib/auth";
 import OpenAI from "openai";
 
@@ -1868,7 +1868,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all active conversations for monitoring (includes resolved from last 24h)
-  app.get("/api/monitor/conversations", authenticate, async (req, res) => {
+  app.get("/api/monitor/conversations", authenticateWithTracking, async (req, res) => {
     try {
       const conversations = await storage.getMonitorConversations();
       
@@ -1900,7 +1900,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get conversation details
-  app.get("/api/monitor/conversations/:id", authenticate, async (req, res) => {
+  app.get("/api/monitor/conversations/:id", authenticateWithTracking, async (req, res) => {
     try {
       const conversation = await storage.getConversation(req.params.id);
       if (!conversation) {
@@ -1929,7 +1929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get active alerts
-  app.get("/api/monitor/alerts", authenticate, async (req, res) => {
+  app.get("/api/monitor/alerts", authenticateWithTracking, async (req, res) => {
     try {
       const alerts = await storage.getActiveAlerts();
       return res.json(alerts);
@@ -2961,7 +2961,7 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
   });
 
   // Get transferred conversations
-  app.get("/api/conversations/transferred", authenticate, async (req, res) => {
+  app.get("/api/conversations/transferred", authenticateWithTracking, async (req, res) => {
     try {
       const userId = req.user?.userId;
       const role = req.user?.role;
@@ -2975,7 +2975,7 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
   });
 
   // Get assigned conversations (conversas atribuídas ao usuário atual)
-  app.get("/api/conversations/assigned", authenticate, async (req, res) => {
+  app.get("/api/conversations/assigned", authenticateWithTracking, async (req, res) => {
     try {
       const userId = req.user?.userId;
       const role = req.user?.role;
