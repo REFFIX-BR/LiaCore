@@ -1243,6 +1243,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 // Continua normalmente sem enriquecimento se falhar
               }
             }
+
+            // 🔌 DETECÇÃO INTELIGENTE DE CONSULTA DE CONEXÃO/INTERNET
+            // Detecta se cliente está perguntando sobre conexão e enriquece contexto
+            const conexaoKeywords = /\b(internet|conexão|conex[aã]o|velocidade|lent(o|a)|desconect(ado|ou)|caindo|instável|instavel|wi-?fi|wifi|sinal|offline|online|pppoe|ip|fibra|rede)\b/i;
+            
+            if (conexaoKeywords.test(messageText) && conversationRef.clientDocument) {
+              console.log(`🔍 [Conexão Auto-Fetch] Detectada consulta de conexão - buscando status automaticamente...`);
+              
+              try {
+                // Buscar status de TODAS as conexões do cliente via API
+                const response = await fetch("https://webhook.trtelecom.net/webhook/check_pppoe_status", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ documento: conversationRef.clientDocument }),
+                });
+
+                if (response.ok) {
+                  const conexoes = await response.json();
+                  console.log(`✅ [Conexão Auto-Fetch] ${conexoes?.length || 0} conexão(ões) encontrada(s)`);
+                  
+                  if (conexoes && conexoes.length > 0) {
+                    // Enriquecer mensagem com TODOS os dados de conexão
+                    enrichedMessage = `${messageText}\n\n[DADOS DO SISTEMA - USO INTERNO DA IA]\nStatus de conexão do cliente:\n${JSON.stringify(conexoes, null, 2)}\n\nInstruções: Analise a pergunta do cliente e interprete os dados técnicos. Responda de forma clara e natural, explicando o status da conexão. Se statusPPPoE='ONLINE' e onu_run_state='online', a conexão está funcionando. Se houver problema, identifique e oriente o cliente.`;
+                    
+                    console.log(`🔌 [Conexão Auto-Fetch] Contexto enriquecido com ${conexoes.length} conexão(ões)`);
+                  } else {
+                    console.log(`ℹ️ [Conexão Auto-Fetch] Nenhuma conexão encontrada para o cliente`);
+                  }
+                } else {
+                  console.error(`❌ [Conexão Auto-Fetch] Erro na API: ${response.status}`);
+                }
+              } catch (error) {
+                console.error("❌ [Conexão Auto-Fetch] Erro ao buscar status de conexão:", error);
+                // Continua normalmente sem enriquecimento se falhar
+              }
+            }
             
             const { response: responseText, transferred, transferredTo, resolved, resolveReason, routed, assistantTarget, routingReason } = await sendMessageAndGetResponse(
               threadId!,

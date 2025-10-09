@@ -32,6 +32,33 @@ interface ConsultaBoletoResult {
   STATUS: string;
 }
 
+interface StatusConexaoResult {
+  COD_CLIENTE: string;
+  nomeCliente: string;
+  CPF: string;
+  plano: string;
+  velocidadeContratada: string;
+  LOGIN: string;
+  statusIP: string;
+  statusPPPoE: string;
+  conectadoDesde: string;
+  minutosConectado: number;
+  ipv4: string;
+  ENDERECO: string;
+  BAIRRO: string;
+  CIDADE: string;
+  COMPLEMENTO: string;
+  CTO: string;
+  PON: string;
+  OLT: string;
+  STATUS_TIPO: string;
+  SERIAL: string;
+  os_aberta: string;
+  onu_run_state: string;
+  onu_last_down_cause: string;
+  massiva: boolean;
+}
+
 /**
  * Consulta boletos do cliente no sistema externo
  * @param documento CPF ou CNPJ do cliente
@@ -92,6 +119,63 @@ export async function consultaBoletoCliente(
 }
 
 /**
+ * Consulta status de conexão PPPoE do cliente
+ * @param documento CPF ou CNPJ do cliente
+ * @param conversationContext Contexto OBRIGATÓRIO da conversa para validação de segurança
+ * @param storage Interface de storage para validação da conversa
+ * @returns Array com status de conexão(ões) do cliente
+ */
+export async function consultaStatusConexao(
+  documento: string,
+  conversationContext: { conversationId: string },
+  storage: IStorage
+): Promise<StatusConexaoResult[]> {
+  try {
+    // Validação de segurança OBRIGATÓRIA
+    if (!conversationContext || !conversationContext.conversationId) {
+      console.error(`❌ [AI Tool Security] Tentativa de consulta sem contexto de conversa`);
+      throw new Error("Contexto de segurança é obrigatório para consulta de conexão");
+    }
+
+    // Validação: conversa deve existir no banco
+    const conversation = await storage.getConversation(conversationContext.conversationId);
+    if (!conversation) {
+      console.error(`❌ [AI Tool Security] Tentativa de consulta com conversationId inválido`);
+      throw new Error("Conversa não encontrada - contexto de segurança inválido");
+    }
+
+    // Validação de documento
+    if (conversation.clientDocument && conversation.clientDocument !== documento) {
+      console.error(`❌ [AI Tool Security] Tentativa de consulta de documento diferente do cliente`);
+      throw new Error("Não é permitido consultar documentos de outros clientes");
+    }
+
+    console.log(`🔌 [AI Tool] Consultando status de conexão (conversação: ${conversationContext.conversationId})`);
+
+    const response = await fetch("https://webhook.trtelecom.net/webhook/check_pppoe_status", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ documento }),
+    });
+
+    if (!response.ok) {
+      console.error(`❌ [AI Tool] Erro na consulta de conexão: ${response.status} ${response.statusText}`);
+      throw new Error(`Erro ao consultar status de conexão: ${response.statusText}`);
+    }
+
+    const conexoes = await response.json() as StatusConexaoResult[];
+    console.log(`✅ [AI Tool] Consulta concluída - ${conexoes?.length || 0} conexão(ões) encontrada(s)`);
+
+    return conexoes;
+  } catch (error) {
+    console.error("❌ [AI Tool] Erro ao consultar status de conexão:", error);
+    throw error;
+  }
+}
+
+/**
  * Roteia conversa para assistente especializado (NÃO marca como transferido para humano)
  * @param departamento Nome do departamento/assistente especializado
  * @param motivo Motivo do roteamento
@@ -145,6 +229,12 @@ export async function executeAssistantTool(
         throw new Error("Parâmetros 'departamento' e 'motivo' são obrigatórios para rotear_para_assistente");
       }
       return await rotearParaAssistenteEspecializado(args.departamento, args.motivo);
+
+    case 'verificar_conexao':
+      if (!args.documento) {
+        throw new Error("Parâmetro 'documento' é obrigatório para verificar_conexao");
+      }
+      return await consultaStatusConexao(args.documento, context, storage);
 
     default:
       throw new Error(`Tool não implementada: ${toolName}`);
