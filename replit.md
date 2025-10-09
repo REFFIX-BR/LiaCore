@@ -127,6 +127,24 @@ The frontend uses React with TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailw
 - **Visualization**: Recharts-powered charts, summary cards, detailed tables.
 - **Filtering**: Period presets, custom dates, agent selection.
 
+**Activity Logs System**:
+- **Session Tracking**: Comprehensive login/logout logging with session duration calculation.
+- **Data Captured**: IP address, user agent (browser/OS detection), login timestamp, logout timestamp, session duration (minutes).
+- **Database Schema**: `activity_logs` table with userId, action (LOGIN/LOGOUT), ipAddress, userAgent, sessionDuration, metadata, createdAt.
+- **Storage Layer**: Methods in IStorage/MemStorage/DbStorage: `createActivityLog`, `getActivityLogsByUserId`, `getRecentActivityLogs`, `getLastLoginLog`.
+- **Authentication Integration**: Login route captures IP/User-Agent, logout calculates duration (logoutAt - loginAt) and logs complete session.
+- **API Endpoints**: 
+  - `GET /api/activity-logs` (ADMIN/SUPERVISOR only) - All recent activity logs
+  - `GET /api/activity-logs/:userId` - User-specific logs (agents see own, admins/supervisors see all)
+- **Activity Logs Page** (`/activity-logs`):
+  - Summary cards: Total sessions today, average duration, currently active users
+  - Detailed table: User, action, IP address, browser/OS, session duration, timestamp
+  - Auto-refresh every 10 seconds
+  - Browser detection from user agent string
+  - Human-readable duration formatting
+  - Role-based access (ADMIN/SUPERVISOR only in sidebar)
+- **Status Accuracy**: Activity logs provide reliable audit trail to validate online/offline/idle status with precise session duration data.
+
 **Conversation Assignment System**:
 - **Self-Assignment (Agent)**: Agents claim conversations with an "Atribuir" button.
 - **Manual Assignment (Supervisor/Admin)**: Assign to specific agents via dropdown.

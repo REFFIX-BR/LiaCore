@@ -8,7 +8,7 @@ import { format } from "date-fns";
 type ActivityLog = {
   id: string;
   userId: string;
-  action: 'login' | 'logout';
+  action: 'LOGIN' | 'LOGOUT';
   ipAddress: string | null;
   userAgent: string | null;
   sessionDuration: number | null;
@@ -22,7 +22,7 @@ type ActivityLog = {
 };
 
 export default function ActivityLogs() {
-  const { data: logsData, isLoading } = useQuery<{ logs: ActivityLog[] }>({
+  const { data: logsData, isLoading, error } = useQuery<{ logs: ActivityLog[] }>({
     queryKey: ["/api/activity-logs"],
     refetchInterval: 10000, // Atualiza a cada 10 segundos
   });
@@ -33,6 +33,14 @@ export default function ActivityLogs() {
     return (
       <div className="flex items-center justify-center h-96">
         <p className="text-muted-foreground">Carregando logs de atividade...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <p className="text-destructive">Erro ao carregar logs: {error.message}</p>
       </div>
     );
   }
@@ -80,7 +88,7 @@ export default function ActivityLogs() {
           <CardContent>
             <div className="text-2xl font-bold">
               {logs.filter(log => 
-                log.action === 'login' && 
+                log.action === 'LOGIN' && 
                 new Date(log.createdAt).toDateString() === new Date().toDateString()
               ).length}
             </div>
@@ -97,10 +105,10 @@ export default function ActivityLogs() {
           <CardContent>
             <div className="text-2xl font-bold">
               {logs.filter((log, index) => {
-                if (log.action !== 'login') return false;
+                if (log.action !== 'LOGIN') return false;
                 // Check if there's a logout after this login
                 const hasLogout = logs.slice(0, index).some(
-                  l => l.action === 'logout' && l.userId === log.userId && l.createdAt > log.createdAt
+                  l => l.action === 'LOGOUT' && l.userId === log.userId && l.createdAt > log.createdAt
                 );
                 return !hasLogout;
               }).length}
@@ -118,7 +126,7 @@ export default function ActivityLogs() {
           <CardContent>
             <div className="text-2xl font-bold">
               {(() => {
-                const sessionsWithDuration = logs.filter(log => log.action === 'logout' && log.sessionDuration);
+                const sessionsWithDuration = logs.filter(log => log.action === 'LOGOUT' && log.sessionDuration);
                 if (sessionsWithDuration.length === 0) return '-';
                 const avgSeconds = sessionsWithDuration.reduce((sum, log) => sum + (log.sessionDuration || 0), 0) / sessionsWithDuration.length;
                 return formatDuration(avgSeconds);
@@ -166,10 +174,10 @@ export default function ActivityLogs() {
                     </TableCell>
                     <TableCell>
                       <Badge 
-                        variant={log.action === 'login' ? 'default' : 'secondary'}
+                        variant={log.action === 'LOGIN' ? 'default' : 'secondary'}
                         className="gap-1"
                       >
-                        {log.action === 'login' ? (
+                        {log.action === 'LOGIN' ? (
                           <><LogIn className="h-3 w-3" /> Login</>
                         ) : (
                           <><LogOut className="h-3 w-3" /> Logout</>
@@ -177,7 +185,7 @@ export default function ActivityLogs() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {log.action === 'logout' ? (
+                      {log.action === 'LOGOUT' ? (
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3 text-muted-foreground" />
                           {formatDuration(log.sessionDuration)}
