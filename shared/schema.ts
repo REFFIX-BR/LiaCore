@@ -178,6 +178,16 @@ export const messageTemplates = pgTable("message_templates", {
   updatedBy: varchar("updated_by"), // User ID de quem fez a última atualização
 });
 
+export const activityLogs = pgTable("activity_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  action: text("action").notNull(), // 'login', 'logout'
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  sessionDuration: integer("session_duration"), // Duração da sessão em segundos (apenas para logout)
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -267,6 +277,11 @@ export const updateMessageTemplateSchema = z.object({
   updatedBy: z.string().optional(),
 });
 
+export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Evolution API Configuration Schema
 export const evolutionConfigSchema = z.object({
   url: z.string()
@@ -306,3 +321,5 @@ export type InsertRegistrationRequest = z.infer<typeof insertRegistrationRequest
 export type MessageTemplate = typeof messageTemplates.$inferSelect;
 export type InsertMessageTemplate = z.infer<typeof insertMessageTemplateSchema>;
 export type UpdateMessageTemplate = z.infer<typeof updateMessageTemplateSchema>;
+export type ActivityLog = typeof activityLogs.$inferSelect;
+export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;

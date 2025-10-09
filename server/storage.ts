@@ -24,7 +24,9 @@ import {
   type InsertRegistrationRequest,
   type MessageTemplate,
   type InsertMessageTemplate,
-  type UpdateMessageTemplate
+  type UpdateMessageTemplate,
+  type ActivityLog,
+  type InsertActivityLog
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -142,6 +144,12 @@ export interface IStorage {
   
   updateUserActivity(userId: string): Promise<void>;
 
+  // Activity Logs
+  createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
+  getActivityLogsByUserId(userId: string, limit?: number): Promise<ActivityLog[]>;
+  getRecentActivityLogs(limit?: number): Promise<Array<ActivityLog & { user?: User }>>;
+  getLastLoginLog(userId: string): Promise<ActivityLog | undefined>;
+
   // Agent Reports
   getAgentReports(params: {
     startDate: Date;
@@ -189,6 +197,7 @@ export class MemStorage implements IStorage {
   private satisfactionFeedback: Map<string, SatisfactionFeedback>;
   private suggestedResponses: Map<string, SuggestedResponse>;
   private registrationRequests: Map<string, RegistrationRequest>;
+  private activityLogs: Map<string, ActivityLog>;
 
   constructor() {
     this.users = new Map();
@@ -202,6 +211,7 @@ export class MemStorage implements IStorage {
     this.satisfactionFeedback = new Map();
     this.suggestedResponses = new Map();
     this.registrationRequests = new Map();
+    this.activityLogs = new Map();
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -233,6 +243,7 @@ export class MemStorage implements IStorage {
       email: insertUser.email || null,
       createdAt: new Date(),
       lastLoginAt: null,
+      lastActivityAt: null,
     };
     this.users.set(id, user);
     return user;
@@ -749,6 +760,53 @@ export class MemStorage implements IStorage {
 
   async deleteRegistrationRequest(id: string): Promise<void> {
     this.registrationRequests.delete(id);
+  }
+
+  // Activity Logs (stub implementation for MemStorage)
+  async createActivityLog(insertLog: InsertActivityLog): Promise<ActivityLog> {
+    const id = randomUUID();
+    const log: ActivityLog = {
+      ...insertLog,
+      id,
+      ipAddress: insertLog.ipAddress || null,
+      userAgent: insertLog.userAgent || null,
+      sessionDuration: insertLog.sessionDuration || null,
+      createdAt: new Date(),
+    };
+    this.activityLogs.set(id, log);
+    return log;
+  }
+
+  async getActivityLogsByUserId(userId: string, limit: number = 100): Promise<ActivityLog[]> {
+    return Array.from(this.activityLogs.values())
+      .filter(log => log.userId === userId)
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0))
+      .slice(0, limit);
+  }
+
+  async getRecentActivityLogs(limit: number = 50): Promise<Array<ActivityLog & { user?: User }>> {
+    const logs = Array.from(this.activityLogs.values())
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0))
+      .slice(0, limit);
+    
+    return logs.map(log => ({
+      ...log,
+      user: this.users.get(log.userId)
+    }));
+  }
+
+  async getLastLoginLog(userId: string): Promise<ActivityLog | undefined> {
+    return Array.from(this.activityLogs.values())
+      .filter(log => log.userId === userId && log.action === 'login')
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0))[0];
+  }
+
+  async updateUserActivity(userId: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (user) {
+      const updated = { ...user, lastActivityAt: new Date() };
+      this.users.set(userId, updated);
+    }
   }
 
   // Message Templates (stub implementation for MemStorage)
@@ -1505,6 +1563,52 @@ export class DbStorage implements IStorage {
     await db.update(schema.users)
       .set({ lastActivityAt: new Date() })
       .where(eq(schema.users.id, userId));
+  }
+
+  // Activity Logs
+  async createActivityLog(insertLog: InsertActivityLog): Promise<ActivityLog> {
+    const [log] = await db.insert(schema.activityLogs).values(insertLog).returning();
+    return log;
+  }
+
+  async getActivityLogsByUserId(userId: string, limit: number = 100): Promise<ActivityLog[]> {
+    return await db.select()
+      .from(schema.activityLogs)
+      .where(eq(schema.activityLogs.userId, userId))
+      .orderBy(desc(schema.activityLogs.createdAt))
+      .limit(limit);
+  }
+
+  async getRecentActivityLogs(limit: number = 50): Promise<Array<ActivityLog & { user?: User }>> {
+    const logs = await db.select()
+      .from(schema.activityLogs)
+      .orderBy(desc(schema.activityLogs.createdAt))
+      .limit(limit);
+    
+    // Join with users
+    const logsWithUsers = await Promise.all(logs.map(async (log) => {
+      const [user] = await db.select()
+        .from(schema.users)
+        .where(eq(schema.users.id, log.userId))
+        .limit(1);
+      return { ...log, user };
+    }));
+    
+    return logsWithUsers;
+  }
+
+  async getLastLoginLog(userId: string): Promise<ActivityLog | undefined> {
+    const [log] = await db.select()
+      .from(schema.activityLogs)
+      .where(
+        and(
+          eq(schema.activityLogs.userId, userId),
+          eq(schema.activityLogs.action, 'login')
+        )
+      )
+      .orderBy(desc(schema.activityLogs.createdAt))
+      .limit(1);
+    return log;
   }
 
   async getAgentReports(params: {

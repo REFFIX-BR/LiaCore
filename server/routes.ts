@@ -5,7 +5,7 @@ import { insertConversationSchema, insertMessageSchema, insertAlertSchema, inser
 import { routeMessage, createThread, sendMessageAndGetResponse, summarizeConversation, routeMessageWithContext, CONTEXT_CONFIG } from "./lib/openai";
 import { storeConversationThread, getConversationThread, searchKnowledge } from "./lib/upstash";
 import { webhookLogger } from "./lib/webhook-logger";
-import { authenticate, authenticateWithTracking, requireAdmin, requireAdminOrSupervisor } from "./middleware/auth";
+import { authenticate, authenticateWithTracking, requireAdmin, requireAdminOrSupervisor, requireAnyRole } from "./middleware/auth";
 import { hashPassword, comparePasswords, generateToken, getUserFromUser } from "./lib/auth";
 import OpenAI from "openai";
 
@@ -103,6 +103,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update last login
       await storage.updateUserLastLogin(user.id);
 
+      // 📊 Log login activity
+      await storage.createActivityLog({
+        userId: user.id,
+        action: 'login',
+        ipAddress: req.ip || req.headers['x-forwarded-for'] as string || null,
+        userAgent: req.headers['user-agent'] || null,
+      });
+      console.log(`✅ [Activity Log] Login registrado: ${user.fullName} (${user.id})`);
+
       // Generate token and set cookie
       const token = generateToken(user);
       res.cookie("auth_token", token, {
@@ -120,9 +129,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Logout
-  app.post("/api/auth/logout", (_req, res) => {
-    res.clearCookie("auth_token");
-    res.json({ message: "Logout realizado com sucesso" });
+  app.post("/api/auth/logout", authenticate, async (req, res) => {
+    try {
+      const userId = req.user!.userId;
+      
+      // 📊 Calculate session duration from last login
+      const lastLogin = await storage.getLastLoginLog(userId);
+      let sessionDuration: number | null = null;
+      
+      if (lastLogin?.createdAt) {
+        const now = new Date();
+        sessionDuration = Math.floor((now.getTime() - lastLogin.createdAt.getTime()) / 1000); // em segundos
+      }
+
+      // 📊 Log logout activity
+      await storage.createActivityLog({
+        userId,
+        action: 'logout',
+        ipAddress: req.ip || req.headers['x-forwarded-for'] as string || null,
+        userAgent: req.headers['user-agent'] || null,
+        sessionDuration,
+      });
+      
+      const user = await storage.getUserById(userId);
+      console.log(`✅ [Activity Log] Logout registrado: ${user?.fullName} (${userId}) - Duração: ${sessionDuration ? Math.floor(sessionDuration / 60) : '?'} minutos`);
+
+      res.clearCookie("auth_token");
+      res.json({ message: "Logout realizado com sucesso" });
+    } catch (error) {
+      console.error("❌ [Auth] Logout error:", error);
+      // Still clear cookie even if logging fails
+      res.clearCookie("auth_token");
+      res.json({ message: "Logout realizado com sucesso" });
+    }
   });
 
   // Get current user
@@ -206,6 +245,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("❌ [Users] Error getting users:", error);
       res.status(500).json({ error: "Erro ao buscar usuários" });
+    }
+  });
+
+  // Get recent activity logs (admin/supervisor only)
+  app.get("/api/activity-logs", authenticate, requireAnyRole("ADMIN", "SUPERVISOR"), async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const logs = await storage.getRecentActivityLogs(limit);
+      res.json({ logs });
+    } catch (error) {
+      console.error("❌ [Activity Logs] Error getting logs:", error);
+      res.status(500).json({ error: "Erro ao buscar logs de atividade" });
+    }
+  });
+
+  // Get activity logs for a specific user
+  app.get("/api/activity-logs/:userId", authenticate, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 100;
+      
+      // Users can only see their own logs unless they're admin/supervisor
+      if (req.user!.userId !== userId && req.user!.role !== "ADMIN" && req.user!.role !== "SUPERVISOR") {
+        return res.status(403).json({ error: "Sem permissão para ver logs de outros usuários" });
+      }
+      
+      const logs = await storage.getActivityLogsByUserId(userId, limit);
+      res.json({ logs });
+    } catch (error) {
+      console.error("❌ [Activity Logs] Error getting user logs:", error);
+      res.status(500).json({ error: "Erro ao buscar logs do usuário" });
     }
   });
 

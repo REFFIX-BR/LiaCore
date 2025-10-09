@@ -34,7 +34,8 @@ import {
   Lightbulb,
   BarChart3,
   Cog,
-  UserPlus
+  UserPlus,
+  History
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
@@ -90,6 +91,12 @@ const menuCategories: MenuCategory[] = [
         title: "Relatórios de Atendentes",
         url: "/agent-reports",
         icon: FileText,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Logs de Atividade",
+        url: "/activity-logs",
+        icon: History,
         roles: ["ADMIN", "SUPERVISOR"],
       },
       {
