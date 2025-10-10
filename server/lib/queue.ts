@@ -9,6 +9,10 @@ const redisConnection = new IORedis({
   password: process.env.UPSTASH_REDIS_PASSWORD || process.env.REDIS_PASSWORD,
   maxRetriesPerRequest: null, // BullMQ requirement for blocking commands
   enableReadyCheck: false,
+  // TLS configuration for Upstash (rediss://)
+  tls: process.env.UPSTASH_REDIS_HOST ? {
+    rejectUnauthorized: false, // Upstash uses self-signed certs
+  } : undefined,
   retryStrategy(times) {
     const delay = Math.min(times * 50, 2000);
     return delay;
