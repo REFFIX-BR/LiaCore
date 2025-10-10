@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, ChevronDown, X, Image as ImageIcon, Mic, Users } from "lucide-react";
+import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, ChevronDown, X, Image as ImageIcon, Mic, Users, FileText } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -61,6 +61,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   const [hasLoadedOlder, setHasLoadedOlder] = useState(false);
   const [selectedImage, setSelectedImage] = useState<{ base64: string; preview: string } | null>(null);
   const [selectedAudio, setSelectedAudio] = useState<{ base64: string; name: string; mimeType: string } | null>(null);
+  const [selectedPdf, setSelectedPdf] = useState<{ base64: string; name: string } | null>(null);
   const [showTransferDialog, setShowTransferDialog] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
   const [transferNotes, setTransferNotes] = useState("");
@@ -68,6 +69,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user, isAgent, isAdmin, isSupervisor } = useAuth();
   const isAdminOrSupervisor = isAdmin || isSupervisor;
@@ -173,6 +175,46 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
     reader.readAsDataURL(file);
   };
 
+  // Função para converter PDF para base64
+  const handlePdfSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de arquivo
+    if (file.type !== 'application/pdf') {
+      toast({
+        title: "Arquivo inválido",
+        description: "Por favor, selecione um arquivo PDF válido",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar tamanho (máx 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "O PDF deve ter no máximo 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      setSelectedPdf({
+        base64: base64.split(',')[1], // Remove o prefixo "data:application/pdf;base64,"
+        name: file.name,
+      });
+      toast({
+        title: "PDF carregado",
+        description: "Documento pronto para envio",
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Atualizar mensagens quando dados mudam
   useEffect(() => {
     if (!conversationData) return;
@@ -273,7 +315,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
 
   // Enviar mensagem
   const sendMutation = useMutation({
-    mutationFn: async ({ content, suggestionId, wasEdited, imageBase64, audioBase64, audioMimeType }: { content: string; suggestionId?: string | null; wasEdited?: boolean; imageBase64?: string; audioBase64?: string; audioMimeType?: string }) => {
+    mutationFn: async ({ content, suggestionId, wasEdited, imageBase64, audioBase64, audioMimeType, pdfBase64, pdfName }: { content: string; suggestionId?: string | null; wasEdited?: boolean; imageBase64?: string; audioBase64?: string; audioMimeType?: string; pdfBase64?: string; pdfName?: string }) => {
       const response = await apiRequest(
         `/api/conversations/${conversation.id}/send-message`, 
         "POST",
@@ -284,7 +326,9 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
           supervisorName: user?.fullName || 'Atendente',
           imageBase64,
           audioBase64,
-          audioMimeType
+          audioMimeType,
+          pdfBase64,
+          pdfName
         }
       );
       return response.json();
@@ -296,6 +340,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
       setIsEditingAI(false);
       setSelectedImage(null);
       setSelectedAudio(null);
+      setSelectedPdf(null);
       if (data.imageAnalyzed || data.audioTranscribed) {
         const descriptions = [];
         if (data.imageAnalyzed) descriptions.push("Imagem analisada");
@@ -407,7 +452,9 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         wasEdited: false,
         imageBase64: selectedImage?.base64,
         audioBase64: selectedAudio?.base64,
-        audioMimeType: selectedAudio?.mimeType
+        audioMimeType: selectedAudio?.mimeType,
+        pdfBase64: selectedPdf?.base64,
+        pdfName: selectedPdf?.name
       });
     }
   };
@@ -420,19 +467,23 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         wasEdited: true,
         imageBase64: selectedImage?.base64,
         audioBase64: selectedAudio?.base64,
-        audioMimeType: selectedAudio?.mimeType
+        audioMimeType: selectedAudio?.mimeType,
+        pdfBase64: selectedPdf?.base64,
+        pdfName: selectedPdf?.name
       });
     }
   };
 
   const handleManualSend = () => {
-    if (messageContent.trim() || selectedImage || selectedAudio) {
+    if (messageContent.trim() || selectedImage || selectedAudio || selectedPdf) {
       sendMutation.mutate({ 
         content: messageContent || '', 
         suggestionId: null,
         imageBase64: selectedImage?.base64,
         audioBase64: selectedAudio?.base64,
-        audioMimeType: selectedAudio?.mimeType
+        audioMimeType: selectedAudio?.mimeType,
+        pdfBase64: selectedPdf?.base64,
+        pdfName: selectedPdf?.name
       });
     }
   };
@@ -665,6 +716,30 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
           </div>
         )}
 
+        {/* PDF Preview */}
+        {selectedPdf && (
+          <div className="relative p-3 bg-accent/30 rounded-md border flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" />
+              <div>
+                <div className="text-sm font-medium">{selectedPdf.name}</div>
+                <Badge variant="secondary" className="mt-1">
+                  📄 PDF anexado
+                </Badge>
+              </div>
+            </div>
+            <Button
+              size="icon"
+              variant="destructive"
+              className="h-6 w-6"
+              onClick={() => setSelectedPdf(null)}
+              data-testid="button-remove-pdf"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+
         <div className="flex gap-2">
           <div className="flex flex-col gap-2 flex-1">
             <Textarea
@@ -710,6 +785,14 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               className="hidden"
               data-testid="input-audio"
             />
+            <input
+              ref={pdfInputRef}
+              type="file"
+              accept="application/pdf"
+              onChange={handlePdfSelect}
+              className="hidden"
+              data-testid="input-pdf"
+            />
             <Button
               size="icon"
               variant="outline"
@@ -729,8 +812,17 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               <Mic className="h-4 w-4" />
             </Button>
             <Button
+              size="icon"
+              variant="outline"
+              onClick={() => pdfInputRef.current?.click()}
+              disabled={sendMutation.isPending}
+              data-testid="button-upload-pdf"
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+            <Button
               onClick={isEditingAI ? handleEditAndSend : handleManualSend}
-              disabled={(!messageContent.trim() && !selectedImage && !selectedAudio) || sendMutation.isPending}
+              disabled={(!messageContent.trim() && !selectedImage && !selectedAudio && !selectedPdf) || sendMutation.isPending}
               data-testid="button-send"
             >
               {sendMutation.isPending ? (

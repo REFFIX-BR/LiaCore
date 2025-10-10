@@ -81,6 +81,66 @@ async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, capti
   }
 }
 
+// Helper function to send WhatsApp PDF/document via Evolution API
+async function sendWhatsAppDocument(phoneNumber: string, pdfBase64: string, fileName?: string, caption?: string, instanceName?: string): Promise<boolean> {
+  const instance = instanceName || EVOLUTION_CONFIG.instance;
+  
+  if (!EVOLUTION_CONFIG.apiUrl || !EVOLUTION_CONFIG.apiKey || !instance) {
+    console.error("❌ [Evolution] Credenciais não configuradas para envio de documento");
+    return false;
+  }
+
+  try {
+    // Normalizar número do WhatsApp
+    let normalizedNumber = phoneNumber;
+    if (phoneNumber.startsWith('whatsapp_')) {
+      normalizedNumber = phoneNumber.replace('whatsapp_', '');
+    } else if (phoneNumber.includes('@s.whatsapp.net')) {
+      normalizedNumber = phoneNumber.split('@')[0];
+    }
+    
+    // Ensure URL has protocol
+    let baseUrl = EVOLUTION_CONFIG.apiUrl.trim();
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = `https://${baseUrl}`;
+    }
+    
+    // Remover prefixo data:application se houver
+    let cleanBase64 = pdfBase64;
+    if (pdfBase64.includes('base64,')) {
+      cleanBase64 = pdfBase64.split('base64,')[1];
+    }
+    
+    const url = `${baseUrl}/message/sendMedia/${instance}`;
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: EVOLUTION_CONFIG.apiKey,
+      },
+      body: JSON.stringify({
+        number: normalizedNumber,
+        mediatype: "document",
+        mimetype: "application/pdf",
+        media: cleanBase64,
+        fileName: fileName || "documento.pdf",
+        caption: caption || "",
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Evolution API error: ${response.statusText}`);
+    }
+
+    console.log(`✅ [Evolution] Documento PDF enviado com sucesso para ${normalizedNumber}`);
+    return true;
+  } catch (error) {
+    console.error("❌ [Evolution] Erro ao enviar documento:", error);
+    return false;
+  }
+}
+
 // Helper function to send WhatsApp message via Evolution API
 async function sendWhatsAppMessage(phoneNumber: string, text: string, instanceName?: string): Promise<boolean> {
   // Use instance específica da conversa ou fallback para env var
@@ -3666,7 +3726,7 @@ A resposta deve:
   app.post("/api/conversations/:id/send-message", authenticate, async (req, res) => {
     try {
       const { id } = req.params;
-      const { content, suggestionId, wasEdited, supervisorName, imageBase64, audioBase64, audioMimeType } = req.body;
+      const { content, suggestionId, wasEdited, supervisorName, imageBase64, audioBase64, audioMimeType, pdfBase64, pdfName } = req.body;
 
       const conversation = await storage.getConversation(id);
       if (!conversation) {
@@ -3752,6 +3812,29 @@ A resposta deve:
           const audioMsg = '[Áudio enviado - transcrição não disponível]';
           processedContent = processedContent ? `${processedContent}\n\n${audioMsg}` : audioMsg;
           console.log(`⚠️ [Supervisor] Falha na transcrição do áudio`);
+        }
+      }
+
+      // Process PDF if provided
+      if (pdfBase64) {
+        // Validar tamanho (máx 10MB)
+        const pdfSizeBytes = (pdfBase64.length * 3) / 4;
+        const maxSizeBytes = 10 * 1024 * 1024; // 10MB
+        
+        if (pdfSizeBytes > maxSizeBytes) {
+          return res.status(400).json({ 
+            error: "PDF muito grande. Tamanho máximo: 10MB" 
+          });
+        }
+
+        console.log(`📄 [Supervisor] PDF detectado (${(pdfSizeBytes / 1024 / 1024).toFixed(2)}MB) - ${pdfName || 'documento.pdf'}`);
+        
+        // Adicionar nota sobre PDF enviado
+        const pdfMsg = `[PDF enviado: ${pdfName || 'documento.pdf'}]`;
+        if (processedContent && processedContent !== content) {
+          processedContent += `\n\n${pdfMsg}`;
+        } else {
+          processedContent = content ? `${content}\n\n${pdfMsg}` : pdfMsg;
         }
       }
 
@@ -3882,6 +3965,27 @@ A resposta deve:
                 caption: content?.substring(0, 50) || '',
               });
             }
+          } else if (pdfBase64) {
+            // Se tem PDF, enviar como documento
+            console.log(`📄 [Supervisor] Enviando PDF via WhatsApp para ${phoneNumber}`);
+            whatsappSent = await sendWhatsAppDocument(
+              phoneNumber,
+              pdfBase64,
+              pdfName || 'documento.pdf',
+              content || '', // Caption (mensagem do supervisor)
+              conversation.evolutionInstance || undefined
+            );
+            
+            if (whatsappSent) {
+              console.log(`✅ [Supervisor] PDF enviado ao WhatsApp: ${phoneNumber}`);
+              webhookLogger.success('SUPERVISOR_PDF_SENT', `Supervisor enviou PDF ao cliente`, {
+                conversationId: id,
+                supervisorName,
+                phoneNumber,
+                fileName: pdfName || 'documento.pdf',
+                caption: content?.substring(0, 50) || '',
+              });
+            }
           } else if (audioBase64) {
             // Para áudio, por enquanto enviar apenas a transcrição (Evolution API pode não suportar áudio)
             whatsappSent = await sendWhatsAppMessage(phoneNumber, processedContent, conversation.evolutionInstance || undefined);
@@ -3904,6 +4008,7 @@ A resposta deve:
               messagePreview: content?.substring(0, 50) || '',
               hasImage: !!imageBase64,
               hasAudio: !!audioBase64,
+              hasPdf: !!pdfBase64,
             });
           } else {
             webhookLogger.error('WHATSAPP_SEND_FAILED', `Falha ao enviar mensagem do supervisor`, {
