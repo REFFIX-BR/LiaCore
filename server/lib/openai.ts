@@ -5,6 +5,84 @@ const openai = new OpenAI({
   organization: "org-AaGGTB8W7UF7Cyzrxi12lVL8",
 });
 
+// Circuit Breaker para proteger contra falhas em cascata
+class CircuitBreaker {
+  private failureCount = 0;
+  private successCount = 0;
+  private lastFailureTime: number | null = null;
+  private state: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
+  
+  constructor(
+    private readonly failureThreshold = 5,
+    private readonly successThreshold = 2,
+    private readonly timeout = 30000,
+    private readonly resetTimeout = 30000
+  ) {}
+
+  async execute<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.state === 'OPEN') {
+      if (this.lastFailureTime && Date.now() - this.lastFailureTime >= this.resetTimeout) {
+        console.log('🔄 [CircuitBreaker] Tentando half-open...');
+        this.state = 'HALF_OPEN';
+      } else {
+        throw new Error('Circuit breaker is OPEN - too many failures');
+      }
+    }
+
+    try {
+      const result = await this.withTimeout(fn);
+      this.onSuccess();
+      return result;
+    } catch (error) {
+      this.onFailure();
+      throw error;
+    }
+  }
+
+  private async withTimeout<T>(fn: () => Promise<T>): Promise<T> {
+    return Promise.race([
+      fn(),
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error('OpenAI request timeout (30s)')), this.timeout)
+      ),
+    ]);
+  }
+
+  private onSuccess(): void {
+    this.failureCount = 0;
+    
+    if (this.state === 'HALF_OPEN') {
+      this.successCount++;
+      if (this.successCount >= this.successThreshold) {
+        console.log('✅ [CircuitBreaker] Circuito FECHADO - recuperado');
+        this.state = 'CLOSED';
+        this.successCount = 0;
+      }
+    }
+  }
+
+  private onFailure(): void {
+    this.failureCount++;
+    this.lastFailureTime = Date.now();
+    this.successCount = 0;
+
+    if (this.failureCount >= this.failureThreshold) {
+      console.error(`🔴 [CircuitBreaker] Circuito ABERTO - ${this.failureCount} falhas consecutivas`);
+      this.state = 'OPEN';
+    }
+  }
+
+  getState() {
+    return {
+      state: this.state,
+      failureCount: this.failureCount,
+      successCount: this.successCount,
+    };
+  }
+}
+
+const openaiCircuitBreaker = new CircuitBreaker();
+
 export async function generateEmbedding(text: string): Promise<number[]> {
   const response = await openai.embeddings.create({
     model: "text-embedding-3-small",
@@ -46,10 +124,12 @@ Responda apenas com o nome do assistente (suporte, comercial, financeiro, aprese
 
   try {
     // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-    const response = await openai.chat.completions.create({
-      model: "gpt-5",
-      messages: [{ role: "user", content: routingPrompt }],
-    });
+    const response = await openaiCircuitBreaker.execute(() =>
+      openai.chat.completions.create({
+        model: "gpt-5",
+        messages: [{ role: "user", content: routingPrompt }],
+      })
+    );
 
     const assistantType = response.choices[0].message.content?.trim().toLowerCase() || "suporte";
     const validTypes = ["suporte", "comercial", "financeiro", "apresentacao", "ouvidoria", "cancelamento"];
@@ -75,7 +155,9 @@ Responda apenas com o nome do assistente (suporte, comercial, financeiro, aprese
 }
 
 export async function createThread(): Promise<string> {
-  const thread = await openai.beta.threads.create();
+  const thread = await openaiCircuitBreaker.execute(() =>
+    openai.beta.threads.create()
+  );
   return thread.id;
 }
 
@@ -114,14 +196,18 @@ export async function sendMessageAndGetResponse(
       usedFallback: !assistantId 
     });
 
-    await openai.beta.threads.messages.create(threadId, {
-      role: "user",
-      content: userMessage,
-    });
+    await openaiCircuitBreaker.execute(() =>
+      openai.beta.threads.messages.create(threadId, {
+        role: "user",
+        content: userMessage,
+      })
+    );
 
-    let run = await openai.beta.threads.runs.create(threadId, {
-      assistant_id: effectiveAssistantId,
-    });
+    let run = await openaiCircuitBreaker.execute(() =>
+      openai.beta.threads.runs.create(threadId, {
+        assistant_id: effectiveAssistantId,
+      })
+    );
 
     console.log("🔵 [OpenAI] Run created:", { runId: run.id, threadId });
 
@@ -188,15 +274,19 @@ export async function sendMessageAndGetResponse(
           })
         );
 
-        run = await openai.beta.threads.runs.submitToolOutputs(runId, {
-          thread_id: threadId,
-          tool_outputs: toolOutputs,
-        });
+        run = await openaiCircuitBreaker.execute(() =>
+          openai.beta.threads.runs.submitToolOutputs(runId, {
+            thread_id: threadId,
+            tool_outputs: toolOutputs,
+          })
+        );
       } else {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        run = await openai.beta.threads.runs.retrieve(runId, {
-          thread_id: threadId,
-        });
+        run = await openaiCircuitBreaker.execute(() =>
+          openai.beta.threads.runs.retrieve(runId, {
+            thread_id: threadId,
+          })
+        );
       }
 
       attempts++;
@@ -208,10 +298,12 @@ export async function sendMessageAndGetResponse(
       throw new Error(`Run failed with status: ${run.status}`);
     }
 
-    const messages = await openai.beta.threads.messages.list(threadId, {
-      order: "desc",
-      limit: 1,
-    });
+    const messages = await openaiCircuitBreaker.execute(() =>
+      openai.beta.threads.messages.list(threadId, {
+        order: "desc",
+        limit: 1,
+      })
+    );
 
     const lastMessage = messages.data[0];
     
@@ -505,9 +597,11 @@ export async function updateAssistantPrompt(assistantType: string, newInstructio
       throw new Error(`Assistant type ${assistantType} not found`);
     }
 
-    await openai.beta.assistants.update(assistantId, {
-      instructions: newInstructions,
-    });
+    await openaiCircuitBreaker.execute(() =>
+      openai.beta.assistants.update(assistantId, {
+        instructions: newInstructions,
+      })
+    );
 
     console.log(`✅ [OpenAI] Updated instructions for ${assistantType} (${assistantId})`);
   } catch (error) {
@@ -525,7 +619,9 @@ export async function getAssistantInstructions(assistantType: string): Promise<s
       throw new Error(`Assistant type ${assistantType} not found`);
     }
 
-    const assistant = await openai.beta.assistants.retrieve(assistantId);
+    const assistant = await openaiCircuitBreaker.execute(() =>
+      openai.beta.assistants.retrieve(assistantId)
+    );
     return assistant.instructions || "";
   } catch (error) {
     console.error(`❌ [OpenAI] Error getting instructions for ${assistantType}:`, error);
@@ -581,11 +677,13 @@ ${messages.map((m, i) => `${i + 1}. [${m.role}]: ${m.content}`).join('\n')}
 
 Responda APENAS com o JSON estruturado, sem explicações adicionais.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-    });
+    const response = await openaiCircuitBreaker.execute(() =>
+      openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+      })
+    );
 
     const summary = response.choices[0].message.content?.trim() || "{}";
     
@@ -666,11 +764,13 @@ Responda APENAS com JSON válido:
   "reason": "<1-2 frases explicando a decisão>"
 }`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-5",
-      messages: [{ role: "user", content: routingPrompt }],
-      response_format: { type: "json_object" },
-    });
+    const response = await openaiCircuitBreaker.execute(() =>
+      openai.chat.completions.create({
+        model: "gpt-5",
+        messages: [{ role: "user", content: routingPrompt }],
+        response_format: { type: "json_object" },
+      })
+    );
 
     const result = JSON.parse(response.choices[0].message.content?.trim() || "{}");
     const assistantType = result.recommendedAssistantType?.toLowerCase() || "suporte";
