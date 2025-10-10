@@ -5,8 +5,8 @@ import { setupVite, serveStatic, log } from "./vite";
 import { startLearningScheduler } from "./lib/learning-scheduler";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '50mb' })); // Support large base64 images/audio
+app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 app.use(cookieParser());
 
 app.use((req, res, next) => {
