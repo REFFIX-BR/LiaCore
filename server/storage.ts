@@ -1094,7 +1094,7 @@ export class DbStorage implements IStorage {
         .where(eq(schema.messages.id, options.before))
         .limit(1);
       
-      if (beforeMessage.length === 0) {
+      if (beforeMessage.length === 0 || !beforeMessage[0].timestamp) {
         return { messages: [], hasMore: false };
       }
       
@@ -1102,7 +1102,7 @@ export class DbStorage implements IStorage {
       query = query.where(
         and(
           eq(schema.messages.conversationId, conversationId),
-          lt(schema.messages.timestamp, beforeMessage[0].timestamp)
+          lt(schema.messages.timestamp, beforeMessage[0].timestamp as Date)
         )
       );
     }
