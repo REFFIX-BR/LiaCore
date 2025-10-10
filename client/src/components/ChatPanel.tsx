@@ -7,7 +7,24 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, ChevronDown, X, Image as ImageIcon, Mic } from "lucide-react";
+import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, ChevronDown, X, Image as ImageIcon, Mic, Users } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea as TextareaComponent } from "@/components/ui/textarea";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
@@ -44,12 +61,15 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   const [hasLoadedOlder, setHasLoadedOlder] = useState(false);
   const [selectedImage, setSelectedImage] = useState<{ base64: string; preview: string } | null>(null);
   const [selectedAudio, setSelectedAudio] = useState<{ base64: string; name: string; mimeType: string } | null>(null);
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  const [transferNotes, setTransferNotes] = useState("");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { user, isAgent } = useAuth();
+  const { user, isAgent, isAdminOrSupervisor } = useAuth();
 
   // Query mensagens da conversa
   const { data: conversationData } = useQuery<{ messages: Message[]; hasMore: boolean }>({
@@ -335,6 +355,43 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
     },
   });
 
+  // Query para buscar agentes disponíveis
+  const { data: agentsData } = useQuery<{ users: Array<{ id: string; fullName: string; username: string; role: string }> }>({
+    queryKey: ["/api/users"],
+    enabled: isAdminOrSupervisor,
+  });
+
+  // Transferir conversa para outro agente
+  const transferMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest(
+        `/api/conversations/${conversation.id}/transfer`, 
+        "POST",
+        { agentId: selectedAgentId, notes: transferNotes }
+      );
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Conversa transferida!",
+        description: `Conversa transferida para ${data.agent.fullName}`,
+      });
+      setShowTransferDialog(false);
+      setSelectedAgentId("");
+      setTransferNotes("");
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations/assigned"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations/transferred"] });
+      if (onClose) onClose();
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao transferir",
+        description: "Não foi possível transferir a conversa",
+        variant: "destructive",
+      });
+    },
+  });
+
   const showAISuggestion = aiSuggestion && !isEditingAI;
 
   const handleRequestSuggestion = () => {
@@ -387,6 +444,18 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
     assignMutation.mutate();
   };
 
+  const handleTransfer = () => {
+    if (selectedAgentId && selectedAgentId !== conversation.assignedTo) {
+      transferMutation.mutate();
+    }
+  };
+
+  // Filtrar agentes disponíveis (excluindo o agente atual da conversa)
+  const availableAgents = agentsData?.users.filter(agent => 
+    agent.id !== conversation.assignedTo && 
+    (agent.role === 'AGENT' || agent.role === 'SUPERVISOR' || agent.role === 'ADMIN')
+  ) || [];
+
   return (
     <Card className="flex flex-col h-full">
       {/* Header */}
@@ -412,6 +481,21 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <UserPlus className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+          {isAdminOrSupervisor && (
+            <Button
+              onClick={() => setShowTransferDialog(true)}
+              variant="outline"
+              size="sm"
+              disabled={transferMutation.isPending}
+              data-testid="button-transfer"
+            >
+              {transferMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Users className="h-4 w-4" />
               )}
             </Button>
           )}
@@ -663,6 +747,77 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
           </p>
         )}
       </div>
+
+      {/* Dialog de Transferência */}
+      <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
+        <DialogContent data-testid="dialog-transfer">
+          <DialogHeader>
+            <DialogTitle>Transferir Atendimento</DialogTitle>
+            <DialogDescription>
+              Selecione o colaborador para transferir esta conversa.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="agent-select">Colaborador</Label>
+              <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                <SelectTrigger id="agent-select" data-testid="select-agent">
+                  <SelectValue placeholder="Selecione um colaborador" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableAgents.map((agent) => (
+                    <SelectItem key={agent.id} value={agent.id} data-testid={`agent-option-${agent.id}`}>
+                      {agent.fullName} (@{agent.username}) - {agent.role}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="transfer-notes">Motivo da transferência (opcional)</Label>
+              <TextareaComponent
+                id="transfer-notes"
+                value={transferNotes}
+                onChange={(e) => setTransferNotes(e.target.value)}
+                placeholder="Ex: Cliente solicitou falar com outro atendente..."
+                className="resize-none"
+                rows={3}
+                data-testid="input-transfer-notes"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowTransferDialog(false);
+                setSelectedAgentId("");
+                setTransferNotes("");
+              }}
+              data-testid="button-cancel-transfer"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleTransfer}
+              disabled={!selectedAgentId || transferMutation.isPending}
+              data-testid="button-confirm-transfer"
+            >
+              {transferMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Transferindo...
+                </>
+              ) : (
+                'Transferir'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
