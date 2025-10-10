@@ -133,10 +133,16 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 - Supports self-assignment by agents and manual assignment by supervisors/admins, with automated welcome messages and role-based access to conversations.
 
 **Conversation Transfer System** (`client/src/components/ChatPanel.tsx`, `server/routes.ts`):
-- **Transfer Button**: Visible in chat header for ADMIN/SUPERVISOR users (Users icon next to resolve button)
+- **Transfer Button**: Visible in chat header (Users icon next to resolve button)
+  - ADMIN/SUPERVISOR: Always visible
+  - AGENT: Visible only for conversations assigned to them
 - **Transfer Dialog**: Modal with agent selection dropdown and optional transfer notes
 - **Agent Filtering**: Automatically excludes current assigned agent from available options
-- **Backend Endpoint**: POST `/api/conversations/:id/transfer` (ADMIN/SUPERVISOR only)
+- **Backend Endpoints**:
+  - POST `/api/conversations/:id/transfer`: Transfer conversations with role-based permissions
+    - ADMIN/SUPERVISOR: Can transfer any conversation
+    - AGENT: Can only transfer conversations assigned to them
+  - GET `/api/users/available-agents`: Returns list of active AGENTS/SUPERVISORS/ADMINS (accessible by all authenticated users)
 - **Transfer Workflow**: 
   - Updates `assignedTo` field to new agent
   - Creates transfer message in conversation history
