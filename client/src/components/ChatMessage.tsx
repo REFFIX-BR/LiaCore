@@ -39,6 +39,23 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
   const isUser = message.role === "user";
 
+  // Detectar se mensagem contém análise de imagem
+  const hasImageAnalysis = message.content.includes('[Imagem enviada]') || 
+                          message.content.includes('[Análise da Imagem]') || 
+                          message.content.includes('📎 Análise automática');
+
+  // Separar conteúdo e análise se houver
+  let messageContent = message.content;
+  let imageAnalysis = null;
+
+  if (hasImageAnalysis) {
+    const parts = message.content.split(/📎 Análise automática[^:]*:/);
+    if (parts.length > 1) {
+      messageContent = parts[0].replace('[Imagem enviada]', '').trim();
+      imageAnalysis = parts[1].trim();
+    }
+  }
+
   return (
     <div className={`flex gap-3 py-3 ${isUser ? "" : "bg-primary/5"} px-4 rounded-lg`}>
       <Avatar className="h-8 w-8 flex-shrink-0">
@@ -57,7 +74,26 @@ export function ChatMessage({ message }: ChatMessageProps) {
           </span>
         </div>
         
-        <p className="text-sm leading-relaxed">{message.content}</p>
+        {hasImageAnalysis ? (
+          <div className="space-y-2">
+            <Badge variant="outline" className="text-xs">
+              📸 Imagem enviada
+            </Badge>
+            {messageContent && (
+              <p className="text-sm leading-relaxed">{messageContent}</p>
+            )}
+            {imageAnalysis && (
+              <div className="bg-accent/50 rounded-md p-3 border border-border">
+                <p className="text-xs font-medium text-muted-foreground mb-1">
+                  📎 Análise automática da imagem
+                </p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{imageAnalysis}</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+        )}
         
         {message.functionCall && (
           <Badge 
