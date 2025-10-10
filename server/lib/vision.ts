@@ -158,3 +158,45 @@ export async function processWhatsAppImage(
   
   return { text, base64: base64Image };
 }
+
+export interface ProcessedWhatsAppDocument {
+  text: string;
+  base64?: string;
+  fileName?: string;
+}
+
+export async function processWhatsAppDocument(
+  messageKey: EvolutionMessageKey,
+  instance: string,
+  fileName?: string
+): Promise<ProcessedWhatsAppDocument> {
+  console.log(`📄 [Document] Processando documento do WhatsApp...`);
+
+  const base64Document = await downloadImageFromEvolution(messageKey, instance);
+
+  console.log(`🔍 [DEBUG Document] Resultado do download:`, {
+    hasBase64: !!base64Document,
+    length: base64Document?.length || 0,
+    fileName: fileName || 'sem nome'
+  });
+
+  if (!base64Document) {
+    console.log('⚠️  [Document] Não foi possível baixar o documento - retornando placeholder');
+    const text = fileName 
+      ? `[Documento] ${fileName}` 
+      : '[Documento recebido]';
+    return { text, fileName };
+  }
+
+  const text = fileName 
+    ? `[Documento] ${fileName}` 
+    : '[Documento recebido]';
+
+  console.log(`✅ [Document] Documento baixado e salvo`, {
+    base64Length: base64Document.length,
+    fileName: fileName || 'documento',
+    returning: { text, hasBase64: true, fileName }
+  });
+  
+  return { text, base64: base64Document, fileName };
+}

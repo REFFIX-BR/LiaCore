@@ -1184,16 +1184,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Extract message text content
         let messageText: string | null = null;
         let imageBase64: string | undefined = undefined;
+        let pdfBase64: string | undefined = undefined;
+        let pdfName: string | undefined = undefined;
         
         if (message?.conversation) {
           messageText = message.conversation;
         } else if (message?.extendedTextMessage?.text) {
           messageText = message.extendedTextMessage.text;
         } else if (message?.imageMessage) {
-          // Process image with Vision API
+          // Process image - download base64
           const { processWhatsAppImage } = await import("./lib/vision");
           
-          console.log(`📸 [Evolution] Imagem detectada - iniciando análise com Vision...`);
+          console.log(`📸 [Evolution] Imagem detectada - iniciando download...`);
           
           const processedImage = await processWhatsAppImage(
             key,
@@ -1205,6 +1207,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           imageBase64 = processedImage.base64;
           
           console.log(`✅ [Evolution] Imagem processada: ${messageText.substring(0, 100)}...`);
+        } else if (message?.documentMessage) {
+          // Process document/PDF - download base64
+          const { processWhatsAppDocument } = await import("./lib/vision");
+          
+          console.log(`📄 [Evolution] Documento detectado - iniciando download...`);
+          
+          const processedDocument = await processWhatsAppDocument(
+            key,
+            instance,
+            message.documentMessage.fileName
+          );
+          
+          messageText = processedDocument.text;
+          pdfBase64 = processedDocument.base64;
+          pdfName = processedDocument.fileName;
+          
+          console.log(`✅ [Evolution] Documento processado: ${messageText}`);
         } else if (message?.videoMessage) {
           // Handle videos with or without caption
           messageText = message.videoMessage.caption 
@@ -1212,10 +1231,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : `[Vídeo recebido]`;
         } else if (message?.audioMessage) {
           messageText = `[Áudio recebido]`;
-        } else if (message?.documentMessage) {
-          messageText = message.documentMessage.fileName 
-            ? `[Documento] ${message.documentMessage.fileName}` 
-            : `[Documento recebido]`;
         } else if (message?.stickerMessage) {
           messageText = `[Sticker recebido]`;
         } else if (message?.contactMessage) {
@@ -1452,9 +1467,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Store user message
-        console.log(`💾 [DEBUG] Salvando mensagem com imageBase64:`, {
+        console.log(`💾 [DEBUG] Salvando mensagem com mídia:`, {
           hasImage: !!imageBase64,
           imageLength: imageBase64?.length || 0,
+          hasPdf: !!pdfBase64,
+          pdfLength: pdfBase64?.length || 0,
+          pdfName: pdfName || 'nenhum',
           messagePreview: messageText.substring(0, 100)
         });
         
@@ -1464,6 +1482,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           content: messageText,
           assistant: null,
           imageBase64: imageBase64,
+          pdfBase64: pdfBase64,
+          pdfName: pdfName,
         });
 
         // If conversation is transferred to human, don't auto-respond
