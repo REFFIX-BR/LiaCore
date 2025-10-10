@@ -86,6 +86,7 @@ export const messages = pgTable("messages", {
   timestamp: timestamp("timestamp").defaultNow(),
   functionCall: jsonb("function_call"),
   assistant: text("assistant"),
+  imageBase64: text("image_base64"), // Imagem em base64 (para exibição no chat)
 }, (table) => ({
   // Índices para queries rápidas de mensagens e paginação
   conversationIdIdx: index("messages_conversation_id_idx").on(table.conversationId),
