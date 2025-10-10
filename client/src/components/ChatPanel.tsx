@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, ChevronDown, X } from "lucide-react";
+import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, ChevronDown, X, Image as ImageIcon } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
@@ -42,8 +42,10 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasLoadedOlder, setHasLoadedOlder] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<{ base64: string; preview: string } | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user, isAgent } = useAuth();
 
@@ -63,7 +65,48 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
     setSuggestionId(null);
     setIsEditingAI(false);
     setMessageContent("");
+    setSelectedImage(null);
   }, [conversation.id]);
+
+  // Função para converter imagem para base64
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Arquivo inválido",
+        description: "Por favor, selecione uma imagem válida (JPEG, PNG, WebP, GIF)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar tamanho (máx 20MB)
+    if (file.size > 20 * 1024 * 1024) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "A imagem deve ter no máximo 20MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      setSelectedImage({
+        base64: base64.split(',')[1], // Remove o prefixo "data:image/...;base64,"
+        preview: base64,
+      });
+      toast({
+        title: "Imagem carregada",
+        description: "Imagem pronta para análise com IA",
+      });
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Atualizar mensagens quando dados mudam
   useEffect(() => {
@@ -165,7 +208,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
 
   // Enviar mensagem
   const sendMutation = useMutation({
-    mutationFn: async ({ content, suggestionId, wasEdited }: { content: string; suggestionId?: string | null; wasEdited?: boolean }) => {
+    mutationFn: async ({ content, suggestionId, wasEdited, imageBase64 }: { content: string; suggestionId?: string | null; wasEdited?: boolean; imageBase64?: string }) => {
       const response = await apiRequest(
         `/api/conversations/${conversation.id}/send-message`, 
         "POST",
@@ -173,16 +216,24 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
           content, 
           suggestionId,
           wasEdited,
-          supervisorName: user?.fullName || 'Atendente'
+          supervisorName: user?.fullName || 'Atendente',
+          imageBase64
         }
       );
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setMessageContent("");
       setAiSuggestion(null);
       setSuggestionId(null);
       setIsEditingAI(false);
+      setSelectedImage(null);
+      if (data.imageAnalyzed) {
+        toast({
+          title: "Mensagem enviada!",
+          description: "Imagem analisada pela IA com sucesso",
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations", conversation.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations/assigned"] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations/transferred"] });
@@ -242,19 +293,33 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
 
   const handleApprove = () => {
     if (aiSuggestion) {
-      sendMutation.mutate({ content: aiSuggestion, suggestionId, wasEdited: false });
+      sendMutation.mutate({ 
+        content: aiSuggestion, 
+        suggestionId, 
+        wasEdited: false,
+        imageBase64: selectedImage?.base64
+      });
     }
   };
 
   const handleEditAndSend = () => {
     if (messageContent.trim()) {
-      sendMutation.mutate({ content: messageContent, suggestionId, wasEdited: true });
+      sendMutation.mutate({ 
+        content: messageContent, 
+        suggestionId, 
+        wasEdited: true,
+        imageBase64: selectedImage?.base64
+      });
     }
   };
 
   const handleManualSend = () => {
-    if (messageContent.trim()) {
-      sendMutation.mutate({ content: messageContent, suggestionId: null });
+    if (messageContent.trim() || selectedImage) {
+      sendMutation.mutate({ 
+        content: messageContent || '', 
+        suggestionId: null,
+        imageBase64: selectedImage?.base64
+      });
     }
   };
 
@@ -412,43 +477,87 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
           </Button>
         )}
 
+        {/* Image Preview */}
+        {selectedImage && (
+          <div className="relative">
+            <img 
+              src={selectedImage.preview} 
+              alt="Preview" 
+              className="max-h-32 rounded-md border"
+            />
+            <Button
+              size="icon"
+              variant="destructive"
+              className="absolute top-2 right-2 h-6 w-6"
+              onClick={() => setSelectedImage(null)}
+              data-testid="button-remove-image"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+            <Badge className="absolute bottom-2 left-2" variant="secondary">
+              Imagem será analisada pela IA
+            </Badge>
+          </div>
+        )}
+
         <div className="flex gap-2">
-          <Textarea
-            value={messageContent}
-            onChange={(e) => setMessageContent(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                if (messageContent.trim() && !sendMutation.isPending) {
-                  if (isEditingAI) {
-                    handleEditAndSend();
-                  } else {
-                    handleManualSend();
+          <div className="flex flex-col gap-2 flex-1">
+            <Textarea
+              value={messageContent}
+              onChange={(e) => setMessageContent(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if ((messageContent.trim() || selectedImage) && !sendMutation.isPending) {
+                    if (isEditingAI) {
+                      handleEditAndSend();
+                    } else {
+                      handleManualSend();
+                    }
                   }
                 }
+              }}
+              placeholder={
+                isEditingAI
+                  ? "Edite a sugestão da IA..."
+                  : "Digite sua resposta ou peça uma sugestão da IA..."
               }
-            }}
-            placeholder={
-              isEditingAI
-                ? "Edite a sugestão da IA..."
-                : "Digite sua resposta ou peça uma sugestão da IA..."
-            }
-            className="resize-none"
-            rows={3}
-            disabled={sendMutation.isPending}
-            data-testid="input-message"
-          />
-          <Button
-            onClick={isEditingAI ? handleEditAndSend : handleManualSend}
-            disabled={!messageContent.trim() || sendMutation.isPending}
-            data-testid="button-send"
-          >
-            {sendMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
+              className="resize-none"
+              rows={3}
+              disabled={sendMutation.isPending}
+              data-testid="input-message"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageSelect}
+              className="hidden"
+              data-testid="input-image"
+            />
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={sendMutation.isPending}
+              data-testid="button-upload-image"
+            >
+              <ImageIcon className="h-4 w-4" />
+            </Button>
+            <Button
+              onClick={isEditingAI ? handleEditAndSend : handleManualSend}
+              disabled={(!messageContent.trim() && !selectedImage) || sendMutation.isPending}
+              data-testid="button-send"
+            >
+              {sendMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
 
         {isEditingAI && (
