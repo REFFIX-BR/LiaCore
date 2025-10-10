@@ -1210,7 +1210,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Process image - download base64
           const { processWhatsAppImage } = await import("./lib/vision");
           
-          console.log(`📸 [Evolution] Imagem detectada - iniciando download...`);
+          console.log(`📸 [Evolution] Imagem detectada:`, {
+            url: message.imageMessage.url,
+            caption: message.imageMessage.caption,
+            mimetype: message.imageMessage.mimetype
+          });
           
           const processedImage = await processWhatsAppImage(
             key,
@@ -1221,12 +1225,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           messageText = processedImage.text;
           imageBase64 = processedImage.base64;
           
-          console.log(`✅ [Evolution] Imagem processada: ${messageText.substring(0, 100)}...`);
+          console.log(`✅ [Evolution] Imagem processada:`, {
+            messageText: messageText.substring(0, 100),
+            hasBase64: !!imageBase64,
+            base64Length: imageBase64?.length || 0
+          });
         } else if (message?.documentMessage) {
           // Process document/PDF - download base64
           const { processWhatsAppDocument } = await import("./lib/vision");
           
-          console.log(`📄 [Evolution] Documento detectado - iniciando download...`);
+          console.log(`📄 [Evolution] Documento detectado:`, {
+            url: message.documentMessage.url,
+            fileName: message.documentMessage.fileName,
+            mimetype: message.documentMessage.mimetype
+          });
           
           const processedDocument = await processWhatsAppDocument(
             key,
@@ -1238,7 +1250,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pdfBase64 = processedDocument.base64;
           pdfName = processedDocument.fileName;
           
-          console.log(`✅ [Evolution] Documento processado: ${messageText}`);
+          console.log(`✅ [Evolution] Documento processado:`, {
+            messageText,
+            hasBase64: !!pdfBase64,
+            base64Length: pdfBase64?.length || 0,
+            fileName: pdfName
+          });
         } else if (message?.videoMessage) {
           // Handle videos with or without caption
           messageText = message.videoMessage.caption 
