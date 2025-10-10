@@ -507,10 +507,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chat endpoint - Main entry point for TR Chat messages
   app.post("/api/chat/message", async (req, res) => {
     try {
-      const { chatId, clientName, clientId, message } = req.body;
+      const { chatId, clientName, clientId, message, imageBase64 } = req.body;
 
-      if (!chatId || !message) {
-        return res.status(400).json({ error: "chatId and message are required" });
+      if (!chatId || (!message && !imageBase64)) {
+        return res.status(400).json({ error: "chatId and (message or imageBase64) are required" });
+      }
+
+      // Process image if provided
+      let processedMessage = message || '';
+      if (imageBase64) {
+        console.log(`📸 [Test Chat] Imagem detectada - iniciando análise com Vision...`);
+        const { analyzeImageWithVision } = await import("./lib/vision");
+        
+        let customPrompt = 'Analise esta imagem em detalhes e extraia todas as informações relevantes.';
+        if (message) {
+          customPrompt += ` O cliente enviou esta imagem com a legenda: "${message}". Leve isso em consideração na análise.`;
+        }
+        customPrompt += ' Se for um boleto, extraia: identificador, vencimento, expiração, juros, valor original e multa. Se for um documento (RG, CNH, comprovante), extraia todos os dados visíveis incluindo CPF/CNPJ. Se for um print de tela ou conversa, transcreva o conteúdo. Se for uma foto de equipamento ou problema técnico, descreva o que vê.';
+        
+        const analysis = await analyzeImageWithVision(imageBase64, customPrompt);
+        
+        if (analysis) {
+          processedMessage = message
+            ? `[Imagem analisada]\nLegenda: ${message}\n\nAnálise da imagem:\n${analysis}`
+            : `[Imagem analisada]\n\n${analysis}`;
+          console.log(`✅ [Test Chat] Imagem processada com sucesso`);
+        } else {
+          processedMessage = message || '[Imagem recebida - análise não disponível]';
+          console.log(`⚠️ [Test Chat] Falha na análise da imagem`);
+        }
       }
 
       // Get or create conversation
@@ -3332,7 +3357,7 @@ A resposta deve:
   app.post("/api/conversations/:id/send-message", authenticate, async (req, res) => {
     try {
       const { id } = req.params;
-      const { content, suggestionId, wasEdited, supervisorName } = req.body;
+      const { content, suggestionId, wasEdited, supervisorName, imageBase64 } = req.body;
 
       const conversation = await storage.getConversation(id);
       if (!conversation) {
@@ -3353,17 +3378,44 @@ A resposta deve:
         }
       }
 
+      // Process image if provided
+      let processedContent = content || '';
+      let imageAnalysis = null;
+      
+      if (imageBase64) {
+        console.log(`📸 [Supervisor] Imagem detectada - analisando com Vision...`);
+        const { analyzeImageWithVision } = await import("./lib/vision");
+        
+        let customPrompt = 'Analise esta imagem em detalhes e extraia todas as informações relevantes.';
+        if (content) {
+          customPrompt += ` Contexto fornecido: "${content}". Leve isso em consideração na análise.`;
+        }
+        customPrompt += ' Se for um boleto, extraia: identificador, vencimento, expiração, juros, valor original e multa. Se for um documento (RG, CNH, comprovante), extraia todos os dados visíveis incluindo CPF/CNPJ. Se for um print de tela ou conversa, transcreva o conteúdo. Se for uma foto de equipamento ou problema técnico, descreva o que vê.';
+        
+        imageAnalysis = await analyzeImageWithVision(imageBase64, customPrompt);
+        
+        if (imageAnalysis) {
+          processedContent = content
+            ? `[Imagem enviada]\n${content}\n\n📎 Análise automática da imagem:\n${imageAnalysis}`
+            : `[Imagem enviada]\n\n📎 Análise automática:\n${imageAnalysis}`;
+          console.log(`✅ [Supervisor] Imagem analisada com sucesso`);
+        } else {
+          processedContent = content || '[Imagem enviada - análise não disponível]';
+          console.log(`⚠️ [Supervisor] Falha na análise da imagem`);
+        }
+      }
+
       // Criar mensagem do supervisor
       const message = await storage.createMessage({
         conversationId: id,
         role: "assistant",
-        content,
+        content: processedContent,
         assistant: `Supervisor: ${supervisorName}`,
       });
 
       // Atualizar conversa
       await storage.updateConversation(id, {
-        lastMessage: content,
+        lastMessage: processedContent,
         lastMessageTime: new Date(),
       });
 
@@ -3375,7 +3427,7 @@ A resposta deve:
       
       if (phoneNumber) {
         try {
-          whatsappSent = await sendWhatsAppMessage(phoneNumber, content, conversation.evolutionInstance || undefined);
+          whatsappSent = await sendWhatsAppMessage(phoneNumber, processedContent, conversation.evolutionInstance || undefined);
           
           if (whatsappSent) {
             webhookLogger.success('SUPERVISOR_MESSAGE_SENT', `Supervisor enviou mensagem ao cliente`, {
@@ -3410,7 +3462,7 @@ A resposta deve:
       // Se foi baseado em sugestão, atualizar o registro
       if (suggestionId) {
         await storage.updateSuggestedResponse(suggestionId, {
-          finalResponse: content,
+          finalResponse: processedContent,
           wasEdited: wasEdited || false,
           wasApproved: true,
         });
@@ -3450,6 +3502,7 @@ A resposta deve:
         message,
         whatsappSent,
         learningEventCreated: wasEdited,
+        imageAnalyzed: !!imageAnalysis,
       });
     } catch (error) {
       console.error("Send message error:", error);
