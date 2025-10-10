@@ -1,16 +1,14 @@
 import { Index } from "@upstash/vector";
-import { Redis } from "@upstash/redis";
 import { generateEmbedding } from "./openai";
+import { redis } from "./redis-config";
 
 export const vectorIndex = new Index({
   url: process.env.UPSTASH_VECTOR_REST_URL!,
   token: process.env.UPSTASH_VECTOR_REST_TOKEN!,
 });
 
-export const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+// Re-export redis from centralized config
+export { redis };
 
 export interface KnowledgeChunk {
   id: string;

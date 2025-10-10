@@ -1,23 +1,5 @@
 import { Queue, Worker, QueueEvents } from 'bullmq';
-import IORedis from 'ioredis';
-
-// Redis connection configuration for BullMQ
-// IMPORTANT: maxRetriesPerRequest MUST be null for BullMQ blocking operations
-const redisConnection = new IORedis({
-  host: process.env.UPSTASH_REDIS_HOST || process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.UPSTASH_REDIS_PORT || process.env.REDIS_PORT || '6379'),
-  password: process.env.UPSTASH_REDIS_PASSWORD || process.env.REDIS_PASSWORD,
-  maxRetriesPerRequest: null, // BullMQ requirement for blocking commands
-  enableReadyCheck: false,
-  // TLS configuration for Upstash (rediss://)
-  tls: process.env.UPSTASH_REDIS_HOST ? {
-    rejectUnauthorized: false, // Upstash uses self-signed certs
-  } : undefined,
-  retryStrategy(times) {
-    const delay = Math.min(times * 50, 2000);
-    return delay;
-  },
-});
+import { redisConnection } from './redis-config';
 
 // Queue names
 export const QUEUE_NAMES = {
