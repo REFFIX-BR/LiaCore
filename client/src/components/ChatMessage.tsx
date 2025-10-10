@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Check, CheckCheck } from "lucide-react";
+import { Check, CheckCheck, FileText } from "lucide-react";
 
 export interface Message {
   id: string;
@@ -52,10 +52,14 @@ export function ChatMessage({ message }: ChatMessageProps) {
   const hasAudioTranscription = message.content.includes('[Áudio enviado]') || 
                                message.content.includes('🎤 Transcrição automática');
 
+  // Detectar se mensagem contém PDF enviado
+  const hasPdfAttached = message.content.includes('[PDF enviado:');
+
   // Separar conteúdo e análise/transcrição se houver
   let messageContent = message.content;
   let imageAnalysis = null;
   let audioTranscription = null;
+  let pdfFileName = null;
 
   if (hasImageAnalysis) {
     // Para imagens do WhatsApp, extrair análise se houver
@@ -82,6 +86,16 @@ export function ChatMessage({ message }: ChatMessageProps) {
     if (parts.length > 1) {
       messageContent = parts[0].replace('[Áudio enviado]', '').trim();
       audioTranscription = parts[1].trim();
+    }
+  }
+
+  if (hasPdfAttached) {
+    // Extrair nome do PDF: [PDF enviado: nome_do_arquivo.pdf]
+    const pdfMatch = message.content.match(/\[PDF enviado: ([^\]]+)\]/);
+    if (pdfMatch) {
+      pdfFileName = pdfMatch[1];
+      // Remover a tag do PDF do conteúdo da mensagem
+      messageContent = message.content.replace(/\[PDF enviado: [^\]]+\]/, '').trim();
     }
   }
 
@@ -112,7 +126,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
             </div>
           )}
 
-          {/* Badge de imagem/áudio */}
+          {/* Badge de imagem/áudio/PDF */}
           {hasImageAnalysis && !hasWhatsAppImage && (
             <Badge variant="outline" className="mb-2 text-xs">
               📸 Imagem enviada
@@ -121,6 +135,12 @@ export function ChatMessage({ message }: ChatMessageProps) {
           {hasAudioTranscription && (
             <Badge variant="outline" className="mb-2 text-xs">
               🎤 Áudio enviado
+            </Badge>
+          )}
+          {hasPdfAttached && pdfFileName && (
+            <Badge variant="outline" className="mb-2 text-xs flex items-center gap-1">
+              <FileText className="h-3 w-3" />
+              <span>{pdfFileName}</span>
             </Badge>
           )}
 

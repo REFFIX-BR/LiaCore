@@ -1494,6 +1494,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             timestamp: messageTimestamp || Date.now(),
             evolutionInstance: instance,
             clientName,
+            hasImage: !!imageBase64, // Indicar se tem imagem
           }, 1); // Priority 1 (highest)
 
           prodLogger.info('conversation', 'Mensagem enfileirada para processamento', {

@@ -24,7 +24,10 @@ export async function downloadImageFromEvolution(
       return null;
     }
 
-    console.log(`📥 [Vision] Baixando imagem da Evolution API para mensagem ${messageKey.id}`);
+    console.log(`📥 [Vision] Iniciando download de imagem da Evolution API...`);
+    console.log(`🔍 [Vision] MessageKey:`, JSON.stringify(messageKey));
+    console.log(`🔍 [Vision] Instance: ${instance}`);
+    console.log(`🔍 [Vision] URL: ${EVOLUTION_API_URL}/chat/getBase64FromMediaMessage/${instance}`);
 
     const response = await axios.post(
       `${EVOLUTION_API_URL}/chat/getBase64FromMediaMessage/${instance}`,
@@ -43,21 +46,23 @@ export async function downloadImageFromEvolution(
       }
     );
 
+    console.log(`🔍 [Vision] Response status: ${response.status}`);
+    console.log(`🔍 [Vision] Response keys:`, Object.keys(response.data || {}));
+
     if (response.data?.base64) {
-      console.log(`✅ [Vision] Imagem baixada com sucesso (${response.data.base64.length} bytes)`);
+      console.log(`✅ [Vision] Imagem baixada com sucesso (${response.data.base64.length} caracteres base64)`);
       return response.data.base64;
     } else {
-      console.error('❌ [Vision] Resposta da Evolution API não contém base64:', response.data);
+      console.error('❌ [Vision] Resposta da Evolution API não contém base64');
+      console.error('Response completa:', JSON.stringify(response.data).substring(0, 500));
       return null;
     }
   } catch (error) {
     console.error('❌ [Vision] Erro ao baixar imagem da Evolution API:', error);
     if (axios.isAxiosError(error)) {
-      console.error('Detalhes:', {
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message,
-      });
+      console.error('Axios error - Response data:', error.response?.data);
+      console.error('Axios error - Response status:', error.response?.status);
+      console.error('Axios error - Request URL:', error.config?.url);
     }
     return null;
   }
