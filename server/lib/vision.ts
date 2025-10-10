@@ -112,20 +112,26 @@ export async function analyzeImageWithVision(
   }
 }
 
+export interface ProcessedWhatsAppImage {
+  text: string;
+  base64?: string;
+}
+
 export async function processWhatsAppImage(
   messageKey: EvolutionMessageKey,
   instance: string,
   caption?: string
-): Promise<string> {
+): Promise<ProcessedWhatsAppImage> {
   console.log(`📸 [Vision] Processando imagem do WhatsApp...`);
 
   const base64Image = await downloadImageFromEvolution(messageKey, instance);
 
   if (!base64Image) {
     console.log('⚠️  [Vision] Não foi possível baixar a imagem - retornando placeholder');
-    return caption 
+    const text = caption 
       ? `[Imagem recebida] ${caption}` 
       : '[Imagem recebida - não foi possível processar]';
+    return { text };
   }
 
   let customPrompt = 'Analise esta imagem em detalhes e extraia todas as informações relevantes.';
@@ -139,10 +145,11 @@ export async function processWhatsAppImage(
   const analysis = await analyzeImageWithVision(base64Image, customPrompt);
 
   if (!analysis) {
-    console.log('⚠️  [Vision] Análise falhou - retornando placeholder');
-    return caption 
+    console.log('⚠️  [Vision] Análise falhou - retornando imagem sem análise');
+    const text = caption 
       ? `[Imagem recebida] ${caption}` 
       : '[Imagem recebida - análise não disponível]';
+    return { text, base64: base64Image };
   }
 
   const formattedAnalysis = caption
@@ -150,5 +157,5 @@ export async function processWhatsAppImage(
     : `[Imagem analisada]\n\n${analysis}`;
 
   console.log(`✅ [Vision] Processamento completo da imagem`);
-  return formattedAnalysis;
+  return { text: formattedAnalysis, base64: base64Image };
 }

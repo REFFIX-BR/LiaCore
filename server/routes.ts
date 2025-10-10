@@ -1017,6 +1017,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Extract message text content
         let messageText: string | null = null;
+        let imageBase64: string | undefined = undefined;
         
         if (message?.conversation) {
           messageText = message.conversation;
@@ -1028,11 +1029,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log(`📸 [Evolution] Imagem detectada - iniciando análise com Vision...`);
           
-          messageText = await processWhatsAppImage(
+          const processedImage = await processWhatsAppImage(
             key,
             instance,
             message.imageMessage.caption
           );
+          
+          messageText = processedImage.text;
+          imageBase64 = processedImage.base64;
           
           console.log(`✅ [Evolution] Imagem processada: ${messageText.substring(0, 100)}...`);
         } else if (message?.videoMessage) {
@@ -1279,6 +1283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           role: "user",
           content: messageText,
           assistant: null,
+          imageBase64: imageBase64,
         });
 
         // If conversation is transferred to human, don't auto-respond
