@@ -738,6 +738,8 @@ export class MemStorage implements IStorage {
     const request: RegistrationRequest = {
       ...insertRequest,
       id,
+      status: insertRequest.status || 'pending',
+      requestedRole: insertRequest.requestedRole || 'AGENT',
       reviewedBy: null,
       reviewedAt: null,
       rejectionReason: null,
