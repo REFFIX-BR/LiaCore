@@ -3688,26 +3688,10 @@ A resposta deve:
           });
         }
 
-        console.log(`📸 [Supervisor] Imagem detectada (${(imageSizeBytes / 1024 / 1024).toFixed(2)}MB) - analisando com Vision...`);
-        const { analyzeImageWithVision } = await import("./lib/vision");
+        console.log(`📸 [Supervisor] Imagem detectada (${(imageSizeBytes / 1024 / 1024).toFixed(2)}MB) - enviando sem análise`);
         
-        let customPrompt = 'Analise esta imagem em detalhes e extraia todas as informações relevantes.';
-        if (content) {
-          customPrompt += ` Contexto fornecido: "${content}". Leve isso em consideração na análise.`;
-        }
-        customPrompt += ' Se for um boleto, extraia: identificador, vencimento, expiração, juros, valor original e multa. Se for um documento (RG, CNH, comprovante), extraia todos os dados visíveis incluindo CPF/CNPJ. Se for um print de tela ou conversa, transcreva o conteúdo. Se for uma foto de equipamento ou problema técnico, descreva o que vê.';
-        
-        imageAnalysis = await analyzeImageWithVision(imageBase64, customPrompt);
-        
-        if (imageAnalysis) {
-          processedContent = content
-            ? `[Imagem enviada]\n${content}\n\n📎 Análise automática da imagem:\n${imageAnalysis}`
-            : `[Imagem enviada]\n\n📎 Análise automática:\n${imageAnalysis}`;
-          console.log(`✅ [Supervisor] Imagem analisada com sucesso`);
-        } else {
-          processedContent = content || '[Imagem enviada - análise não disponível]';
-          console.log(`⚠️ [Supervisor] Falha na análise da imagem`);
-        }
+        // Não processar com IA, apenas marcar que tem imagem
+        processedContent = content || '[Imagem enviada]';
       }
 
       // Process audio if provided

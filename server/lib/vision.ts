@@ -130,32 +130,15 @@ export async function processWhatsAppImage(
     console.log('⚠️  [Vision] Não foi possível baixar a imagem - retornando placeholder');
     const text = caption 
       ? `[Imagem recebida] ${caption}` 
-      : '[Imagem recebida - não foi possível processar]';
+      : '[Imagem recebida]';
     return { text };
   }
 
-  let customPrompt = 'Analise esta imagem em detalhes e extraia todas as informações relevantes.';
-  
-  if (caption) {
-    customPrompt += ` O cliente enviou esta imagem com a legenda: "${caption}". Leve isso em consideração na análise.`;
-  }
-  
-  customPrompt += ' Se for um boleto, extraia: identificador, vencimento, expiração, juros, valor original e multa. Se for um documento (RG, CNH, comprovante), extraia todos os dados visíveis incluindo CPF/CNPJ. Se for um print de tela ou conversa, transcreva o conteúdo. Se for uma foto de equipamento ou problema técnico, descreva o que vê.';
+  // NÃO processar com IA - apenas retornar imagem com legenda se houver
+  const text = caption 
+    ? `[Imagem recebida] ${caption}` 
+    : '[Imagem recebida]';
 
-  const analysis = await analyzeImageWithVision(base64Image, customPrompt);
-
-  if (!analysis) {
-    console.log('⚠️  [Vision] Análise falhou - retornando imagem sem análise');
-    const text = caption 
-      ? `[Imagem recebida] ${caption}` 
-      : '[Imagem recebida - análise não disponível]';
-    return { text, base64: base64Image };
-  }
-
-  const formattedAnalysis = caption
-    ? `[Imagem analisada]\nLegenda: ${caption}\n\nAnálise da imagem:\n${analysis}`
-    : `[Imagem analisada]\n\n${analysis}`;
-
-  console.log(`✅ [Vision] Processamento completo da imagem`);
-  return { text: formattedAnalysis, base64: base64Image };
+  console.log(`✅ [Vision] Imagem baixada e salva (sem análise de IA)`);
+  return { text, base64: base64Image };
 }

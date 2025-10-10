@@ -636,7 +636,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               <X className="h-3 w-3" />
             </Button>
             <Badge className="absolute bottom-2 left-2" variant="secondary">
-              📸 Imagem será analisada pela IA
+              📸 Imagem anexada
             </Badge>
           </div>
         )}
