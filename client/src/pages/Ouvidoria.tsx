@@ -46,7 +46,7 @@ export default function Ouvidoria() {
 
   const { data: complaints, isLoading, error } = useQuery<Complaint[]>({
     queryKey: ["/api/complaints"],
-    refetchInterval: 15000,
+    refetchInterval: 60000, // Reduced from 15s to 60s (complaints don't change frequently)
   });
 
   const updateComplaintMutation = useMutation({

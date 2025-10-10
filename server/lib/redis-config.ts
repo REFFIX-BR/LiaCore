@@ -27,7 +27,7 @@ export const redisConnection = new IORedis({
   
   // TLS configuration for Upstash
   tls: {
-    rejectUnauthorized: false, // Upstash uses self-signed certs
+    // Upstash provides valid certificates, use standard validation
   },
   
   // Retry strategy
@@ -111,10 +111,16 @@ export class RedisCache {
       await redis.set(this.getKey(key), serialized, { ex: ttl });
       
       // Store tags for invalidation
+      // Tag TTL must be longer than any cached value to ensure invalidation works
       if (options.tags && options.tags.length > 0) {
+        const tagTtl = ttl + 3600; // Tag lives 1 hour longer than content
         for (const tag of options.tags) {
           await redis.sadd(`tag:${tag}`, this.getKey(key));
-          await redis.expire(`tag:${tag}`, ttl);
+          // Get current tag TTL to ensure we always use the longest one
+          const currentTtl = await redis.ttl(`tag:${tag}`);
+          if (currentTtl === -1 || currentTtl < tagTtl) {
+            await redis.expire(`tag:${tag}`, tagTtl);
+          }
         }
       }
     } catch (error) {
