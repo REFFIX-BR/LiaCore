@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, jsonb, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, jsonb, boolean, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -69,7 +69,14 @@ export const conversations = pgTable("conversations", {
   resolvedAt: timestamp("resolved_at"),
   resolutionTime: integer("resolution_time"), // Time in seconds from transfer to resolution
   evolutionInstance: text("evolution_instance"), // Nome da instância Evolution API (para multi-instância)
-});
+}, (table) => ({
+  // Índices para performance em queries de dashboard e monitor
+  lastMessageTimeIdx: index("conversations_last_message_time_idx").on(table.lastMessageTime),
+  statusIdx: index("conversations_status_idx").on(table.status),
+  statusLastMessageIdx: index("conversations_status_last_message_idx").on(table.status, table.lastMessageTime),
+  assignedToIdx: index("conversations_assigned_to_idx").on(table.assignedTo),
+  transferredToHumanIdx: index("conversations_transferred_idx").on(table.transferredToHuman),
+}));
 
 export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -79,7 +86,11 @@ export const messages = pgTable("messages", {
   timestamp: timestamp("timestamp").defaultNow(),
   functionCall: jsonb("function_call"),
   assistant: text("assistant"),
-});
+}, (table) => ({
+  // Índices para queries rápidas de mensagens e paginação
+  conversationIdIdx: index("messages_conversation_id_idx").on(table.conversationId),
+  conversationTimestampIdx: index("messages_conversation_timestamp_idx").on(table.conversationId, table.timestamp),
+}));
 
 export const alerts = pgTable("alerts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
