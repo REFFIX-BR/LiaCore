@@ -59,6 +59,17 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
   - ChatMessage component displays images with badge "📸 Imagem enviada" and analysis in styled box
   - Image preview with remove option before sending
   - Toast notification confirms successful analysis
+- **Supervisor/Agent Audio Upload & Transcription** (`server/lib/audio.ts`, `client/src/components/ChatPanel.tsx`):
+  - Allows supervisors/agents to upload audio files when replying to customers in Conversations page
+  - Frontend validates audio type (MP3, OGG, WAV, WebM, MP4, M4A) and size (1KB-25MB)
+  - Audio converted to base64 and transcribed via OpenAI Whisper API (Portuguese)
+  - Backend endpoint: POST `/api/conversations/:id/send-message` accepts `audioBase64` and `audioMimeType`
+  - Server-side validation enforces format and size limits (min 1KB, max 25MB)
+  - Transcription appended to message: `[Áudio enviado]\n{content}\n\n🎤 Transcrição automática:\n{transcription}`
+  - ChatMessage component displays audio with badge "🎤 Áudio enviado" and transcription in styled box
+  - Audio preview with filename and remove option before sending
+  - Toast notification confirms successful transcription
+  - Performance: 2-5 seconds per audio, ~$0.006/minute cost
 
 **Real-Time Monitoring**:
 - **Supervisor Dashboard**: Provides KPIs, live conversation queues, alerts, transcripts, and human intervention controls.

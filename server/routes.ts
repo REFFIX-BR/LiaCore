@@ -3427,8 +3427,14 @@ A resposta deve:
           });
         }
 
-        // Validar tamanho (máx 25MB para Whisper)
+        // Validar tamanho (mín 1KB, máx 25MB para Whisper)
         if (!isValidAudioSize(audioBase64)) {
+          const audioSizeBytes = (audioBase64.length * 3) / 4;
+          if (audioSizeBytes < 1024) {
+            return res.status(400).json({ 
+              error: "Áudio muito pequeno ou inválido. Tamanho mínimo: 1KB" 
+            });
+          }
           return res.status(400).json({ 
             error: "Áudio muito grande. Tamanho máximo: 25MB" 
           });

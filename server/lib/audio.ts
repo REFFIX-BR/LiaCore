@@ -97,10 +97,11 @@ export function isValidAudioFormat(mimeType: string): boolean {
 }
 
 /**
- * Valida tamanho do áudio (máx 25MB para Whisper)
+ * Valida tamanho do áudio (mín 1KB, máx 25MB para Whisper)
  */
 export function isValidAudioSize(audioBase64: string): boolean {
   const audioSizeBytes = (audioBase64.length * 3) / 4;
+  const minSizeBytes = 1024; // 1KB (mínimo para ser um áudio válido)
   const maxSizeBytes = 25 * 1024 * 1024; // 25MB (limite do Whisper)
-  return audioSizeBytes <= maxSizeBytes;
+  return audioSizeBytes >= minSizeBytes && audioSizeBytes <= maxSizeBytes;
 }
