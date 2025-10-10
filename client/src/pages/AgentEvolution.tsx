@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Brain, CheckCircle2, XCircle, Edit3, TrendingUp, Activity, FileText } from "lucide-react";
+import { Brain, CheckCircle2, XCircle, Edit3, TrendingUp, Activity, FileText, GraduationCap, Play, Square } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -17,13 +17,28 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import type { PromptSuggestion, PromptUpdate } from "@shared/schema";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { PromptSuggestion, PromptUpdate, TrainingSession } from "@shared/schema";
 
 export default function AgentEvolution() {
   const [selectedTab, setSelectedTab] = useState("suggestions");
   const [selectedSuggestion, setSelectedSuggestion] = useState<PromptSuggestion | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
   const [showReviewDialog, setShowReviewDialog] = useState(false);
+  
+  // Training session state
+  const [showTrainingDialog, setShowTrainingDialog] = useState(false);
+  const [trainingTitle, setTrainingTitle] = useState("");
+  const [trainingAssistant, setTrainingAssistant] = useState("support");
+  const [trainingContent, setTrainingContent] = useState("");
+  const [trainingNotes, setTrainingNotes] = useState("");
 
   // Fetch suggestions
   const { data: suggestions = [], isLoading: loadingSuggestions } = useQuery<PromptSuggestion[]>({
@@ -33,6 +48,11 @@ export default function AgentEvolution() {
   // Fetch updates
   const { data: updates = [], isLoading: loadingUpdates } = useQuery<PromptUpdate[]>({
     queryKey: ['/api/learning/updates'],
+  });
+
+  // Fetch training sessions
+  const { data: trainingSessions = [], isLoading: loadingTraining } = useQuery<TrainingSession[]>({
+    queryKey: ['/api/training/sessions'],
   });
 
   // Trigger analysis mutation
@@ -64,6 +84,36 @@ export default function AgentEvolution() {
       queryClient.invalidateQueries({ queryKey: ['/api/learning/updates'] });
       setShowReviewDialog(false);
       setSelectedSuggestion(null);
+    },
+  });
+
+  // Create training session mutation
+  const createTrainingMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('/api/training/sessions', 'POST', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/training/sessions'] });
+      setShowTrainingDialog(false);
+      setTrainingTitle("");
+      setTrainingAssistant("support");
+      setTrainingContent("");
+      setTrainingNotes("");
+    },
+  });
+
+  // Complete training session mutation
+  const completeTrainingMutation = useMutation({
+    mutationFn: (id: string) => apiRequest(`/api/training/sessions/${id}/complete`, 'POST', {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/training/sessions'] });
+    },
+  });
+
+  // Apply training session mutation
+  const applyTrainingMutation = useMutation({
+    mutationFn: (id: string) => apiRequest(`/api/training/sessions/${id}/apply`, 'POST', {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/training/sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/learning/updates'] });
     },
   });
 
@@ -101,17 +151,49 @@ export default function AgentEvolution() {
   const getAssistantName = (type: string) => {
     const names: Record<string, string> = {
       suporte: "LIA Suporte",
+      support: "LIA Suporte",
       comercial: "LIA Comercial",
+      sales: "LIA Comercial",
       financeiro: "LIA Financeiro",
+      finance: "LIA Financeiro",
       apresentacao: "LIA Apresentação",
+      presentation: "LIA Apresentação",
       ouvidoria: "LIA Ouvidoria",
+      ombudsman: "LIA Ouvidoria",
       cancelamento: "LIA Cancelamento",
+      cancellation: "LIA Cancelamento",
     };
     return names[type] || type;
   };
 
+  const handleCreateTraining = () => {
+    createTrainingMutation.mutate({
+      title: trainingTitle,
+      assistantType: trainingAssistant,
+      trainingType: 'manual',
+      content: trainingContent,
+      notes: trainingNotes,
+    });
+  };
+
+  const handleCompleteTraining = (id: string) => {
+    if (confirm("Marcar esta sessão como completa?")) {
+      completeTrainingMutation.mutate(id);
+    }
+  };
+
+  const handleApplyTraining = (id: string) => {
+    if (confirm("Aplicar este treinamento e gerar melhorias nos prompts?")) {
+      applyTrainingMutation.mutate(id);
+    }
+  };
+
   const pendingSuggestions = suggestions.filter(s => s.status === 'pending');
   const reviewedSuggestions = suggestions.filter(s => s.status !== 'pending');
+  
+  const activeSessions = trainingSessions.filter(s => s.status === 'active');
+  const completedSessions = trainingSessions.filter(s => s.status === 'completed');
+  const appliedSessions = trainingSessions.filter(s => s.status === 'applied');
 
   return (
     <div className="flex flex-col h-screen">
@@ -143,6 +225,10 @@ export default function AgentEvolution() {
             <TabsTrigger value="suggestions" data-testid="tab-suggestions">
               <TrendingUp className="w-4 h-4 mr-2" />
               Sugestões ({pendingSuggestions.length})
+            </TabsTrigger>
+            <TabsTrigger value="training" data-testid="tab-training">
+              <GraduationCap className="w-4 h-4 mr-2" />
+              Treinamento Manual ({activeSessions.length})
             </TabsTrigger>
             <TabsTrigger value="updates" data-testid="tab-updates">
               <FileText className="w-4 h-4 mr-2" />
@@ -262,6 +348,157 @@ export default function AgentEvolution() {
             </ScrollArea>
           </TabsContent>
 
+          <TabsContent value="training" className="flex-1 overflow-hidden mt-4 px-4">
+            <ScrollArea className="h-full">
+              <div className="mb-4">
+                <Button
+                  onClick={() => setShowTrainingDialog(true)}
+                  data-testid="button-new-training"
+                >
+                  <GraduationCap className="w-4 h-4 mr-2" />
+                  Nova Sessão de Treinamento
+                </Button>
+              </div>
+
+              {loadingTraining ? (
+                <div className="text-center py-8 text-muted-foreground" data-testid="text-loading-training">
+                  Carregando sessões de treinamento...
+                </div>
+              ) : trainingSessions.length === 0 ? (
+                <Card>
+                  <CardContent className="py-8 text-center">
+                    <GraduationCap className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground" data-testid="text-no-training">
+                      Nenhuma sessão de treinamento criada. Use "start" e "stop" durante conversas ou crie manualmente.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-6 pb-4">
+                  {/* Sessões Ativas */}
+                  {activeSessions.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                        <Play className="w-5 h-5 text-primary" />
+                        Sessões Ativas ({activeSessions.length})
+                      </h3>
+                      <div className="space-y-3">
+                        {activeSessions.map((session) => (
+                          <Card key={session.id} data-testid={`card-training-${session.id}`}>
+                            <CardHeader>
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <CardTitle className="flex items-center gap-2">
+                                    {session.title}
+                                    <Badge variant="default">Ativa</Badge>
+                                    {session.trainingType === 'keyword_triggered' && (
+                                      <Badge variant="outline">Automática</Badge>
+                                    )}
+                                  </CardTitle>
+                                  <CardDescription className="mt-1">
+                                    {getAssistantName(session.assistantType)}
+                                  </CardDescription>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              {session.notes && (
+                                <p className="text-sm text-muted-foreground">{session.notes}</p>
+                              )}
+                              <div className="flex gap-2">
+                                <Button
+                                  onClick={() => handleCompleteTraining(session.id)}
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={completeTrainingMutation.isPending}
+                                  data-testid={`button-complete-${session.id}`}
+                                >
+                                  <Square className="w-4 h-4 mr-2" />
+                                  Completar
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sessões Completadas */}
+                  {completedSessions.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3">Sessões Completadas ({completedSessions.length})</h3>
+                      <div className="space-y-3">
+                        {completedSessions.map((session) => (
+                          <Card key={session.id} data-testid={`card-completed-${session.id}`}>
+                            <CardHeader>
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <CardTitle className="flex items-center gap-2">
+                                    {session.title}
+                                    <Badge variant="secondary">Completa</Badge>
+                                  </CardTitle>
+                                  <CardDescription className="mt-1">
+                                    {getAssistantName(session.assistantType)} • {new Date(session.completedAt!).toLocaleDateString('pt-BR')}
+                                  </CardDescription>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              {session.content && (
+                                <details className="text-sm">
+                                  <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                                    Ver conteúdo do treinamento
+                                  </summary>
+                                  <div className="mt-2 p-3 border rounded-md bg-muted/50 whitespace-pre-wrap max-h-64 overflow-y-auto">
+                                    {session.content}
+                                  </div>
+                                </details>
+                              )}
+                              <Button
+                                onClick={() => handleApplyTraining(session.id)}
+                                size="sm"
+                                disabled={applyTrainingMutation.isPending}
+                                data-testid={`button-apply-${session.id}`}
+                              >
+                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                                Aplicar Treinamento
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sessões Aplicadas */}
+                  {appliedSessions.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3">Sessões Aplicadas ({appliedSessions.length})</h3>
+                      <div className="space-y-3">
+                        {appliedSessions.map((session) => (
+                          <Card key={session.id} className="opacity-70" data-testid={`card-applied-${session.id}`}>
+                            <CardContent className="py-3">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-medium">{session.title}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {getAssistantName(session.assistantType)} • {new Date(session.appliedAt!).toLocaleDateString('pt-BR')}
+                                  </p>
+                                </div>
+                                <Badge variant="default">Aplicada</Badge>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </ScrollArea>
+          </TabsContent>
+
           <TabsContent value="updates" className="flex-1 overflow-hidden mt-4 px-4">
             <ScrollArea className="h-full">
               {loadingUpdates ? (
@@ -353,6 +590,90 @@ export default function AgentEvolution() {
               data-testid="button-confirm-apply"
             >
               {applyMutation.isPending ? "Aplicando..." : "Confirmar e Aplicar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Training Dialog */}
+      <Dialog open={showTrainingDialog} onOpenChange={setShowTrainingDialog}>
+        <DialogContent data-testid="dialog-training">
+          <DialogHeader>
+            <DialogTitle>Nova Sessão de Treinamento</DialogTitle>
+            <DialogDescription>
+              Crie uma sessão manual de treinamento para melhorar o comportamento dos assistentes LIA.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="training-title">Título *</Label>
+              <Input
+                id="training-title"
+                value={trainingTitle}
+                onChange={(e) => setTrainingTitle(e.target.value)}
+                placeholder="Ex: Atendimento ao cliente com problemas técnicos"
+                data-testid="input-training-title"
+              />
+            </div>
+            <div>
+              <Label htmlFor="training-assistant">Assistente *</Label>
+              <Select value={trainingAssistant} onValueChange={setTrainingAssistant}>
+                <SelectTrigger id="training-assistant" data-testid="select-training-assistant">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="support">LIA Suporte</SelectItem>
+                  <SelectItem value="sales">LIA Comercial</SelectItem>
+                  <SelectItem value="finance">LIA Financeiro</SelectItem>
+                  <SelectItem value="presentation">LIA Apresentação</SelectItem>
+                  <SelectItem value="ombudsman">LIA Ouvidoria</SelectItem>
+                  <SelectItem value="cancellation">LIA Cancelamento</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="training-content">Conteúdo do Treinamento *</Label>
+              <Textarea
+                id="training-content"
+                value={trainingContent}
+                onChange={(e) => setTrainingContent(e.target.value)}
+                placeholder="Cole aqui exemplos de conversas, procedimentos corretos ou instruções..."
+                rows={6}
+                data-testid="textarea-training-content"
+              />
+            </div>
+            <div>
+              <Label htmlFor="training-notes">Notas (opcional)</Label>
+              <Textarea
+                id="training-notes"
+                value={trainingNotes}
+                onChange={(e) => setTrainingNotes(e.target.value)}
+                placeholder="Observações adicionais sobre este treinamento..."
+                rows={3}
+                data-testid="textarea-training-notes"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowTrainingDialog(false);
+                setTrainingTitle("");
+                setTrainingAssistant("support");
+                setTrainingContent("");
+                setTrainingNotes("");
+              }}
+              data-testid="button-cancel-training"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleCreateTraining}
+              disabled={!trainingTitle || !trainingContent || createTrainingMutation.isPending}
+              data-testid="button-create-training"
+            >
+              {createTrainingMutation.isPending ? "Criando..." : "Criar Sessão"}
             </Button>
           </DialogFooter>
         </DialogContent>
