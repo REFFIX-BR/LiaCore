@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, ChevronDown, X, Image as ImageIcon } from "lucide-react";
+import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, ChevronDown, X, Image as ImageIcon, Mic } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
@@ -43,9 +43,11 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasLoadedOlder, setHasLoadedOlder] = useState(false);
   const [selectedImage, setSelectedImage] = useState<{ base64: string; preview: string } | null>(null);
+  const [selectedAudio, setSelectedAudio] = useState<{ base64: string; name: string; mimeType: string } | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user, isAgent } = useAuth();
 
@@ -66,6 +68,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
     setIsEditingAI(false);
     setMessageContent("");
     setSelectedImage(null);
+    setSelectedAudio(null);
   }, [conversation.id]);
 
   // Função para converter imagem para base64
@@ -103,6 +106,47 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
       toast({
         title: "Imagem carregada",
         description: "Imagem pronta para análise com IA",
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Função para converter áudio para base64
+  const handleAudioSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('audio/')) {
+      toast({
+        title: "Arquivo inválido",
+        description: "Por favor, selecione um áudio válido (MP3, OGG, WAV, WebM, MP4, M4A)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar tamanho (máx 25MB para Whisper)
+    if (file.size > 25 * 1024 * 1024) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "O áudio deve ter no máximo 25MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      setSelectedAudio({
+        base64: base64.split(',')[1], // Remove o prefixo "data:audio/...;base64,"
+        name: file.name,
+        mimeType: file.type,
+      });
+      toast({
+        title: "Áudio carregado",
+        description: "Áudio pronto para transcrição com IA",
       });
     };
     reader.readAsDataURL(file);
@@ -208,7 +252,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
 
   // Enviar mensagem
   const sendMutation = useMutation({
-    mutationFn: async ({ content, suggestionId, wasEdited, imageBase64 }: { content: string; suggestionId?: string | null; wasEdited?: boolean; imageBase64?: string }) => {
+    mutationFn: async ({ content, suggestionId, wasEdited, imageBase64, audioBase64, audioMimeType }: { content: string; suggestionId?: string | null; wasEdited?: boolean; imageBase64?: string; audioBase64?: string; audioMimeType?: string }) => {
       const response = await apiRequest(
         `/api/conversations/${conversation.id}/send-message`, 
         "POST",
@@ -217,7 +261,9 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
           suggestionId,
           wasEdited,
           supervisorName: user?.fullName || 'Atendente',
-          imageBase64
+          imageBase64,
+          audioBase64,
+          audioMimeType
         }
       );
       return response.json();
@@ -228,10 +274,14 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
       setSuggestionId(null);
       setIsEditingAI(false);
       setSelectedImage(null);
-      if (data.imageAnalyzed) {
+      setSelectedAudio(null);
+      if (data.imageAnalyzed || data.audioTranscribed) {
+        const descriptions = [];
+        if (data.imageAnalyzed) descriptions.push("Imagem analisada");
+        if (data.audioTranscribed) descriptions.push("Áudio transcrito");
         toast({
           title: "Mensagem enviada!",
-          description: "Imagem analisada pela IA com sucesso",
+          description: descriptions.join(" e ") + " pela IA com sucesso",
         });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations", conversation.id] });
@@ -297,7 +347,9 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         content: aiSuggestion, 
         suggestionId, 
         wasEdited: false,
-        imageBase64: selectedImage?.base64
+        imageBase64: selectedImage?.base64,
+        audioBase64: selectedAudio?.base64,
+        audioMimeType: selectedAudio?.mimeType
       });
     }
   };
@@ -308,17 +360,21 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         content: messageContent, 
         suggestionId, 
         wasEdited: true,
-        imageBase64: selectedImage?.base64
+        imageBase64: selectedImage?.base64,
+        audioBase64: selectedAudio?.base64,
+        audioMimeType: selectedAudio?.mimeType
       });
     }
   };
 
   const handleManualSend = () => {
-    if (messageContent.trim() || selectedImage) {
+    if (messageContent.trim() || selectedImage || selectedAudio) {
       sendMutation.mutate({ 
         content: messageContent || '', 
         suggestionId: null,
-        imageBase64: selectedImage?.base64
+        imageBase64: selectedImage?.base64,
+        audioBase64: selectedAudio?.base64,
+        audioMimeType: selectedAudio?.mimeType
       });
     }
   };
@@ -495,8 +551,32 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               <X className="h-3 w-3" />
             </Button>
             <Badge className="absolute bottom-2 left-2" variant="secondary">
-              Imagem será analisada pela IA
+              📸 Imagem será analisada pela IA
             </Badge>
+          </div>
+        )}
+
+        {/* Audio Preview */}
+        {selectedAudio && (
+          <div className="relative p-3 bg-accent/30 rounded-md border flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Mic className="h-4 w-4 text-primary" />
+              <div>
+                <div className="text-sm font-medium">{selectedAudio.name}</div>
+                <Badge variant="secondary" className="mt-1">
+                  🎤 Áudio será transcrito pela IA
+                </Badge>
+              </div>
+            </div>
+            <Button
+              size="icon"
+              variant="destructive"
+              className="h-6 w-6"
+              onClick={() => setSelectedAudio(null)}
+              data-testid="button-remove-audio"
+            >
+              <X className="h-3 w-3" />
+            </Button>
           </div>
         )}
 
@@ -508,7 +588,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  if ((messageContent.trim() || selectedImage) && !sendMutation.isPending) {
+                  if ((messageContent.trim() || selectedImage || selectedAudio) && !sendMutation.isPending) {
                     if (isEditingAI) {
                       handleEditAndSend();
                     } else {
@@ -537,6 +617,14 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               className="hidden"
               data-testid="input-image"
             />
+            <input
+              ref={audioInputRef}
+              type="file"
+              accept="audio/*"
+              onChange={handleAudioSelect}
+              className="hidden"
+              data-testid="input-audio"
+            />
             <Button
               size="icon"
               variant="outline"
@@ -547,8 +635,17 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               <ImageIcon className="h-4 w-4" />
             </Button>
             <Button
+              size="icon"
+              variant="outline"
+              onClick={() => audioInputRef.current?.click()}
+              disabled={sendMutation.isPending}
+              data-testid="button-upload-audio"
+            >
+              <Mic className="h-4 w-4" />
+            </Button>
+            <Button
               onClick={isEditingAI ? handleEditAndSend : handleManualSend}
-              disabled={(!messageContent.trim() && !selectedImage) || sendMutation.isPending}
+              disabled={(!messageContent.trim() && !selectedImage && !selectedAudio) || sendMutation.isPending}
               data-testid="button-send"
             >
               {sendMutation.isPending ? (
