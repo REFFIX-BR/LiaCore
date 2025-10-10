@@ -29,7 +29,10 @@ import {
   type InsertActivityLog,
   type Complaint,
   type InsertComplaint,
-  type UpdateComplaint
+  type UpdateComplaint,
+  type TrainingSession,
+  type InsertTrainingSession,
+  type UpdateTrainingSession
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -195,6 +198,17 @@ export interface IStorage {
   getComplaintsByStatus(status: string): Promise<Complaint[]>;
   getComplaintsBySeverity(severity: string): Promise<Complaint[]>;
   updateComplaint(id: string, updates: UpdateComplaint): Promise<Complaint | undefined>;
+
+  // Training Sessions
+  createTrainingSession(session: InsertTrainingSession): Promise<TrainingSession>;
+  getTrainingSession(id: string): Promise<TrainingSession | undefined>;
+  getAllTrainingSessions(): Promise<TrainingSession[]>;
+  getActiveTrainingSessions(): Promise<TrainingSession[]>;
+  getTrainingSessionsByStatus(status: string): Promise<TrainingSession[]>;
+  getTrainingSessionsByAssistant(assistantType: string): Promise<TrainingSession[]>;
+  updateTrainingSession(id: string, updates: UpdateTrainingSession): Promise<TrainingSession | undefined>;
+  completeTrainingSession(id: string, completedBy: string): Promise<TrainingSession | undefined>;
+  applyTrainingSession(id: string, appliedBy: string, improvedPrompt: string): Promise<TrainingSession | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -211,6 +225,7 @@ export class MemStorage implements IStorage {
   private registrationRequests: Map<string, RegistrationRequest>;
   private activityLogs: Map<string, ActivityLog>;
   private complaints: Map<string, Complaint>;
+  private trainingSessions: Map<string, TrainingSession>;
 
   constructor() {
     this.users = new Map();
@@ -226,6 +241,7 @@ export class MemStorage implements IStorage {
     this.registrationRequests = new Map();
     this.activityLogs = new Map();
     this.complaints = new Map();
+    this.trainingSessions = new Map();
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -919,11 +935,104 @@ export class MemStorage implements IStorage {
     this.complaints.set(id, updated);
     return updated;
   }
+
+  // Training Sessions
+  async createTrainingSession(insertSession: InsertTrainingSession): Promise<TrainingSession> {
+    const id = randomUUID();
+    const session: TrainingSession = {
+      id,
+      ...insertSession,
+      status: insertSession.status || 'active',
+      conversationId: insertSession.conversationId || null,
+      completedBy: null,
+      appliedBy: null,
+      startedAt: new Date(),
+      completedAt: null,
+      appliedAt: null,
+      notes: insertSession.notes || null,
+      improvedPrompt: null,
+      metadata: insertSession.metadata || null,
+    };
+    this.trainingSessions.set(id, session);
+    return session;
+  }
+
+  async getTrainingSession(id: string): Promise<TrainingSession | undefined> {
+    return this.trainingSessions.get(id);
+  }
+
+  async getAllTrainingSessions(): Promise<TrainingSession[]> {
+    return Array.from(this.trainingSessions.values())
+      .sort((a, b) => (b.startedAt?.getTime() || 0) - (a.startedAt?.getTime() || 0));
+  }
+
+  async getActiveTrainingSessions(): Promise<TrainingSession[]> {
+    return Array.from(this.trainingSessions.values())
+      .filter(s => s.status === 'active')
+      .sort((a, b) => (b.startedAt?.getTime() || 0) - (a.startedAt?.getTime() || 0));
+  }
+
+  async getTrainingSessionsByStatus(status: string): Promise<TrainingSession[]> {
+    return Array.from(this.trainingSessions.values())
+      .filter(s => s.status === status)
+      .sort((a, b) => (b.startedAt?.getTime() || 0) - (a.startedAt?.getTime() || 0));
+  }
+
+  async getTrainingSessionsByAssistant(assistantType: string): Promise<TrainingSession[]> {
+    return Array.from(this.trainingSessions.values())
+      .filter(s => s.assistantType === assistantType)
+      .sort((a, b) => (b.startedAt?.getTime() || 0) - (a.startedAt?.getTime() || 0));
+  }
+
+  async updateTrainingSession(id: string, updates: UpdateTrainingSession): Promise<TrainingSession | undefined> {
+    const existing = this.trainingSessions.get(id);
+    if (!existing) return undefined;
+
+    const updated: TrainingSession = {
+      ...existing,
+      ...updates,
+    };
+    
+    this.trainingSessions.set(id, updated);
+    return updated;
+  }
+
+  async completeTrainingSession(id: string, completedBy: string): Promise<TrainingSession | undefined> {
+    const existing = this.trainingSessions.get(id);
+    if (!existing) return undefined;
+
+    const updated: TrainingSession = {
+      ...existing,
+      status: 'completed',
+      completedAt: new Date(),
+      completedBy,
+    };
+    
+    this.trainingSessions.set(id, updated);
+    return updated;
+  }
+
+  async applyTrainingSession(id: string, appliedBy: string, improvedPrompt: string): Promise<TrainingSession | undefined> {
+    const existing = this.trainingSessions.get(id);
+    if (!existing) return undefined;
+
+    const updated: TrainingSession = {
+      ...existing,
+      status: 'applied',
+      appliedAt: new Date(),
+      appliedBy,
+      improvedPrompt,
+    };
+    
+    this.trainingSessions.set(id, updated);
+    return updated;
+  }
 }
 
 import { db } from "./db";
 import { eq, desc, and, or, gte, lte, lt, isNotNull, isNull, sql } from "drizzle-orm";
 import * as schema from "@shared/schema";
+import { trainingSessions } from "@shared/schema";
 
 export class DbStorage implements IStorage {
   // Users
@@ -1980,6 +2089,81 @@ export class DbStorage implements IStorage {
     const [updated] = await db.update(schema.complaints)
       .set(autoUpdates)
       .where(eq(schema.complaints.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Training Sessions
+  async createTrainingSession(insertSession: InsertTrainingSession): Promise<TrainingSession> {
+    const [session] = await db.insert(trainingSessions)
+      .values(insertSession)
+      .returning();
+    return session;
+  }
+
+  async getTrainingSession(id: string): Promise<TrainingSession | undefined> {
+    const [session] = await db.select()
+      .from(trainingSessions)
+      .where(eq(trainingSessions.id, id));
+    return session;
+  }
+
+  async getAllTrainingSessions(): Promise<TrainingSession[]> {
+    return await db.select()
+      .from(trainingSessions)
+      .orderBy(desc(trainingSessions.startedAt));
+  }
+
+  async getActiveTrainingSessions(): Promise<TrainingSession[]> {
+    return await db.select()
+      .from(trainingSessions)
+      .where(eq(trainingSessions.status, 'active'))
+      .orderBy(desc(trainingSessions.startedAt));
+  }
+
+  async getTrainingSessionsByStatus(status: string): Promise<TrainingSession[]> {
+    return await db.select()
+      .from(trainingSessions)
+      .where(eq(trainingSessions.status, status))
+      .orderBy(desc(trainingSessions.startedAt));
+  }
+
+  async getTrainingSessionsByAssistant(assistantType: string): Promise<TrainingSession[]> {
+    return await db.select()
+      .from(trainingSessions)
+      .where(eq(trainingSessions.assistantType, assistantType))
+      .orderBy(desc(trainingSessions.startedAt));
+  }
+
+  async updateTrainingSession(id: string, updates: UpdateTrainingSession): Promise<TrainingSession | undefined> {
+    const [updated] = await db.update(trainingSessions)
+      .set(updates)
+      .where(eq(trainingSessions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async completeTrainingSession(id: string, completedBy: string): Promise<TrainingSession | undefined> {
+    const [updated] = await db.update(trainingSessions)
+      .set({
+        status: 'completed',
+        completedAt: new Date(),
+        completedBy,
+      })
+      .where(eq(trainingSessions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async applyTrainingSession(id: string, appliedBy: string, improvedPrompt: string): Promise<TrainingSession | undefined> {
+    const [updated] = await db.update(trainingSessions)
+      .set({
+        status: 'applied',
+        appliedAt: new Date(),
+        appliedBy,
+        improvedPrompt,
+      })
+      .where(eq(trainingSessions.id, id))
       .returning();
     return updated;
   }

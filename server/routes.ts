@@ -2684,6 +2684,160 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
     }
   });
 
+  // ============================================================================
+  // TRAINING SESSIONS - Manual training system with keyword detection
+  // ============================================================================
+
+  // Get all training sessions
+  app.get("/api/training/sessions", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const sessions = await storage.getAllTrainingSessions();
+      return res.json(sessions);
+    } catch (error) {
+      console.error("Get training sessions error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get active training sessions
+  app.get("/api/training/sessions/active", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const sessions = await storage.getActiveTrainingSessions();
+      return res.json(sessions);
+    } catch (error) {
+      console.error("Get active training sessions error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get single training session
+  app.get("/api/training/sessions/:id", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const session = await storage.getTrainingSession(id);
+      
+      if (!session) {
+        return res.status(404).json({ error: "Training session not found" });
+      }
+      
+      return res.json(session);
+    } catch (error) {
+      console.error("Get training session error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Create new training session
+  app.post("/api/training/sessions", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const userId = req.user!.userId;
+      const user = await storage.getUserById(userId);
+      
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const { title, assistantType, trainingType, conversationId, content, notes } = req.body;
+      
+      const session = await storage.createTrainingSession({
+        title,
+        assistantType,
+        trainingType: trainingType || 'manual',
+        conversationId: conversationId || null,
+        content,
+        startedBy: user.id,
+        notes: notes || null,
+        status: 'active',
+      });
+
+      console.log(`🎓 [Training] Nova sessão criada por ${user.fullName}: ${title}`);
+      return res.json(session);
+    } catch (error) {
+      console.error("Create training session error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update training session
+  app.put("/api/training/sessions/:id", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      const session = await storage.updateTrainingSession(id, updates);
+      
+      if (!session) {
+        return res.status(404).json({ error: "Training session not found" });
+      }
+      
+      console.log(`🎓 [Training] Sessão ${id} atualizada`);
+      return res.json(session);
+    } catch (error) {
+      console.error("Update training session error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Complete training session
+  app.post("/api/training/sessions/:id/complete", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const userId = req.user!.userId;
+      const user = await storage.getUserById(userId);
+      
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const { id } = req.params;
+      const session = await storage.completeTrainingSession(id, user.id);
+      
+      if (!session) {
+        return res.status(404).json({ error: "Training session not found" });
+      }
+      
+      console.log(`🎓 [Training] Sessão ${id} completada por ${user.fullName}`);
+      return res.json(session);
+    } catch (error) {
+      console.error("Complete training session error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Apply training session (process and improve prompts)
+  app.post("/api/training/sessions/:id/apply", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const userId = req.user!.userId;
+      const user = await storage.getUserById(userId);
+      
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const { id } = req.params;
+      const trainingSession = await storage.getTrainingSession(id);
+      
+      if (!trainingSession) {
+        return res.status(404).json({ error: "Training session not found" });
+      }
+
+      // TODO: Process training content with GPT-4 to generate improved prompts
+      // For now, we'll use the content as-is
+      const improvedPrompt = `[TREINAMENTO APLICADO]\n\n${trainingSession.content}`;
+      
+      const session = await storage.applyTrainingSession(id, user.id, improvedPrompt);
+      
+      if (!session) {
+        return res.status(404).json({ error: "Training session not found" });
+      }
+      
+      console.log(`🎓 [Training] Sessão ${id} aplicada por ${user.fullName}`);
+      return res.json(session);
+    } catch (error) {
+      console.error("Apply training session error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // System configuration endpoints
   app.get("/api/system/config", authenticate, requireAdmin, async (req, res) => {
     try {
