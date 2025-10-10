@@ -615,6 +615,61 @@ export async function updateAssistantPrompt(assistantType: string, newInstructio
   }
 }
 
+// Process training content and generate improved prompts using GPT-4
+export async function processTrainingContent(
+  assistantType: string, 
+  trainingContent: string
+): Promise<string> {
+  try {
+    console.log(`🎓 [Training] Processing training for ${assistantType}...`);
+    
+    // Get current assistant instructions
+    const currentInstructions = await getAssistantInstructions(assistantType);
+    
+    const trainingPrompt = `Você é um especialista em otimização de prompts para assistentes de IA.
+
+TAREFA:
+Analise o conteúdo de treinamento fornecido e as instruções atuais do assistente, e gere uma versão melhorada das instruções que incorpore os aprendizados do treinamento.
+
+ASSISTENTE ATUAL: ${assistantType}
+
+INSTRUÇÕES ATUAIS:
+${currentInstructions}
+
+CONTEÚDO DO TREINAMENTO (exemplos de conversas, correções, procedimentos):
+${trainingContent}
+
+INSTRUÇÕES PARA MELHORIA:
+1. Identifique padrões e procedimentos corretos demonstrados no treinamento
+2. Identifique erros ou problemas que foram corrigidos
+3. Mantenha a estrutura e tom das instruções originais
+4. Adicione ou modifique seções específicas para incorporar os aprendizados
+5. Seja específico e prático nas melhorias
+6. NÃO remova funcionalidades ou ferramentas existentes
+7. Mantenha o formato markdown e a organização das instruções
+
+RESPONDA APENAS COM O TEXTO COMPLETO DAS INSTRUÇÕES MELHORADAS (sem explicações adicionais).`;
+
+    // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+    const response = await openaiCircuitBreaker.execute(() =>
+      openai.chat.completions.create({
+        model: "gpt-5",
+        messages: [{ role: "user", content: trainingPrompt }],
+        temperature: 0.3, // Lower temperature for more focused improvements
+      })
+    );
+
+    const improvedInstructions = response.choices[0].message.content?.trim() || currentInstructions;
+    
+    console.log(`✅ [Training] Generated improved instructions for ${assistantType} (${improvedInstructions.length} chars)`);
+    
+    return improvedInstructions;
+  } catch (error) {
+    console.error(`❌ [Training] Error processing training for ${assistantType}:`, error);
+    throw error;
+  }
+}
+
 // Get current assistant instructions
 export async function getAssistantInstructions(assistantType: string): Promise<string> {
   try {

@@ -2820,17 +2820,37 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
         return res.status(404).json({ error: "Training session not found" });
       }
 
-      // TODO: Process training content with GPT-4 to generate improved prompts
-      // For now, we'll use the content as-is
-      const improvedPrompt = `[TREINAMENTO APLICADO]\n\n${trainingSession.content}`;
+      if (!trainingSession.content || trainingSession.content.trim().length === 0) {
+        return res.status(400).json({ error: "Training session has no content to process" });
+      }
+
+      // Process training content with GPT-4 to generate improved prompts
+      console.log(`🎓 [Training] Processing session ${id} with GPT-4...`);
+      const { processTrainingContent } = await import("./lib/openai");
+      const improvedPrompt = await processTrainingContent(
+        trainingSession.assistantType,
+        trainingSession.content
+      );
       
+      // Apply the training and update the session
       const session = await storage.applyTrainingSession(id, user.id, improvedPrompt);
       
       if (!session) {
         return res.status(404).json({ error: "Training session not found" });
       }
       
-      console.log(`🎓 [Training] Sessão ${id} aplicada por ${user.fullName}`);
+      console.log(`🎓 [Training] Sessão ${id} aplicada por ${user.fullName} - prompts melhorados gerados`);
+      
+      // Create a prompt update record
+      await storage.createPromptUpdate({
+        assistantType: trainingSession.assistantType,
+        modificationType: 'training_applied',
+        previousValue: 'Ver sessão de treinamento',
+        newValue: improvedPrompt.substring(0, 500) + (improvedPrompt.length > 500 ? '...' : ''),
+        reason: `Treinamento aplicado: ${trainingSession.title}`,
+        appliedBy: user.fullName,
+      });
+      
       return res.json(session);
     } catch (error) {
       console.error("Apply training session error:", error);
