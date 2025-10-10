@@ -3931,6 +3931,8 @@ A resposta deve:
         content: processedContent,
         assistant: `Supervisor: ${supervisorName}`,
         imageBase64: imageBase64 || null, // Salvar imagem para exibição no frontend
+        pdfBase64: pdfBase64 || null, // Salvar PDF para download no frontend
+        pdfName: pdfName || null, // Nome do arquivo PDF
       });
 
       // Atualizar conversa

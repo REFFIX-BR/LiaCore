@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Check, CheckCheck, FileText } from "lucide-react";
+import { Check, CheckCheck, FileText, Download } from "lucide-react";
 
 export interface Message {
   id: string;
@@ -13,6 +14,8 @@ export interface Message {
   };
   assistant?: string;
   imageBase64?: string | null;
+  pdfBase64?: string | null;
+  pdfName?: string | null;
 }
 
 interface ChatMessageProps {
@@ -38,6 +41,35 @@ export function ChatMessage({ message }: ChatMessageProps) {
   }
 
   const isUser = message.role === "user";
+
+  // Função para fazer download do PDF
+  const downloadPdf = () => {
+    if (!message.pdfBase64) return;
+    
+    // Remover prefixo data:application/pdf;base64, se houver
+    const base64Data = message.pdfBase64.includes('base64,') 
+      ? message.pdfBase64.split('base64,')[1] 
+      : message.pdfBase64;
+    
+    // Converter base64 para blob
+    const byteCharacters = atob(base64Data);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'application/pdf' });
+    
+    // Criar URL e fazer download
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = message.pdfName || 'documento.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
 
   // Detectar se mensagem tem imagem do WhatsApp (imageBase64)
   const hasWhatsAppImage = !!message.imageBase64;
@@ -142,6 +174,21 @@ export function ChatMessage({ message }: ChatMessageProps) {
               <FileText className="h-3 w-3" />
               <span>{pdfFileName}</span>
             </Badge>
+          )}
+
+          {/* PDF com base64 salvo - mostrar botão de download */}
+          {message.pdfBase64 && message.pdfName && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadPdf}
+              className="mb-2 flex items-center gap-2"
+              data-testid="button-download-pdf"
+            >
+              <FileText className="h-4 w-4" />
+              <span>{message.pdfName}</span>
+              <Download className="h-4 w-4" />
+            </Button>
           )}
 
           {/* Conteúdo da mensagem */}

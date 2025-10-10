@@ -87,6 +87,8 @@ export const messages = pgTable("messages", {
   functionCall: jsonb("function_call"),
   assistant: text("assistant"),
   imageBase64: text("image_base64"), // Imagem em base64 (para exibição no chat)
+  pdfBase64: text("pdf_base64"), // PDF em base64 (para download)
+  pdfName: text("pdf_name"), // Nome do arquivo PDF
 }, (table) => ({
   // Índices para queries rápidas de mensagens e paginação
   conversationIdIdx: index("messages_conversation_id_idx").on(table.conversationId),
