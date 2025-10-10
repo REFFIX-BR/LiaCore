@@ -3649,6 +3649,91 @@ A resposta deve:
         }
       }
 
+      // 🎓 DETECÇÃO DE PALAVRAS-CHAVE PARA TREINAMENTO
+      const userId = req.user!.userId;
+      const currentUser = await storage.getUserById(userId);
+      
+      if (currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'SUPERVISOR')) {
+        const contentLower = processedContent.toLowerCase().trim();
+        
+        // Helper: detectar palavra exata com word boundaries
+        const hasKeyword = (text: string, keyword: string): boolean => {
+          const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+          return regex.test(text);
+        };
+        
+        // Detectar comando "start" para iniciar treinamento
+        if (hasKeyword(contentLower, 'start')) {
+          const activeSessions = await storage.getActiveTrainingSessionsByConversation(id);
+          
+          if (activeSessions.length === 0) {
+            // Criar nova sessão de treinamento
+            const trainingSession = await storage.createTrainingSession({
+              title: `Treinamento: ${conversation.assistantType || 'Geral'} - ${new Date().toLocaleDateString('pt-BR')}`,
+              assistantType: conversation.assistantType || 'support',
+              trainingType: 'keyword_triggered',
+              conversationId: id,
+              content: '', // Será preenchido ao parar
+              startedBy: currentUser.id,
+              notes: `Sessão iniciada via palavra-chave "start" na conversa`,
+              status: 'active',
+            });
+            
+            console.log(`🎓 [Training] Sessão iniciada via keyword "start" por ${currentUser.fullName} - Conversa ${id}`);
+            webhookLogger.info('TRAINING_SESSION_STARTED', `Treinamento iniciado via keyword`, {
+              sessionId: trainingSession.id,
+              conversationId: id,
+              supervisorName: currentUser.fullName,
+            });
+          } else {
+            console.log(`⚠️ [Training] Já existe sessão ativa para conversa ${id}`);
+          }
+        }
+        
+        // Detectar comando "stop" para finalizar treinamento
+        if (hasKeyword(contentLower, 'stop')) {
+          const activeSessions = await storage.getActiveTrainingSessionsByConversation(id);
+          
+          if (activeSessions.length > 0) {
+            const session = activeSessions[0];
+            
+            // Coletar todas as mensagens desde o início da sessão
+            const messages = await storage.getMessagesByConversationId(id);
+            const sessionMessages = messages.filter(m => 
+              new Date(m.createdAt) >= new Date(session.startedAt)
+            );
+            
+            // Formatar conteúdo do treinamento
+            const trainingContent = sessionMessages
+              .map(m => {
+                const role = m.role === 'user' ? '👤 Cliente' : '🤖 Assistente';
+                const assistant = m.assistant ? ` (${m.assistant})` : '';
+                return `${role}${assistant}:\n${m.content}`;
+              })
+              .join('\n\n---\n\n');
+            
+            // Atualizar sessão com conteúdo
+            await storage.updateTrainingSession(session.id, {
+              content: trainingContent,
+              notes: (session.notes || '') + `\n\nSessão finalizada via palavra-chave "stop". ${sessionMessages.length} mensagens capturadas.`,
+            });
+            
+            // Completar sessão
+            await storage.completeTrainingSession(session.id, currentUser.id);
+            
+            console.log(`🎓 [Training] Sessão ${session.id} finalizada via keyword "stop" por ${currentUser.fullName} - ${sessionMessages.length} mensagens capturadas`);
+            webhookLogger.success('TRAINING_SESSION_COMPLETED', `Treinamento completado via keyword`, {
+              sessionId: session.id,
+              conversationId: id,
+              supervisorName: currentUser.fullName,
+              messagesCaptured: sessionMessages.length,
+            });
+          } else {
+            console.log(`⚠️ [Training] Nenhuma sessão ativa encontrada para parar na conversa ${id}`);
+          }
+        }
+      }
+
       // Criar mensagem do supervisor
       const message = await storage.createMessage({
         conversationId: id,
