@@ -71,6 +71,15 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
   - Audio preview with filename and remove option before sending
   - Toast notification confirms successful transcription
   - Performance: 2-5 seconds per audio, ~$0.006/minute cost
+- **Test Chat Media Upload** (`client/src/pages/TestChat.tsx`):
+  - Comprehensive testing interface for image and audio processing features
+  - Image upload: JPEG, PNG, WebP, GIF (max 20MB) with instant preview
+  - Audio upload: MP3, OGG, WAV, WebM, MP4, M4A (1KB-25MB) with filename display
+  - Backend processes media through GPT-4o Vision and Whisper APIs
+  - Audio base64 sanitization: Strips `data:audio/*;base64,` prefix before Whisper transcription
+  - Returns `userMessage` field with processed content (analysis/transcription) for proper UI display
+  - Prevents empty message bubbles when sending media-only messages
+  - Client and server-side validation for file types and sizes
 
 **Real-Time Monitoring**:
 - **Supervisor Dashboard**: Provides KPIs, live conversation queues, alerts, transcripts, and human intervention controls.
