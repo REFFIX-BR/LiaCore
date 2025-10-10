@@ -159,7 +159,21 @@ export const messageProcessingWorker = new Worker<MessageProcessingJob>(
       const assistantId = assistantIds[conversation.assistantType] || process.env.OPENAI_ASSISTANT_SUPORTE_ID;
 
       if (!assistantId) {
-        throw new Error('No assistant ID available');
+        const { prodLogger } = await import('./lib/production-logger');
+        const { ASSISTANT_ENV_STATUS } = await import('./lib/openai');
+        
+        prodLogger.error('worker', 'No assistant ID available', new Error('Missing assistant environment variable'), {
+          conversationId,
+          assistantType: conversation.assistantType,
+          configuredAssistants: ASSISTANT_ENV_STATUS.configured,
+          missingAssistants: ASSISTANT_ENV_STATUS.missing,
+          envStatus: ASSISTANT_ENV_STATUS,
+        });
+        
+        console.error(`🔴 [Worker] No assistant ID for type: ${conversation.assistantType}`);
+        console.error(`🔴 [Worker] Configured assistants:`, ASSISTANT_ENV_STATUS.configured);
+        console.error(`🔴 [Worker] Missing assistants:`, ASSISTANT_ENV_STATUS.missing);
+        throw new Error(`No assistant ID available for ${conversation.assistantType}. Configure as variáveis de ambiente em produção!`);
       }
 
       // 5. Send message to OpenAI and get response

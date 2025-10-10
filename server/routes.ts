@@ -4267,6 +4267,42 @@ A resposta deve:
   });
 
   // ============================================================================
+  // SYSTEM HEALTH & DIAGNOSTICS
+  // ============================================================================
+  
+  // Health check com diagnóstico de assistants
+  app.get("/api/health", async (req, res) => {
+    const { ASSISTANT_ENV_STATUS, ASSISTANT_IDS } = await import("./lib/openai");
+    
+    const assistantStatus: Record<string, { configured: boolean; id?: string }> = {};
+    
+    for (const [key, value] of Object.entries(ASSISTANT_IDS)) {
+      assistantStatus[key] = {
+        configured: !!value,
+        id: value ? `${value.substring(0, 8)}...` : undefined,
+      };
+    }
+    
+    return res.json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      openai: {
+        apiKeyConfigured: !!process.env.OPENAI_API_KEY,
+        assistantsConfigured: ASSISTANT_ENV_STATUS.configured,
+        assistantsMissing: ASSISTANT_ENV_STATUS.missing,
+        isValid: ASSISTANT_ENV_STATUS.isValid,
+        details: assistantStatus,
+      },
+      redis: {
+        configured: !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN),
+      },
+      database: {
+        configured: !!process.env.DATABASE_URL,
+      },
+    });
+  });
+  
+  // ============================================================================
   // PRODUCTION LOGS ROUTES - Debug em Produção
   // ============================================================================
   

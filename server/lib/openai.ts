@@ -94,6 +94,43 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   return response.data[0].embedding;
 }
 
+// Validação de variáveis de ambiente dos assistants
+function validateAssistantEnvVars() {
+  const envVars = {
+    cortex: process.env.CORTEX_ASSISTANT_ID,
+    apresentacao: process.env.OPENAI_APRESENTACAO_ASSISTANT_ID,
+    comercial: process.env.OPENAI_COMMRCIAL_ASSISTANT_ID,
+    financeiro: process.env.OPENAI_FINANCEIRO_ASSISTANT_ID,
+    suporte: process.env.OPENAI_SUPORTE_ASSISTANT_ID,
+    ouvidoria: process.env.OPENAI_OUVIDOIRA_ASSISTANT_ID,
+    cancelamento: process.env.OPENAI_CANCELAMENTO_ASSISTANT_ID,
+  };
+
+  const missing: string[] = [];
+  const configured: string[] = [];
+
+  for (const [key, value] of Object.entries(envVars)) {
+    if (!value) {
+      missing.push(key);
+      console.error(`❌ [OpenAI] Variável de ambiente faltando: ${key.toUpperCase()}_ASSISTANT_ID`);
+    } else {
+      configured.push(key);
+    }
+  }
+
+  if (missing.length > 0) {
+    console.error(`🔴 [OpenAI] ${missing.length} assistants sem configuração: ${missing.join(', ')}`);
+    console.error(`⚠️  [OpenAI] Configure as variáveis de ambiente em produção!`);
+  } else {
+    console.log(`✅ [OpenAI] Todos os ${configured.length} assistants configurados: ${configured.join(', ')}`);
+  }
+
+  return { configured, missing, isValid: missing.length === 0 };
+}
+
+// Validar na inicialização
+export const ASSISTANT_ENV_STATUS = validateAssistantEnvVars();
+
 export const ASSISTANT_IDS = {
   cortex: process.env.CORTEX_ASSISTANT_ID!,
   apresentacao: process.env.OPENAI_APRESENTACAO_ASSISTANT_ID!,
