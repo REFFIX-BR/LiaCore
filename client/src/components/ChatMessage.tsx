@@ -44,15 +44,28 @@ export function ChatMessage({ message }: ChatMessageProps) {
                           message.content.includes('[Análise da Imagem]') || 
                           message.content.includes('📎 Análise automática');
 
-  // Separar conteúdo e análise se houver
+  // Detectar se mensagem contém transcrição de áudio
+  const hasAudioTranscription = message.content.includes('[Áudio enviado]') || 
+                               message.content.includes('🎤 Transcrição automática');
+
+  // Separar conteúdo e análise/transcrição se houver
   let messageContent = message.content;
   let imageAnalysis = null;
+  let audioTranscription = null;
 
   if (hasImageAnalysis) {
     const parts = message.content.split(/📎 Análise automática[^:]*:/);
     if (parts.length > 1) {
       messageContent = parts[0].replace('[Imagem enviada]', '').trim();
       imageAnalysis = parts[1].trim();
+    }
+  }
+
+  if (hasAudioTranscription) {
+    const parts = message.content.split(/🎤 Transcrição automática:/);
+    if (parts.length > 1) {
+      messageContent = parts[0].replace('[Áudio enviado]', '').trim();
+      audioTranscription = parts[1].trim();
     }
   }
 
@@ -74,11 +87,18 @@ export function ChatMessage({ message }: ChatMessageProps) {
           </span>
         </div>
         
-        {hasImageAnalysis ? (
+        {hasImageAnalysis || hasAudioTranscription ? (
           <div className="space-y-2">
-            <Badge variant="outline" className="text-xs">
-              📸 Imagem enviada
-            </Badge>
+            {hasImageAnalysis && (
+              <Badge variant="outline" className="text-xs">
+                📸 Imagem enviada
+              </Badge>
+            )}
+            {hasAudioTranscription && (
+              <Badge variant="outline" className="text-xs">
+                🎤 Áudio enviado
+              </Badge>
+            )}
             {messageContent && (
               <p className="text-sm leading-relaxed">{messageContent}</p>
             )}
@@ -88,6 +108,14 @@ export function ChatMessage({ message }: ChatMessageProps) {
                   📎 Análise automática da imagem
                 </p>
                 <p className="text-sm leading-relaxed whitespace-pre-wrap">{imageAnalysis}</p>
+              </div>
+            )}
+            {audioTranscription && (
+              <div className="bg-accent/50 rounded-md p-3 border border-border">
+                <p className="text-xs font-medium text-muted-foreground mb-1">
+                  🎤 Transcrição automática
+                </p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{audioTranscription}</p>
               </div>
             )}
           </div>
