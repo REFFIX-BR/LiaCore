@@ -3993,6 +3993,127 @@ A resposta deve:
     }
   });
 
+  // Transfer conversation to another agent (ADMIN/SUPERVISOR only)
+  app.post("/api/conversations/:id/transfer", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { agentId, notes } = req.body;
+      const currentUser = req.user!;
+
+      if (!agentId) {
+        return res.status(400).json({ error: "agentId é obrigatório" });
+      }
+
+      // Buscar conversa
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversa não encontrada" });
+      }
+
+      // Buscar agente de destino
+      const targetAgent = await storage.getUserById(agentId);
+      if (!targetAgent) {
+        return res.status(404).json({ error: "Agente não encontrado" });
+      }
+
+      // Buscar agente atual (se houver)
+      let fromAgentName = "Sistema";
+      if (conversation.assignedTo) {
+        const fromAgent = await storage.getUserById(conversation.assignedTo);
+        if (fromAgent) {
+          fromAgentName = fromAgent.fullName;
+        }
+      }
+
+      // Atualizar conversa com novo agente
+      await storage.updateConversation(id, {
+        assignedTo: agentId,
+      });
+
+      // Buscar template de mensagem de transferência
+      const transferTemplate = await storage.getMessageTemplateByKey('agent_transfer');
+      let transferMessage = transferTemplate?.template || 
+        `Olá! Sou *${targetAgent.fullName}*, seu novo atendente. Esta conversa foi transferida de *${fromAgentName}* para mim${notes ? `. Motivo: ${notes}` : ''}. Estou aqui para continuar ajudando você!`;
+      
+      // Substituir variáveis no template
+      transferMessage = transferMessage
+        .replace(/{agentName}/g, targetAgent.fullName)
+        .replace(/{fromAgent}/g, fromAgentName)
+        .replace(/{notes}/g, notes || '');
+
+      // Salvar mensagem no histórico
+      await storage.createMessage({
+        conversationId: id,
+        role: "assistant",
+        content: transferMessage,
+        assistant: `Atendente: ${targetAgent.fullName}`,
+      });
+
+      // Atualizar última mensagem da conversa
+      await storage.updateConversation(id, {
+        lastMessage: transferMessage,
+        lastMessageTime: new Date(),
+      });
+
+      // Enviar mensagem de transferência via WhatsApp
+      let whatsappSent = false;
+      const phoneNumber = conversation.clientId || conversation.chatId;
+      
+      if (phoneNumber) {
+        try {
+          whatsappSent = await sendWhatsAppMessage(phoneNumber, transferMessage, conversation.evolutionInstance || undefined);
+          
+          if (whatsappSent) {
+            webhookLogger.success('CONVERSATION_TRANSFERRED', `Conversa transferida para ${targetAgent.fullName}`, {
+              conversationId: id,
+              fromAgent: fromAgentName,
+              toAgent: targetAgent.fullName,
+              phoneNumber,
+            });
+            console.log(`✅ [Transfer] Mensagem de transferência enviada ao WhatsApp: ${phoneNumber}`);
+          } else {
+            webhookLogger.error('WHATSAPP_SEND_FAILED', `Falha ao enviar mensagem de transferência`, {
+              conversationId: id,
+              toAgent: targetAgent.fullName,
+              phoneNumber,
+            });
+          }
+        } catch (error) {
+          console.error("❌ [Transfer] Erro ao enviar mensagem ao WhatsApp:", error);
+          webhookLogger.error('WHATSAPP_SEND_ERROR', `Erro ao enviar mensagem de transferência`, {
+            conversationId: id,
+            toAgent: targetAgent.fullName,
+            phoneNumber,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
+      // Criar ação de supervisor
+      await storage.createSupervisorAction({
+        conversationId: id,
+        action: "transfer",
+        notes: `Conversa transferida de ${fromAgentName} para ${targetAgent.fullName}${notes ? `. Motivo: ${notes}` : ''}`,
+        createdBy: currentUser.username,
+      });
+
+      console.log(`🔄 [Transfer] Conversa ${id} transferida de ${fromAgentName} para ${targetAgent.fullName}`);
+
+      return res.json({
+        success: true,
+        agent: {
+          id: targetAgent.id,
+          fullName: targetAgent.fullName,
+          username: targetAgent.username,
+        },
+        whatsappSent,
+      });
+    } catch (error) {
+      console.error("Transfer conversation error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Resolve conversation (agent can only resolve their own assigned conversations)
   app.post("/api/conversations/:id/resolve", authenticate, async (req, res) => {
     try {
