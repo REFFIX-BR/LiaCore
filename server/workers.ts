@@ -94,12 +94,26 @@ export const messageProcessingWorker = new Worker<MessageProcessingJob>(
     });
 
     try {
+      const { prodLogger, logWorkerError } = await import('./lib/production-logger');
+      
       // 1. Get conversation to determine assistant
       const conversation = await storage.getConversation(conversationId);
       
       if (!conversation) {
+        prodLogger.error('worker', 'Conversation not found', new Error(`Conversation not found: ${conversationId}`), {
+          conversationId,
+          fromNumber,
+          jobId: job.id,
+        });
         throw new Error(`Conversation not found: ${conversationId}`);
       }
+      
+      prodLogger.info('worker', 'Processing message', {
+        conversationId,
+        fromNumber,
+        jobId: job.id,
+        hasImage,
+      });
 
       let enhancedMessage = message;
 

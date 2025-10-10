@@ -1001,6 +1001,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Webhook endpoint for Evolution API events
   app.post("/api/webhooks/evolution", async (req, res) => {
+    const { prodLogger, logWebhookEvent } = await import("./lib/production-logger");
+    
     try {
       const { event: rawEvent, instance, data } = req.body;
 
@@ -1011,6 +1013,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const event = typeof rawEvent === 'string' ? rawEvent : '';
 
       if (!event) {
+        prodLogger.warn('webhook', 'Webhook recebido sem tipo de evento válido', {
+          instance,
+          receivedEventType: typeof rawEvent,
+          hasData: !!data,
+        });
         webhookLogger.warning('INVALID_EVENT', 'Webhook recebido sem tipo de evento válido', { 
           instance,
           receivedEventType: typeof rawEvent,
@@ -1020,6 +1027,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`⚠️  [Evolution] Webhook recebido com evento inválido:`, { rawEvent, instance });
         return res.json({ success: true, processed: false, reason: "invalid_event_type" });
       }
+      
+      // Log evento recebido
+      prodLogger.info('webhook', `Webhook event: ${event}`, { instance, event });
 
       webhookLogger.info('CONNECTION', `Webhook recebido: ${event}`, {
         instance,
@@ -1142,6 +1152,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               instance,
               remoteJid,
             },
+          });
+          
+          prodLogger.info('conversation', 'Nova conversa criada', {
+            conversationId: conversation.id,
+            phoneNumber,
+            clientName,
+            chatId,
+            assistantType: 'apresentacao',
           });
         } else if (!threadId) {
           // Existing conversation but no thread - create one
@@ -1344,6 +1362,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             clientName,
           }, 1); // Priority 1 (highest)
 
+          prodLogger.info('conversation', 'Mensagem enfileirada para processamento', {
+            conversationId: conversation.id,
+            phoneNumber,
+            messagePreview: messageText.substring(0, 50),
+          });
+
           console.log(`📬 [Evolution] Message queued for processing: ${conversation.id}`);
 
           return res.json({ 
@@ -1354,6 +1378,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             chatId 
           });
         } catch (queueError) {
+          prodLogger.error('webhook', 'Falha ao enfileirar mensagem - usando fallback', queueError as Error, {
+            conversationId: conversation.id,
+            phoneNumber,
+          });
           // Fallback: Process without queue if Redis not available
           console.warn(`⚠️  [Evolution] Queue unavailable, falling back to async processing:`, queueError);
           
@@ -4236,6 +4264,49 @@ A resposta deve:
   app.post("/api/webhook-logs/clear", authenticate, requireAdmin, (req, res) => {
     webhookLogger.clearLogs();
     return res.json({ success: true, message: "Logs cleared" });
+  });
+
+  // ============================================================================
+  // PRODUCTION LOGS ROUTES - Debug em Produção
+  // ============================================================================
+  
+  const { prodLogger } = await import("./lib/production-logger");
+  
+  // Obter logs de produção (com filtros)
+  app.get("/api/production-logs", authenticate, requireAdminOrSupervisor, (req, res) => {
+    const { level, category, conversationId, phoneNumber, limit } = req.query;
+    
+    const filters: any = {};
+    if (level) filters.level = level;
+    if (category) filters.category = category;
+    if (conversationId) filters.conversationId = conversationId;
+    if (phoneNumber) filters.phoneNumber = phoneNumber;
+    if (limit) filters.limit = parseInt(limit as string);
+    
+    const logs = prodLogger.search(filters);
+    const stats = prodLogger.getStats();
+    
+    return res.json({ logs, stats });
+  });
+  
+  // Obter apenas erros
+  app.get("/api/production-logs/errors", authenticate, requireAdminOrSupervisor, (req, res) => {
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+    const errors = prodLogger.getErrors(limit);
+    return res.json({ errors, count: errors.length });
+  });
+  
+  // Obter logs por conversação
+  app.get("/api/production-logs/conversation/:id", authenticate, requireAdminOrSupervisor, (req, res) => {
+    const conversationId = req.params.id;
+    const logs = prodLogger.search({ conversationId, limit: 100 });
+    return res.json({ logs, conversationId });
+  });
+  
+  // Limpar logs
+  app.post("/api/production-logs/clear", authenticate, requireAdmin, (req, res) => {
+    prodLogger.clear();
+    return res.json({ success: true, message: "Production logs cleared" });
   });
 
   // ============================================================================
