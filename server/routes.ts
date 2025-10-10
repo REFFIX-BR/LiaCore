@@ -4270,7 +4270,7 @@ A resposta deve:
   // SYSTEM HEALTH & DIAGNOSTICS
   // ============================================================================
   
-  // Health check com diagnóstico de assistants
+  // Health check com diagnóstico de assistants e Evolution API
   app.get("/api/health", async (req, res) => {
     const { ASSISTANT_ENV_STATUS, ASSISTANT_IDS } = await import("./lib/openai");
     
@@ -4283,6 +4283,29 @@ A resposta deve:
       };
     }
     
+    // Validate Evolution API configuration
+    const evolutionUrl = process.env.EVOLUTION_API_URL;
+    const evolutionApiKey = process.env.EVOLUTION_API_KEY;
+    const evolutionInstance = process.env.EVOLUTION_API_INSTANCE;
+    
+    let evolutionUrlStatus = 'not_configured';
+    let evolutionUrlDetails = '';
+    
+    if (evolutionUrl) {
+      const trimmedUrl = evolutionUrl.trim();
+      
+      if (trimmedUrl !== evolutionUrl) {
+        evolutionUrlStatus = 'has_whitespace';
+        evolutionUrlDetails = `URL tem espaços extras! Use: "${trimmedUrl}"`;
+      } else if (!trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')) {
+        evolutionUrlStatus = 'missing_protocol';
+        evolutionUrlDetails = `URL sem protocolo. Use: https://${trimmedUrl}`;
+      } else {
+        evolutionUrlStatus = 'ok';
+        evolutionUrlDetails = `${trimmedUrl.substring(0, 30)}...`;
+      }
+    }
+    
     return res.json({
       status: "ok",
       timestamp: new Date().toISOString(),
@@ -4292,6 +4315,14 @@ A resposta deve:
         assistantsMissing: ASSISTANT_ENV_STATUS.missing,
         isValid: ASSISTANT_ENV_STATUS.isValid,
         details: assistantStatus,
+      },
+      evolution: {
+        urlConfigured: !!evolutionUrl,
+        urlStatus: evolutionUrlStatus,
+        urlDetails: evolutionUrlDetails,
+        apiKeyConfigured: !!evolutionApiKey,
+        instanceConfigured: !!evolutionInstance,
+        isValid: evolutionUrlStatus === 'ok' && !!evolutionApiKey && !!evolutionInstance,
       },
       redis: {
         configured: !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN),

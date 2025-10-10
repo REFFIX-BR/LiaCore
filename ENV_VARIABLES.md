@@ -42,11 +42,29 @@ DATABASE_URL=postgresql://xxxxx
 ```
 
 ### Evolution API (WhatsApp)
-```
-EVOLUTION_API_URL=https://xxxxx
+
+**⚠️ IMPORTANTE: A URL precisa estar CORRETA para evitar erros!**
+
+```bash
+# ✅ CORRETO - Com protocolo https:// e sem espaços
+EVOLUTION_API_URL=https://evolutionapi.trtelecom.net
+
+# ❌ ERRADO - Sem protocolo
+EVOLUTION_API_URL=evolutionapi.trtelecom.net
+
+# ❌ ERRADO - Com espaços extras (causa erro: "Failed to parse URL")
+EVOLUTION_API_URL=evolutionapi.trtelecom.net /message
+
+# Outras configurações
 EVOLUTION_API_KEY=xxxxx
-EVOLUTION_INSTANCE=xxxxx
+EVOLUTION_INSTANCE=xxxxx  # Ex: Leads, Atendimento, etc.
 ```
+
+**Dicas:**
+- A URL **DEVE** começar com `https://` (ou `http://`)
+- **NÃO** adicione barra no final: ~~`https://api.com/`~~ → `https://api.com` ✅
+- **NÃO** deixe espaços antes ou depois da URL
+- O sistema agora corrige automaticamente URLs sem protocolo
 
 ---
 

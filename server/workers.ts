@@ -29,15 +29,30 @@ import { storage } from './storage';
 async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?: string): Promise<boolean> {
   const evolutionInstance = instance || process.env.EVOLUTION_API_INSTANCE;
   const apiKey = process.env.EVOLUTION_API_KEY;
-  const baseUrl = process.env.EVOLUTION_API_URL;
+  let baseUrl = process.env.EVOLUTION_API_URL;
 
   if (!evolutionInstance || !apiKey || !baseUrl) {
-    console.error('❌ Evolution API config missing');
+    console.error('❌ Evolution API config missing', { evolutionInstance, hasApiKey: !!apiKey, baseUrl });
     return false;
   }
 
+  // Sanitize and validate URL
+  baseUrl = baseUrl.trim(); // Remove espaços extras
+  
+  // Adicionar https:// se não tiver protocolo
+  if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+    baseUrl = `https://${baseUrl}`;
+    console.log(`⚠️  [WhatsApp] URL sem protocolo detectada, adicionando https://: ${baseUrl}`);
+  }
+  
+  // Remover trailing slash
+  baseUrl = baseUrl.replace(/\/$/, '');
+
   try {
-    const response = await fetch(`${baseUrl}/message/sendText/${evolutionInstance}`, {
+    const fullUrl = `${baseUrl}/message/sendText/${evolutionInstance}`;
+    console.log(`📤 [WhatsApp] Sending message to: ${phoneNumber} via ${fullUrl}`);
+    
+    const response = await fetch(fullUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
