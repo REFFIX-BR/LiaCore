@@ -1210,16 +1210,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Process image - download base64
           const { processWhatsAppImage } = await import("./lib/vision");
           
+          // Extrair mediaUrl se disponível (S3/MinIO)
+          const mediaUrl = data?.message?.mediaUrl;
+          
           console.log(`📸 [Evolution] Imagem detectada:`, {
             url: message.imageMessage.url,
             caption: message.imageMessage.caption,
-            mimetype: message.imageMessage.mimetype
+            mimetype: message.imageMessage.mimetype,
+            hasMediaUrl: !!mediaUrl,
+            mediaUrl: mediaUrl?.substring(0, 100) || 'não disponível'
           });
           
           const processedImage = await processWhatsAppImage(
             key,
             instance,
-            message.imageMessage.caption
+            message.imageMessage.caption,
+            mediaUrl
           );
           
           messageText = processedImage.text;
@@ -1234,16 +1240,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Process document/PDF - download base64
           const { processWhatsAppDocument } = await import("./lib/vision");
           
+          // Extrair mediaUrl se disponível (S3/MinIO)
+          const mediaUrl = data?.message?.mediaUrl;
+          
           console.log(`📄 [Evolution] Documento detectado:`, {
             url: message.documentMessage.url,
             fileName: message.documentMessage.fileName,
-            mimetype: message.documentMessage.mimetype
+            mimetype: message.documentMessage.mimetype,
+            hasMediaUrl: !!mediaUrl,
+            mediaUrl: mediaUrl?.substring(0, 100) || 'não disponível'
           });
           
           const processedDocument = await processWhatsAppDocument(
             key,
             instance,
-            message.documentMessage.fileName
+            message.documentMessage.fileName,
+            mediaUrl
           );
           
           messageText = processedDocument.text;

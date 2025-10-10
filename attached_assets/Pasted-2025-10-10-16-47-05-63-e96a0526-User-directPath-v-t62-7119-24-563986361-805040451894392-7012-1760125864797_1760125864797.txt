@@ -1,0 +1,88 @@
+2025-10-10 16:47:05.63
+e96a0526
+User
+"directPath": "/v/t62.7119-24/563986361_805040451894392_7012183222026620952_n.enc?ccb=11-4&oh=01_Q5Aa2wFQqGILj8-AicylJZhf_FyWFYeZV3a74ARwGWD9VGHGng&oe=6910DFBA&_nc_sid=5e03e0",
+2025-10-10 16:47:05.63
+e96a0526
+User
+"mediaKeyTimestamp": 1760125623,
+2025-10-10 16:47:05.63
+e96a0526
+User
+"caption": "",
+2025-10-10 16:47:05.63
+e96a0526
+User
+"contextInfo": {}
+2025-10-10 16:47:05.63
+e96a0526
+User
+},
+2025-10-10 16:47:05.63
+e96a0526
+User
+"mediaUrl": "https://s3.trtelecom.net/evolution/evolution-api/397e1aa4-8cb8-4627-8340-9689b6464d6a/5524992378219%40s.whatsapp.net/3EB0F4B13D666A0C6B3F4F761C3F79A92644929C/documentMessage/teste.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=56nsDIlzlaBWTSdqmeLA%2F20251010%2Feu-west-3%2Fs3%2Faws4_request&X-Amz-Date=20251010T194705Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=35c82fc4da977e26803ddf5b59c79d572f21bf34480a78e27d7060f9129b4682"
+2025-10-10 16:47:05.63
+e96a0526
+User
+},
+2025-10-10 16:47:05.63
+e96a0526
+User
+"contextInfo": {},
+2025-10-10 16:47:05.63
+e96a0526
+User
+"messageType": "documentMessage",
+2025-10-10 16:47:05.63
+e96a0526
+User
+"messageTimestamp": 1760125624,
+2025-10-10 16:47:05.63
+e96a0526
+User
+"instanceId": "397e1aa4-8cb8-4627-8340-9689b6464d6a",
+2025-10-10 16:47:05.63
+e96a0526
+User
+"source": "unknown"
+2025-10-10 16:47:05.63
+e96a0526
+User
+},
+2025-10-10 16:47:05.63
+e96a0526
+User
+"destination": "https://health-link-connect-mczebende.replit.app/api/webhooks/evolution",
+2025-10-10 16:47:05.63
+e96a0526
+User
+"date_time": "2025-10-10T16:47:05.521Z",
+2025-10-10 16:47:05.63
+e96a0526
+User
+"sender": "5524981175973@s.whatsapp.net",
+2025-10-10 16:47:05.63
+e96a0526
+User
+"server_url": "https://evolutionapi.trtelecom.net",
+2025-10-10 16:47:05.63
+e96a0526
+User
+"apikey": "DEB41EA69259-4DCF-B8D3-22E3902949D0"
+2025-10-10 16:47:05.63
+e96a0526
+User
+}
+2025-10-10 16:47:05.64
+e96a0526
+User
+📨 [INFO] [webhook] Webhook event: send.message | {"instance":"Leads","event":"send.message"}
+2025-10-10 16:47:05.64
+e96a0526
+User
+ℹ️ [Webhook Monitor] [CONNECTION] Webhook recebido: send.message { instance: 'Leads', timestamp: '2025-10-10T19:47:05.639Z' }
+2025-10-10 16:47:05.64
+e96a0526
+User
+📱 [Evolution Webhook] Evento recebido: send.message { instance: 'Leads', event: 'send.message' }

@@ -14,6 +14,35 @@ export interface EvolutionMessageKey {
   fromMe: boolean;
 }
 
+/**
+ * Download media from S3/MinIO URL and convert to base64
+ */
+export async function downloadMediaFromUrl(
+  mediaUrl: string
+): Promise<string | null> {
+  try {
+    console.log(`📥 [Vision] Baixando mídia de URL S3/MinIO...`);
+    console.log(`🔍 [Vision] URL: ${mediaUrl.substring(0, 100)}...`);
+
+    const response = await axios.get(mediaUrl, {
+      responseType: 'arraybuffer',
+      timeout: 30000,
+    });
+
+    const base64 = Buffer.from(response.data, 'binary').toString('base64');
+    
+    console.log(`✅ [Vision] Mídia baixada com sucesso de S3 (${base64.length} caracteres base64)`);
+    return base64;
+  } catch (error) {
+    console.error('❌ [Vision] Erro ao baixar mídia de URL S3:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('Axios error - Response status:', error.response?.status);
+      console.error('Axios error - URL:', error.config?.url?.substring(0, 100));
+    }
+    return null;
+  }
+}
+
 export async function downloadImageFromEvolution(
   messageKey: EvolutionMessageKey,
   instance: string
@@ -125,11 +154,27 @@ export interface ProcessedWhatsAppImage {
 export async function processWhatsAppImage(
   messageKey: EvolutionMessageKey,
   instance: string,
-  caption?: string
+  caption?: string,
+  mediaUrl?: string
 ): Promise<ProcessedWhatsAppImage> {
   console.log(`📸 [Vision] Processando imagem do WhatsApp...`);
 
-  const base64Image = await downloadImageFromEvolution(messageKey, instance);
+  let base64Image: string | null = null;
+
+  // Priorizar URL S3/MinIO se disponível
+  if (mediaUrl) {
+    console.log(`🔗 [Vision] Tentando download via URL S3/MinIO...`);
+    base64Image = await downloadMediaFromUrl(mediaUrl);
+    
+    // Fallback para Evolution API se S3 falhar
+    if (!base64Image) {
+      console.log(`⚠️  [Vision] Falha no download S3 - tentando Evolution API como fallback...`);
+      base64Image = await downloadImageFromEvolution(messageKey, instance);
+    }
+  } else {
+    console.log(`🔗 [Vision] Usando Evolution API para download...`);
+    base64Image = await downloadImageFromEvolution(messageKey, instance);
+  }
 
   console.log(`🔍 [DEBUG Vision] Resultado do download:`, {
     hasBase64: !!base64Image,
@@ -168,11 +213,27 @@ export interface ProcessedWhatsAppDocument {
 export async function processWhatsAppDocument(
   messageKey: EvolutionMessageKey,
   instance: string,
-  fileName?: string
+  fileName?: string,
+  mediaUrl?: string
 ): Promise<ProcessedWhatsAppDocument> {
   console.log(`📄 [Document] Processando documento do WhatsApp...`);
 
-  const base64Document = await downloadImageFromEvolution(messageKey, instance);
+  let base64Document: string | null = null;
+
+  // Priorizar URL S3/MinIO se disponível
+  if (mediaUrl) {
+    console.log(`🔗 [Document] Tentando download via URL S3/MinIO...`);
+    base64Document = await downloadMediaFromUrl(mediaUrl);
+    
+    // Fallback para Evolution API se S3 falhar
+    if (!base64Document) {
+      console.log(`⚠️  [Document] Falha no download S3 - tentando Evolution API como fallback...`);
+      base64Document = await downloadImageFromEvolution(messageKey, instance);
+    }
+  } else {
+    console.log(`🔗 [Document] Usando Evolution API para download...`);
+    base64Document = await downloadImageFromEvolution(messageKey, instance);
+  }
 
   console.log(`🔍 [DEBUG Document] Resultado do download:`, {
     hasBase64: !!base64Document,
