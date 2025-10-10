@@ -88,6 +88,15 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 **Continuous Learning System**:
 - **Autonomous Learning**: GPT-4 agent identifies patterns from supervisor interventions and feedback to suggest prompt improvements.
 - **Feedback**: Incorporates both implicit (resolutions, transfers) and explicit (supervisor corrections, NPS) feedback.
+- **Hybrid Training System** (`shared/schema.ts`: `training_sessions`, `server/lib/openai.ts`: `processTrainingContent`):
+  - **Keyword-Based Capture**: Supervisors can mark training segments during live conversations using "start" and "stop" keywords (word-boundary regex prevents false positives)
+  - **Manual Creation**: Dedicated "Treinamento Manual" tab in Agent Evolution page for creating training sessions via UI
+  - **Training Sessions Database**: Stores conversationId, assistantType, title, content, status (active/completed/applied), timestamps, and user IDs
+  - **GPT-5 Processing**: `processTrainingContent` function analyzes training content alongside current assistant instructions to generate improved prompts
+  - **Apply Workflow**: ADMIN/SUPERVISOR can apply sessions → GPT-5 generates enhanced instructions → updates assistant via OpenAI API → creates PromptUpdate audit log
+  - **7 REST Endpoints**: GET all sessions, GET by ID, POST create, POST complete, POST apply, POST delete, with role-based access (ADMIN/SUPERVISOR only)
+  - **UI Features**: Active/completed/applied lists, session creation dialog, management actions (complete, apply, delete), real-time status updates
+  - **Integration**: Circuit breaker protection, instruction caching, comprehensive error handling and logging
 
 **NPS & Customer Satisfaction**:
 - **WhatsApp Feedback**: Automated NPS surveys post-conversation, with feedback processing for learning.

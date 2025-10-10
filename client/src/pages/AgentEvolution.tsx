@@ -36,7 +36,7 @@ export default function AgentEvolution() {
   // Training session state
   const [showTrainingDialog, setShowTrainingDialog] = useState(false);
   const [trainingTitle, setTrainingTitle] = useState("");
-  const [trainingAssistant, setTrainingAssistant] = useState("support");
+  const [trainingAssistant, setTrainingAssistant] = useState("suporte");
   const [trainingContent, setTrainingContent] = useState("");
   const [trainingNotes, setTrainingNotes] = useState("");
 
@@ -94,7 +94,7 @@ export default function AgentEvolution() {
       queryClient.invalidateQueries({ queryKey: ['/api/training/sessions'] });
       setShowTrainingDialog(false);
       setTrainingTitle("");
-      setTrainingAssistant("support");
+      setTrainingAssistant("suporte");
       setTrainingContent("");
       setTrainingNotes("");
     },
@@ -622,12 +622,12 @@ export default function AgentEvolution() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="support">LIA Suporte</SelectItem>
-                  <SelectItem value="sales">LIA Comercial</SelectItem>
-                  <SelectItem value="finance">LIA Financeiro</SelectItem>
-                  <SelectItem value="presentation">LIA Apresentação</SelectItem>
-                  <SelectItem value="ombudsman">LIA Ouvidoria</SelectItem>
-                  <SelectItem value="cancellation">LIA Cancelamento</SelectItem>
+                  <SelectItem value="suporte">LIA Suporte</SelectItem>
+                  <SelectItem value="comercial">LIA Comercial</SelectItem>
+                  <SelectItem value="financeiro">LIA Financeiro</SelectItem>
+                  <SelectItem value="apresentacao">LIA Apresentação</SelectItem>
+                  <SelectItem value="ouvidoria">LIA Ouvidoria</SelectItem>
+                  <SelectItem value="cancelamento">LIA Cancelamento</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -16,7 +16,7 @@ class CircuitBreaker {
   constructor(
     private readonly failureThreshold = 5,
     private readonly successThreshold = 2,
-    private readonly timeout = 30000,
+    private readonly timeout = 90000, // 90s timeout for GPT-5 training processing
     private readonly resetTimeout = 30000
   ) {}
 
@@ -44,7 +44,7 @@ class CircuitBreaker {
     return Promise.race([
       fn(),
       new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new Error('OpenAI request timeout (30s)')), this.timeout)
+        setTimeout(() => reject(new Error(`OpenAI request timeout (${this.timeout/1000}s)`)), this.timeout)
       ),
     ]);
   }
@@ -655,7 +655,7 @@ RESPONDA APENAS COM O TEXTO COMPLETO DAS INSTRUÇÕES MELHORADAS (sem explicaç�
       openai.chat.completions.create({
         model: "gpt-5",
         messages: [{ role: "user", content: trainingPrompt }],
-        temperature: 0.3, // Lower temperature for more focused improvements
+        // GPT-5 only supports default temperature (1), custom values not allowed
       })
     );
 
