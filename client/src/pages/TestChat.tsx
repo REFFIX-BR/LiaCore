@@ -9,7 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { monitorAPI } from "@/lib/api";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User, Bot } from "lucide-react";
+import { User, Bot, Image as ImageIcon, Mic, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -21,22 +22,42 @@ export default function TestChat() {
   const [clientName, setClientName] = useState("João Silva");
   const [message, setMessage] = useState("");
   const [conversation, setConversation] = useState<ChatMessage[]>([]);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [audioPreview, setAudioPreview] = useState<string | null>(null);
+  const [audioBase64, setAudioBase64] = useState<string | null>(null);
+  const [audioMimeType, setAudioMimeType] = useState<string | null>(null);
   const { toast } = useToast();
 
   const sendMessageMutation = useMutation({
-    mutationFn: () => monitorAPI.sendChatMessage(chatId, clientName, message),
+    mutationFn: () => monitorAPI.sendChatMessage(
+      chatId, 
+      clientName, 
+      message,
+      imageBase64 || undefined,
+      audioBase64 || undefined,
+      audioMimeType || undefined
+    ),
     onSuccess: (response: any) => {
       // Extract response text (handle both string and nested object)
       const responseText = typeof response.response === 'string' 
         ? response.response 
         : response.response?.response || response.response;
       
+      // Use processed message from backend (includes image analysis/audio transcription)
+      const userMessageContent = response.userMessage || message || '[Conteúdo enviado]';
+      
       setConversation(prev => [
         ...prev,
-        { role: "user", content: message },
+        { role: "user", content: userMessageContent },
         { role: "assistant", content: responseText },
       ]);
       setMessage("");
+      setImagePreview(null);
+      setImageBase64(null);
+      setAudioPreview(null);
+      setAudioBase64(null);
+      setAudioMimeType(null);
       
       // Show transfer notification if transferred
       if (response.transferred) {
@@ -62,7 +83,7 @@ export default function TestChat() {
   });
 
   const handleSend = () => {
-    if (!message.trim()) return;
+    if (!message.trim() && !imageBase64 && !audioBase64) return;
     sendMessageMutation.mutate();
   };
 
@@ -70,6 +91,108 @@ export default function TestChat() {
     setChatId(`chat-${Date.now()}`);
     setConversation([]);
     setMessage("");
+    setImagePreview(null);
+    setImageBase64(null);
+    setAudioPreview(null);
+    setAudioBase64(null);
+    setAudioMimeType(null);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Tipo de arquivo inválido",
+        description: "Por favor, envie uma imagem JPEG, PNG, WebP ou GIF",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (20MB)
+    if (file.size > 20 * 1024 * 1024) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "A imagem deve ter no máximo 20MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setImagePreview(base64);
+      setImageBase64(base64);
+      toast({
+        title: "Imagem carregada",
+        description: "Imagem pronta para envio",
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/webm', 'audio/mp4', 'audio/m4a'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Tipo de arquivo inválido",
+        description: "Por favor, envie um áudio MP3, OGG, WAV, WebM, MP4 ou M4A",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (1KB-25MB)
+    if (file.size < 1024) {
+      toast({
+        title: "Arquivo muito pequeno",
+        description: "O áudio deve ter no mínimo 1KB",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (file.size > 25 * 1024 * 1024) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "O áudio deve ter no máximo 25MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setAudioPreview(file.name);
+      setAudioBase64(base64);
+      setAudioMimeType(file.type);
+      toast({
+        title: "Áudio carregado",
+        description: "Áudio pronto para envio",
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeImage = () => {
+    setImagePreview(null);
+    setImageBase64(null);
+  };
+
+  const removeAudio = () => {
+    setAudioPreview(null);
+    setAudioBase64(null);
+    setAudioMimeType(null);
   };
 
   const exampleMessages = [
@@ -125,6 +248,49 @@ export default function TestChat() {
             </ScrollArea>
 
             <div className="space-y-2">
+              {imagePreview && (
+                <div className="relative inline-block">
+                  <Badge variant="outline" className="mb-2">
+                    📸 Imagem anexada
+                  </Badge>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="absolute -top-2 -right-2 h-6 w-6"
+                    onClick={removeImage}
+                    data-testid="button-remove-image"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <img 
+                    src={imagePreview} 
+                    alt="Preview" 
+                    className="max-w-xs rounded-md border"
+                    data-testid="image-preview"
+                  />
+                </div>
+              )}
+              
+              {audioPreview && (
+                <div className="flex items-center gap-2 p-2 border rounded-md">
+                  <Badge variant="outline">
+                    🎤 Áudio anexado
+                  </Badge>
+                  <span className="text-sm text-muted-foreground flex-1" data-testid="audio-preview">
+                    {audioPreview}
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6"
+                    onClick={removeAudio}
+                    data-testid="button-remove-audio"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              
               <Textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
@@ -148,6 +314,43 @@ export default function TestChat() {
                 <Button variant="outline" onClick={handleNewChat} data-testid="button-new-chat">
                   Nova Conversa
                 </Button>
+                <div className="flex-1" />
+                <div className="relative">
+                  <Input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    id="image-upload"
+                    data-testid="input-image-upload"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => document.getElementById('image-upload')?.click()}
+                    data-testid="button-upload-image"
+                  >
+                    <ImageIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="relative">
+                  <Input
+                    type="file"
+                    accept="audio/mpeg,audio/ogg,audio/wav,audio/webm,audio/mp4,audio/m4a"
+                    onChange={handleAudioUpload}
+                    className="hidden"
+                    id="audio-upload"
+                    data-testid="input-audio-upload"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => document.getElementById('audio-upload')?.click()}
+                    data-testid="button-upload-audio"
+                  >
+                    <Mic className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>

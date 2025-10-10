@@ -507,14 +507,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chat endpoint - Main entry point for TR Chat messages
   app.post("/api/chat/message", async (req, res) => {
     try {
-      const { chatId, clientName, clientId, message, imageBase64 } = req.body;
+      const { chatId, clientName, clientId, message, imageBase64, audioBase64, audioMimeType } = req.body;
 
-      if (!chatId || (!message && !imageBase64)) {
-        return res.status(400).json({ error: "chatId and (message or imageBase64) are required" });
+      if (!chatId || (!message && !imageBase64 && !audioBase64)) {
+        return res.status(400).json({ error: "chatId and (message, imageBase64, or audioBase64) are required" });
       }
 
       // Process image if provided
       let processedMessage = message || '';
+      let messageImageBase64: string | undefined = undefined;
+      
       if (imageBase64) {
         console.log(`📸 [Test Chat] Imagem detectada - iniciando análise com Vision...`);
         const { analyzeImageWithVision } = await import("./lib/vision");
@@ -535,6 +537,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           processedMessage = message || '[Imagem recebida - análise não disponível]';
           console.log(`⚠️ [Test Chat] Falha na análise da imagem`);
+        }
+        
+        // Store base64 for display (remove data URI prefix if present)
+        messageImageBase64 = imageBase64.replace(/^data:image\/[^;]+;base64,/, '');
+      }
+      
+      // Process audio if provided
+      if (audioBase64) {
+        console.log(`🎤 [Test Chat] Áudio detectado - iniciando transcrição com Whisper...`);
+        const { transcribeAudio } = await import("./lib/audio");
+        
+        // Remove data URI prefix if present
+        const cleanAudioBase64 = audioBase64.replace(/^data:audio\/[^;]+;base64,/, '');
+        
+        const transcription = await transcribeAudio(cleanAudioBase64, audioMimeType);
+        
+        if (transcription) {
+          processedMessage = message
+            ? `[Áudio enviado]\n${message}\n\n🎤 Transcrição automática:\n${transcription}`
+            : `[Áudio enviado]\n\n🎤 Transcrição automática:\n${transcription}`;
+          console.log(`✅ [Test Chat] Áudio transcrito com sucesso`);
+        } else {
+          processedMessage = message || '[Áudio recebido - transcrição não disponível]';
+          console.log(`⚠️ [Test Chat] Falha na transcrição do áudio`);
         }
       }
 
@@ -604,8 +630,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createMessage({
         conversationId: conversation.id,
         role: "user",
-        content: message,
+        content: processedMessage,
         assistant: null,
+        imageBase64: messageImageBase64,
       });
 
       // Send message and get response
@@ -615,7 +642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const assistantId = (conversation.metadata as any)?.routing?.assistantId;
-      const result = await sendMessageAndGetResponse(threadId, assistantId, message, chatId, conversation.id);
+      const result = await sendMessageAndGetResponse(threadId, assistantId, processedMessage, chatId, conversation.id);
 
       // Store assistant response (ensure it's always a string)
       const responseText = typeof result.response === 'string' 
@@ -960,6 +987,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json({
         success: true,
         response: responseText,
+        userMessage: processedMessage, // Include processed message for frontend display
         assistantType: conversation.assistantType,
         chatId,
       });
