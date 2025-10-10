@@ -72,6 +72,15 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 - **User Management**: ADMIN interface for user creation and approval workflow for new AGENT role requests.
 
 **Personalized Dashboards**:
+- **Admin Dashboard** (`client/src/components/dashboards/AdminDashboard.tsx`): Reconstruído com design moderno inspirado em Carbon/Linear
+  - System Health: Status em tempo real de API, Database e Workers
+  - KPIs: Custo total mensal, usuários ativos, eventos de segurança, logins falhados (com indicadores de tendência)
+  - Analytics: Breakdown detalhado de custos (OpenAI/Upstash) e distribuição de usuários por role (com progress bars)
+  - Gráfico de área: Uso de tokens OpenAI nos últimos 30 dias
+  - Log de atividades: Últimas 10 ações do sistema com badges de tipo
+  - Auto-refresh: 30 segundos
+  - TypeScript completo: Interface AdminMetrics com guards de divisão por zero
+  - Responsivo e suporta dark/light mode
 - Role-specific dashboards (Agent, Supervisor, Admin) with relevant KPIs and data.
 
 **Agent Reports System**:
