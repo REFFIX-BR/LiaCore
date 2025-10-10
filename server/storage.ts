@@ -848,6 +848,7 @@ export class MemStorage implements IStorage {
     return {
       id,
       ...template,
+      description: template.description ?? null,
       variables: template.variables || [],
       updatedAt: new Date(),
       updatedBy: template.updatedBy || null,
