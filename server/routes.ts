@@ -3357,7 +3357,7 @@ A resposta deve:
   app.post("/api/conversations/:id/send-message", authenticate, async (req, res) => {
     try {
       const { id } = req.params;
-      const { content, suggestionId, wasEdited, supervisorName, imageBase64 } = req.body;
+      const { content, suggestionId, wasEdited, supervisorName, imageBase64, audioBase64, audioMimeType } = req.body;
 
       const conversation = await storage.getConversation(id);
       if (!conversation) {
@@ -3381,6 +3381,7 @@ A resposta deve:
       // Process image if provided
       let processedContent = content || '';
       let imageAnalysis = null;
+      let audioTranscription = null;
       
       if (imageBase64) {
         // Validação server-side: verificar tamanho (aproximado via base64 length)
@@ -3412,6 +3413,46 @@ A resposta deve:
         } else {
           processedContent = content || '[Imagem enviada - análise não disponível]';
           console.log(`⚠️ [Supervisor] Falha na análise da imagem`);
+        }
+      }
+
+      // Process audio if provided
+      if (audioBase64) {
+        const { isValidAudioSize, isValidAudioFormat, transcribeAudio } = await import("./lib/audio");
+        
+        // Validar formato
+        if (audioMimeType && !isValidAudioFormat(audioMimeType)) {
+          return res.status(400).json({ 
+            error: "Formato de áudio não suportado. Use: MP3, OGG, WAV, WebM, MP4 ou M4A" 
+          });
+        }
+
+        // Validar tamanho (máx 25MB para Whisper)
+        if (!isValidAudioSize(audioBase64)) {
+          return res.status(400).json({ 
+            error: "Áudio muito grande. Tamanho máximo: 25MB" 
+          });
+        }
+
+        const audioSizeBytes = (audioBase64.length * 3) / 4;
+        console.log(`🎤 [Supervisor] Áudio detectado (${(audioSizeBytes / 1024 / 1024).toFixed(2)}MB) - transcrevendo com Whisper...`);
+        
+        audioTranscription = await transcribeAudio(audioBase64, audioMimeType);
+        
+        if (audioTranscription) {
+          // Se já tem imagem processada, adicionar áudio depois
+          if (processedContent && processedContent !== content) {
+            processedContent += `\n\n[Áudio enviado]\n🎤 Transcrição automática:\n${audioTranscription}`;
+          } else {
+            processedContent = content
+              ? `[Áudio enviado]\n${content}\n\n🎤 Transcrição automática:\n${audioTranscription}`
+              : `[Áudio enviado]\n\n🎤 Transcrição automática:\n${audioTranscription}`;
+          }
+          console.log(`✅ [Supervisor] Áudio transcrito com sucesso`);
+        } else {
+          const audioMsg = '[Áudio enviado - transcrição não disponível]';
+          processedContent = processedContent ? `${processedContent}\n\n${audioMsg}` : audioMsg;
+          console.log(`⚠️ [Supervisor] Falha na transcrição do áudio`);
         }
       }
 
@@ -3513,6 +3554,7 @@ A resposta deve:
         whatsappSent,
         learningEventCreated: wasEdited,
         imageAnalyzed: !!imageAnalysis,
+        audioTranscribed: !!audioTranscription,
       });
     } catch (error) {
       console.error("Send message error:", error);
