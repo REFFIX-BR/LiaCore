@@ -1112,6 +1112,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.json({ success: true, processed: false, reason: "fromMe" });
         }
 
+        // DEBUG: Log complete message structure
+        console.log(`🔍 [DEBUG Webhook] Estrutura completa da mensagem:`, {
+          messageKeys: Object.keys(message || {}),
+          hasImageMessage: !!message?.imageMessage,
+          hasConversation: !!message?.conversation,
+          hasExtendedText: !!message?.extendedTextMessage,
+          fullMessage: JSON.stringify(message).substring(0, 500)
+        });
+
         // Extract message text content
         let messageText: string | null = null;
         let imageBase64: string | undefined = undefined;
