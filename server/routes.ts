@@ -376,6 +376,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get available agents for transfer (accessible by all authenticated users)
+  app.get("/api/users/available-agents", authenticate, async (_req, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      // Retornar apenas AGENTS, SUPERVISORS e ADMINS ativos (status uppercase)
+      const availableAgents = allUsers
+        .filter(u => u.status === 'ACTIVE' && (u.role === 'AGENT' || u.role === 'SUPERVISOR' || u.role === 'ADMIN'))
+        .map(getUserFromUser);
+      res.json({ users: availableAgents });
+    } catch (error) {
+      console.error("❌ [Users] Error getting available agents:", error);
+      res.status(500).json({ error: "Erro ao buscar agentes disponíveis" });
+    }
+  });
+
   // Get recent activity logs (admin/supervisor only)
   app.get("/api/activity-logs", authenticate, requireAnyRole("ADMIN", "SUPERVISOR"), async (req, res) => {
     try {
@@ -4248,8 +4263,8 @@ A resposta deve:
     }
   });
 
-  // Transfer conversation to another agent (ADMIN/SUPERVISOR only)
-  app.post("/api/conversations/:id/transfer", authenticate, requireAdminOrSupervisor, async (req, res) => {
+  // Transfer conversation to another agent (ADMIN/SUPERVISOR/AGENT can transfer)
+  app.post("/api/conversations/:id/transfer", authenticate, async (req, res) => {
     try {
       const { id } = req.params;
       const { agentId, notes } = req.body;
@@ -4263,6 +4278,17 @@ A resposta deve:
       const conversation = await storage.getConversation(id);
       if (!conversation) {
         return res.status(404).json({ error: "Conversa não encontrada" });
+      }
+
+      // Verificar permissão: AGENT só pode transferir conversas atribuídas a ele
+      const isAdminOrSupervisor = currentUser.role === 'ADMIN' || currentUser.role === 'SUPERVISOR';
+      if (!isAdminOrSupervisor) {
+        // AGENT: verificar se a conversa está atribuída a ele
+        if (conversation.assignedTo !== currentUser.userId) {
+          return res.status(403).json({ 
+            error: "Você só pode transferir conversas atribuídas a você" 
+          });
+        }
       }
 
       // Buscar agente de destino

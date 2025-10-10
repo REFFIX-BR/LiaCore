@@ -401,10 +401,10 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
     },
   });
 
-  // Query para buscar agentes disponíveis
+  // Query para buscar agentes disponíveis para transferência (todos usuários autenticados)
   const { data: agentsData } = useQuery<{ users: Array<{ id: string; fullName: string; username: string; role: string }> }>({
-    queryKey: ["/api/users"],
-    enabled: isAdminOrSupervisor,
+    queryKey: ["/api/users/available-agents"],
+    enabled: true, // Endpoint acessível por todos usuários autenticados
   });
 
   // Transferir conversa para outro agente
@@ -536,13 +536,14 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               )}
             </Button>
           )}
-          {isAdminOrSupervisor && (
+          {(isAdminOrSupervisor || (isAgent && conversation.assignedTo === user?.id)) && (
             <Button
               onClick={() => setShowTransferDialog(true)}
               variant="outline"
               size="sm"
               disabled={transferMutation.isPending}
               data-testid="button-transfer"
+              title="Transferir conversa para outro agente"
             >
               {transferMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
