@@ -28,6 +28,7 @@ import Users from "@/pages/Users";
 import AgentReports from "@/pages/AgentReports";
 import RegistrationRequests from "@/pages/RegistrationRequests";
 import ActivityLogs from "@/pages/ActivityLogs";
+import Ouvidoria from "@/pages/Ouvidoria";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -46,6 +47,40 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 
   if (!user) {
     return null;
+  }
+
+  return <Component />;
+}
+
+function AdminSupervisorRoute({ component: Component }: { component: React.ComponentType }) {
+  const { user, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      setLocation("/login");
+    } else if (!isLoading && user && user.role !== "ADMIN" && user.role !== "SUPERVISOR") {
+      setLocation("/");
+    }
+  }, [user, isLoading, setLocation]);
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  if (user.role !== "ADMIN" && user.role !== "SUPERVISOR") {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <p className="text-destructive mb-4">Acesso Negado</p>
+          <p className="text-sm text-muted-foreground">Você não tem permissão para acessar esta página.</p>
+        </div>
+      </div>
+    );
   }
 
   return <Component />;
@@ -102,6 +137,9 @@ function Router() {
       </Route>
       <Route path="/activity-logs">
         {() => <ProtectedRoute component={ActivityLogs} />}
+      </Route>
+      <Route path="/ouvidoria">
+        {() => <AdminSupervisorRoute component={Ouvidoria} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

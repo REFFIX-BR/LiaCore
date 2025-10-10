@@ -35,7 +35,8 @@ import {
   BarChart3,
   Cog,
   UserPlus,
-  History
+  History,
+  AlertTriangle
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
@@ -166,6 +167,12 @@ const menuCategories: MenuCategory[] = [
         title: "Feedbacks NPS",
         url: "/feedbacks",
         icon: Star,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Ouvidoria",
+        url: "/ouvidoria",
+        icon: AlertTriangle,
         roles: ["ADMIN", "SUPERVISOR"],
       },
     ],
