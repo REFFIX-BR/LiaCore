@@ -13,6 +13,7 @@ export interface Message {
     status: "pending" | "completed" | "failed";
   };
   assistant?: string;
+  imageBase64?: string | null;
 }
 
 interface ChatMessageProps {
@@ -39,8 +40,12 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
   const isUser = message.role === "user";
 
+  // Detectar se mensagem tem imagem do WhatsApp (imageBase64)
+  const hasWhatsAppImage = !!message.imageBase64;
+
   // Detectar se mensagem contém análise de imagem
   const hasImageAnalysis = message.content.includes('[Imagem enviada]') || 
+                          message.content.includes('[Imagem analisada]') ||
                           message.content.includes('[Análise da Imagem]') || 
                           message.content.includes('📎 Análise automática');
 
@@ -54,10 +59,22 @@ export function ChatMessage({ message }: ChatMessageProps) {
   let audioTranscription = null;
 
   if (hasImageAnalysis) {
-    const parts = message.content.split(/📎 Análise automática[^:]*:/);
-    if (parts.length > 1) {
-      messageContent = parts[0].replace('[Imagem enviada]', '').trim();
-      imageAnalysis = parts[1].trim();
+    // Para imagens do WhatsApp, extrair análise se houver
+    if (message.content.includes('[Imagem analisada]')) {
+      const parts = message.content.split(/Análise da imagem:/);
+      if (parts.length > 1) {
+        messageContent = parts[0].replace('[Imagem analisada]', '').replace('Legenda:', '').trim();
+        imageAnalysis = parts[1].trim();
+      } else {
+        messageContent = message.content.replace('[Imagem analisada]', '').trim();
+      }
+    } else {
+      // Para imagens enviadas pelo supervisor/agente
+      const parts = message.content.split(/📎 Análise automática[^:]*:/);
+      if (parts.length > 1) {
+        messageContent = parts[0].replace('[Imagem enviada]', '').trim();
+        imageAnalysis = parts[1].trim();
+      }
     }
   }
 
@@ -87,9 +104,22 @@ export function ChatMessage({ message }: ChatMessageProps) {
           </span>
         </div>
         
-        {hasImageAnalysis || hasAudioTranscription ? (
+        {hasWhatsAppImage || hasImageAnalysis || hasAudioTranscription ? (
           <div className="space-y-2">
-            {hasImageAnalysis && (
+            {hasWhatsAppImage && (
+              <div className="space-y-1">
+                <Badge variant="outline" className="text-xs">
+                  📸 Imagem do WhatsApp
+                </Badge>
+                <img 
+                  src={`data:image/jpeg;base64,${message.imageBase64}`}
+                  alt="Imagem enviada pelo cliente"
+                  className="max-w-sm rounded-md border border-border"
+                  data-testid="whatsapp-image"
+                />
+              </div>
+            )}
+            {hasImageAnalysis && !hasWhatsAppImage && (
               <Badge variant="outline" className="text-xs">
                 📸 Imagem enviada
               </Badge>
