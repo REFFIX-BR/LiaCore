@@ -1,8 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema, insertSatisfactionFeedbackSchema, loginSchema, insertUserSchema, updateUserSchema, type Conversation } from "@shared/schema";
+import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema, insertSatisfactionFeedbackSchema, loginSchema, insertUserSchema, updateUserSchema, insertComplaintSchema, updateComplaintSchema, type Conversation } from "@shared/schema";
 import { routeMessage, createThread, sendMessageAndGetResponse, summarizeConversation, routeMessageWithContext, CONTEXT_CONFIG } from "./lib/openai";
+import { z } from "zod";
 import { storeConversationThread, getConversationThread, searchKnowledge } from "./lib/upstash";
 import { webhookLogger } from "./lib/webhook-logger";
 import { authenticate, authenticateWithTracking, requireAdmin, requireAdminOrSupervisor, requireAnyRole } from "./middleware/auth";
@@ -3769,6 +3770,93 @@ A resposta deve:
     } catch (error) {
       console.error("❌ [Reports] Error getting agent reports:", error);
       return res.status(500).json({ error: "Error fetching agent reports" });
+    }
+  });
+
+  // ============================================================================
+  // COMPLAINTS (OUVIDORIA)
+  // ============================================================================
+
+  // Create a new complaint
+  app.post("/api/complaints", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { conversationId, complaintType, description, severity } = insertComplaintSchema.parse(req.body);
+      
+      const complaint = await storage.createComplaint({
+        conversationId,
+        complaintType,
+        description,
+        severity,
+      });
+
+      console.log(`✅ [Complaints] Complaint created: ${complaint.id}`);
+      return res.json(complaint);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid complaint data", details: error.errors });
+      }
+      console.error("❌ [Complaints] Error creating complaint:", error);
+      return res.status(500).json({ error: "Error creating complaint" });
+    }
+  });
+
+  // Get all complaints
+  app.get("/api/complaints", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { status, severity, conversationId } = req.query;
+
+      let complaints;
+      if (conversationId) {
+        complaints = await storage.getComplaintsByConversationId(conversationId as string);
+      } else if (status) {
+        complaints = await storage.getComplaintsByStatus(status as string);
+      } else if (severity) {
+        complaints = await storage.getComplaintsBySeverity(severity as string);
+      } else {
+        complaints = await storage.getAllComplaints();
+      }
+
+      return res.json(complaints);
+    } catch (error) {
+      console.error("❌ [Complaints] Error fetching complaints:", error);
+      return res.status(500).json({ error: "Error fetching complaints" });
+    }
+  });
+
+  // Get a specific complaint
+  app.get("/api/complaints/:id", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const complaint = await storage.getComplaint(req.params.id);
+      
+      if (!complaint) {
+        return res.status(404).json({ error: "Complaint not found" });
+      }
+
+      return res.json(complaint);
+    } catch (error) {
+      console.error("❌ [Complaints] Error fetching complaint:", error);
+      return res.status(500).json({ error: "Error fetching complaint" });
+    }
+  });
+
+  // Update a complaint
+  app.patch("/api/complaints/:id", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const updates = updateComplaintSchema.parse(req.body);
+      const updated = await storage.updateComplaint(req.params.id, updates);
+
+      if (!updated) {
+        return res.status(404).json({ error: "Complaint not found" });
+      }
+
+      console.log(`✅ [Complaints] Complaint updated: ${updated.id}`);
+      return res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid update data", details: error.errors });
+      }
+      console.error("❌ [Complaints] Error updating complaint:", error);
+      return res.status(500).json({ error: "Error updating complaint" });
     }
   });
 

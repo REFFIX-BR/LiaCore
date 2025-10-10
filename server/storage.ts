@@ -26,7 +26,10 @@ import {
   type InsertMessageTemplate,
   type UpdateMessageTemplate,
   type ActivityLog,
-  type InsertActivityLog
+  type InsertActivityLog,
+  type Complaint,
+  type InsertComplaint,
+  type UpdateComplaint
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -183,6 +186,15 @@ export interface IStorage {
   getMessageTemplatesByCategory(category: string): Promise<MessageTemplate[]>;
   updateMessageTemplate(key: string, updates: UpdateMessageTemplate): Promise<MessageTemplate | undefined>;
   createMessageTemplate(template: InsertMessageTemplate): Promise<MessageTemplate>;
+
+  // Complaints (Ouvidoria)
+  createComplaint(complaint: InsertComplaint): Promise<Complaint>;
+  getComplaint(id: string): Promise<Complaint | undefined>;
+  getComplaintsByConversationId(conversationId: string): Promise<Complaint[]>;
+  getAllComplaints(): Promise<Complaint[]>;
+  getComplaintsByStatus(status: string): Promise<Complaint[]>;
+  getComplaintsBySeverity(severity: string): Promise<Complaint[]>;
+  updateComplaint(id: string, updates: UpdateComplaint): Promise<Complaint | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -198,6 +210,7 @@ export class MemStorage implements IStorage {
   private suggestedResponses: Map<string, SuggestedResponse>;
   private registrationRequests: Map<string, RegistrationRequest>;
   private activityLogs: Map<string, ActivityLog>;
+  private complaints: Map<string, Complaint>;
 
   constructor() {
     this.users = new Map();
@@ -212,6 +225,7 @@ export class MemStorage implements IStorage {
     this.suggestedResponses = new Map();
     this.registrationRequests = new Map();
     this.activityLogs = new Map();
+    this.complaints = new Map();
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -835,6 +849,70 @@ export class MemStorage implements IStorage {
       updatedAt: new Date(),
       updatedBy: template.updatedBy || null,
     };
+  }
+
+  // Complaints (stub implementation for MemStorage)
+  async createComplaint(insertComplaint: InsertComplaint): Promise<Complaint> {
+    const id = randomUUID();
+    const complaint: Complaint = {
+      id,
+      ...insertComplaint,
+      severity: insertComplaint.severity || 'media',
+      status: insertComplaint.status || 'novo',
+      assignedTo: insertComplaint.assignedTo || null,
+      resolution: null,
+      resolutionNotes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      resolvedAt: null,
+      metadata: insertComplaint.metadata || null,
+    };
+    this.complaints.set(id, complaint);
+    return complaint;
+  }
+
+  async getComplaint(id: string): Promise<Complaint | undefined> {
+    return this.complaints.get(id);
+  }
+
+  async getComplaintsByConversationId(conversationId: string): Promise<Complaint[]> {
+    return Array.from(this.complaints.values())
+      .filter(c => c.conversationId === conversationId)
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  async getAllComplaints(): Promise<Complaint[]> {
+    return Array.from(this.complaints.values())
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  async getComplaintsByStatus(status: string): Promise<Complaint[]> {
+    return Array.from(this.complaints.values())
+      .filter(c => c.status === status)
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  async getComplaintsBySeverity(severity: string): Promise<Complaint[]> {
+    return Array.from(this.complaints.values())
+      .filter(c => c.severity === severity)
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  async updateComplaint(id: string, updates: UpdateComplaint): Promise<Complaint | undefined> {
+    const existing = this.complaints.get(id);
+    if (!existing) return undefined;
+
+    const updated: Complaint = {
+      ...existing,
+      ...updates,
+      updatedAt: new Date(),
+      resolvedAt: (updates.status === 'resolvido' || updates.status === 'fechado') && !existing.resolvedAt
+        ? new Date()
+        : existing.resolvedAt,
+    };
+    
+    this.complaints.set(id, updated);
+    return updated;
   }
 }
 
@@ -1836,6 +1914,69 @@ export class DbStorage implements IStorage {
       .values(insertTemplate)
       .returning();
     return template;
+  }
+
+  // Complaints (Ouvidoria)
+  async createComplaint(insertComplaint: InsertComplaint): Promise<Complaint> {
+    const [complaint] = await db.insert(schema.complaints)
+      .values(insertComplaint)
+      .returning();
+    return complaint;
+  }
+
+  async getComplaint(id: string): Promise<Complaint | undefined> {
+    const [complaint] = await db.select()
+      .from(schema.complaints)
+      .where(eq(schema.complaints.id, id));
+    return complaint;
+  }
+
+  async getComplaintsByConversationId(conversationId: string): Promise<Complaint[]> {
+    return await db.select()
+      .from(schema.complaints)
+      .where(eq(schema.complaints.conversationId, conversationId))
+      .orderBy(desc(schema.complaints.createdAt));
+  }
+
+  async getAllComplaints(): Promise<Complaint[]> {
+    return await db.select()
+      .from(schema.complaints)
+      .orderBy(desc(schema.complaints.createdAt));
+  }
+
+  async getComplaintsByStatus(status: string): Promise<Complaint[]> {
+    return await db.select()
+      .from(schema.complaints)
+      .where(eq(schema.complaints.status, status))
+      .orderBy(desc(schema.complaints.createdAt));
+  }
+
+  async getComplaintsBySeverity(severity: string): Promise<Complaint[]> {
+    return await db.select()
+      .from(schema.complaints)
+      .where(eq(schema.complaints.severity, severity))
+      .orderBy(desc(schema.complaints.createdAt));
+  }
+
+  async updateComplaint(id: string, updates: UpdateComplaint): Promise<Complaint | undefined> {
+    const autoUpdates: Partial<Complaint> = {
+      ...updates,
+      updatedAt: new Date(),
+    };
+
+    // Auto-set resolvedAt when status changes to resolved or closed
+    if (updates.status === 'resolvido' || updates.status === 'fechado') {
+      const existing = await this.getComplaint(id);
+      if (existing && !existing.resolvedAt) {
+        autoUpdates.resolvedAt = new Date();
+      }
+    }
+
+    const [updated] = await db.update(schema.complaints)
+      .set(autoUpdates)
+      .where(eq(schema.complaints.id, id))
+      .returning();
+    return updated;
   }
 
   private getWeekNumber(date: Date): number {
