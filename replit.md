@@ -132,6 +132,20 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 **Conversation Assignment System**:
 - Supports self-assignment by agents and manual assignment by supervisors/admins, with automated welcome messages and role-based access to conversations.
 
+**Conversation Transfer System** (`client/src/components/ChatPanel.tsx`, `server/routes.ts`):
+- **Transfer Button**: Visible in chat header for ADMIN/SUPERVISOR users (Users icon next to resolve button)
+- **Transfer Dialog**: Modal with agent selection dropdown and optional transfer notes
+- **Agent Filtering**: Automatically excludes current assigned agent from available options
+- **Backend Endpoint**: POST `/api/conversations/:id/transfer` (ADMIN/SUPERVISOR only)
+- **Transfer Workflow**: 
+  - Updates `assignedTo` field to new agent
+  - Creates transfer message in conversation history
+  - Sends WhatsApp notification to client with new agent details
+  - Logs transfer action in `supervisor_actions` table with notes
+  - Supports optional transfer reason/notes for context
+- **Message Templates**: Uses `agent_transfer` template or default transfer message with variables: `{agentName}`, `{fromAgent}`, `{notes}`
+- **Real-time Updates**: Invalidates conversation queries to refresh UI across all views
+
 **Configurable Message Templates System**:
 - Admin-managed message templates for automated communications, supporting dynamic variable substitution and categorized storage.
 
