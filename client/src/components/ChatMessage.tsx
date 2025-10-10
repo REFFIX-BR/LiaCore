@@ -1,7 +1,6 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Bot, User } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
+import { Check, CheckCheck } from "lucide-react";
 
 export interface Message {
   id: string;
@@ -87,86 +86,97 @@ export function ChatMessage({ message }: ChatMessageProps) {
   }
 
   return (
-    <div className={`flex gap-3 py-3 ${isUser ? "" : "bg-primary/5"} px-4 rounded-lg`}>
-      <Avatar className="h-8 w-8 flex-shrink-0">
-        <AvatarFallback>
-          {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-        </AvatarFallback>
-      </Avatar>
-      
-      <div className="flex-1 min-w-0 space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">
-            {isUser ? "Cliente" : message.assistant || "LIA"}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {formatDistanceToNow(message.timestamp, { addSuffix: true })}
-          </span>
+    <div 
+      className={`flex w-full mb-4 px-4 ${isUser ? 'justify-start' : 'justify-end'}`}
+      data-testid={`message-${message.role}`}
+    >
+      <div className={`flex flex-col max-w-[70%] ${isUser ? 'items-start' : 'items-end'}`}>
+        {/* Bubble da mensagem */}
+        <div 
+          className={`rounded-xl px-4 py-3 ${
+            isUser 
+              ? 'bg-muted dark:bg-muted/80 text-foreground rounded-tl-sm' 
+              : 'bg-primary dark:bg-primary/90 text-primary-foreground rounded-tr-sm'
+          }`}
+        >
+
+          {/* Imagem do WhatsApp */}
+          {hasWhatsAppImage && (
+            <div className="mb-2">
+              <img 
+                src={`data:image/jpeg;base64,${message.imageBase64}`}
+                alt="Imagem enviada pelo cliente"
+                className="max-w-full rounded-md"
+                data-testid="whatsapp-image"
+              />
+            </div>
+          )}
+
+          {/* Badge de imagem/áudio */}
+          {hasImageAnalysis && !hasWhatsAppImage && (
+            <Badge variant="outline" className="mb-2 text-xs">
+              📸 Imagem enviada
+            </Badge>
+          )}
+          {hasAudioTranscription && (
+            <Badge variant="outline" className="mb-2 text-xs">
+              🎤 Áudio enviado
+            </Badge>
+          )}
+
+          {/* Conteúdo da mensagem */}
+          {messageContent && (
+            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+              {messageContent}
+            </p>
+          )}
+
+          {/* Análise de imagem */}
+          {imageAnalysis && (
+            <div className={`mt-2 rounded-md p-2 ${isUser ? 'bg-background/50' : 'bg-primary-foreground/10'}`}>
+              <p className="text-xs font-medium mb-1 opacity-80">
+                📎 Análise automática da imagem
+              </p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{imageAnalysis}</p>
+            </div>
+          )}
+
+          {/* Transcrição de áudio */}
+          {audioTranscription && (
+            <div className={`mt-2 rounded-md p-2 ${isUser ? 'bg-background/50' : 'bg-primary-foreground/10'}`}>
+              <p className="text-xs font-medium mb-1 opacity-80">
+                🎤 Transcrição automática
+              </p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{audioTranscription}</p>
+            </div>
+          )}
+
+          {/* Function Call Badge */}
+          {message.functionCall && (
+            <Badge 
+              variant="outline" 
+              className={`mt-2 text-xs ${
+                message.functionCall.status === "completed" 
+                  ? "bg-chart-2/10 text-chart-2" 
+                  : message.functionCall.status === "failed"
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-chart-3/10 text-chart-3"
+              }`}
+            >
+              {functionIcons[message.functionCall.name] || "⚙️"} {message.functionCall.name}
+            </Badge>
+          )}
         </div>
-        
-        {hasWhatsAppImage || hasImageAnalysis || hasAudioTranscription ? (
-          <div className="space-y-2">
-            {hasWhatsAppImage && (
-              <div className="space-y-1">
-                <Badge variant="outline" className="text-xs">
-                  📸 Imagem do WhatsApp
-                </Badge>
-                <img 
-                  src={`data:image/jpeg;base64,${message.imageBase64}`}
-                  alt="Imagem enviada pelo cliente"
-                  className="max-w-sm rounded-md border border-border"
-                  data-testid="whatsapp-image"
-                />
-              </div>
-            )}
-            {hasImageAnalysis && !hasWhatsAppImage && (
-              <Badge variant="outline" className="text-xs">
-                📸 Imagem enviada
-              </Badge>
-            )}
-            {hasAudioTranscription && (
-              <Badge variant="outline" className="text-xs">
-                🎤 Áudio enviado
-              </Badge>
-            )}
-            {messageContent && (
-              <p className="text-sm leading-relaxed">{messageContent}</p>
-            )}
-            {imageAnalysis && (
-              <div className="bg-accent/50 rounded-md p-3 border border-border">
-                <p className="text-xs font-medium text-muted-foreground mb-1">
-                  📎 Análise automática da imagem
-                </p>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{imageAnalysis}</p>
-              </div>
-            )}
-            {audioTranscription && (
-              <div className="bg-accent/50 rounded-md p-3 border border-border">
-                <p className="text-xs font-medium text-muted-foreground mb-1">
-                  🎤 Transcrição automática
-                </p>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{audioTranscription}</p>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-        )}
-        
-        {message.functionCall && (
-          <Badge 
-            variant="outline" 
-            className={`text-xs ${
-              message.functionCall.status === "completed" 
-                ? "bg-chart-2/10 text-chart-2" 
-                : message.functionCall.status === "failed"
-                ? "bg-destructive/10 text-destructive"
-                : "bg-chart-3/10 text-chart-3"
-            }`}
-          >
-            {functionIcons[message.functionCall.name] || "⚙️"} {message.functionCall.name}
-          </Badge>
-        )}
+
+        {/* Timestamp e status */}
+        <div className={`flex items-center gap-1 mt-1 px-2 ${isUser ? 'justify-start' : 'justify-end'}`}>
+          <span className="text-xs text-muted-foreground">
+            {format(message.timestamp, 'MMM dd, hh:mm a')}
+          </span>
+          {!isUser && (
+            <CheckCheck className="h-3 w-3 text-muted-foreground" />
+          )}
+        </div>
       </div>
     </div>
   );
