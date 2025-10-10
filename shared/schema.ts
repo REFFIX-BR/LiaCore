@@ -217,6 +217,28 @@ export const complaints = pgTable("complaints", {
   metadata: jsonb("metadata"), // Dados adicionais (contexto, tags, etc)
 });
 
+export const trainingSessions = pgTable("training_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(), // Título da sessão de treinamento
+  assistantType: text("assistant_type").notNull(), // Tipo de assistente sendo treinado
+  trainingType: text("training_type").notNull(), // 'manual' (interface) ou 'conversation' (durante conversa)
+  conversationId: varchar("conversation_id"), // ID da conversa (se foi durante uma conversa)
+  content: text("content").notNull(), // Conteúdo do treinamento (instruções do supervisor)
+  status: text("status").notNull().default("active"), // 'active' (em andamento), 'completed', 'applied'
+  startedBy: varchar("started_by").notNull(), // User ID de quem iniciou
+  completedBy: varchar("completed_by"), // User ID de quem finalizou
+  appliedBy: varchar("applied_by"), // User ID de quem aplicou ao sistema
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  appliedAt: timestamp("applied_at"),
+  notes: text("notes"), // Notas adicionais
+  improvedPrompt: text("improved_prompt"), // Prompt melhorado gerado pela IA
+  metadata: jsonb("metadata"), // Dados adicionais
+}, (table) => ({
+  statusIdx: index("training_sessions_status_idx").on(table.status),
+  assistantTypeIdx: index("training_sessions_assistant_type_idx").on(table.assistantType),
+}));
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -335,6 +357,33 @@ export const updateComplaintSchema = z.object({
   metadata: z.any().optional(),
 });
 
+export const insertTrainingSessionSchema = createInsertSchema(trainingSessions).omit({
+  id: true,
+  startedAt: true,
+  completedAt: true,
+  appliedAt: true,
+  completedBy: true,
+  appliedBy: true,
+  improvedPrompt: true,
+}).extend({
+  assistantType: z.enum(["suporte", "comercial", "financeiro", "apresentacao", "ouvidoria", "cancelamento"]),
+  trainingType: z.enum(["manual", "conversation"]),
+  status: z.enum(["active", "completed", "applied"]).default("active"),
+});
+
+export const updateTrainingSessionSchema = z.object({
+  title: z.string().optional(),
+  content: z.string().optional(),
+  status: z.enum(["active", "completed", "applied"]).optional(),
+  completedBy: z.string().optional(),
+  appliedBy: z.string().optional(),
+  completedAt: z.date().optional(),
+  appliedAt: z.date().optional(),
+  notes: z.string().optional(),
+  improvedPrompt: z.string().optional(),
+  metadata: z.any().optional(),
+});
+
 // Evolution API Configuration Schema
 export const evolutionConfigSchema = z.object({
   url: z.string()
@@ -379,3 +428,6 @@ export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
 export type Complaint = typeof complaints.$inferSelect;
 export type InsertComplaint = z.infer<typeof insertComplaintSchema>;
 export type UpdateComplaint = z.infer<typeof updateComplaintSchema>;
+export type TrainingSession = typeof trainingSessions.$inferSelect;
+export type InsertTrainingSession = z.infer<typeof insertTrainingSessionSchema>;
+export type UpdateTrainingSession = z.infer<typeof updateTrainingSessionSchema>;
