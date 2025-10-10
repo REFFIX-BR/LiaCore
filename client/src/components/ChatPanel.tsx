@@ -69,7 +69,8 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { user, isAgent, isAdminOrSupervisor } = useAuth();
+  const { user, isAgent, isAdmin, isSupervisor } = useAuth();
+  const isAdminOrSupervisor = isAdmin || isSupervisor;
 
   // Query mensagens da conversa
   const { data: conversationData } = useQuery<{ messages: Message[]; hasMore: boolean }>({
