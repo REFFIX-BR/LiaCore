@@ -84,10 +84,15 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 
 **Ouvidoria (Ombudsman) System**:
 - Dedicated tab in Monitor page for filtering and viewing all customer complaints handled by Ouvidoria assistant.
+- Dedicated `/ouvidoria` page with comprehensive complaint management interface (ADMIN/SUPERVISOR only).
 - Complaint tracking database with fields for type, severity, status, assigned investigator, and resolution.
 - Complaint types: atendimento, produto, técnico, comercial, financeiro, outro.
 - Status tracking: novo, em_investigação, resolvido, fechado.
 - Severity levels: baixa, média, alta, crítica.
+- **AI Tool**: `registrar_reclamacao_ouvidoria` - Ouvidoria assistant function to automatically create complaint records during conversations.
+- **Three-dimensional filtering**: Filter complaints by type, severity, and status.
+- **Inline editing**: Change type, severity, and status directly in the complaints table.
+- **Role-based security**: AdminSupervisorRoute + component-level role verification ensures only ADMIN/SUPERVISOR can access Ouvidoria management.
 
 ## External Dependencies
 

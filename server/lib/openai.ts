@@ -370,6 +370,50 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
           mensagem: "Conversa finalizada com sucesso. Pesquisa de satisfação será enviada ao cliente.",
         });
 
+      case "registrar_reclamacao_ouvidoria":
+        if (!conversationId) {
+          console.error("❌ [AI Tool] registrar_reclamacao_ouvidoria chamada sem conversationId");
+          return JSON.stringify({
+            error: "Contexto de conversa não disponível para registrar reclamação"
+          });
+        }
+        
+        const { storage: storageComplaint } = await import("../storage");
+        
+        const complaintType = args.tipo || args.type || "outro";
+        const complaintSeverity = args.gravidade || args.severity || "media";
+        const complaintDescription = args.descricao || args.description || "Sem descrição fornecida";
+        
+        try {
+          const complaint = await storageComplaint.createComplaint({
+            conversationId,
+            complaintType,
+            severity: complaintSeverity,
+            description: complaintDescription,
+            status: "novo",
+          });
+          
+          console.log(`📋 [Ouvidoria] Reclamação registrada:`, { 
+            complaintId: complaint.id,
+            conversationId,
+            type: complaintType,
+            severity: complaintSeverity
+          });
+          
+          return JSON.stringify({
+            success: true,
+            protocolo: complaint.id,
+            tipo: complaintType,
+            gravidade: complaintSeverity,
+            mensagem: `Reclamação registrada com sucesso. Protocolo: ${complaint.id}. Sua reclamação será analisada por nossa equipe.`,
+          });
+        } catch (error) {
+          console.error("❌ [Ouvidoria] Erro ao registrar reclamação:", error);
+          return JSON.stringify({
+            error: "Não foi possível registrar a reclamação. Tente novamente.",
+          });
+        }
+
       case "agendar_visita":
         return JSON.stringify({
           protocolo: `#VST-${Math.floor(Math.random() * 1000000)}`,
