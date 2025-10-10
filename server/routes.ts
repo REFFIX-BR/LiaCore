@@ -22,6 +22,65 @@ const EVOLUTION_CONFIG = {
   instance: process.env.EVOLUTION_API_INSTANCE,
 };
 
+// Helper function to send WhatsApp image via Evolution API
+async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, caption?: string, instanceName?: string): Promise<boolean> {
+  const instance = instanceName || EVOLUTION_CONFIG.instance;
+  
+  if (!EVOLUTION_CONFIG.apiUrl || !EVOLUTION_CONFIG.apiKey || !instance) {
+    console.error("❌ [Evolution] Credenciais não configuradas para envio de imagem");
+    return false;
+  }
+
+  try {
+    // Normalizar número do WhatsApp
+    let normalizedNumber = phoneNumber;
+    if (phoneNumber.startsWith('whatsapp_')) {
+      normalizedNumber = phoneNumber.replace('whatsapp_', '');
+    } else if (phoneNumber.includes('@s.whatsapp.net')) {
+      normalizedNumber = phoneNumber.split('@')[0];
+    }
+    
+    // Ensure URL has protocol
+    let baseUrl = EVOLUTION_CONFIG.apiUrl.trim();
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = `https://${baseUrl}`;
+    }
+    
+    // Remover prefixo data:image se houver
+    let cleanBase64 = imageBase64;
+    if (imageBase64.includes('base64,')) {
+      cleanBase64 = imageBase64.split('base64,')[1];
+    }
+    
+    const url = `${baseUrl}/message/sendMedia/${instance}`;
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: EVOLUTION_CONFIG.apiKey,
+      },
+      body: JSON.stringify({
+        number: normalizedNumber,
+        mediatype: "image",
+        mimetype: "image/jpeg",
+        media: cleanBase64,
+        caption: caption || "",
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Evolution API error: ${response.statusText}`);
+    }
+
+    console.log(`✅ [Evolution] Imagem enviada com sucesso para ${normalizedNumber}`);
+    return true;
+  } catch (error) {
+    console.error("❌ [Evolution] Erro ao enviar imagem:", error);
+    return false;
+  }
+}
+
 // Helper function to send WhatsApp message via Evolution API
 async function sendWhatsAppMessage(phoneNumber: string, text: string, instanceName?: string): Promise<boolean> {
   // Use instance específica da conversa ou fallback para env var
@@ -3804,16 +3863,48 @@ A resposta deve:
       
       if (phoneNumber) {
         try {
-          whatsappSent = await sendWhatsAppMessage(phoneNumber, processedContent, conversation.evolutionInstance || undefined);
+          // Se tem imagem, enviar como mídia ao invés de texto
+          if (imageBase64) {
+            console.log(`📸 [Supervisor] Enviando imagem via WhatsApp para ${phoneNumber}`);
+            whatsappSent = await sendWhatsAppImage(
+              phoneNumber, 
+              imageBase64, 
+              content || '', // Caption (mensagem do supervisor)
+              conversation.evolutionInstance || undefined
+            );
+            
+            if (whatsappSent) {
+              console.log(`✅ [Supervisor] Imagem enviada ao WhatsApp: ${phoneNumber}`);
+              webhookLogger.success('SUPERVISOR_IMAGE_SENT', `Supervisor enviou imagem ao cliente`, {
+                conversationId: id,
+                supervisorName,
+                phoneNumber,
+                caption: content?.substring(0, 50) || '',
+              });
+            }
+          } else if (audioBase64) {
+            // Para áudio, por enquanto enviar apenas a transcrição (Evolution API pode não suportar áudio)
+            whatsappSent = await sendWhatsAppMessage(phoneNumber, processedContent, conversation.evolutionInstance || undefined);
+            if (whatsappSent) {
+              console.log(`✅ [Supervisor] Transcrição de áudio enviada ao WhatsApp: ${phoneNumber}`);
+            }
+          } else {
+            // Mensagem de texto normal
+            whatsappSent = await sendWhatsAppMessage(phoneNumber, processedContent, conversation.evolutionInstance || undefined);
+            if (whatsappSent) {
+              console.log(`✅ [Supervisor] Mensagem enviada ao WhatsApp: ${phoneNumber}`);
+            }
+          }
           
           if (whatsappSent) {
             webhookLogger.success('SUPERVISOR_MESSAGE_SENT', `Supervisor enviou mensagem ao cliente`, {
               conversationId: id,
               supervisorName,
               phoneNumber,
-              messagePreview: content.substring(0, 50),
+              messagePreview: content?.substring(0, 50) || '',
+              hasImage: !!imageBase64,
+              hasAudio: !!audioBase64,
             });
-            console.log(`✅ [Supervisor] Mensagem enviada ao WhatsApp: ${phoneNumber}`);
           } else {
             webhookLogger.error('WHATSAPP_SEND_FAILED', `Falha ao enviar mensagem do supervisor`, {
               conversationId: id,
