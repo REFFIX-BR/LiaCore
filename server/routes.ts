@@ -3383,7 +3383,17 @@ A resposta deve:
       let imageAnalysis = null;
       
       if (imageBase64) {
-        console.log(`📸 [Supervisor] Imagem detectada - analisando com Vision...`);
+        // Validação server-side: verificar tamanho (aproximado via base64 length)
+        const imageSizeBytes = (imageBase64.length * 3) / 4; // Tamanho aproximado em bytes
+        const maxSizeBytes = 20 * 1024 * 1024; // 20MB
+        
+        if (imageSizeBytes > maxSizeBytes) {
+          return res.status(400).json({ 
+            error: "Imagem muito grande. Tamanho máximo: 20MB" 
+          });
+        }
+
+        console.log(`📸 [Supervisor] Imagem detectada (${(imageSizeBytes / 1024 / 1024).toFixed(2)}MB) - analisando com Vision...`);
         const { analyzeImageWithVision } = await import("./lib/vision");
         
         let customPrompt = 'Analise esta imagem em detalhes e extraia todas as informações relevantes.';

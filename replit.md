@@ -49,6 +49,16 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
   - Performance: 3-8 seconds per image, ~$0.002 cost per analysis
   - Supports JPEG, PNG, WebP, GIF (non-animated), up to 20MB
   - Graceful fallback if analysis fails, conversation continues normally
+- **Supervisor/Agent Image Upload** (`client/src/components/ChatPanel.tsx`):
+  - Allows supervisors/agents to upload images when replying to customers in Conversations page
+  - Frontend validates image type (JPEG, PNG, WebP, GIF) and size (max 20MB)
+  - Images converted to base64 and analyzed via GPT-4o Vision
+  - Backend endpoint: POST `/api/conversations/:id/send-message` accepts `imageBase64`
+  - Server-side validation enforces 20MB limit
+  - Analysis appended to message: `[Imagem enviada]\n{content}\n\n📎 Análise automática da imagem:\n{analysis}`
+  - ChatMessage component displays images with badge "📸 Imagem enviada" and analysis in styled box
+  - Image preview with remove option before sending
+  - Toast notification confirms successful analysis
 
 **Real-Time Monitoring**:
 - **Supervisor Dashboard**: Provides KPIs, live conversation queues, alerts, transcripts, and human intervention controls.
