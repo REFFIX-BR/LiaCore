@@ -3847,6 +3847,7 @@ A resposta deve:
         role: "assistant",
         content: processedContent,
         assistant: `Supervisor: ${supervisorName}`,
+        imageBase64: imageBase64 || null, // Salvar imagem para exibição no frontend
       });
 
       // Atualizar conversa
