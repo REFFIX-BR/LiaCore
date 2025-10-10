@@ -60,14 +60,34 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?:
   }
 }
 
+// Idempotency helper
+async function isJobProcessed(jobId: string): Promise<boolean> {
+  const key = `idempotency:${jobId}`;
+  const exists = await redisConnection.exists(key);
+  return exists === 1;
+}
+
+async function markJobProcessed(jobId: string, ttlSeconds = 86400): Promise<void> {
+  const key = `idempotency:${jobId}`;
+  await redisConnection.setex(key, ttlSeconds, 'processed');
+}
+
 // Worker 1: Process incoming WhatsApp messages
 export const messageProcessingWorker = new Worker<MessageProcessingJob>(
   QUEUE_NAMES.MESSAGE_PROCESSING,
   async (job: Job<MessageProcessingJob>) => {
-    const { chatId, conversationId, message, fromNumber, hasImage, imageUrl, evolutionInstance, clientName } = job.data;
+    const { chatId, conversationId, message, fromNumber, hasImage, imageUrl, evolutionInstance, clientName, messageId } = job.data;
+
+    // Check idempotency
+    const idempotencyKey = messageId || job.id;
+    if (await isJobProcessed(idempotencyKey!)) {
+      console.log(`⏭️ [Worker] Job already processed, skipping: ${idempotencyKey}`);
+      return { skipped: true, reason: 'already_processed' };
+    }
 
     console.log(`🔄 [Worker] Processing message from ${fromNumber}`, {
       jobId: job.id,
+      idempotencyKey,
       conversationId,
       hasImage,
       evolutionInstance,
@@ -104,10 +124,8 @@ export const messageProcessingWorker = new Worker<MessageProcessingJob>(
       let threadId = conversation.threadId;
       
       if (!threadId) {
-        const { OpenAI } = await import('openai');
-        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-        const thread = await openai.beta.threads.create();
-        threadId = thread.id;
+        const { createThread } = await import('./lib/openai');
+        threadId = await createThread();
         
         await storage.updateConversation(conversationId, {
           threadId,
@@ -182,6 +200,9 @@ export const messageProcessingWorker = new Worker<MessageProcessingJob>(
 
       console.log(`✅ [Worker] Message processed successfully`);
 
+      // Mark job as processed (idempotency)
+      await markJobProcessed(idempotencyKey!);
+
       return {
         success: true,
         response: result.response,
@@ -207,6 +228,12 @@ export const imageAnalysisWorker = new Worker<ImageAnalysisJob>(
   async (job: Job<ImageAnalysisJob>) => {
     const { conversationId, imageUrl, caption } = job.data;
 
+    // Check idempotency
+    if (await isJobProcessed(job.id!)) {
+      console.log(`⏭️ [Vision Worker] Job already processed, skipping: ${job.id}`);
+      return { skipped: true, reason: 'already_processed' };
+    }
+
     console.log(`🖼️ [Vision Worker] Analyzing image`, {
       jobId: job.id,
       conversationId,
@@ -224,6 +251,9 @@ export const imageAnalysisWorker = new Worker<ImageAnalysisJob>(
       }
 
       console.log(`✅ [Vision Worker] Image analyzed successfully`);
+
+      // Mark job as processed (idempotency)
+      await markJobProcessed(job.id!);
 
       return {
         success: true,
@@ -245,6 +275,12 @@ export const npsSurveyWorker = new Worker<NPSSurveyJob>(
   QUEUE_NAMES.NPS_SURVEY,
   async (job: Job<NPSSurveyJob>) => {
     const { chatId, conversationId } = job.data;
+
+    // Check idempotency
+    if (await isJobProcessed(job.id!)) {
+      console.log(`⏭️ [NPS Worker] Job already processed, skipping: ${job.id}`);
+      return { skipped: true, reason: 'already_processed' };
+    }
 
     console.log(`📊 [NPS Worker] Sending survey`, {
       jobId: job.id,
@@ -274,6 +310,9 @@ Responda apenas com o número (0 a 10).
       });
 
       console.log(`✅ [NPS Worker] Survey sent successfully`);
+
+      // Mark job as processed (idempotency)
+      await markJobProcessed(job.id!);
 
       return {
         success: true,
