@@ -2,6 +2,17 @@
 
 > **Objetivo**: Avaliar a capacidade da plataforma para atender 5.000 conversas diárias e definir roadmap de crescimento.
 
+### ⚠️ DEPENDÊNCIA CRÍTICA: Redis TCP Configuration
+
+**Status**: ⏸️ **Bloqueador para sistema de filas BullMQ**
+
+O sistema de filas BullMQ está implementado mas **não funcional** devido à falta de Redis TCP nativo:
+- ❌ Upstash Redis configurado apenas para REST API (HTTP)
+- ❌ BullMQ requer conexão TCP (porta 6379/6380)
+- ✅ Código de filas e workers implementado e pronto
+
+**Solução**: Configurar variáveis de ambiente Redis TCP. Ver [QUEUE_SETUP.md](./QUEUE_SETUP.md) para instruções.
+
 ---
 
 ## 📊 Cenário de Carga: 5.000 Conversas/Dia

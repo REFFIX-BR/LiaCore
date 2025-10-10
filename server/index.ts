@@ -73,5 +73,21 @@ app.use((req, res, next) => {
     
     // Start learning scheduler for automatic analysis
     startLearningScheduler();
+    
+    // Start queue workers only if Redis TCP available
+    const hasRedis = process.env.UPSTASH_REDIS_HOST || process.env.REDIS_HOST;
+    
+    if (!hasRedis) {
+      console.log('⏸️  [Workers] Queue workers disabled - Redis TCP not configured');
+      console.log('   Webhook will use fallback async processing');
+      console.log('   See QUEUE_SETUP.md for Redis configuration');
+    } else {
+      import('./workers').then(() => {
+        console.log('✅ [Workers] Queue workers initialized with Redis');
+      }).catch((error) => {
+        console.error('❌ [Workers] Failed to start workers:', error);
+        console.log('   Falling back to async processing');
+      });
+    }
   });
 })();

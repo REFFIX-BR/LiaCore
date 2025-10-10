@@ -1,13 +1,14 @@
 import { Queue, Worker, QueueEvents } from 'bullmq';
 import IORedis from 'ioredis';
 
-// Redis connection configuration
+// Redis connection configuration for BullMQ
+// IMPORTANT: maxRetriesPerRequest MUST be null for BullMQ blocking operations
 const redisConnection = new IORedis({
-  host: process.env.UPSTASH_REDIS_HOST || 'localhost',
-  port: parseInt(process.env.UPSTASH_REDIS_PORT || '6379'),
-  password: process.env.UPSTASH_REDIS_PASSWORD,
-  maxRetriesPerRequest: 3,
-  enableReadyCheck: true,
+  host: process.env.UPSTASH_REDIS_HOST || process.env.REDIS_HOST || 'localhost',
+  port: parseInt(process.env.UPSTASH_REDIS_PORT || process.env.REDIS_PORT || '6379'),
+  password: process.env.UPSTASH_REDIS_PASSWORD || process.env.REDIS_PASSWORD,
+  maxRetriesPerRequest: null, // BullMQ requirement for blocking commands
+  enableReadyCheck: false,
   retryStrategy(times) {
     const delay = Math.min(times * 50, 2000);
     return delay;
@@ -166,6 +167,8 @@ export interface MessageProcessingJob {
   timestamp: number;
   hasImage?: boolean;
   imageUrl?: string;
+  evolutionInstance?: string;
+  clientName?: string;
 }
 
 export interface AIResponseJob {

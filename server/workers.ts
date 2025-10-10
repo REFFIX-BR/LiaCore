@@ -7,13 +7,13 @@ import {
   NPSSurveyJob,
 } from './lib/queue';
 
-// Redis connection for workers (separate from queues for better isolation)
+// Redis connection for workers (BullMQ requirement)
 const redisConnection = new IORedis({
-  host: process.env.UPSTASH_REDIS_HOST || 'localhost',
-  port: parseInt(process.env.UPSTASH_REDIS_PORT || '6379'),
-  password: process.env.UPSTASH_REDIS_PASSWORD,
-  maxRetriesPerRequest: 3,
-  enableReadyCheck: true,
+  host: process.env.UPSTASH_REDIS_HOST || process.env.REDIS_HOST || 'localhost',
+  port: parseInt(process.env.UPSTASH_REDIS_PORT || process.env.REDIS_PORT || '6379'),
+  password: process.env.UPSTASH_REDIS_PASSWORD || process.env.REDIS_PASSWORD,
+  maxRetriesPerRequest: null, // BullMQ requirement for blocking commands
+  enableReadyCheck: false,
 });
 
 // Import processing functions
@@ -22,18 +22,18 @@ import { analyzeImageWithVision } from './lib/vision';
 import { storage } from './storage';
 
 // Helper function to send WhatsApp message
-async function sendWhatsAppMessage(phoneNumber: string, text: string): Promise<boolean> {
-  const instance = process.env.EVOLUTION_API_INSTANCE;
+async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?: string): Promise<boolean> {
+  const evolutionInstance = instance || process.env.EVOLUTION_API_INSTANCE;
   const apiKey = process.env.EVOLUTION_API_KEY;
   const baseUrl = process.env.EVOLUTION_API_URL;
 
-  if (!instance || !apiKey || !baseUrl) {
+  if (!evolutionInstance || !apiKey || !baseUrl) {
     console.error('❌ Evolution API config missing');
     return false;
   }
 
   try {
-    const response = await fetch(`${baseUrl}/message/sendText/${instance}`, {
+    const response = await fetch(`${baseUrl}/message/sendText/${evolutionInstance}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -60,12 +60,13 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string): Promise<b
 export const messageProcessingWorker = new Worker<MessageProcessingJob>(
   QUEUE_NAMES.MESSAGE_PROCESSING,
   async (job: Job<MessageProcessingJob>) => {
-    const { chatId, conversationId, message, fromNumber, hasImage, imageUrl } = job.data;
+    const { chatId, conversationId, message, fromNumber, hasImage, imageUrl, evolutionInstance, clientName } = job.data;
 
     console.log(`🔄 [Worker] Processing message from ${fromNumber}`, {
       jobId: job.id,
       conversationId,
       hasImage,
+      evolutionInstance,
     });
 
     try {
@@ -162,7 +163,7 @@ export const messageProcessingWorker = new Worker<MessageProcessingJob>(
       }
 
       // 7. Send response back to customer
-      const messageSent = await sendWhatsAppMessage(chatId, result.response);
+      const messageSent = await sendWhatsAppMessage(fromNumber, result.response, evolutionInstance);
       
       if (!messageSent) {
         throw new Error('Failed to send WhatsApp message - Evolution API error');

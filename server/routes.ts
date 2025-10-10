@@ -1270,22 +1270,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Send message and get AI response (async, don't wait)
-        if (!threadId) {
-          console.error("❌ [Evolution] No threadId available:", { chatId, conversationId: conversation.id });
-          return res.json({ success: true, processed: false, reason: "no_thread" });
-        }
+        // Try to add message to processing queue (with fallback)
+        try {
+          const { addMessageToQueue } = await import("./lib/queue");
+          
+          await addMessageToQueue({
+            chatId,
+            conversationId: conversation.id,
+            message: messageText,
+            fromNumber: phoneNumber,
+            messageId,
+            timestamp: messageTimestamp || Date.now(),
+            evolutionInstance: instance,
+            clientName,
+          }, 1); // Priority 1 (highest)
 
-        const assistantId = (conversation.metadata as any)?.routing?.assistantId;
+          console.log(`📬 [Evolution] Message queued for processing: ${conversation.id}`);
 
-        // Capture phoneNumber for async callback
-        const clientPhoneNumber = phoneNumber;
+          return res.json({ 
+            success: true, 
+            processed: true,
+            queued: true,
+            conversationId: conversation.id,
+            chatId 
+          });
+        } catch (queueError) {
+          // Fallback: Process without queue if Redis not available
+          console.warn(`⚠️  [Evolution] Queue unavailable, falling back to async processing:`, queueError);
+          
+          if (!threadId) {
+            console.error("❌ [Evolution] No threadId available:", { chatId, conversationId: conversation.id });
+            return res.json({ success: true, processed: false, reason: "no_thread" });
+          }
 
-        // Capture conversation reference for async processing
-        const conversationRef = conversation;
+          const assistantId = (conversation.metadata as any)?.routing?.assistantId;
+          const clientPhoneNumber = phoneNumber;
+          const conversationRef = conversation;
         
-        // Process in background
-        (async () => {
+          // Fallback async processing (when queue not available)
+          (async () => {
           try {
             if (!conversationRef) {
               console.error("❌ [Evolution] Conversation reference lost in async block");
@@ -1774,13 +1797,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         })();
 
+        // Return success immediately (processing continues in background)
         return res.json({ 
           success: true, 
           processed: true,
+          fallback: true,
           conversationId: conversation.id,
           chatId 
         });
       }
+    }
 
       // Process CHATS_* events (metadata synchronization)
       if (event.startsWith("chats.")) {
