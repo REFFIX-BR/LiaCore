@@ -28,6 +28,7 @@ export default function Ouvidoria() {
   const { toast } = useToast();
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterSeverity, setFilterSeverity] = useState<string>("all");
+  const [filterType, setFilterType] = useState<string>("all");
 
   // Defense in depth: verify user role
   if (!user || (user.role !== "ADMIN" && user.role !== "SUPERVISOR")) {
@@ -93,7 +94,8 @@ export default function Ouvidoria() {
   const filteredComplaints = complaints?.filter(complaint => {
     const statusMatch = filterStatus === "all" || complaint.status === filterStatus;
     const severityMatch = filterSeverity === "all" || complaint.severity === filterSeverity;
-    return statusMatch && severityMatch;
+    const typeMatch = filterType === "all" || complaint.complaintType === filterType;
+    return statusMatch && severityMatch && typeMatch;
   });
 
   const novasCount = complaints?.filter(c => c.status === "novo").length || 0;
@@ -143,6 +145,20 @@ export default function Ouvidoria() {
     updateComplaintMutation.mutate({
       id: complaintId,
       updates: { status: newStatus },
+    });
+  };
+
+  const handleTypeChange = (complaintId: string, newType: string) => {
+    updateComplaintMutation.mutate({
+      id: complaintId,
+      updates: { complaintType: newType },
+    });
+  };
+
+  const handleSeverityChange = (complaintId: string, newSeverity: ComplaintSeverity) => {
+    updateComplaintMutation.mutate({
+      id: complaintId,
+      updates: { severity: newSeverity },
     });
   };
 
@@ -225,6 +241,21 @@ export default function Ouvidoria() {
                   <SelectItem value="critica">Crítica</SelectItem>
                 </SelectContent>
               </Select>
+
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger className="w-[180px]" data-testid="select-type-filter">
+                  <SelectValue placeholder="Filtrar por tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os tipos</SelectItem>
+                  <SelectItem value="atendimento">Atendimento</SelectItem>
+                  <SelectItem value="produto">Produto</SelectItem>
+                  <SelectItem value="tecnico">Técnico</SelectItem>
+                  <SelectItem value="comercial">Comercial</SelectItem>
+                  <SelectItem value="financeiro">Financeiro</SelectItem>
+                  <SelectItem value="outro">Outro</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>
@@ -253,8 +284,42 @@ export default function Ouvidoria() {
                     <TableCell className="whitespace-nowrap">
                       {format(new Date(complaint.createdAt!), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                     </TableCell>
-                    <TableCell>{getTypeBadge(complaint.complaintType)}</TableCell>
-                    <TableCell>{getSeverityBadge(complaint.severity as ComplaintSeverity)}</TableCell>
+                    <TableCell>
+                      <Select
+                        value={complaint.complaintType}
+                        onValueChange={(value) => handleTypeChange(complaint.id, value)}
+                        disabled={updateComplaintMutation.isPending}
+                      >
+                        <SelectTrigger className="w-[140px]" data-testid={`select-type-${complaint.id}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="atendimento">Atendimento</SelectItem>
+                          <SelectItem value="produto">Produto</SelectItem>
+                          <SelectItem value="tecnico">Técnico</SelectItem>
+                          <SelectItem value="comercial">Comercial</SelectItem>
+                          <SelectItem value="financeiro">Financeiro</SelectItem>
+                          <SelectItem value="outro">Outro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={complaint.severity}
+                        onValueChange={(value) => handleSeverityChange(complaint.id, value as ComplaintSeverity)}
+                        disabled={updateComplaintMutation.isPending}
+                      >
+                        <SelectTrigger className="w-[120px]" data-testid={`select-severity-${complaint.id}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="baixa">Baixa</SelectItem>
+                          <SelectItem value="media">Média</SelectItem>
+                          <SelectItem value="alta">Alta</SelectItem>
+                          <SelectItem value="critica">Crítica</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
                     <TableCell>{getStatusBadge(complaint.status as ComplaintStatus)}</TableCell>
                     <TableCell className="max-w-md">
                       <p className="truncate" title={complaint.description}>
