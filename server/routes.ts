@@ -3860,6 +3860,11 @@ A resposta deve:
     }
   });
 
+  // Helper function to get first name only
+  const getFirstName = (fullName: string): string => {
+    return fullName.split(' ')[0];
+  };
+
   // Assign conversation to agent (self-assignment or manual assignment)
   app.post("/api/conversations/:id/assign", authenticate, async (req, res) => {
     try {
@@ -3912,20 +3917,23 @@ A resposta deve:
         assignedTo: targetAgentId,
       });
 
+      // Pegar apenas o primeiro nome do agente para mensagem ao cliente
+      const agentFirstName = getFirstName(agent.fullName);
+
       // Buscar template de mensagem de boas-vindas
       const welcomeTemplate = await storage.getMessageTemplateByKey('agent_welcome');
       let welcomeMessage = welcomeTemplate?.template || 
-        `Olá! Sou *${agent.fullName}*, seu atendente. Assumí esta conversa e darei continuidade ao seu atendimento. Como posso ajudá-lo?`;
+        `Olá! Sou *${agentFirstName}*, seu atendente. Assumí esta conversa e darei continuidade ao seu atendimento. Como posso ajudá-lo?`;
       
       // Substituir variáveis no template
-      welcomeMessage = welcomeMessage.replace(/{agentName}/g, agent.fullName);
+      welcomeMessage = welcomeMessage.replace(/{agentName}/g, agentFirstName);
 
       // Salvar mensagem no histórico
       await storage.createMessage({
         conversationId: id,
         role: "assistant",
         content: welcomeMessage,
-        assistant: `Atendente: ${agent.fullName}`,
+        assistant: `Atendente: ${agentFirstName}`,
       });
 
       // Atualizar última mensagem da conversa
@@ -4016,12 +4024,14 @@ A resposta deve:
         return res.status(404).json({ error: "Agente não encontrado" });
       }
 
-      // Buscar agente atual (se houver)
-      let fromAgentName = "Sistema";
+      // Buscar agente atual (se houver) e usar nome completo para logs
+      let fromAgentFullName = "Sistema";
+      let fromAgentFirstName = "Sistema";
       if (conversation.assignedTo) {
         const fromAgent = await storage.getUserById(conversation.assignedTo);
         if (fromAgent) {
-          fromAgentName = fromAgent.fullName;
+          fromAgentFullName = fromAgent.fullName;
+          fromAgentFirstName = getFirstName(fromAgent.fullName);
         }
       }
 
@@ -4030,15 +4040,18 @@ A resposta deve:
         assignedTo: agentId,
       });
 
+      // Pegar apenas o primeiro nome do novo agente para mensagem ao cliente
+      const targetAgentFirstName = getFirstName(targetAgent.fullName);
+
       // Buscar template de mensagem de transferência
       const transferTemplate = await storage.getMessageTemplateByKey('agent_transfer');
       let transferMessage = transferTemplate?.template || 
-        `Olá! Sou *${targetAgent.fullName}*, seu novo atendente. Esta conversa foi transferida de *${fromAgentName}* para mim${notes ? `. Motivo: ${notes}` : ''}. Estou aqui para continuar ajudando você!`;
+        `Olá! Sou *${targetAgentFirstName}*, seu novo atendente. Esta conversa foi transferida de *${fromAgentFirstName}* para mim${notes ? `. Motivo: ${notes}` : ''}. Estou aqui para continuar ajudando você!`;
       
       // Substituir variáveis no template
       transferMessage = transferMessage
-        .replace(/{agentName}/g, targetAgent.fullName)
-        .replace(/{fromAgent}/g, fromAgentName)
+        .replace(/{agentName}/g, targetAgentFirstName)
+        .replace(/{fromAgent}/g, fromAgentFirstName)
         .replace(/{notes}/g, notes || '');
 
       // Salvar mensagem no histórico
@@ -4046,7 +4059,7 @@ A resposta deve:
         conversationId: id,
         role: "assistant",
         content: transferMessage,
-        assistant: `Atendente: ${targetAgent.fullName}`,
+        assistant: `Atendente: ${targetAgentFirstName}`,
       });
 
       // Atualizar última mensagem da conversa
@@ -4066,7 +4079,7 @@ A resposta deve:
           if (whatsappSent) {
             webhookLogger.success('CONVERSATION_TRANSFERRED', `Conversa transferida para ${targetAgent.fullName}`, {
               conversationId: id,
-              fromAgent: fromAgentName,
+              fromAgent: fromAgentFullName,
               toAgent: targetAgent.fullName,
               phoneNumber,
             });
@@ -4093,11 +4106,11 @@ A resposta deve:
       await storage.createSupervisorAction({
         conversationId: id,
         action: "transfer",
-        notes: `Conversa transferida de ${fromAgentName} para ${targetAgent.fullName}${notes ? `. Motivo: ${notes}` : ''}`,
+        notes: `Conversa transferida de ${fromAgentFullName} para ${targetAgent.fullName}${notes ? `. Motivo: ${notes}` : ''}`,
         createdBy: currentUser.username,
       });
 
-      console.log(`🔄 [Transfer] Conversa ${id} transferida de ${fromAgentName} para ${targetAgent.fullName}`);
+      console.log(`🔄 [Transfer] Conversa ${id} transferida de ${fromAgentFullName} para ${targetAgent.fullName}`);
 
       return res.json({
         success: true,
