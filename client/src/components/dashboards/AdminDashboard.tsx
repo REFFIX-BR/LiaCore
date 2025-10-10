@@ -8,24 +8,54 @@ import {
   TrendingUp, 
   Database,
   Cpu,
-  HardDrive,
   Clock,
   AlertTriangle,
   CheckCircle2,
   XCircle,
   Server,
-  Zap,
   BarChart3,
   ArrowUpRight,
   ArrowDownRight
 } from "lucide-react";
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 
+interface AdminMetrics {
+  systemStatus: {
+    api: boolean;
+    database: boolean;
+    workers: boolean;
+  };
+  estimatedCost: {
+    total: number;
+    openai: number;
+    upstash: number;
+  };
+  activeUsers: {
+    total: number;
+    admins: number;
+    supervisors: number;
+    agents: number;
+  };
+  securityEvents: {
+    total: number;
+    failedLogins: number;
+  };
+  tokenUsage: Array<{
+    date: string;
+    tokens: number;
+  }>;
+  recentActivity: Array<{
+    type: string;
+    message: string;
+    timestamp: string | null;
+  }>;
+}
+
 export function AdminDashboard() {
-  const { data: metrics, isLoading } = useQuery({
+  const { data: metrics, isLoading } = useQuery<AdminMetrics>({
     queryKey: ["/api/dashboard/admin"],
     refetchInterval: 30000, // 30 seconds
   });
@@ -68,11 +98,6 @@ export function AdminDashboard() {
   const costChange = 12.5;
   const usersChange = 8.3;
   const securityChange = -15.2;
-
-  const pieData = [
-    { name: 'OpenAI', value: metrics.estimatedCost.openai, color: '#8b5cf6' },
-    { name: 'Upstash', value: metrics.estimatedCost.upstash, color: '#06b6d4' },
-  ];
 
   return (
     <div className="space-y-6 pb-8">
@@ -267,12 +292,12 @@ export function AdminDashboard() {
                   <span className="text-sm font-bold">${metrics.estimatedCost.openai.toFixed(2)}</span>
                 </div>
                 <Progress 
-                  value={(metrics.estimatedCost.openai / metrics.estimatedCost.total) * 100} 
+                  value={metrics.estimatedCost.total > 0 ? (metrics.estimatedCost.openai / metrics.estimatedCost.total) * 100 : 0} 
                   className="h-2"
                   data-testid="progress-openai-cost"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  {((metrics.estimatedCost.openai / metrics.estimatedCost.total) * 100).toFixed(1)}% do total
+                  {metrics.estimatedCost.total > 0 ? ((metrics.estimatedCost.openai / metrics.estimatedCost.total) * 100).toFixed(1) : 0}% do total
                 </p>
               </div>
               
@@ -285,12 +310,12 @@ export function AdminDashboard() {
                   <span className="text-sm font-bold">${metrics.estimatedCost.upstash.toFixed(2)}</span>
                 </div>
                 <Progress 
-                  value={(metrics.estimatedCost.upstash / metrics.estimatedCost.total) * 100} 
+                  value={metrics.estimatedCost.total > 0 ? (metrics.estimatedCost.upstash / metrics.estimatedCost.total) * 100 : 0} 
                   className="h-2"
                   data-testid="progress-upstash-cost"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  {((metrics.estimatedCost.upstash / metrics.estimatedCost.total) * 100).toFixed(1)}% do total
+                  {metrics.estimatedCost.total > 0 ? ((metrics.estimatedCost.upstash / metrics.estimatedCost.total) * 100).toFixed(1) : 0}% do total
                 </p>
               </div>
 
@@ -330,7 +355,7 @@ export function AdminDashboard() {
                   <span className="text-sm font-bold" data-testid="text-admin-count">{metrics.activeUsers.admins}</span>
                 </div>
                 <Progress 
-                  value={(metrics.activeUsers.admins / Math.max(metrics.activeUsers.total, 1)) * 100} 
+                  value={metrics.activeUsers.total > 0 ? (metrics.activeUsers.admins / metrics.activeUsers.total) * 100 : 0} 
                   className="h-2"
                 />
               </div>
@@ -344,7 +369,7 @@ export function AdminDashboard() {
                   <span className="text-sm font-bold" data-testid="text-supervisor-count">{metrics.activeUsers.supervisors}</span>
                 </div>
                 <Progress 
-                  value={(metrics.activeUsers.supervisors / Math.max(metrics.activeUsers.total, 1)) * 100} 
+                  value={metrics.activeUsers.total > 0 ? (metrics.activeUsers.supervisors / metrics.activeUsers.total) * 100 : 0} 
                   className="h-2"
                 />
               </div>
@@ -358,7 +383,7 @@ export function AdminDashboard() {
                   <span className="text-sm font-bold" data-testid="text-agent-count">{metrics.activeUsers.agents}</span>
                 </div>
                 <Progress 
-                  value={(metrics.activeUsers.agents / Math.max(metrics.activeUsers.total, 1)) * 100} 
+                  value={metrics.activeUsers.total > 0 ? (metrics.activeUsers.agents / metrics.activeUsers.total) * 100 : 0} 
                   className="h-2"
                 />
               </div>
