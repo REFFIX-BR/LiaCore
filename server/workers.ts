@@ -8,17 +8,35 @@ import {
 } from './lib/queue';
 
 // Redis connection for workers (BullMQ requirement)
-const redisConnection = new IORedis({
-  host: process.env.UPSTASH_REDIS_HOST || process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.UPSTASH_REDIS_PORT || process.env.REDIS_PORT || '6379'),
-  password: process.env.UPSTASH_REDIS_PASSWORD || process.env.REDIS_PASSWORD,
-  maxRetriesPerRequest: null, // BullMQ requirement for blocking commands
-  enableReadyCheck: false,
-  // TLS configuration for Upstash (rediss://)
-  tls: process.env.UPSTASH_REDIS_HOST ? {
-    rejectUnauthorized: false, // Upstash uses self-signed certs
-  } : undefined,
-});
+let redisConnection: IORedis | null = null;
+
+try {
+  redisConnection = new IORedis({
+    host: process.env.UPSTASH_REDIS_HOST || process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.UPSTASH_REDIS_PORT || process.env.REDIS_PORT || '6379'),
+    password: process.env.UPSTASH_REDIS_PASSWORD || process.env.REDIS_PASSWORD,
+    maxRetriesPerRequest: null, // BullMQ requirement for blocking commands
+    enableReadyCheck: false,
+    // TLS configuration for Upstash (rediss://)
+    tls: process.env.UPSTASH_REDIS_HOST ? {
+      rejectUnauthorized: false, // Upstash uses self-signed certs
+    } : undefined,
+  });
+
+  // Handle Redis errors gracefully
+  redisConnection.on('error', (err) => {
+    if (err.message.includes('max requests limit exceeded')) {
+      console.error('❌ [Redis] Max requests limit exceeded - workers disabled');
+      console.log('   Please reset Redis in Upstash dashboard');
+      console.log('   App will continue with fallback processing');
+    } else {
+      console.error('❌ [Redis] Connection error:', err.message);
+    }
+  });
+} catch (error) {
+  console.error('❌ [Workers] Failed to create Redis connection:', error);
+  console.log('   App will continue with fallback processing');
+}
 
 // Import processing functions
 import { sendMessageAndGetResponse } from './lib/openai';
@@ -77,36 +95,44 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?:
 
 // Idempotency helper
 async function isJobProcessed(jobId: string): Promise<boolean> {
+  if (!redisConnection) return false;
   const key = `idempotency:${jobId}`;
   const exists = await redisConnection.exists(key);
   return exists === 1;
 }
 
 async function markJobProcessed(jobId: string, ttlSeconds = 86400): Promise<void> {
+  if (!redisConnection) return;
   const key = `idempotency:${jobId}`;
   await redisConnection.setex(key, ttlSeconds, 'processed');
 }
 
-// Worker 1: Process incoming WhatsApp messages
-export const messageProcessingWorker = new Worker<MessageProcessingJob>(
-  QUEUE_NAMES.MESSAGE_PROCESSING,
-  async (job: Job<MessageProcessingJob>) => {
-    const { chatId, conversationId, message, fromNumber, hasImage, imageUrl, evolutionInstance, clientName, messageId } = job.data;
+// Workers are only created if Redis is available
+let messageProcessingWorker: Worker<MessageProcessingJob> | undefined;
+let imageAnalysisWorker: Worker<ImageAnalysisJob> | undefined;
+let npsSurveyWorker: Worker<NPSSurveyJob> | undefined;
 
-    // Check idempotency
-    const idempotencyKey = messageId || job.id;
-    if (await isJobProcessed(idempotencyKey!)) {
-      console.log(`⏭️ [Worker] Job already processed, skipping: ${idempotencyKey}`);
-      return { skipped: true, reason: 'already_processed' };
-    }
+if (redisConnection) {
+  // Worker 1: Process incoming WhatsApp messages
+  messageProcessingWorker = new Worker<MessageProcessingJob>(
+    QUEUE_NAMES.MESSAGE_PROCESSING,
+    async (job: Job<MessageProcessingJob>) => {
+      const { chatId, conversationId, message, fromNumber, hasImage, imageUrl, evolutionInstance, clientName, messageId } = job.data;
 
-    console.log(`🔄 [Worker] Processing message from ${fromNumber}`, {
-      jobId: job.id,
-      idempotencyKey,
-      conversationId,
-      hasImage,
-      evolutionInstance,
-    });
+      // Check idempotency
+      const idempotencyKey = messageId || job.id;
+      if (await isJobProcessed(idempotencyKey!)) {
+        console.log(`⏭️ [Worker] Job already processed, skipping: ${idempotencyKey}`);
+        return { skipped: true, reason: 'already_processed' };
+      }
+
+      console.log(`🔄 [Worker] Processing message from ${fromNumber}`, {
+        jobId: job.id,
+        idempotencyKey,
+        conversationId,
+        hasImage,
+        evolutionInstance,
+      });
 
     try {
       const { prodLogger, logWorkerError } = await import('./lib/production-logger');
@@ -258,10 +284,10 @@ export const messageProcessingWorker = new Worker<MessageProcessingJob>(
   }
 );
 
-// Worker 2: Image analysis
-export const imageAnalysisWorker = new Worker<ImageAnalysisJob>(
-  QUEUE_NAMES.IMAGE_ANALYSIS,
-  async (job: Job<ImageAnalysisJob>) => {
+  // Worker 2: Image analysis
+  imageAnalysisWorker = new Worker<ImageAnalysisJob>(
+    QUEUE_NAMES.IMAGE_ANALYSIS,
+    async (job: Job<ImageAnalysisJob>) => {
     const { conversationId, imageUrl, caption } = job.data;
 
     // Check idempotency
@@ -306,10 +332,10 @@ export const imageAnalysisWorker = new Worker<ImageAnalysisJob>(
   }
 );
 
-// Worker 3: NPS Survey sender
-export const npsSurveyWorker = new Worker<NPSSurveyJob>(
-  QUEUE_NAMES.NPS_SURVEY,
-  async (job: Job<NPSSurveyJob>) => {
+  // Worker 3: NPS Survey sender
+  npsSurveyWorker = new Worker<NPSSurveyJob>(
+    QUEUE_NAMES.NPS_SURVEY,
+    async (job: Job<NPSSurveyJob>) => {
     const { chatId, conversationId } = job.data;
 
     // Check idempotency
@@ -362,54 +388,63 @@ Responda apenas com o número (0 a 10).
     connection: redisConnection,
     concurrency: 3,
   }
-);
+  );
 
-// Error handlers
-messageProcessingWorker.on('failed', (job, error) => {
-  console.error(`❌ [Worker] Message processing failed:`, {
-    jobId: job?.id,
-    error: error.message,
+  // Error handlers
+  messageProcessingWorker.on('failed', (job, error) => {
+    console.error(`❌ [Worker] Message processing failed:`, {
+      jobId: job?.id,
+      error: error.message,
+    });
   });
-});
 
-imageAnalysisWorker.on('failed', (job, error) => {
-  console.error(`❌ [Vision Worker] Failed:`, {
-    jobId: job?.id,
-    error: error.message,
+  imageAnalysisWorker.on('failed', (job, error) => {
+    console.error(`❌ [Vision Worker] Failed:`, {
+      jobId: job?.id,
+      error: error.message,
+    });
   });
-});
 
-npsSurveyWorker.on('failed', (job, error) => {
-  console.error(`❌ [NPS Worker] Failed:`, {
-    jobId: job?.id,
-    error: error.message,
+  npsSurveyWorker.on('failed', (job, error) => {
+    console.error(`❌ [NPS Worker] Failed:`, {
+      jobId: job?.id,
+      error: error.message,
+    });
   });
-});
 
-// Success handlers
-messageProcessingWorker.on('completed', (job) => {
-  console.log(`✅ [Worker] Message completed:`, {
-    jobId: job.id,
-    duration: job.finishedOn ? job.finishedOn - (job.processedOn || 0) : 0,
+  // Success handlers
+  messageProcessingWorker.on('completed', (job) => {
+    console.log(`✅ [Worker] Message completed:`, {
+      jobId: job.id,
+      duration: job.finishedOn ? job.finishedOn - (job.processedOn || 0) : 0,
+    });
   });
-});
+
+  console.log('✅ [Workers] Sistema de workers inicializado');
+  console.log('👷 [Workers] Workers ativos: 3');
+  console.log('⚡ [Workers] Concurrency:');
+  console.log('  - Message Processing: 5');
+  console.log('  - Image Analysis: 2');
+  console.log('  - NPS Survey: 3');
+} else {
+  console.log('⚠️  [Workers] Redis connection not available - workers disabled');
+  console.log('   Webhook will process messages synchronously');
+}
 
 // Graceful shutdown
 async function closeWorkers() {
-  console.log('🔴 Closing workers...');
-  await messageProcessingWorker.close();
-  await imageAnalysisWorker.close();
-  await npsSurveyWorker.close();
-  await redisConnection.quit();
-  console.log('✅ Workers closed successfully');
+  if (messageProcessingWorker || imageAnalysisWorker || npsSurveyWorker) {
+    console.log('🔴 Closing workers...');
+    if (messageProcessingWorker) await messageProcessingWorker.close();
+    if (imageAnalysisWorker) await imageAnalysisWorker.close();
+    if (npsSurveyWorker) await npsSurveyWorker.close();
+    if (redisConnection) await redisConnection.quit();
+    console.log('✅ Workers closed successfully');
+  }
 }
 
 process.on('SIGTERM', closeWorkers);
 process.on('SIGINT', closeWorkers);
 
-console.log('✅ [Workers] Sistema de workers inicializado');
-console.log('👷 [Workers] Workers ativos: 3');
-console.log('⚡ [Workers] Concurrency:');
-console.log('  - Message Processing: 5');
-console.log('  - Image Analysis: 2');
-console.log('  - NPS Survey: 3');
+// Export workers (may be undefined if Redis is not available)
+export { messageProcessingWorker, imageAnalysisWorker, npsSurveyWorker };
