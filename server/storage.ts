@@ -372,6 +372,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
       lastMessageTime: new Date(),
       metadata: insertConv.metadata || null,
+      evolutionInstance: insertConv.evolutionInstance ?? null,
     };
     this.conversations.set(id, conversation);
     return conversation;
