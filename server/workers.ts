@@ -146,17 +146,10 @@ export const messageProcessingWorker = new Worker<MessageProcessingJob>(
         });
       }
 
-      // 4. Get assistant ID from conversation type
-      const assistantIds: Record<string, string | undefined> = {
-        'apresentacao': process.env.OPENAI_ASSISTANT_APRESENTACAO_ID,
-        'suporte': process.env.OPENAI_ASSISTANT_SUPORTE_ID,
-        'comercial': process.env.OPENAI_ASSISTANT_COMERCIAL_ID,
-        'financeiro': process.env.OPENAI_ASSISTANT_FINANCEIRO_ID,
-        'cancelamento': process.env.OPENAI_ASSISTANT_CANCELAMENTO_ID,
-        'ouvidoria': process.env.OPENAI_ASSISTANT_OUVIDORIA_ID,
-      };
-
-      const assistantId = assistantIds[conversation.assistantType] || process.env.OPENAI_ASSISTANT_SUPORTE_ID;
+      // 4. Get assistant ID from conversation type (use ASSISTANT_IDS from openai.ts)
+      const { ASSISTANT_IDS } = await import('./lib/openai');
+      
+      const assistantId = ASSISTANT_IDS[conversation.assistantType as keyof typeof ASSISTANT_IDS] || ASSISTANT_IDS.suporte;
 
       if (!assistantId) {
         const { prodLogger } = await import('./lib/production-logger');
