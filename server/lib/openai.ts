@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { assistantCache } from "./redis-config";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -605,7 +606,9 @@ export async function updateAssistantPrompt(assistantType: string, newInstructio
       })
     );
 
-    console.log(`✅ [OpenAI] Updated instructions for ${assistantType} (${assistantId})`);
+    // Invalidate cache immediately after update to ensure fresh instructions
+    await assistantCache.invalidateByTag(`assistant:${assistantType}`);
+    console.log(`✅ [OpenAI] Updated instructions for ${assistantType} (${assistantId}) and invalidated cache`);
   } catch (error) {
     console.error(`❌ [OpenAI] Error updating ${assistantType}:`, error);
     throw error;
@@ -615,6 +618,14 @@ export async function updateAssistantPrompt(assistantType: string, newInstructio
 // Get current assistant instructions
 export async function getAssistantInstructions(assistantType: string): Promise<string> {
   try {
+    // Check cache first (assistants don't change frequently)
+    const cacheKey = `instructions:${assistantType}`;
+    const cached = await assistantCache.get<string>(cacheKey);
+    if (cached) {
+      console.log(`💾 [Cache] Assistant instructions HIT for ${assistantType}`);
+      return cached;
+    }
+    
     const assistantId = ASSISTANT_IDS[assistantType as keyof typeof ASSISTANT_IDS];
     
     if (!assistantId) {
@@ -624,7 +635,17 @@ export async function getAssistantInstructions(assistantType: string): Promise<s
     const assistant = await openaiCircuitBreaker.execute(() =>
       openai.beta.assistants.retrieve(assistantId)
     );
-    return assistant.instructions || "";
+    
+    const instructions = assistant.instructions || "";
+    
+    // Cache instructions for 24 hours (they rarely change)
+    await assistantCache.set(cacheKey, instructions, { 
+      ttl: 86400, // 24 hours
+      tags: ['assistant-config', `assistant:${assistantType}`] 
+    });
+    
+    console.log(`💾 [Cache] Assistant instructions MISS for ${assistantType} - cached for 24h`);
+    return instructions;
   } catch (error) {
     console.error(`❌ [OpenAI] Error getting instructions for ${assistantType}:`, error);
     throw error;

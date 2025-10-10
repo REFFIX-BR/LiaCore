@@ -5,6 +5,7 @@ import { insertConversationSchema, insertMessageSchema, insertAlertSchema, inser
 import { routeMessage, createThread, sendMessageAndGetResponse, summarizeConversation, routeMessageWithContext, CONTEXT_CONFIG } from "./lib/openai";
 import { z } from "zod";
 import { storeConversationThread, getConversationThread, searchKnowledge } from "./lib/upstash";
+import { RedisCache } from "./lib/redis-config";
 import { webhookLogger } from "./lib/webhook-logger";
 import { authenticate, authenticateWithTracking, requireAdmin, requireAdminOrSupervisor, requireAnyRole } from "./middleware/auth";
 import { hashPassword, comparePasswords, generateToken, getUserFromUser } from "./lib/auth";
@@ -3717,9 +3718,23 @@ A resposta deve:
   });
 
   // Supervisor Dashboard Metrics
+  const dashboardCache = new RedisCache('dashboard');
   app.get("/api/dashboard/supervisor", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
+      // Try cache first (30s TTL - dashboards auto-refresh every 30s anyway)
+      const cacheKey = 'supervisor-metrics';
+      const cached = await dashboardCache.get(cacheKey);
+      if (cached) {
+        console.log(`💾 [Cache] Dashboard metrics HIT`);
+        return res.json(cached);
+      }
+      
       const metrics = await storage.getSupervisorMetrics();
+      
+      // Cache for 30 seconds
+      await dashboardCache.set(cacheKey, metrics, { ttl: 30 });
+      console.log(`💾 [Cache] Dashboard metrics MISS - cached for 30s`);
+      
       return res.json(metrics);
     } catch (error) {
       console.error("❌ [Dashboard] Error getting supervisor metrics:", error);
