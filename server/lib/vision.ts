@@ -126,6 +126,13 @@ export async function processWhatsAppImage(
 
   const base64Image = await downloadImageFromEvolution(messageKey, instance);
 
+  console.log(`🔍 [DEBUG Vision] Resultado do download:`, {
+    hasBase64: !!base64Image,
+    length: base64Image?.length || 0,
+    startsWithData: base64Image?.startsWith('data:') || false,
+    preview: base64Image?.substring(0, 50) || 'null'
+  });
+
   if (!base64Image) {
     console.log('⚠️  [Vision] Não foi possível baixar a imagem - retornando placeholder');
     const text = caption 
@@ -139,6 +146,10 @@ export async function processWhatsAppImage(
     ? `[Imagem recebida] ${caption}` 
     : '[Imagem recebida]';
 
-  console.log(`✅ [Vision] Imagem baixada e salva (sem análise de IA)`);
+  console.log(`✅ [Vision] Imagem baixada e salva (sem análise de IA)`, {
+    base64Length: base64Image.length,
+    returning: { text, hasBase64: true }
+  });
+  
   return { text, base64: base64Image };
 }

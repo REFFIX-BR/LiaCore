@@ -1383,6 +1383,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Store user message
+        console.log(`💾 [DEBUG] Salvando mensagem com imageBase64:`, {
+          hasImage: !!imageBase64,
+          imageLength: imageBase64?.length || 0,
+          messagePreview: messageText.substring(0, 100)
+        });
+        
         await storage.createMessage({
           conversationId: conversation.id,
           role: "user",
