@@ -355,6 +355,7 @@ export class MemStorage implements IStorage {
       id,
       status: insertConv.status || "active",
       clientId: insertConv.clientId || null,
+      clientDocument: insertConv.clientDocument ?? null,
       threadId: insertConv.threadId || null,
       sentiment: insertConv.sentiment || null,
       urgency: insertConv.urgency || null,
