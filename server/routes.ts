@@ -1276,7 +1276,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else if (message?.audioMessage) {
           messageText = `[Áudio recebido]`;
         } else if (message?.stickerMessage) {
-          messageText = `[Sticker recebido]`;
+          // Stickers não devem gerar resposta genérica - cliente está expressando emoção
+          console.log(`✨ [Evolution] Cliente enviou sticker - interpretando como interação positiva`);
+          messageText = `[Sticker recebido - cliente demonstrou reação]`;
         } else if (message?.contactMessage) {
           messageText = `[Contato compartilhado]`;
         } else if (message?.locationMessage) {
@@ -1501,13 +1503,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             console.log(`📝 [CPF/CNPJ Detected] Cliente ${clientName} forneceu documento: ${maskedDocument}`);
             
-            await storage.updateConversation(conversation.id, {
-              clientDocument: cleanDocument
-            });
+            // Usar função de persistência que salva em metadata também
+            const { persistClientDocument } = await import("./lib/conversation-intelligence");
+            await persistClientDocument(conversation.id, cleanDocument);
             
             // Update local conversation object
             conversation.clientDocument = cleanDocument;
           }
+        }
+
+        // 🧠 ANÁLISE DE INTELIGÊNCIA: Sentiment, Urgência e Problemas Técnicos
+        const { 
+          analyzeSentiment, 
+          analyzeUrgency, 
+          detectTechnicalProblem,
+          checkRecurrence,
+          updateConversationIntelligence,
+          generateIntelligenceSummary 
+        } = await import("./lib/conversation-intelligence");
+        
+        const sentimentAnalysis = analyzeSentiment(messageText);
+        const urgencyAnalysis = analyzeUrgency(messageText);
+        const problemAnalysis = detectTechnicalProblem(messageText);
+        
+        // Verificar recorrência se houver problema técnico e CPF
+        let recurrenceAnalysis = null;
+        if (problemAnalysis.detected && conversation.clientDocument) {
+          recurrenceAnalysis = await checkRecurrence(
+            conversation.clientDocument,
+            problemAnalysis.problemType || 'tecnico',
+            30
+          );
+        }
+        
+        // Atualizar metadata da conversa com inteligência
+        const intelligenceUpdates: any = {};
+        
+        if (sentimentAnalysis.sentiment === 'negative') {
+          intelligenceUpdates.sentiment = 'negative';
+        }
+        
+        if (urgencyAnalysis.urgency === 'high' || urgencyAnalysis.urgency === 'critical') {
+          intelligenceUpdates.urgency = urgencyAnalysis.urgency;
+        }
+        
+        if (problemAnalysis.detected) {
+          intelligenceUpdates.problemaDetectado = {
+            type: problemAnalysis.problemType,
+            keywords: problemAnalysis.keywords,
+            detectedAt: new Date().toISOString()
+          };
+        }
+        
+        if (recurrenceAnalysis?.isRecurrent) {
+          intelligenceUpdates.recorrencia = {
+            isRecurrent: true,
+            occurrences: recurrenceAnalysis.previousOccurrences,
+            lastOccurrence: recurrenceAnalysis.lastOccurrence,
+            details: recurrenceAnalysis.details
+          };
+        }
+        
+        if (Object.keys(intelligenceUpdates).length > 0) {
+          await updateConversationIntelligence(conversation.id, intelligenceUpdates);
+          
+          // Log resumo de inteligência
+          const summary = generateIntelligenceSummary({
+            sentiment: sentimentAnalysis,
+            urgency: urgencyAnalysis,
+            problem: problemAnalysis.detected ? problemAnalysis : undefined,
+            recurrence: recurrenceAnalysis?.isRecurrent ? recurrenceAnalysis : undefined
+          });
+          
+          console.log(`🧠 [Intelligence] ${summary}`);
         }
 
         // Store user message
@@ -4271,8 +4339,8 @@ A resposta deve:
       await storage.createSupervisorAction({
         conversationId: id,
         action: "assign",
-        notes: `Conversa atribuída a ${agent.fullName}`,
-        createdBy: req.user!.username,
+        notes: `Conversa atribuída a ${agent.fullName || agent.username}`,
+        createdBy: req.user!.fullName || req.user!.username,
       });
 
       console.log(`👤 [Assignment] Conversa ${id} atribuída a ${agent.fullName}`);
@@ -4408,8 +4476,8 @@ A resposta deve:
       await storage.createSupervisorAction({
         conversationId: id,
         action: "transfer",
-        notes: `Conversa transferida de ${fromAgentFullName} para ${targetAgent.fullName}${notes ? `. Motivo: ${notes}` : ''}`,
-        createdBy: currentUser.username,
+        notes: `Conversa transferida de ${fromAgentFullName || 'IA'} para ${targetAgent.fullName || targetAgent.username}${notes ? `. Motivo: ${notes}` : ''}`,
+        createdBy: currentUser.fullName || currentUser.username,
       });
 
       console.log(`🔄 [Transfer] Conversa ${id} transferida de ${fromAgentFullName} para ${targetAgent.fullName}`);
@@ -4455,8 +4523,8 @@ A resposta deve:
       await storage.createSupervisorAction({
         conversationId: id,
         action: "mark_resolved",
-        notes: `Conversa finalizada por ${currentUser.fullName}`,
-        createdBy: currentUser.username,
+        notes: `Conversa finalizada por ${currentUser.fullName || currentUser.username}`,
+        createdBy: currentUser.fullName || currentUser.username,
       });
 
       // Preparar metadata para aguardar NPS se for WhatsApp
