@@ -167,3 +167,39 @@ export const faqCache = new RedisCache('faq');
 export const metadataCache = new RedisCache('metadata');
 export const assistantCache = new RedisCache('assistant');
 export const knowledgeCache = new RedisCache('knowledge');
+
+// =============================================================================
+// OPTIMIZED CACHE WITH LOCAL MEMORY
+// =============================================================================
+
+import { getCached, localCache } from './redis-cache';
+
+/**
+ * 🚀 Cache híbrido para Assistants (quase nunca mudam)
+ * - Local: 1 hora (0 requests Redis)
+ * - Redis: 6 horas (backup distribuído)
+ */
+export async function getCachedAssistants(
+  fetcher: () => Promise<Record<string, string>>
+): Promise<Record<string, string>> {
+  return getCached(
+    redis,
+    'assistants:all',
+    fetcher,
+    {
+      localTTL: 60 * 60 * 1000,  // 1h local (quase nenhum request)
+      redisTTL: 6 * 3600,         // 6h Redis
+    }
+  );
+}
+
+/**
+ * Invalida cache de assistants (quando atualizados)
+ */
+export function invalidateAssistantsCache(): void {
+  localCache.delete('assistants:all');
+  redis.del('assistants:all').catch(err => 
+    console.error('❌ [Cache] Error invalidating assistants:', err)
+  );
+  console.log('🗑️ [Cache] Assistants cache invalidated');
+}

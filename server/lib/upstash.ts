@@ -68,8 +68,29 @@ export async function searchKnowledge(query: string, topK: number = 20): Promise
   }
 }
 
-export async function storeConversationThread(chatId: string, threadId: string): Promise<void> {
-  await redis.set(`thread:${chatId}`, threadId, { ex: 86400 * 7 }); // 7 days expiry
+export async function storeConversationThread(chatId: string, threadId: string, metadata?: Record<string, any>): Promise<void> {
+  // ✨ OTIMIZAÇÃO: Pipeline para salvar thread + metadata em 1 request
+  const pipeline = redis.pipeline();
+  
+  // Salva thread
+  pipeline.set(`thread:${chatId}`, threadId, { ex: 86400 * 7 });
+  
+  // Salva metadata se fornecido
+  if (metadata) {
+    pipeline.set(`metadata:${chatId}`, JSON.stringify(metadata), { ex: 86400 * 7 });
+  }
+  
+  await pipeline.exec();
+  
+  // Cache local para metadata (não faz request Redis)
+  if (metadata) {
+    await metadataCache.set(chatId, metadata, { 
+      ttl: 3600,
+      tags: [`conv:${chatId}`] 
+    });
+  }
+  
+  console.log(`💾 [Optimized] Thread + metadata saved in 1 request`);
 }
 
 export async function getConversationThread(chatId: string): Promise<string | null> {
