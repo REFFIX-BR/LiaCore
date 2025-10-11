@@ -615,6 +615,87 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
           });
         }
 
+      case "priorizar_atendimento_tecnico":
+        if (!conversationId) {
+          console.error("❌ [AI Tool] priorizar_atendimento_tecnico chamada sem conversationId");
+          return JSON.stringify({
+            error: "Contexto de conversa não disponível"
+          });
+        }
+        
+        const { storage: storagePrioridade } = await import("../storage");
+        const { checkRecurrence } = await import("./conversation-intelligence");
+        
+        try {
+          const conversationPrioridade = await storagePrioridade.getConversation(conversationId);
+          
+          if (!conversationPrioridade) {
+            return JSON.stringify({ error: "Conversa não encontrada" });
+          }
+          
+          const motivoPrioridade = args.motivo || "Problema recorrente detectado";
+          const tipoProblema = args.tipo_problema || "tecnico";
+          
+          // Verificar recorrência se houver CPF
+          let recorrencia = null;
+          if (conversationPrioridade.clientDocument) {
+            recorrencia = await checkRecurrence(
+              conversationPrioridade.clientDocument,
+              tipoProblema,
+              30
+            );
+          }
+          
+          // Criar protocolo de atendimento prioritário
+          const protocolo = `PRIOR-${Date.now().toString().slice(-6)}`;
+          
+          // Atualizar metadata da conversa
+          const metadata = (conversationPrioridade.metadata as any) || {};
+          await storagePrioridade.updateConversation(conversationId, {
+            urgency: "critical",
+            metadata: {
+              ...metadata,
+              atendimentoPrioritario: {
+                ativado: true,
+                protocolo,
+                motivo: motivoPrioridade,
+                tipoProblema,
+                recorrencia: recorrencia?.isRecurrent ? {
+                  ocorrencias: recorrencia.previousOccurrences,
+                  ultimaOcorrencia: recorrencia.lastOccurrence
+                } : null,
+                criadoEm: new Date().toISOString()
+              }
+            }
+          });
+          
+          console.log(`🚨 [Prioridade] Atendimento técnico priorizado:`, {
+            conversationId,
+            protocolo,
+            motivo: motivoPrioridade,
+            recorrente: recorrencia?.isRecurrent
+          });
+          
+          return JSON.stringify({
+            success: true,
+            protocolo,
+            prazo: "URGENTE - Atendimento em até 4 horas",
+            motivo: motivoPrioridade,
+            recorrencia: recorrencia?.isRecurrent ? {
+              ocorrencias: recorrencia.previousOccurrences,
+              mensagem: `Detectamos ${recorrencia.previousOccurrences} ocorrência(s) similar(es) nos últimos 30 dias`
+            } : null,
+            mensagem: recorrencia?.isRecurrent 
+              ? `Seu atendimento foi PRIORIZADO devido à recorrência do problema (${recorrencia.previousOccurrences}x nos últimos 30 dias). Protocolo: ${protocolo}. Nossa equipe técnica entrará em contato em até 4 horas para resolver definitivamente.`
+              : `Seu atendimento foi PRIORIZADO. Protocolo: ${protocolo}. Nossa equipe técnica entrará em contato em até 4 horas.`
+          });
+        } catch (error) {
+          console.error("❌ [Prioridade] Erro ao priorizar atendimento:", error);
+          return JSON.stringify({
+            error: "Não foi possível priorizar o atendimento. Tente novamente."
+          });
+        }
+
       default:
         return JSON.stringify({
           error: `Função ${functionName} não implementada`,
