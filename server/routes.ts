@@ -760,6 +760,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
         Object.assign(conversation, updateData);
       }
 
+      // 🧠 ANÁLISE DE INTELIGÊNCIA: Sentiment, Urgência e Problemas Técnicos
+      const { 
+        analyzeSentiment, 
+        analyzeUrgency, 
+        detectTechnicalProblem,
+        checkRecurrence,
+        updateConversationIntelligence,
+        persistClientDocument 
+      } = await import("./lib/conversation-intelligence");
+      
+      // 🔍 Detect and store CPF/CNPJ if present in PROCESSED message (covers image/audio transcriptions)
+      if (!conversation.clientDocument) {
+        // Try processedMessage first (includes image/audio analysis), then fallback to raw message
+        const textToScan = processedMessage || message || '';
+        const cpfMatch = textToScan.match(/\b(\d{3}\.?\d{3}\.?\d{3}-?\d{2})\b/);
+        const cnpjMatch = textToScan.match(/\b(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})\b/);
+        const documentMatch = cpfMatch || cnpjMatch;
+        
+        if (documentMatch) {
+          const cleanDocument = documentMatch[1].replace(/[.\-\/]/g, '');
+          await persistClientDocument(conversation.id, cleanDocument);
+          conversation.clientDocument = cleanDocument;
+          console.log(`📝 [Test Chat] CPF/CNPJ detectado e persistido`);
+        }
+      }
+      
+      const sentimentAnalysis = analyzeSentiment(processedMessage);
+      const urgencyAnalysis = analyzeUrgency(processedMessage);
+      const problemAnalysis = detectTechnicalProblem(processedMessage);
+      
+      let recurrenceAnalysis = null;
+      if (problemAnalysis.detected && conversation.clientDocument) {
+        recurrenceAnalysis = await checkRecurrence(
+          conversation.clientDocument,
+          problemAnalysis.problemType || 'tecnico',
+          30
+        );
+      }
+      
+      // Atualizar metadata com inteligência - SEMPRE atualiza (não só negative/high)
+      const intelligenceUpdates: any = {
+        sentiment: sentimentAnalysis.sentiment,
+        urgency: urgencyAnalysis.urgency,
+      };
+      
+      if (problemAnalysis.detected) {
+        intelligenceUpdates.problemaDetectado = {
+          type: problemAnalysis.problemType,
+          keywords: problemAnalysis.keywords,
+          detectedAt: new Date().toISOString()
+        };
+      }
+      
+      if (recurrenceAnalysis?.isRecurrent) {
+        intelligenceUpdates.recorrencia = {
+          isRecurrent: true,
+          occurrences: recurrenceAnalysis.previousOccurrences,
+          lastOccurrence: recurrenceAnalysis.lastOccurrence,
+          details: recurrenceAnalysis.details
+        };
+      }
+      
+      await updateConversationIntelligence(conversation.id, intelligenceUpdates);
+      console.log(`🧠 [Test Chat Intelligence] Sentiment: ${sentimentAnalysis.sentiment}, Urgency: ${urgencyAnalysis.urgency}`);
+      
+      // Use valores da análise real
+      const sentiment = sentimentAnalysis.sentiment;
+      const urgency = urgencyAnalysis.urgency;
+
       // Store user message
       await storage.createMessage({
         conversationId: conversation.id,
@@ -789,10 +858,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content: responseText,
         assistant: conversation.assistantType,
       });
-
-      // Analyze sentiment (simplified)
-      const sentiment = message.includes("!") || message.toUpperCase() === message ? "negative" : "neutral";
-      const urgency = message.includes("URGENTE") || message.includes("!!!") ? "critical" : "normal";
 
       // Check if AI requested conversation resolution
       if (result.resolved) {
