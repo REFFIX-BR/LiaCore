@@ -4371,6 +4371,10 @@ A resposta deve:
         return res.status(400).json({ error: "agentId é obrigatório" });
       }
 
+      if (!notes || notes.trim().length === 0) {
+        return res.status(400).json({ error: "Motivo da transferência (notes) é obrigatório" });
+      }
+
       // Buscar conversa
       const conversation = await storage.getConversation(id);
       if (!conversation) {
