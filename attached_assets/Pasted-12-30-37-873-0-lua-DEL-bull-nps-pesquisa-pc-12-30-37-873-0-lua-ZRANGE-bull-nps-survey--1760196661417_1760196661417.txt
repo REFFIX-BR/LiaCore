@@ -1,0 +1,422 @@
+12:30:37.873	[0 lua]	DEL	
+"bull:nps-pesquisa:pc"
+
+12:30:37.873	[0 lua]	ZRANGE	
+"bull:nps-survey:delayed" "0" "0" "COMPONTOS"
+
+12:30:37.909	[0 34.96.46.33:20844]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:análise-de-imagem:esperar" "bull:análise-de-imagem:ativo" "bull:análise-de-imagem:priorizado" "bull:análise-de-imagem:eventos" "bull:análise-de-imagem:parado" "bull:análise-de-imagem:limitador" "bull:análise-de-imagem:atrasado" "bull:análise-de-imagem:pausado" "bull:análise-de-imagem:meta" "bull:análise-de-imagem:pc" "bull:análise-de-imagem:marcador" "bull:análise-de-imagem:" "1760196637837" "\xde\x00\x04\xa5token\xd9)267eb372-edbe-45da-9879-2ffe25f073e9:4538\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+12:30:37.909	[0 lua]	HMGET	
+"bull:image-analysis:meta" "pausado" "simultaneidade" "máx" "duração"
+
+12:30:37.910	[0 lua]	ZRANGEBYSCORE	
+"bull:image-analysis:delayed" "0" "7209765428584447" "LIMITE" "0" "1000"
+
+12:30:37.910	[0 lua]	RPOPLPUSH	
+"bull:análise-de-imagem:espera" "bull:análise-de-imagem:ativo"
+
+12:30:37.910	[0 lua]	ZPOPMIN	
+"bull:análise-de-imagem:priorizado"
+
+12:30:37.911	[0 lua]	DEL	
+"touro:análise-de-imagem:pc"
+
+12:30:37.911	[0 lua]	ZRANGE	
+"bull:image-analysis:delayed" "0" "0" "COMPONTOS"
+
+12:30:39.828	[0 34.96.46.33:60140]	LEITURA EXTRA	
+"BLOCO" "10000" "FLUXOS" "bull:ai-response:events" "$"
+
+12:30:39.937	[0 34.96.46.33:1587]	LEITURA EXTRA	
+"BLOCO" "10000" "FLUXOS" "bull:image-analysis:events" "$"
+
+12:30:40.126	[0 34.44.150.7:39274]	BZPOPMIN	
+"bull:nps-survey:marcador" "5"
+
+12:30:40.179	[0 34.44.150.7:36730]	BZPOPMIN	
+"bull:análise-de-imagem:marcador" "5"
+
+12:30:40.269	[0 34.44.150.7:36714]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:nps-survey:wait" "bull:nps-survey:active" "bull:nps-survey:prioritized" "bull:nps-survey:events" "bull:nps-survey:stalled" "bull:nps-survey:limiter" "bull:nps-survey:delayed" "bull:nps-survey:paused" "bull:nps-survey:meta" "bull:nps-survey:pc" "bull:nps-survey:marker" "bull:nps-survey:" "1760196640200" "\xde\x00\x04\xa5token\xd9'56237938-93a6-49c7-864e-869fdab124f4:36\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+12:30:40.270	[0 lua]	HMGET	
+"bull:nps-survey:meta" "pausado" "simultaneidade" "máx" "duração"
+
+12:30:40.270	[0 lua]	ZRANGEBYSCORE	
+"bull:nps-survey:delayed" "0" "7209765438263295" "LIMITE" "0" "1000"
+
+12:30:40.271	[0 lua]	RPOPLPUSH	
+"bull:nps-survey:espera" "bull:nps-survey:ativo"
+
+12:30:40.271	[0 lua]	ZPOPMIN	
+"bull:nps-survey:priorizado"
+
+12:30:40.271	[0 lua]	DEL	
+"bull:nps-pesquisa:pc"
+
+12:30:40.272	[0 lua]	ZRANGE	
+"bull:nps-survey:delayed" "0" "0" "COMPONTOS"
+
+12:30:40.323	[0 34.44.150.7:36714]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:análise-de-imagem:esperar" "bull:análise-de-imagem:ativo" "bull:análise-de-imagem:priorizado" "bull:análise-de-imagem:eventos" "bull:análise-de-imagem:parado" "bull:análise-de-imagem:limitador" "bull:análise-de-imagem:atrasado" "bull:análise-de-imagem:pausado" "bull:análise-de-imagem:meta" "bull:análise-de-imagem:pc" "bull:análise-de-imagem:marcador" "bull:análise-de-imagem:" "1760196640254" "\xde\x00\x04\xa5token\xd9'e0444182-9f74-4700-9f50-65996e53d57e:36\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+12:30:40.324	[0 lua]	HMGET	
+"bull:image-analysis:meta" "pausado" "simultaneidade" "máx" "duração"
+
+12:30:40.324	[0 lua]	ZRANGEBYSCORE	
+"bull:image-analysis:delayed" "0" "7209765438484479" "LIMITE" "0" "1000"
+
+12:30:40.325	[0 lua]	RPOPLPUSH	
+"bull:análise-de-imagem:espera" "bull:análise-de-imagem:ativo"
+
+12:30:40.325	[0 lua]	ZPOPMIN	
+"bull:análise-de-imagem:priorizado"
+
+12:30:40.325	[0 lua]	DEL	
+"touro:análise-de-imagem:pc"
+
+12:30:40.326	[0 lua]	ZRANGE	
+"bull:image-analysis:delayed" "0" "0" "COMPONTOS"
+
+12:30:40.781	[0 34.44.150.7:36742]	BZPOPMIN	
+"bull:processamento-de-mensagem:marcador" "5"
+
+12:30:40.922	[0 34.44.150.7:36714]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:processamento-de-mensagens:esperar" "bull:processamento-de-mensagens:ativo" "bull:processamento-de-mensagens:priorizado" "bull:processamento-de-mensagens:eventos" "bull:processamento-de-mensagens:parado" "bull:processamento-de-mensagens:limitador" "bull:processamento-de-mensagens:atrasado" "bull:processamento-de-mensagens:pausado" "bull:processamento-de-mensagens:meta" "bull:processamento-de-mensagens:pc" "bull:processamento-de-mensagens:marcador" "bull:processamento-de-mensagens:" "1760196640852" "\xde\x00\x04\xa5token\xd9'fb508f1c-2dc9-48a3-8bb4-b2c02790257f:37\xaclockDuration\xcdu0\xa7limiter\xde\x00\x02\xa3max\n\xa8duration\xcd\x03\xe8\xa4name\xc0"
+
+12:30:40.923	[0 lua]	HMGET	
+"bull:message-processing:meta" "pausado" "simultaneidade" "máx" "duração"
+
+12:30:40.923	[0 lua]	ZRANGEBYSCORE	
+"bull:message-processing:delayed" "0" "7209765440933887" "LIMITE" "0" "1000"
+
+12:30:40.923	[0 lua]	PEGAR	
+"bull:processamento-de-mensagens:limitador"
+
+12:30:40.924	[0 lua]	RPOPLPUSH	
+"bull:processamento-de-mensagens:espera" "bull:processamento-de-mensagens:ativo"
+
+12:30:40.924	[0 lua]	ZPOPMIN	
+"bull:processamento-de-mensagens:priorizado"
+
+12:30:40.924	[0 lua]	DEL	
+"bull:processamento-de-mensagens:pc"
+
+12:30:40.925	[0 lua]	ZRANGE	
+"bull:message-processing:delayed" "0" "0" "COMPONTOS"
+
+12:30:42.019	[0 34.96.46.33:32280]	BZPOPMIN	
+"bull:processamento-de-mensagem:marcador" "5"
+
+12:30:42.161	[0 34.96.46.33:20844]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:processamento-de-mensagens:esperar" "bull:processamento-de-mensagens:ativo" "bull:processamento-de-mensagens:priorizado" "bull:processamento-de-mensagens:eventos" "bull:processamento-de-mensagens:parado" "bull:processamento-de-mensagens:limitador" "bull:processamento-de-mensagens:atrasado" "bull:processamento-de-mensagens:pausado" "bull:processamento-de-mensagens:meta" "bull:processamento-de-mensagens:pc" "bull:processamento-de-mensagens:marcador" "bull:processamento-de-mensagens:" "1760196642089" "\xde\x00\x04\xa5token\xd9)2492d436-1378-4e26-9ea5-431c17bccce2:4642\xaclockDuration\xcdu0\xa7limiter\xde\x00\x02\xa3max\n\xa8duration\xcd\x03\xe8\xa4name\xc0"
+
+12:30:42.162	[0 lua]	HMGET	
+"bull:message-processing:meta" "pausado" "simultaneidade" "máx" "duração"
+
+12:30:42.162	[0 lua]	ZRANGEBYSCORE	
+"bull:message-processing:delayed" "0" "7209765446000639" "LIMITE" "0" "1000"
+
+12:30:42.162	[0 lua]	PEGAR	
+"bull:processamento-de-mensagens:limitador"
+
+12:30:42.163	[0 lua]	RPOPLPUSH	
+"bull:processamento-de-mensagens:espera" "bull:processamento-de-mensagens:ativo"
+
+12:30:42.163	[0 lua]	ZPOPMIN	
+"bull:processamento-de-mensagens:priorizado"
+
+12:30:42.163	[0 lua]	DEL	
+"bull:processamento-de-mensagens:pc"
+
+12:30:42.164	[0 lua]	ZRANGE	
+"bull:message-processing:delayed" "0" "0" "COMPONTOS"
+
+12:30:43.015	[0 34.96.46.33:15517]	BZPOPMIN	
+"bull:nps-survey:marcador" "5"
+
+12:30:43.052	[0 34.96.46.33:19744]	BZPOPMIN	
+"bull:análise-de-imagem:marcador" "5"
+
+12:30:43.157	[0 34.96.46.33:20844]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:nps-survey:wait" "bull:nps-survey:active" "bull:nps-survey:prioritized" "bull:nps-survey:events" "bull:nps-survey:stalled" "bull:nps-survey:limiter" "bull:nps-survey:delayed" "bull:nps-survey:paused" "bull:nps-survey:meta" "bull:nps-survey:pc" "bull:nps-survey:marker" "bull:nps-survey:" "1760196643085" "\xde\x00\x04\xa5token\xd9)0fee0429-1326-42f8-9782-44ec4ccdbbfc:4540\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+12:30:43.158	[0 lua]	HMGET	
+"bull:nps-survey:meta" "pausado" "simultaneidade" "máx" "duração"
+
+12:30:43.158	[0 lua]	ZRANGEBYSCORE	
+"bull:nps-survey:delayed" "0" "7209765450080255" "LIMITE" "0" "1000"
+
+12:30:43.159	[0 lua]	RPOPLPUSH	
+"bull:nps-survey:espera" "bull:nps-survey:ativo"
+
+12:30:43.159	[0 lua]	ZPOPMIN	
+"bull:nps-survey:priorizado"
+
+12:30:43.159	[0 lua]	DEL	
+"bull:nps-pesquisa:pc"
+
+12:30:43.160	[0 lua]	ZRANGE	
+"bull:nps-survey:delayed" "0" "0" "COMPONTOS"
+
+12:30:43.194	[0 34.96.46.33:20844]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:análise-de-imagem:esperar" "bull:análise-de-imagem:ativo" "bull:análise-de-imagem:priorizado" "bull:análise-de-imagem:eventos" "bull:análise-de-imagem:parado" "bull:análise-de-imagem:limitador" "bull:análise-de-imagem:atrasado" "bull:análise-de-imagem:pausado" "bull:análise-de-imagem:meta" "bull:análise-de-imagem:pc" "bull:análise-de-imagem:marcador" "bull:análise-de-imagem:" "1760196643121" "\xde\x00\x04\xa5token\xd9)267eb372-edbe-45da-9879-2ffe25f073e9:4539\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+12:30:43.194	[0 lua]	HMGET	
+"bull:image-analysis:meta" "pausado" "simultaneidade" "máx" "duração"
+
+12:30:43.194	[0 lua]	ZRANGEBYSCORE	
+"bull:image-analysis:delayed" "0" "7209765450227711" "LIMITE" "0" "1000"
+
+12:30:43.195	[0 lua]	RPOPLPUSH	
+"bull:análise-de-imagem:espera" "bull:análise-de-imagem:ativo"
+
+12:30:43.195	[0 lua]	ZPOPMIN	
+"bull:análise-de-imagem:priorizado"
+
+12:30:43.195	[0 lua]	DEL	
+"touro:análise-de-imagem:pc"
+
+12:30:43.196	[0 lua]	ZRANGE	
+"bull:image-analysis:delayed" "0" "0" "COMPONTOS"
+
+12:30:43.415	[0 34.44.150.7:39268]	LEITURA EXTRA	
+"BLOCO" "10000" "FLUXOS" "bull:processamento-de-mensagens:eventos" "D00000001760196517882-0000000000000000000000"
+
+12:30:43.794	[0 34.96.46.33:43307]	LEITURA EXTRA	
+"BLOCO" "10000" "FLUXOS" "bull:processamento-de-mensagens:eventos" "D00000001760196517882-0000000000000000000000"
+
+12:30:45.414	[0 34.44.150.7:39274]	BZPOPMIN	
+"bull:nps-survey:marcador" "5"
+
+12:30:45.470	[0 34.44.150.7:36730]	BZPOPMIN	
+"bull:análise-de-imagem:marcador" "5"
+
+12:30:45.558	[0 34.44.150.7:36714]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:nps-survey:wait" "bull:nps-survey:active" "bull:nps-survey:prioritized" "bull:nps-survey:events" "bull:nps-survey:stalled" "bull:nps-survey:limiter" "bull:nps-survey:delayed" "bull:nps-survey:paused" "bull:nps-survey:meta" "bull:nps-survey:pc" "bull:nps-survey:marker" "bull:nps-survey:" "1760196645488" "\xde\x00\x04\xa5token\xd9'56237938-93a6-49c7-864e-869fdab124f4:37\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+12:30:45.558	[0 lua]	HMGET	
+"bull:nps-survey:meta" "pausado" "simultaneidade" "máx" "duração"
+
+12:30:45.559	[0 lua]	ZRANGEBYSCORE	
+"bull:nps-survey:delayed" "0" "7209765459922943" "LIMITE" "0" "1000"
+
+12:30:45.559	[0 lua]	RPOPLPUSH	
+"bull:nps-survey:espera" "bull:nps-survey:ativo"
+
+12:30:45.560	[0 lua]	ZPOPMIN	
+"bull:nps-survey:priorizado"
+
+12:30:45.560	[0 lua]	DEL	
+"bull:nps-pesquisa:pc"
+
+12:30:45.560	[0 lua]	ZRANGE	
+"bull:nps-survey:delayed" "0" "0" "COMPONTOS"
+
+12:30:45.614	[0 34.44.150.7:36714]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:análise-de-imagem:esperar" "bull:análise-de-imagem:ativo" "bull:análise-de-imagem:priorizado" "bull:análise-de-imagem:eventos" "bull:análise-de-imagem:parado" "bull:análise-de-imagem:limitador" "bull:análise-de-imagem:atrasado" "bull:análise-de-imagem:pausado" "bull:análise-de-imagem:meta" "bull:análise-de-imagem:pc" "bull:análise-de-imagem:marcador" "bull:análise-de-imagem:" "1760196645544" "\xde\x00\x04\xa5token\xd9'e0444182-9f74-4700-9f50-65996e53d57e:37\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+12:30:45.614	[0 lua]	HMGET	
+"bull:image-analysis:meta" "pausado" "simultaneidade" "máx" "duração"
+
+12:30:45.615	[0 lua]	ZRANGEBYSCORE	
+"bull:image-analysis:delayed" "0" "7209765460152319" "LIMITE" "0" "1000"
+
+12:30:45.615	[0 lua]	RPOPLPUSH	
+"bull:análise-de-imagem:espera" "bull:análise-de-imagem:ativo"
+
+12:30:45.615	[0 lua]	ZPOPMIN	
+"bull:análise-de-imagem:priorizado"
+
+12:30:45.616	[0 lua]	DEL	
+"touro:análise-de-imagem:pc"
+
+12:30:45.616	[0 lua]	ZRANGE	
+"bull:image-analysis:delayed" "0" "0" "COMPONTOS"
+
+12:30:46.067	[0 34.44.150.7:36742]	BZPOPMIN	
+"bull:processamento-de-mensagem:marcador" "5"
+
+12:30:46.208	[0 34.44.150.7:36714]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:processamento-de-mensagens:esperar" "bull:processamento-de-mensagens:ativo" "bull:processamento-de-mensagens:priorizado" "bull:processamento-de-mensagens:eventos" "bull:processamento-de-mensagens:parado" "bull:processamento-de-mensagens:limitador" "bull:processamento-de-mensagens:atrasado" "bull:processamento-de-mensagens:pausado" "bull:processamento-de-mensagens:meta" "bull:processamento-de-mensagens:pc" "bull:processamento-de-mensagens:marcador" "bull:processamento-de-mensagens:" "1760196646138" "\xde\x00\x04\xa5token\xd9'fb508f1c-2dc9-48a3-8bb4-b2c02790257f:38\xaclockDuration\xcdu0\xa7limiter\xde\x00\x02\xa3max\n\xa8duration\xcd\x03\xe8\xa4name\xc0"
+
+12:30:46.208	[0 lua]	HMGET	
+"bull:message-processing:meta" "pausado" "simultaneidade" "máx" "duração"
+
+12:30:46.209	[0 lua]	ZRANGEBYSCORE	
+"bull:message-processing:delayed" "0" "7209765462585343" "LIMITE" "0" "1000"
+
+12:30:46.209	[0 lua]	PEGAR	
+"bull:processamento-de-mensagens:limitador"
+
+12:30:46.209	[0 lua]	RPOPLPUSH	
+"bull:processamento-de-mensagens:espera" "bull:processamento-de-mensagens:ativo"
+
+12:30:46.209	[0 lua]	ZPOPMIN	
+"bull:processamento-de-mensagens:priorizado"
+
+12:30:46.210	[0 lua]	DEL	
+"bull:processamento-de-mensagens:pc"
+
+12:30:46.210	[0 lua]	ZRANGE	
+"bull:message-processing:delayed" "0" "0" "COMPONTOS"
+
+12:30:47.307	[0 34.96.46.33:32280]	BZPOPMIN	
+"bull:processamento-de-mensagem:marcador" "5"
+
+12:30:47.450	[0 34.96.46.33:20844]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:processamento-de-mensagens:esperar" "bull:processamento-de-mensagens:ativo" "bull:processamento-de-mensagens:priorizado" "bull:processamento-de-mensagens:eventos" "bull:processamento-de-mensagens:parado" "bull:processamento-de-mensagens:limitador" "bull:processamento-de-mensagens:atrasado" "bull:processamento-de-mensagens:pausado" "bull:processamento-de-mensagens:meta" "bull:processamento-de-mensagens:pc" "bull:processamento-de-mensagens:marcador" "bull:processamento-de-mensagens:" "1760196647377" "\xde\x00\x04\xa5token\xd9)2492d436-1378-4e26-9ea5-431c17bccce2:4643\xaclockDuration\xcdu0\xa7limiter\xde\x00\x02\xa3max\n\xa8duration\xcd\x03\xe8\xa4name\xc0"
+
+12:30:47.451	[0 lua]	HMGET	
+"bull:message-processing:meta" "pausado" "simultaneidade" "máx" "duração"
+
+12:30:47.451	[0 lua]	ZRANGEBYSCORE	
+"bull:message-processing:delayed" "0" "7209765467660287" "LIMITE" "0" "1000"
+
+12:30:47.452	[0 lua]	PEGAR	
+"bull:processamento-de-mensagens:limitador"
+
+12:30:47.452	[0 lua]	RPOPLPUSH	
+"bull:processamento-de-mensagens:espera" "bull:processamento-de-mensagens:ativo"
+
+12:30:47.452	[0 lua]	ZPOPMIN	
+"bull:processamento-de-mensagens:priorizado"
+
+12:30:47.453	[0 lua]	DEL	
+"bull:processamento-de-mensagens:pc"
+
+12:30:47.453	[0 lua]	ZRANGE	
+"bull:message-processing:delayed" "0" "0" "COMPONTOS"
+
+12:30:47.950	[0 34.44.150.7:39260]	LEITURA EXTRA	
+"BLOCO" "10000" "FLUXOS" "bull:ai-response:events" "$"
+
+12:30:47.986	[0 34.44.150.7:36728]	LEITURA EXTRA	
+"BLOCO" "10000" "FLUXOS" "bull:image-analysis:events" "$"
+
+12:30:48.302	[0 34.96.46.33:15517]	BZPOPMIN	
+"bull:nps-survey:marcador" "5"
+
+12:30:48.337	[0 34.96.46.33:19744]	BZPOPMIN	
+"bull:análise-de-imagem:marcador" "5"
+
+12:30:48.445	[0 34.96.46.33:20844]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:nps-survey:wait" "bull:nps-survey:active" "bull:nps-survey:prioritized" "bull:nps-survey:events" "bull:nps-survey:stalled" "bull:nps-survey:limiter" "bull:nps-survey:delayed" "bull:nps-survey:paused" "bull:nps-survey:meta" "bull:nps-survey:pc" "bull:nps-survey:marker" "bull:nps-survey:" "1760196648372" "\xde\x00\x04\xa5token\xd9)0fee0429-1326-42f8-9782-44ec4ccdbbfc:4541\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+12:30:48.445	[0 lua]	HMGET	
+"bull:nps-survey:meta" "pausado" "simultaneidade" "máx" "duração"
+
+12:30:48.446	[0 lua]	ZRANGEBYSCORE	
+"bull:nps-survey:delayed" "0" "7209765471735807" "LIMITE" "0" "1000"
+
+12:30:48.446	[0 lua]	RPOPLPUSH	
+"bull:nps-survey:espera" "bull:nps-survey:ativo"
+
+12:30:48.446	[0 lua]	ZPOPMIN	
+"bull:nps-survey:priorizado"
+
+12:30:48.447	[0 lua]	DEL	
+"bull:nps-pesquisa:pc"
+
+12:30:48.447	[0 lua]	ZRANGE	
+"bull:nps-survey:delayed" "0" "0" "COMPONTOS"
+
+12:30:48.479	[0 34.96.46.33:20844]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:análise-de-imagem:esperar" "bull:análise-de-imagem:ativo" "bull:análise-de-imagem:priorizado" "bull:análise-de-imagem:eventos" "bull:análise-de-imagem:parado" "bull:análise-de-imagem:limitador" "bull:análise-de-imagem:atrasado" "bull:análise-de-imagem:pausado" "bull:análise-de-imagem:meta" "bull:análise-de-imagem:pc" "bull:análise-de-imagem:marcador" "bull:análise-de-imagem:" "1760196648406" "\xde\x00\x04\xa5token\xd9)267eb372-edbe-45da-9879-2ffe25f073e9:4540\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+12:30:48.479	[0 lua]	HMGET	
+"bull:image-analysis:meta" "pausado" "simultaneidade" "máx" "duração"
+
+12:30:48.480	[0 lua]	ZRANGEBYSCORE	
+"bull:image-analysis:delayed" "0" "7209765471875071" "LIMITE" "0" "1000"
+
+12:30:48.480	[0 lua]	RPOPLPUSH	
+"bull:análise-de-imagem:espera" "bull:análise-de-imagem:ativo"
+
+12:30:48.480	[0 lua]	ZPOPMIN	
+"bull:análise-de-imagem:priorizado"
+
+12:30:48.481	[0 lua]	DEL	
+"touro:análise-de-imagem:pc"
+
+12:30:48.481	[0 lua]	ZRANGE	
+"bull:image-analysis:delayed" "0" "0" "COMPONTOS"
+
+12:30:50.247	[0 34.96.46.33:60140]	LEITURA EXTRA	
+"BLOCO" "10000" "FLUXOS" "bull:ai-response:events" "$"
+
+12:30:50.356	[0 34.96.46.33:1587]	LEITURA EXTRA	
+"BLOCO" "10000" "FLUXOS" "bull:image-analysis:events" "$"
+
+12:30:50.703	[0 34.44.150.7:39274]	BZPOPMIN	
+"bull:nps-survey:marcador" "5"
+
+12:30:50.759	[0 34.44.150.7:36730]	BZPOPMIN	
+"bull:análise-de-imagem:marcador" "5"
+
+12:30:50.846	[0 34.44.150.7:36714]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:nps-survey:wait" "bull:nps-survey:active" "bull:nps-survey:prioritized" "bull:nps-survey:events" "bull:nps-survey:stalled" "bull:nps-survey:limiter" "bull:nps-survey:delayed" "bull:nps-survey:paused" "bull:nps-survey:meta" "bull:nps-survey:pc" "bull:nps-survey:marker" "bull:nps-survey:" "1760196650776" "\xde\x00\x04\xa5token\xd9'56237938-93a6-49c7-864e-869fdab124f4:38\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+12:30:50.847	[0 lua]	HMGET	
+"bull:nps-survey:meta" "pausado" "simultaneidade" "máx" "duração"
+
+12:30:50.847	[0 lua]	ZRANGEBYSCORE	
+"bull:nps-survey:delayed" "0" "7209765481582591" "LIMITE" "0" "1000"
+
+12:30:50.847	[0 lua]	RPOPLPUSH	
+"bull:nps-survey:espera" "bull:nps-survey:ativo"
+
+12:30:50.848	[0 lua]	ZPOPMIN	
+"bull:nps-survey:priorizado"
+
+12:30:50.848	[0 lua]	DEL	
+"bull:nps-pesquisa:pc"
+
+12:30:50.848	[0 lua]	ZRANGE	
+"bull:nps-survey:delayed" "0" "0" "COMPONTOS"
+
+12:30:50.903	[0 34.44.150.7:36714]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:análise-de-imagem:esperar" "bull:análise-de-imagem:ativo" "bull:análise-de-imagem:priorizado" "bull:análise-de-imagem:eventos" "bull:análise-de-imagem:parado" "bull:análise-de-imagem:limitador" "bull:análise-de-imagem:atrasado" "bull:análise-de-imagem:pausado" "bull:análise-de-imagem:meta" "bull:análise-de-imagem:pc" "bull:análise-de-imagem:marcador" "bull:análise-de-imagem:" "1760196650833" "\xde\x00\x04\xa5token\xd9'e0444182-9f74-4700-9f50-65996e53d57e:38\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+12:30:50.904	[0 lua]	HMGET	
+"bull:image-analysis:meta" "pausado" "simultaneidade" "máx" "duração"
+
+12:30:50.904	[0 lua]	ZRANGEBYSCORE	
+"bull:image-analysis:delayed" "0" "7209765481816063" "LIMITE" "0" "1000"
+
+12:30:50.904	[0 lua]	RPOPLPUSH	
+"bull:análise-de-imagem:espera" "bull:análise-de-imagem:ativo"
+
+12:30:50.905	[0 lua]	ZPOPMIN	
+"bull:análise-de-imagem:priorizado"
+
+12:30:50.905	[0 lua]	DEL	
+"touro:análise-de-imagem:pc"
+
+12:30:50.905	[0 lua]	ZRANGE	
+"bull:image-analysis:delayed" "0" "0" "COMPONTOS"
+
+12:30:51.352	[0 34.44.150.7:36742]	BZPOPMIN	
+"bull:processamento-de-mensagem:marcador" "5"
+
+12:30:51.493	[0 34.44.150.7:36714]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:processamento-de-mensagens:esperar" "bull:processamento-de-mensagens:ativo" "bull:processamento-de-mensagens:priorizado" "bull:processamento-de-mensagens:eventos" "bull:processamento-de-mensagens:parado" "bull:processamento-de-mensagens:limitador" "bull:processamento-de-mensagens:atrasado" "bull:processamento-de-mensagens:pausado" "bull:processamento-de-mensagens:meta" "bull:processamento-de-mensagens:pc" "bull:processamento-de-mensagens:marcador" "bull:processamento-de-mensagens:" "1760196651423" "\xde\x00\x04\xa5token\xd9'fb508f1c-2dc9-48a3-8bb4-b2c02790257f:39\xaclockDuration\xcdu0\xa7limiter\xde\x00\x02\xa3max\n\xa8duration\xcd\x03\xe8\xa4name\xc0"
+
+12:30:51.494	[0 lua]	HMGET	
+"bull:message-processing:meta" "pausado" "simultaneidade" "máx" "duração"
+
+12:30:51.494	[0 lua]	ZRANGEBYSCORE	
+"bull:message-processing:delayed" "0" "7209765484232703" "LIMITE" "0" "1000"
+
+12:30:51.494	[0 lua]	PEGAR	
+"bull:processamento-de-mensagens:limitador"
+
+12:30:51.495	[0 lua]	RPOPLPUSH	
+"bull:processamento-de-mensagens:espera" "bull:processamento-de-mensagens:ativo"
+
+12:30:51.495	[0 lua]	ZPOPMIN	
+"bull:processamento-de-mensagens:priorizado"
+
+12:30:51.495	[0 lua]	DEL	
+"bull:process
