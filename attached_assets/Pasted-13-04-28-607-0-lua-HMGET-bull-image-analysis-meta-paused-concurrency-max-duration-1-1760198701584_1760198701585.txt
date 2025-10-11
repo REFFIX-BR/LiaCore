@@ -1,0 +1,551 @@
+13:04:28.607	[0 lua]	HMGET	
+"bull:image-analysis:meta" "paused" "concurrency" "max" "duration"
+
+13:04:28.607	[0 lua]	ZRANGEBYSCORE	
+"bull:image-analysis:delayed" "0" "7209773746323455" "LIMIT" "0" "1000"
+
+13:04:28.607	[0 lua]	RPOPLPUSH	
+"bull:image-analysis:wait" "bull:image-analysis:active"
+
+13:04:28.607	[0 lua]	ZPOPMIN	
+"bull:image-analysis:prioritized"
+
+13:04:28.607	[0 lua]	DEL	
+"bull:image-analysis:pc"
+
+13:04:28.607	[0 lua]	ZRANGE	
+"bull:image-analysis:delayed" "0" "0" "WITHSCORES"
+
+13:04:31.391	[0 34.96.45.246:28135]	XREAD	
+"BLOCK" "10000" "STREAMS" "bull:message-processing:events" "D00000001760197784918-00000000000000000001"
+
+13:04:32.565	[0 34.96.45.246:59111]	BZPOPMIN	
+"bull:nps-survey:marker" "5"
+
+13:04:32.706	[0 34.96.45.246:37120]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:nps-survey:wait" "bull:nps-survey:active" "bull:nps-survey:prioritized" "bull:nps-survey:events" "bull:nps-survey:stalled" "bull:nps-survey:limiter" "bull:nps-survey:delayed" "bull:nps-survey:paused" "bull:nps-survey:meta" "bull:nps-survey:pc" "bull:nps-survey:marker" "bull:nps-survey:" "1760198672634" "\xde\x00\x04\xa5token\xd9(d81ff3d7-8476-4603-a5d5-84a39ffc4990:274\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+13:04:32.706	[0 lua]	HMGET	
+"bull:nps-survey:meta" "paused" "concurrency" "max" "duration"
+
+13:04:32.707	[0 lua]	ZRANGEBYSCORE	
+"bull:nps-survey:delayed" "0" "7209773763112959" "LIMIT" "0" "1000"
+
+13:04:32.707	[0 lua]	RPOPLPUSH	
+"bull:nps-survey:wait" "bull:nps-survey:active"
+
+13:04:32.707	[0 lua]	ZPOPMIN	
+"bull:nps-survey:prioritized"
+
+13:04:32.707	[0 lua]	DEL	
+"bull:nps-survey:pc"
+
+13:04:32.707	[0 lua]	ZRANGE	
+"bull:nps-survey:delayed" "0" "0" "WITHSCORES"
+
+13:04:33.369	[0 34.96.45.246:63551]	BZPOPMIN	
+"bull:message-processing:marker" "5"
+
+13:04:33.509	[0 34.96.45.246:37120]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:message-processing:wait" "bull:message-processing:active" "bull:message-processing:prioritized" "bull:message-processing:events" "bull:message-processing:stalled" "bull:message-processing:limiter" "bull:message-processing:delayed" "bull:message-processing:paused" "bull:message-processing:meta" "bull:message-processing:pc" "bull:message-processing:marker" "bull:message-processing:" "1760198673437" "\xde\x00\x04\xa5token\xd9(a1d9538f-bb7b-4901-b85d-e4d66cf244e3:276\xaclockDuration\xcdu0\xa7limiter\xde\x00\x02\xa3max\n\xa8duration\xcd\x03\xe8\xa4name\xc0"
+
+13:04:33.509	[0 lua]	HMGET	
+"bull:message-processing:meta" "paused" "concurrency" "max" "duration"
+
+13:04:33.509	[0 lua]	ZRANGEBYSCORE	
+"bull:message-processing:delayed" "0" "7209773766402047" "LIMIT" "0" "1000"
+
+13:04:33.509	[0 lua]	GET	
+"bull:message-processing:limiter"
+
+13:04:33.509	[0 lua]	RPOPLPUSH	
+"bull:message-processing:wait" "bull:message-processing:active"
+
+13:04:33.509	[0 lua]	ZPOPMIN	
+"bull:message-processing:prioritized"
+
+13:04:33.509	[0 lua]	DEL	
+"bull:message-processing:pc"
+
+13:04:33.509	[0 lua]	ZRANGE	
+"bull:message-processing:delayed" "0" "0" "WITHSCORES"
+
+13:04:33.750	[0 34.96.45.246:60163]	BZPOPMIN	
+"bull:image-analysis:marker" "5"
+
+13:04:33.893	[0 34.96.45.246:37120]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:image-analysis:wait" "bull:image-analysis:active" "bull:image-analysis:prioritized" "bull:image-analysis:events" "bull:image-analysis:stalled" "bull:image-analysis:limiter" "bull:image-analysis:delayed" "bull:image-analysis:paused" "bull:image-analysis:meta" "bull:image-analysis:pc" "bull:image-analysis:marker" "bull:image-analysis:" "1760198673821" "\xde\x00\x04\xa5token\xd9(65af5bac-1404-4b09-878b-f02f80a70d29:275\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+13:04:33.893	[0 lua]	HMGET	
+"bull:image-analysis:meta" "paused" "concurrency" "max" "duration"
+
+13:04:33.893	[0 lua]	ZRANGEBYSCORE	
+"bull:image-analysis:delayed" "0" "7209773767974911" "LIMIT" "0" "1000"
+
+13:04:33.893	[0 lua]	RPOPLPUSH	
+"bull:image-analysis:wait" "bull:image-analysis:active"
+
+13:04:33.893	[0 lua]	ZPOPMIN	
+"bull:image-analysis:prioritized"
+
+13:04:33.893	[0 lua]	DEL	
+"bull:image-analysis:pc"
+
+13:04:33.893	[0 lua]	ZRANGE	
+"bull:image-analysis:delayed" "0" "0" "WITHSCORES"
+
+13:04:34.141	[0 34.170.23.31:41778]	AUTH	
+"(redacted)"
+
+13:04:35.981	[0 34.96.45.246:44906]	XREAD	
+"BLOCK" "10000" "STREAMS" "bull:ai-response:events" "$"
+
+13:04:36.113	[0 34.96.45.246:26635]	XREAD	
+"BLOCK" "10000" "STREAMS" "bull:image-analysis:events" "$"
+
+13:04:37.327	[0 34.170.23.31:41778]	INFO	
+
+13:04:37.334	[0 34.170.23.31:41778]	INFO	
+
+13:04:37.334	[0 34.170.23.31:41778]	INFO	
+
+13:04:37.334	[0 34.170.23.31:41778]	INFO	
+
+13:04:37.335	[0 34.170.23.31:41778]	INFO	
+
+13:04:37.495	[0 34.170.23.31:41778]	HMSET	
+"bull:message-processing:meta" "opts.maxLenEvents" "10000" "version" "bullmq:5.61.0"
+
+13:04:37.496	[0 34.170.23.31:41778]	HMSET	
+"bull:ai-response:meta" "opts.maxLenEvents" "10000" "version" "bullmq:5.61.0"
+
+13:04:37.497	[0 34.170.23.31:41778]	HMSET	
+"bull:image-analysis:meta" "opts.maxLenEvents" "10000" "version" "bullmq:5.61.0"
+
+13:04:37.497	[0 34.170.23.31:41778]	HMSET	
+"bull:nps-survey:meta" "opts.maxLenEvents" "10000" "version" "bullmq:5.61.0"
+
+13:04:37.497	[0 34.170.23.31:41778]	HMSET	
+"bull:learning-tasks:meta" "opts.maxLenEvents" "10000" "version" "bullmq:5.61.0"
+
+13:04:37.586	[0 34.170.23.31:35654]	AUTH	
+"(redacted)"
+
+13:04:37.586	[0 34.170.23.31:35654]	INFO	
+
+13:04:37.595	[0 34.170.23.31:41802]	AUTH	
+"(redacted)"
+
+13:04:37.595	[0 34.170.23.31:41802]	INFO	
+
+13:04:37.598	[0 34.170.23.31:41812]	AUTH	
+"(redacted)"
+
+13:04:37.598	[0 34.170.23.31:41812]	INFO	
+
+13:04:37.607	[0 34.170.23.31:41792]	AUTH	
+"(redacted)"
+
+13:04:37.607	[0 34.170.23.31:41792]	INFO	
+
+13:04:37.608	[0 34.170.23.31:57750]	AUTH	
+"(redacted)"
+
+13:04:37.608	[0 34.170.23.31:57750]	INFO	
+
+13:04:37.609	[0 34.170.23.31:57750]	INFO	
+
+13:04:37.609	[0 34.170.23.31:57750]	INFO	
+
+13:04:37.618	[0 34.170.23.31:35660]	AUTH	
+"(redacted)"
+
+13:04:37.618	[0 34.170.23.31:35660]	INFO	
+
+13:04:37.815	[0 34.170.23.31:57750]	EVAL	
+"--[[\n Move stalled jobs to wait.\n Input:\n KEYS[1] 'stalled' (SET)\n KEYS[2] 'wait', (LIST)\n KEYS[3] 'active', (LIST)\n KEYS[4] 'stalled-check', (KEY)\n KEYS[5] 'meta', (KEY)\n KEYS[6] 'paused', (LIST)\n KEYS[7] 'marker'\n KEYS[8] 'event stream' (STREAM)\n ARGV[1] Max stalled job count\n ARGV[2] queue.toKey('')\n ARGV[3] timestamp\n ARGV[4] max check time\n Events:\n 'stalled' with stalled job id.\n]]\nlocal rcall = redis.call\n-- Includes\n--[[\n Function to add job in target list and add marker if needed.\n]]\n-- Includes\n--[[\n Add marker if needed when a job is available.\n]]\nlocal function addBaseMarkerIfNeeded(markerKey, isPausedOrMaxed)\n if not isPausedOrMaxed then\n rcall(\"ZADD\", markerKey, 0, \"0\")\n end \nend\nlocal function addJobInTargetList(targetKey, markerKey, pushCmd, isPausedOrMaxed, jobId)\n rcall(pushCmd, targetKey, jobId)\n addBaseMarkerIfNeeded(markerKey, isPausedOrMaxed)\nend\n--[[\n Function to loop in batches.\n Just a bit of warning, some commands as ZREM\n could receive a maximum of 7000 parameters per call.\n]]\nlocal function batches(n, batchSize)\n local i = 0\n return function()\n local from = i * batchSize + 1\n i = i + 1\n if (from <= n) then\n local to = math.min(from + batchSize - 1, n)\n return from, to\n end\n end\nend\n--[[\n Function to move job to wait to be picked up by a waiting worker.\n]]\n-- Includes\n--[[\n Function to check for the meta.paused key to decide if we are paused or not\n (since an empty list and !EXISTS are not really the same).\n]]\nlocal function getTargetQueueList(queueMetaKey, activeKey, waitKey, pausedKey)\n local queueAttributes = rcall(\"HMGET\", queueMetaKey, \"paused\", \"concurrency\", \"max\", \"duration\")\n if queueAttributes[1] then\n return pausedKey, true, queueAttributes[3], queueAttributes[4]\n else\n if queueAttributes[2] then\n local activeCount = rcall(\"LLEN\", activeKey)\n if activeCount >= tonumber(queueAttributes[2]) then\n return waitKey, true, queueAttributes[3], queueAttributes[4]\n else\n return waitKey, false, queueAttributes[3], queueAttributes[4]\n end\n end\n end\n return waitKey, false, queueAttributes[3], queueAttributes[4]\nend\nlocal function moveJobToWait(metaKey, activeKey, waitKey, pausedKey, markerKey, eventStreamKey,\n jobId, pushCmd)\n local target, isPausedOrMaxed = getTargetQueueList(metaKey, activeKey, waitKey, pausedKey)\n addJobInTargetList(target, markerKey, pushCmd, isPausedOrMaxed, jobId)\n rcall(\"XADD\", eventStreamKey, \"*\", \"event\", \"waiting\", \"jobId\", jobId, 'prev', 'active')\nend\n--[[\n Function to trim events, default 10000.\n]]\n-- Includes\n--[[\n Function to get max events value or set by default 10000.\n]]\nlocal function getOrSetMaxEvents(metaKey)\n local maxEvents = rcall(\"HGET\", metaKey, \"opts.maxLenEvents\")\n if not maxEvents then\n maxEvents = 10000\n rcall(\"HSET\", metaKey, \"opts.maxLenEvents\", maxEvents)\n end\n return maxEvents\nend\nlocal function trimEvents(metaKey, eventStreamKey)\n local maxEvents = getOrSetMaxEvents(metaKey)\n if maxEvents then\n rcall(\"XTRIM\", eventStreamKey, \"MAXLEN\", \"~\", maxEvents)\n else\n rcall(\"XTRIM\", eventStreamKey, \"MAXLEN\", \"~\", 10000)\n end\nend\nlocal stalledKey = KEYS[1]\nlocal waitKey = KEYS[2]\nlocal activeKey = KEYS[3]\nlocal stalledCheckKey = KEYS[4]\nlocal metaKey = KEYS[5]\nlocal pausedKey = KEYS[6]\nlocal markerKey = KEYS[7]\nlocal eventStreamKey = KEYS[8]\nlocal maxStalledJobCount = tonumber(ARGV[1])\nlocal queueKeyPrefix = ARGV[2]\nlocal timestamp = ARGV[3]\nlocal maxCheckTime = ARGV[4]\nif rcall(\"EXISTS\", stalledCheckKey) == 1 then\n return {}\nend\nrcall(\"SET\", stalledCheckKey, timestamp, \"PX\", maxCheckTime)\n-- Trim events before emiting them to avoid trimming events emitted in this script\ntrimEvents(metaKey, eventStreamKey)\n-- Move all stalled jobs to wait\nlocal stalling = rcall('SMEMBERS', stalledKey)\nlocal stalled = {}\nif (#stalling > 0) then\n rcall('DEL', stalledKey)\n -- Remove from active list\n for i, jobId in ipairs(stalling) do\n -- Markers in waitlist DEPRECATED in v5: Remove in v6.\n if string.sub(jobId, 1, 2) == \"0:\" then\n -- If the jobId is a delay marker ID we just remove it.\n rcall(\"LREM\", activeKey, 1, jobId)\n else\n local jobKey = queueKeyPrefix .. jobId\n -- Check that the lock is also missing, then we can handle this job as really stalled.\n if (rcall(\"EXISTS\", jobKey .. \":lock\") == 0) then\n -- Remove from the active queue.\n local removed = rcall(\"LREM\", activeKey, 1, jobId)\n if (removed > 0) then\n -- If this job has been stalled too many times, such as if it crashes the worker, then fail it.\n local stalledCount = rcall(\"HINCRBY\", jobKey, \"stc\", 1)\n -- Check if this is a repeatable job by looking at job options\n local jobOpts = rcall(\"HGET\", jobKey, \"opts\")\n local isRepeatableJob = false\n if jobOpts then\n local opts = cjson.decode(jobOpts)\n if opts and opts[\"repeat\"] then\n isRepeatableJob = true\n end\n end\n -- Only fail job if it exceeds stall limit AND is not a repeatable job\n if stalledCount > maxStalledJobCount and not isRepeatableJob then\n local failedReason = \"job stalled more than allowable limit\"\n rcall(\"HSET\", jobKey, \"defa\", failedReason)\n end\n moveJobToWait(metaKey, activeKey, waitKey, pausedKey, markerKey, eventStreamKey, jobId,\n \"RPUSH\")\n -- Emit the stalled event\n rcall(\"XADD\", eventStreamKey, \"*\", \"event\", \"stalled\", \"jobId\", jobId)\n table.insert(stalled, jobId)\n end\n end\n end\n end\nend\n-- Mark potentially stalled jobs\nlocal active = rcall('LRANGE', activeKey, 0, -1)\nif (#active > 0) then\n for from, to in batches(#active, 7000) do\n rcall('SADD', stalledKey, unpack(active, from, to))\n end\nend\nreturn stalled\n" "8" "bull:message-processing:stalled" "bull:message-processing:wait" "bull:message-processing:active" "bull:message-processing:stalled-check" "bull:message-processing:meta" "bull:message-processing:paused" "bull:message-processing:marker" "bull:message-processing:events" "1" "bull:message-processing:" "1760198677728" "30000"
+
+13:04:37.815	[0 lua]	EXISTS	
+"bull:message-processing:stalled-check"
+
+13:04:37.835	[0 34.170.23.31:57750]	EVAL	
+"--[[\n Move next job to be processed to active, lock it and fetch its data. The job\n may be delayed, in that case we need to move it to the delayed set instead.\n This operation guarantees that the worker owns the job during the lock\n expiration time. The worker is responsible of keeping the lock fresh\n so that no other worker picks this job again.\n Input:\n KEYS[1] wait key\n KEYS[2] active key\n KEYS[3] prioritized key\n KEYS[4] stream events key\n KEYS[5] stalled key\n -- Rate limiting\n KEYS[6] rate limiter key\n KEYS[7] delayed key\n -- Delayed jobs\n KEYS[8] paused key\n KEYS[9] meta key\n KEYS[10] pc priority counter\n -- Marker\n KEYS[11] marker key\n -- Arguments\n ARGV[1] key prefix\n ARGV[2] timestamp\n ARGV[3] opts\n opts - token - lock token\n opts - lockDuration\n opts - limiter\n opts - name - worker name\n]]\nlocal rcall = redis.call\nlocal waitKey = KEYS[1]\nlocal activeKey = KEYS[2]\nlocal eventStreamKey = KEYS[4]\nlocal rateLimiterKey = KEYS[6]\nlocal delayedKey = KEYS[7]\nlocal opts = cmsgpack.unpack(ARGV[3])\n-- Includes\n--[[\n Function to return the next delayed job timestamp.\n]]\nlocal function getNextDelayedTimestamp(delayedKey)\n local result = rcall(\"ZRANGE\", delayedKey, 0, 0, \"WITHSCORES\")\n if #result then\n local nextTimestamp = tonumber(result[2])\n if nextTimestamp ~= nil then\n return nextTimestamp / 0x1000\n end\n end\nend\n--[[\n Function to get current rate limit ttl.\n]]\nlocal function getRateLimitTTL(maxJobs, rateLimiterKey)\n if maxJobs and maxJobs <= tonumber(rcall(\"GET\", rateLimiterKey) or 0) then\n local pttl = rcall(\"PTTL\", rateLimiterKey)\n if pttl == 0 then\n rcall(\"DEL\", rateLimiterKey)\n end\n if pttl > 0 then\n return pttl\n end\n end\n return 0\nend\n--[[\n Function to check for the meta.paused key to decide if we are paused or not\n (since an empty list and !EXISTS are not really the same).\n]]\nlocal function getTargetQueueList(queueMetaKey, activeKey, waitKey, pausedKey)\n local queueAttributes = rcall(\"HMGET\", queueMetaKey, \"paused\", \"concurrency\", \"max\", \"duration\")\n if queueAttributes[1] then\n return pausedKey, true, queueAttributes[3], queueAttributes[4]\n else\n if queueAttributes[2] then\n local activeCount = rcall(\"LLEN\", activeKey)\n if activeCount >= tonumber(queueAttributes[2]) then\n return waitKey, true, queueAttributes[3], queueAttributes[4]\n else\n return waitKey, false, queueAttributes[3], queueAttributes[4]\n end\n end\n end\n return waitKey, false, queueAttributes[3], queueAttributes[4]\nend\n--[[\n Function to move job from prioritized state to active.\n]]\nlocal function moveJobFromPrioritizedToActive(priorityKey, activeKey, priorityCounterKey)\n local prioritizedJob = rcall(\"ZPOPMIN\", priorityKey)\n if #prioritizedJob > 0 then\n rcall(\"LPUSH\", activeKey, prioritizedJob[1])\n return prioritizedJob[1]\n else\n rcall(\"DEL\", priorityCounterKey)\n end\nend\n--[[\n Function to move job from wait state to active.\n Input:\n opts - token - lock token\n opts - lockDuration\n opts - limiter\n]]\n-- Includes\n--[[\n Add marker if needed when a job is available.\n]]\nlocal function addBaseMarkerIfNeeded(markerKey, isPausedOrMaxed)\n if not isPausedOrMaxed then\n rcall(\"ZADD\", markerKey, 0, \"0\")\n end \nend\nlocal function prepareJobForProcessing(keyPrefix, rateLimiterKey, eventStreamKey,\n jobId, processedOn, maxJobs, limiterDuration, markerKey, opts)\n local jobKey = keyPrefix .. jobId\n -- Check if we need to perform rate limiting.\n if maxJobs then\n local jobCounter = tonumber(rcall(\"INCR\", rateLimiterKey))\n if jobCounter == 1 then\n local integerDuration = math.floor(math.abs(limiterDuration))\n rcall(\"PEXPIRE\", rateLimiterKey, integerDuration)\n end\n end\n -- get a lock\n if opts['token'] ~= \"0\" then\n local lockKey = jobKey .. ':lock'\n rcall(\"SET\", lockKey, opts['token'], \"PX\", opts['lockDuration'])\n end\n local optionalValues = {}\n if opts['name'] then\n -- Set \"processedBy\" field to the worker name\n table.insert(optionalValues, \"pb\")\n table.insert(optionalValues, opts['name'])\n end\n rcall(\"XADD\", eventStreamKey, \"*\", \"event\", \"active\", \"jobId\", jobId, \"prev\", \"waiting\")\n rcall(\"HMSET\", jobKey, \"processedOn\", processedOn, unpack(optionalValues))\n rcall(\"HINCRBY\", jobKey, \"ats\", 1)\n addBaseMarkerIfNeeded(markerKey, false)\n -- rate limit delay must be 0 in this case to prevent adding more delay\n -- when job that is moved to active needs to be processed\n return {rcall(\"HGETALL\", jobKey), jobId, 0, 0} -- get job data\nend\n--[[\n Updates the delay set, by moving delayed jobs that should\n be processed now to \"wait\".\n Events:\n 'waiting'\n]]\n-- Includes\n--[[\n Function to add job in target list and add marker if needed.\n]]\n-- Includes\nlocal function addJobInTargetList(targetKey, markerKey, pushCmd, isPausedOrMaxed, jobId)\n rcall(pushCmd, targetKey, jobId)\n addBaseMarkerIfNeeded(markerKey, isPausedOrMaxed)\nend\n--[[\n Function to add job considering priority.\n]]\n-- Includes\n--[[\n Function to get priority score.\n]]\nlocal function getPriorityScore(priority, priorityCounterKey)\n local prioCounter = rcall(\"INCR\", priorityCounterKey)\n return priority * 0x100000000 + prioCounter % 0x100000000\nend\nlocal function addJobWithPriority(markerKey, prioritizedKey, priority, jobId, priorityCounterKey,\n isPausedOrMaxed)\n local score = getPriorityScore(priority, priorityCounterKey)\n rcall(\"ZADD\", prioritizedKey, score, jobId)\n addBaseMarkerIfNeeded(markerKey, isPausedOrMaxed)\nend\n-- Try to get as much as 1000 jobs at once\nlocal function promoteDelayedJobs(delayedKey, markerKey, targetKey, prioritizedKey,\n eventStreamKey, prefix, timestamp, priorityCounterKey, isPaused)\n local jobs = rcall(\"ZRANGEBYSCORE\", delayedKey, 0, (timestamp + 1) * 0x1000 - 1, \"LIMIT\", 0, 1000)\n if (#jobs > 0) then\n rcall(\"ZREM\", delayedKey, unpack(jobs))\n for _, jobId in ipairs(jobs) do\n local jobKey = prefix .. jobId\n local priority =\n tonumber(rcall(\"HGET\", jobKey, \"priority\")) or 0\n if priority == 0 then\n -- LIFO or FIFO\n rcall(\"LPUSH\", targetKey, jobId)\n else\n local score = getPriorityScore(priority, priorityCounterKey)\n rcall(\"ZADD\", prioritizedKey, score, jobId)\n end\n -- Emit waiting event\n rcall(\"XADD\", eventStreamKey, \"*\", \"event\", \"waiting\", \"jobId\",\n jobId, \"prev\", \"delayed\")\n rcall(\"HSET\", jobKey, \"delay\", 0)\n end\n addBaseMarkerIfNeeded(markerKey, isPaused)\n end\nend\nlocal target, isPausedOrMaxed, rateLimitMax, rateLimitDuration = getTargetQueueList(KEYS[9],\n activeKey, waitKey, KEYS[8])\n-- Check if there are delayed jobs that we can move to wait.\nlocal markerKey = KEYS[11]\npromoteDelayedJobs(delayedKey, markerKey, target, KEYS[3], eventStreamKey, ARGV[1],\n ARGV[2], KEYS[10], isPausedOrMaxed)\nlocal maxJobs = tonumber(rateLimitMax or (opts['limiter'] and opts['limiter']['max']))\nlocal expireTime = getRateLimitTTL(maxJobs, rateLimiterKey)\n-- Check if we are rate limited first.\nif expireTime > 0 then return {0, 0, expireTime, 0} end\n-- paused or maxed queue\nif isPausedOrMaxed then return {0, 0, 0, 0} end\nlocal limiterDuration = (opts['limiter'] and opts['limiter']['duration']) or rateLimitDuration\n-- no job ID, try non-blocking move from wait to active\nlocal jobId = rcall(\"RPOPLPUSH\", waitKey, activeKey)\n-- Markers in waitlist DEPRECATED in v5: Will be completely removed in v6.\nif jobId and string.sub(jobId, 1, 2) == \"0:\" then\n rcall(\"LREM\", activeKey, 1, jobId)\n jobId = rcall(\"RPOPLPUSH\", waitKey, activeKey)\nend\nif jobId then\n return prepareJobForProcessing(ARGV[1], rateLimiterKey, eventStreamKey, jobId, ARGV[2],\n maxJobs, limiterDuration, markerKey, opts)\nelse\n jobId = moveJobFromPrioritizedToActive(KEYS[3], activeKey, KEYS[10])\n if jobId then\n return prepareJobForProcessing(ARGV[1], rateLimiterKey, eventStreamKey, jobId, ARGV[2],\n maxJobs, limiterDuration, markerKey, opts)\n end\nend\n-- Return the timestamp for the next delayed job if any.\nlocal nextTimestamp = getNextDelayedTimestamp(delayedKey)\nif nextTimestamp ~= nil then return {0, 0, 0, nextTimestamp} end\nreturn {0, 0, 0, 0}\n" "11" "bull:message-processing:wait" "bull:message-processing:active" "bull:message-processing:prioritized" "bull:message-processing:events" "bull:message-processing:stalled" "bull:message-processing:limiter" "bull:message-processing:delayed" "bull:message-processing:paused" "bull:message-processing:meta" "bull:message-processing:pc" "bull:message-processing:marker" "bull:message-processing:" "1760198677745" "\xde\x00\x04\xa5token\xd9&40acdde8-719d-4525-99f3-aa583e30e4b5:0\xaclockDuration\xcdu0\xa7limiter\xde\x00\x02\xa3max\n\xa8duration\xcd\x03\xe8\xa4name\xc0"
+
+13:04:37.835	[0 lua]	HMGET	
+"bull:message-processing:meta" "paused" "concurrency" "max" "duration"
+
+13:04:37.835	[0 lua]	ZRANGEBYSCORE	
+"bull:message-processing:delayed" "0" "7209773784047615" "LIMIT" "0" "1000"
+
+13:04:37.835	[0 lua]	GET	
+"bull:message-processing:limiter"
+
+13:04:37.835	[0 lua]	RPOPLPUSH	
+"bull:message-processing:wait" "bull:message-processing:active"
+
+13:04:37.835	[0 lua]	ZPOPMIN	
+"bull:message-processing:prioritized"
+
+13:04:37.835	[0 lua]	DEL	
+"bull:message-processing:pc"
+
+13:04:37.835	[0 lua]	ZRANGE	
+"bull:message-processing:delayed" "0" "0" "WITHSCORES"
+
+13:04:37.835	[0 34.170.23.31:57750]	EVALSHA	
+"73eadbeb0aad7d0e981735d0fd48e4d60fe136e5" "8" "bull:image-analysis:stalled" "bull:image-analysis:wait" "bull:image-analysis:active" "bull:image-analysis:stalled-check" "bull:image-analysis:meta" "bull:image-analysis:paused" "bull:image-analysis:marker" "bull:image-analysis:events" "1" "bull:image-analysis:" "1760198677748" "30000"
+
+13:04:37.835	[0 lua]	EXISTS	
+"bull:image-analysis:stalled-check"
+
+13:04:37.836	[0 34.170.23.31:57750]	EVALSHA	
+"73eadbeb0aad7d0e981735d0fd48e4d60fe136e5" "8" "bull:nps-survey:stalled" "bull:nps-survey:wait" "bull:nps-survey:active" "bull:nps-survey:stalled-check" "bull:nps-survey:meta" "bull:nps-survey:paused" "bull:nps-survey:marker" "bull:nps-survey:events" "1" "bull:nps-survey:" "1760198677748" "30000"
+
+13:04:37.836	[0 lua]	EXISTS	
+"bull:nps-survey:stalled-check"
+
+13:04:37.836	[0 34.170.23.31:57750]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:image-analysis:wait" "bull:image-analysis:active" "bull:image-analysis:prioritized" "bull:image-analysis:events" "bull:image-analysis:stalled" "bull:image-analysis:limiter" "bull:image-analysis:delayed" "bull:image-analysis:paused" "bull:image-analysis:meta" "bull:image-analysis:pc" "bull:image-analysis:marker" "bull:image-analysis:" "1760198677748" "\xde\x00\x04\xa5token\xd9&4fa567d4-2155-411f-8cf3-102e792c85fa:0\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+13:04:37.836	[0 lua]	HMGET	
+"bull:image-analysis:meta" "paused" "concurrency" "max" "duration"
+
+13:04:37.836	[0 lua]	ZRANGEBYSCORE	
+"bull:image-analysis:delayed" "0" "7209773784059903" "LIMIT" "0" "1000"
+
+13:04:37.836	[0 lua]	RPOPLPUSH	
+"bull:image-analysis:wait" "bull:image-analysis:active"
+
+13:04:37.836	[0 lua]	ZPOPMIN	
+"bull:image-analysis:prioritized"
+
+13:04:37.836	[0 lua]	DEL	
+"bull:image-analysis:pc"
+
+13:04:37.836	[0 lua]	ZRANGE	
+"bull:image-analysis:delayed" "0" "0" "WITHSCORES"
+
+13:04:37.847	[0 34.96.45.246:59111]	BZPOPMIN	
+"bull:nps-survey:marker" "5"
+
+13:04:37.854	[0 34.170.23.31:41820]	AUTH	
+"(redacted)"
+
+13:04:37.855	[0 34.170.23.31:41820]	INFO	
+
+13:04:37.989	[0 34.96.45.246:37120]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:nps-survey:wait" "bull:nps-survey:active" "bull:nps-survey:prioritized" "bull:nps-survey:events" "bull:nps-survey:stalled" "bull:nps-survey:limiter" "bull:nps-survey:delayed" "bull:nps-survey:paused" "bull:nps-survey:meta" "bull:nps-survey:pc" "bull:nps-survey:marker" "bull:nps-survey:" "1760198677916" "\xde\x00\x04\xa5token\xd9(d81ff3d7-8476-4603-a5d5-84a39ffc4990:275\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+13:04:37.989	[0 lua]	HMGET	
+"bull:nps-survey:meta" "paused" "concurrency" "max" "duration"
+
+13:04:37.989	[0 lua]	ZRANGEBYSCORE	
+"bull:nps-survey:delayed" "0" "7209773784748031" "LIMIT" "0" "1000"
+
+13:04:37.989	[0 lua]	RPOPLPUSH	
+"bull:nps-survey:wait" "bull:nps-survey:active"
+
+13:04:37.989	[0 lua]	ZPOPMIN	
+"bull:nps-survey:prioritized"
+
+13:04:37.989	[0 lua]	DEL	
+"bull:nps-survey:pc"
+
+13:04:37.989	[0 lua]	ZRANGE	
+"bull:nps-survey:delayed" "0" "0" "WITHSCORES"
+
+13:04:38.651	[0 34.96.45.246:63551]	BZPOPMIN	
+"bull:message-processing:marker" "5"
+
+13:04:38.792	[0 34.96.45.246:37120]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:message-processing:wait" "bull:message-processing:active" "bull:message-processing:prioritized" "bull:message-processing:events" "bull:message-processing:stalled" "bull:message-processing:limiter" "bull:message-processing:delayed" "bull:message-processing:paused" "bull:message-processing:meta" "bull:message-processing:pc" "bull:message-processing:marker" "bull:message-processing:" "1760198678718" "\xde\x00\x04\xa5token\xd9(a1d9538f-bb7b-4901-b85d-e4d66cf244e3:277\xaclockDuration\xcdu0\xa7limiter\xde\x00\x02\xa3max\n\xa8duration\xcd\x03\xe8\xa4name\xc0"
+
+13:04:38.792	[0 lua]	HMGET	
+"bull:message-processing:meta" "paused" "concurrency" "max" "duration"
+
+13:04:38.792	[0 lua]	ZRANGEBYSCORE	
+"bull:message-processing:delayed" "0" "7209773788033023" "LIMIT" "0" "1000"
+
+13:04:38.792	[0 lua]	GET	
+"bull:message-processing:limiter"
+
+13:04:38.792	[0 lua]	RPOPLPUSH	
+"bull:message-processing:wait" "bull:message-processing:active"
+
+13:04:38.792	[0 lua]	ZPOPMIN	
+"bull:message-processing:prioritized"
+
+13:04:38.792	[0 lua]	DEL	
+"bull:message-processing:pc"
+
+13:04:38.792	[0 lua]	ZRANGE	
+"bull:message-processing:delayed" "0" "0" "WITHSCORES"
+
+13:04:39.035	[0 34.96.45.246:60163]	BZPOPMIN	
+"bull:image-analysis:marker" "5"
+
+13:04:39.180	[0 34.96.45.246:37120]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:image-analysis:wait" "bull:image-analysis:active" "bull:image-analysis:prioritized" "bull:image-analysis:events" "bull:image-analysis:stalled" "bull:image-analysis:limiter" "bull:image-analysis:delayed" "bull:image-analysis:paused" "bull:image-analysis:meta" "bull:image-analysis:pc" "bull:image-analysis:marker" "bull:image-analysis:" "1760198679107" "\xde\x00\x04\xa5token\xd9(65af5bac-1404-4b09-878b-f02f80a70d29:276\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+13:04:39.180	[0 lua]	HMGET	
+"bull:image-analysis:meta" "paused" "concurrency" "max" "duration"
+
+13:04:39.180	[0 lua]	ZRANGEBYSCORE	
+"bull:image-analysis:delayed" "0" "7209773789626367" "LIMIT" "0" "1000"
+
+13:04:39.180	[0 lua]	RPOPLPUSH	
+"bull:image-analysis:wait" "bull:image-analysis:active"
+
+13:04:39.180	[0 lua]	ZPOPMIN	
+"bull:image-analysis:prioritized"
+
+13:04:39.180	[0 lua]	DEL	
+"bull:image-analysis:pc"
+
+13:04:39.180	[0 lua]	ZRANGE	
+"bull:image-analysis:delayed" "0" "0" "WITHSCORES"
+
+13:04:39.546	[0 34.170.23.31:57750]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:nps-survey:wait" "bull:nps-survey:active" "bull:nps-survey:prioritized" "bull:nps-survey:events" "bull:nps-survey:stalled" "bull:nps-survey:limiter" "bull:nps-survey:delayed" "bull:nps-survey:paused" "bull:nps-survey:meta" "bull:nps-survey:pc" "bull:nps-survey:marker" "bull:nps-survey:" "1760198679475" "\xde\x00\x04\xa5token\xd9&61b954c1-eab5-4260-a1f8-b30c97da913f:0\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+13:04:39.546	[0 lua]	HMGET	
+"bull:nps-survey:meta" "paused" "concurrency" "max" "duration"
+
+13:04:39.546	[0 lua]	ZRANGEBYSCORE	
+"bull:nps-survey:delayed" "0" "7209773791133695" "LIMIT" "0" "1000"
+
+13:04:39.546	[0 lua]	RPOPLPUSH	
+"bull:nps-survey:wait" "bull:nps-survey:active"
+
+13:04:39.546	[0 lua]	ZPOPMIN	
+"bull:nps-survey:prioritized"
+
+13:04:39.546	[0 lua]	DEL	
+"bull:nps-survey:pc"
+
+13:04:39.546	[0 lua]	ZRANGE	
+"bull:nps-survey:delayed" "0" "0" "WITHSCORES"
+
+13:04:41.807	[0 34.96.45.246:28135]	XREAD	
+"BLOCK" "10000" "STREAMS" "bull:message-processing:events" "D00000001760197784918-00000000000000000001"
+
+13:04:43.129	[0 34.96.45.246:59111]	BZPOPMIN	
+"bull:nps-survey:marker" "5"
+
+13:04:43.178	[0 34.96.45.246:37120]	EVALSHA	
+"73eadbeb0aad7d0e981735d0fd48e4d60fe136e5" "8" "bull:message-processing:stalled" "bull:message-processing:wait" "bull:message-processing:active" "bull:message-processing:stalled-check" "bull:message-processing:meta" "bull:message-processing:paused" "bull:message-processing:marker" "bull:message-processing:events" "1" "bull:message-processing:" "1760198683106" "30000"
+
+13:04:43.178	[0 lua]	EXISTS	
+"bull:message-processing:stalled-check"
+
+13:04:43.178	[0 lua]	SET	
+"bull:message-processing:stalled-check" "1760198683106" "PX" "30000"
+
+13:04:43.178	[0 lua]	HGET	
+"bull:message-processing:meta" "opts.maxLenEvents"
+
+13:04:43.178	[0 lua]	XTRIM	
+"bull:message-processing:events" "MAXLEN" "~" "10000"
+
+13:04:43.178	[0 lua]	SMEMBERS	
+"bull:message-processing:stalled"
+
+13:04:43.178	[0 lua]	LRANGE	
+"bull:message-processing:active" "0" "-1"
+
+13:04:43.178	[0 34.96.45.246:37120]	EVALSHA	
+"73eadbeb0aad7d0e981735d0fd48e4d60fe136e5" "8" "bull:image-analysis:stalled" "bull:image-analysis:wait" "bull:image-analysis:active" "bull:image-analysis:stalled-check" "bull:image-analysis:meta" "bull:image-analysis:paused" "bull:image-analysis:marker" "bull:image-analysis:events" "1" "bull:image-analysis:" "1760198683106" "30000"
+
+13:04:43.178	[0 lua]	EXISTS	
+"bull:image-analysis:stalled-check"
+
+13:04:43.178	[0 lua]	SET	
+"bull:image-analysis:stalled-check" "1760198683106" "PX" "30000"
+
+13:04:43.178	[0 lua]	HGET	
+"bull:image-analysis:meta" "opts.maxLenEvents"
+
+13:04:43.178	[0 lua]	XTRIM	
+"bull:image-analysis:events" "MAXLEN" "~" "10000"
+
+13:04:43.178	[0 lua]	SMEMBERS	
+"bull:image-analysis:stalled"
+
+13:04:43.178	[0 lua]	LRANGE	
+"bull:image-analysis:active" "0" "-1"
+
+13:04:43.178	[0 34.96.45.246:37120]	EVALSHA	
+"73eadbeb0aad7d0e981735d0fd48e4d60fe136e5" "8" "bull:nps-survey:stalled" "bull:nps-survey:wait" "bull:nps-survey:active" "bull:nps-survey:stalled-check" "bull:nps-survey:meta" "bull:nps-survey:paused" "bull:nps-survey:marker" "bull:nps-survey:events" "1" "bull:nps-survey:" "1760198683106" "30000"
+
+13:04:43.178	[0 lua]	EXISTS	
+"bull:nps-survey:stalled-check"
+
+13:04:43.178	[0 lua]	SET	
+"bull:nps-survey:stalled-check" "1760198683106" "PX" "30000"
+
+13:04:43.178	[0 lua]	HGET	
+"bull:nps-survey:meta" "opts.maxLenEvents"
+
+13:04:43.178	[0 lua]	XTRIM	
+"bull:nps-survey:events" "MAXLEN" "~" "10000"
+
+13:04:43.178	[0 lua]	SMEMBERS	
+"bull:nps-survey:stalled"
+
+13:04:43.178	[0 lua]	LRANGE	
+"bull:nps-survey:active" "0" "-1"
+
+13:04:43.271	[0 34.96.45.246:37120]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:nps-survey:wait" "bull:nps-survey:active" "bull:nps-survey:prioritized" "bull:nps-survey:events" "bull:nps-survey:stalled" "bull:nps-survey:limiter" "bull:nps-survey:delayed" "bull:nps-survey:paused" "bull:nps-survey:meta" "bull:nps-survey:pc" "bull:nps-survey:marker" "bull:nps-survey:" "1760198683199" "\xde\x00\x04\xa5token\xd9(d81ff3d7-8476-4603-a5d5-84a39ffc4990:276\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+13:04:43.271	[0 lua]	HMGET	
+"bull:nps-survey:meta" "paused" "concurrency" "max" "duration"
+
+13:04:43.271	[0 lua]	ZRANGEBYSCORE	
+"bull:nps-survey:delayed" "0" "7209773806387199" "LIMIT" "0" "1000"
+
+13:04:43.271	[0 lua]	RPOPLPUSH	
+"bull:nps-survey:wait" "bull:nps-survey:active"
+
+13:04:43.271	[0 lua]	ZPOPMIN	
+"bull:nps-survey:prioritized"
+
+13:04:43.271	[0 lua]	DEL	
+"bull:nps-survey:pc"
+
+13:04:43.271	[0 lua]	ZRANGE	
+"bull:nps-survey:delayed" "0" "0" "WITHSCORES"
+
+13:04:43.935	[0 34.96.45.246:63551]	BZPOPMIN	
+"bull:message-processing:marker" "5"
+
+13:04:44.075	[0 34.96.45.246:37120]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:message-processing:wait" "bull:message-processing:active" "bull:message-processing:prioritized" "bull:message-processing:events" "bull:message-processing:stalled" "bull:message-processing:limiter" "bull:message-processing:delayed" "bull:message-processing:paused" "bull:message-processing:meta" "bull:message-processing:pc" "bull:message-processing:marker" "bull:message-processing:" "1760198684004" "\xde\x00\x04\xa5token\xd9(a1d9538f-bb7b-4901-b85d-e4d66cf244e3:278\xaclockDuration\xcdu0\xa7limiter\xde\x00\x02\xa3max\n\xa8duration\xcd\x03\xe8\xa4name\xc0"
+
+13:04:44.075	[0 lua]	HMGET	
+"bull:message-processing:meta" "paused" "concurrency" "max" "duration"
+
+13:04:44.075	[0 lua]	ZRANGEBYSCORE	
+"bull:message-processing:delayed" "0" "7209773809684479" "LIMIT" "0" "1000"
+
+13:04:44.075	[0 lua]	GET	
+"bull:message-processing:limiter"
+
+13:04:44.075	[0 lua]	RPOPLPUSH	
+"bull:message-processing:wait" "bull:message-processing:active"
+
+13:04:44.075	[0 lua]	ZPOPMIN	
+"bull:message-processing:prioritized"
+
+13:04:44.075	[0 lua]	DEL	
+"bull:message-processing:pc"
+
+13:04:44.075	[0 lua]	ZRANGE	
+"bull:message-processing:delayed" "0" "0" "WITHSCORES"
+
+13:04:44.322	[0 34.96.45.246:60163]	BZPOPMIN	
+"bull:image-analysis:marker" "5"
+
+13:04:44.465	[0 34.96.45.246:37120]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:image-analysis:wait" "bull:image-analysis:active" "bull:image-analysis:prioritized" "bull:image-analysis:events" "bull:image-analysis:stalled" "bull:image-analysis:limiter" "bull:image-analysis:delayed" "bull:image-analysis:paused" "bull:image-analysis:meta" "bull:image-analysis:pc" "bull:image-analysis:marker" "bull:image-analysis:" "1760198684393" "\xde\x00\x04\xa5token\xd9(65af5bac-1404-4b09-878b-f02f80a70d29:277\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+13:04:44.465	[0 lua]	HMGET	
+"bull:image-analysis:meta" "paused" "concurrency" "max" "duration"
+
+13:04:44.465	[0 lua]	ZRANGEBYSCORE	
+"bull:image-analysis:delayed" "0" "7209773811277823" "LIMIT" "0" "1000"
+
+13:04:44.465	[0 lua]	RPOPLPUSH	
+"bull:image-analysis:wait" "bull:image-analysis:active"
+
+13:04:44.465	[0 lua]	ZPOPMIN	
+"bull:image-analysis:prioritized"
+
+13:04:44.465	[0 lua]	DEL	
+"bull:image-analysis:pc"
+
+13:04:44.465	[0 lua]	ZRANGE	
+"bull:image-analysis:delayed" "0" "0" "WITHSCORES"
+
+13:04:44.538	[0 34.170.23.31:41812]	BZPOPMIN	
+"bull:message-processing:marker" "5"
+
+13:04:44.540	[0 34.170.23.31:35660]	BZPOPMIN	
+"bull:image-analysis:marker" "5"
+
+13:04:44.690	[0 34.170.23.31:41820]	BZPOPMIN	
+"bull:nps-survey:marker" "5"
+
+13:04:44.847	[0 34.170.23.31:57750]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:message-processing:wait" "bull:message-processing:active" "bull:message-processing:prioritized" "bull:message-processing:events" "bull:message-processing:stalled" "bull:message-processing:limiter" "bull:message-processing:delayed" "bull:message-processing:paused" "bull:message-processing:meta" "bull:message-processing:pc" "bull:message-processing:marker" "bull:message-processing:" "1760198684776" "\xde\x00\x04\xa5token\xd9&40acdde8-719d-4525-99f3-aa583e30e4b5:1\xaclockDuration\xcdu0\xa7limiter\xde\x00\x02\xa3max\n\xa8duration\xcd\x03\xe8\xa4name\xc0"
+
+13:04:44.848	[0 lua]	HMGET	
+"bull:message-processing:meta" "paused" "concurrency" "max" "duration"
+
+13:04:44.848	[0 lua]	ZRANGEBYSCORE	
+"bull:message-processing:delayed" "0" "7209773812846591" "LIMIT" "0" "1000"
+
+13:04:44.848	[0 lua]	GET	
+"bull:message-processing:limiter"
+
+13:04:44.848	[0 lua]	RPOPLPUSH	
+"bull:message-processing:wait" "bull:message-processing:active"
+
+13:04:44.848	[0 lua]	ZPOPMIN	
+"bull:message-processing:prioritized"
+
+13:04:44.848	[0 lua]	DEL	
+"bull:message-processing:pc"
+
+13:04:44.848	[0 lua]	ZRANGE	
+"bull:message-processing:delayed" "0" "0" "WITHSCORES"
+
+13:04:44.848	[0 34.170.23.31:57750]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:image-analysis:wait" "bull:image-analysis:active" "bull:image-analysis:prioritized" "bull:image-analysis:events" "bull:image-analysis:stalled" "bull:image-analysis:limiter" "bull:image-analysis:delayed" "bull:image-analysis:paused" "bull:image-analysis:meta" "bull:image-analysis:pc" "bull:image-analysis:marker" "bull:image-analysis:" "1760198684777" "\xde\x00\x04\xa5token\xd9&4fa567d4-2155-411f-8cf3-102e792c85fa:1\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+13:04:44.848	[0 lua]	HMGET	
+"bull:image-analysis:meta" "paused" "concurrency" "max" "duration"
+
+13:04:44.848	[0 lua]	ZRANGEBYSCORE	
+"bull:image-analysis:delayed" "0" "7209773812850687" "LIMIT" "0" "1000"
+
+13:04:44.848	[0 lua]	RPOPLPUSH	
+"bull:image-analysis:wait" "bull:image-analysis:active"
+
+13:04:44.848	[0 lua]	ZPOPMIN	
+"bull:image-analysis:prioritized"
+
+13:04:44.848	[0 lua]	DEL	
+"bull:image-analysis:pc"
+
+13:04:44.848	[0 lua]	ZRANGE	
+"bull:image-analysis:delayed" "0" "0" "WITHSCORES"
+
+13:04:44.869	[0 34.170.23.31:57750]	EVALSHA	
+"6c4c6de2bece2ad87657691d945d902df2198f5e" "11" "bull:nps-survey:wait" "bull:nps-survey:active" "bull:nps-survey:prioritized" "bull:nps-survey:events" "bull:nps-survey:stalled" "bull:nps-survey:limiter" "bull:nps-survey:delayed" "bull:nps-survey:paused" "bull:nps-survey:meta" "bull:nps-survey:pc" "bull:nps-survey:marker" "bull:nps-survey:" "1760198684798" "\xde\x00\x04\xa5token\xd9&61b954c1-eab5-4260-a1f8-b30c97da913f:1\xaclockDuration\xcdu0\xa7limiter\xc0\xa4name\xc0"
+
+13:04:44.869	[0 lua]	HMGET	
+"bull:nps-survey:meta" "paused" "concurrency" "max" "duration"
+
+13:04:44.869	[0 lua]	ZRANGEBYSCORE	
+"bull:nps-survey:delayed" "0" "7209773812936703" "LIMIT" "0" "1000"
+
+13:04:44.869	[0 lua]	RPOPLPUSH	
+"bull:nps-survey:wait" "bull:nps-survey:active"
+
+13:04:44.869	[0 lua]	ZPOPMIN	
+"bull:nps-survey:prioritized"
+
+13:04:44.869	[0 lua]	DEL	
+"bull:nps-survey:pc"
+
+13:04:44.869	[0 lua]	ZRANGE	
+"bull:nps-survey:delayed" "0" "0" "WITHSCORES"
+
+13:04:46.401	[0 34.96.45.246:44906]	XREAD	
+"BLOCK" "10000" "STREAMS" "bull:ai-response:events" "$"
+
+13:04:46.536	[0 34.96.45.246:26635]	XREAD	
+"BLOCK" "10000" "STREAMS" "bull:image-analysis:events" "$"
+
+Aguardando o recebimento dos logs…
