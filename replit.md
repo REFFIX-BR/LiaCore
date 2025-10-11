@@ -61,6 +61,16 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 
 **Ouvidoria (Ombudsman) System**: Dedicated sections for filtering and managing customer complaints, with AI tool `registrar_reclamacao_ouvidoria` for automatic record creation and role-based security.
 
+**Conversation Intelligence System**: Advanced real-time analysis of customer messages with automated context persistence and problem detection:
+- **Sentiment Analysis**: Detects customer satisfaction (positive/neutral/negative) using keyword patterns including frustration indicators (sacanagem, absurdo, demora, segunda vez).
+- **4-Level Urgency Classification**: Automatically classifies urgency as critical, high, medium, or low based on contextual keywords (urgente, importante, quando possível, etc).
+- **Technical Problem Detection**: Identifies and categorizes technical issues (internet outages, connection problems, equipment failures) for appropriate routing.
+- **Recurrence Detection**: Tracks problem history by CPF/CNPJ, auto-detects recurring issues (2+ occurrences in 30 days), and escalates to priority technical support.
+- **CPF/CNPJ Auto-Persistence**: Automatically detects and stores customer documents in both `conversation.clientDocument` and `metadata.clientDocument` to prevent context loss across conversation resumptions.
+- **Intelligent Metadata Updates**: Conversation metadata persistently updated with sentiment, urgency, detected problems, and recurrence status for supervisor visibility and analytics.
+- **Priority Technical Support Function**: New AI function call `priorizar_atendimento_tecnico` schedules urgent technician visits for recurring issues WITHOUT offering financial compensation (policy-compliant).
+- **Multi-Modal Intelligence**: Intelligence analysis applies to text, image transcriptions (Vision API), and audio transcriptions (Whisper) across both Evolution webhook and Test Chat flows.
+
 ## External Dependencies
 
 **Third-Party Services**:
