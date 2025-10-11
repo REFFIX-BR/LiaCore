@@ -16,12 +16,7 @@ const PALAVRAS_INSATISFACAO = [
   'indignado', 'revoltado', 'decepcionado', 'frustrado'
 ];
 
-// Palavras-chave para detecção de urgência
-const PALAVRAS_URGENCIA = [
-  'urgente', 'emergência', 'preciso agora', 'rápido',
-  'trabalho', 'trabalhar', 'home office', 'reunião',
-  'importante', 'crítico', 'essencial', 'necessário'
-];
+// Palavras-chave para detecção de urgência (movidas para dentro da função analyzeUrgency)
 
 // Tipos de problemas técnicos rastreáveis
 const PROBLEMAS_TECNICOS = [
@@ -72,25 +67,53 @@ export function analyzeSentiment(message: string): {
  * Detecta nível de urgência baseado na mensagem
  */
 export function analyzeUrgency(message: string): {
-  urgency: 'low' | 'normal' | 'high' | 'critical';
+  urgency: 'low' | 'medium' | 'high' | 'critical';
   reasons: string[];
 } {
   const messageLower = message.toLowerCase();
-  const reasons: string[] = [];
 
-  for (const palavra of PALAVRAS_URGENCIA) {
+  // Palavras críticas (múltiplas = crítico)
+  const palavrasCriticas = ['urgente', 'emergência', 'preciso agora', 'já', 'parado', 'sem internet'];
+  const palavrasAltas = ['rápido', 'importante', 'crítico', 'trabalho', 'reunião', 'essencial'];
+  const palavrasMedias = ['quando', 'possível', 'ajuda', 'dúvida', 'gostaria'];
+
+  const criticasEncontradas: string[] = [];
+  const altasEncontradas: string[] = [];
+  const mediasEncontradas: string[] = [];
+
+  for (const palavra of palavrasCriticas) {
     if (messageLower.includes(palavra)) {
-      reasons.push(palavra);
+      criticasEncontradas.push(palavra);
     }
   }
 
-  if (reasons.length >= 2) {
-    return { urgency: 'critical', reasons };
-  } else if (reasons.length === 1) {
-    return { urgency: 'high', reasons };
+  for (const palavra of palavrasAltas) {
+    if (messageLower.includes(palavra)) {
+      altasEncontradas.push(palavra);
+    }
   }
 
-  return { urgency: 'normal', reasons: [] };
+  for (const palavra of palavrasMedias) {
+    if (messageLower.includes(palavra)) {
+      mediasEncontradas.push(palavra);
+    }
+  }
+
+  // Lógica de classificação com 4 níveis
+  if (criticasEncontradas.length >= 2 || (criticasEncontradas.length >= 1 && altasEncontradas.length >= 1)) {
+    return { urgency: 'critical', reasons: [...criticasEncontradas, ...altasEncontradas] };
+  }
+
+  if (criticasEncontradas.length === 1 || altasEncontradas.length >= 2) {
+    return { urgency: 'high', reasons: criticasEncontradas.length > 0 ? criticasEncontradas : altasEncontradas };
+  }
+
+  if (altasEncontradas.length === 1 || mediasEncontradas.length >= 1) {
+    return { urgency: 'medium', reasons: altasEncontradas.length > 0 ? altasEncontradas : mediasEncontradas };
+  }
+
+  // Sem palavras de urgência = baixa prioridade
+  return { urgency: 'low', reasons: [] };
 }
 
 /**
