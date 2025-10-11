@@ -21,6 +21,7 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 **AI & Knowledge Management**:
 - **AI Provider**: OpenAI Assistants API.
 - **Specialized Assistants**: Six roles (Support, Sales, Finance, Cancellation, Ombudsman, Presentation) with a "Receptionist-First" routing model.
+- **Conversation Finalization Logic**: Proper closure system ensuring NPS surveys are sent correctly. SUPPORT/FINANCIAL/COMERCIAL can autonomously finalize when problem is resolved; CANCELAMENTO/OUVIDORIA/APRESENTAÇÃO always transfer to humans (never finalize). Based on kb-geral-002 knowledge base rules.
 - **Conversation Summarization**: Asynchronous summarization.
 - **RAG**: Knowledge base using Upstash Vector.
 - **Function Calling**: Custom functions for verification, knowledge queries, invoice lookups, and scheduling, with secure internal-only tool execution.
