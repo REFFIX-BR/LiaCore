@@ -334,6 +334,21 @@ const results = await pipeline.exec();
 
 ---
 
+## ⚠️ Correções Importantes
+
+### Bug Fix: TTL do Cache Local (Corrigido ✅)
+
+**Problema identificado**: A auto-limpeza do cache local estava usando sempre o TTL padrão de 5 minutos, ignorando TTLs customizados (como 1h para assistants).
+
+**Correção aplicada**:
+- `CacheEntry` agora armazena o TTL específico de cada entry
+- `LocalCache.get()` e `startAutoCleanup()` respeitam o TTL individual
+- Cache de assistants (1h) agora permanece corretamente em memória por 1 hora
+
+**Teste validado**: ✅ Sistema funcionando corretamente após correção
+
+---
+
 ## 📚 Referências
 
 - [Upstash Redis Docs](https://upstash.com/docs/redis)
