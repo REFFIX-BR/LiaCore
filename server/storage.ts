@@ -54,7 +54,7 @@ export interface IStorage {
   getConversation(id: string): Promise<Conversation | undefined>;
   getConversationByChatId(chatId: string): Promise<Conversation | undefined>;
   getAllActiveConversations(): Promise<Conversation[]>;
-  getMonitorConversations(): Promise<Conversation[]>; // Ativas + Resolvidas (24h)
+  getMonitorConversations(): Promise<Conversation[]>; // Ativas + Resolvidas (12h)
   getAllConversations(): Promise<Conversation[]>;
   getTransferredConversations(userId?: string, role?: string): Promise<Conversation[]>;
   createConversation(conversation: InsertConversation): Promise<Conversation>;
@@ -340,12 +340,12 @@ export class MemStorage implements IStorage {
 
   async getMonitorConversations(): Promise<Conversation[]> {
     const now = new Date();
-    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
     
     return Array.from(this.conversations.values()).filter((conv) => {
-      // Show active conversations OR resolved conversations from last 24h
+      // Show active conversations OR resolved conversations from last 12h
       if (conv.status === 'active') return true;
-      if (conv.status === 'resolved' && conv.lastMessageTime && conv.lastMessageTime >= twentyFourHoursAgo) return true;
+      if (conv.status === 'resolved' && conv.lastMessageTime && conv.lastMessageTime >= twelveHoursAgo) return true;
       
       return false;
     }).sort((a, b) => (b.lastMessageTime?.getTime() || 0) - (a.lastMessageTime?.getTime() || 0));
@@ -353,7 +353,7 @@ export class MemStorage implements IStorage {
 
   async getTransferredConversations(userId?: string, role?: string): Promise<Conversation[]> {
     const now = new Date();
-    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
     
     return Array.from(this.conversations.values()).filter((conv) => {
       if (conv.transferredToHuman !== true) return false;
@@ -361,11 +361,11 @@ export class MemStorage implements IStorage {
       // Apenas conversas NÃO atribuídas (disponíveis para atribuição)
       if (conv.assignedTo !== null) return false;
       
-      // Show active, queued conversations OR resolved conversations from last 24h
+      // Show active, queued conversations OR resolved conversations from last 12h
       const isValidStatus = (
         conv.status === 'active' || 
         conv.status === 'queued' ||
-        (conv.status === 'resolved' && conv.lastMessageTime && conv.lastMessageTime >= twentyFourHoursAgo)
+        (conv.status === 'resolved' && conv.lastMessageTime && conv.lastMessageTime >= twelveHoursAgo)
       );
       
       return isValidStatus;
@@ -1146,7 +1146,7 @@ export class DbStorage implements IStorage {
   }
 
   async getMonitorConversations(): Promise<Conversation[]> {
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
     
     return await db.select().from(schema.conversations)
       .where(
@@ -1155,7 +1155,7 @@ export class DbStorage implements IStorage {
           and(
             eq(schema.conversations.status, 'resolved'),
             isNotNull(schema.conversations.lastMessageTime),
-            gte(schema.conversations.lastMessageTime, twentyFourHoursAgo)
+            gte(schema.conversations.lastMessageTime, twelveHoursAgo)
           )
         )
       )
@@ -1163,7 +1163,7 @@ export class DbStorage implements IStorage {
   }
 
   async getTransferredConversations(userId?: string, role?: string): Promise<Conversation[]> {
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
     
     const conditions = [
       eq(schema.conversations.transferredToHuman, true),
@@ -1175,7 +1175,7 @@ export class DbStorage implements IStorage {
         and(
           eq(schema.conversations.status, 'resolved'),
           isNotNull(schema.conversations.lastMessageTime),
-          gte(schema.conversations.lastMessageTime, twentyFourHoursAgo)
+          gte(schema.conversations.lastMessageTime, twelveHoursAgo)
         )
       )
     ];
