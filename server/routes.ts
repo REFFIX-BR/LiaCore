@@ -2513,6 +2513,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ success: true, processed: true, eventType: event });
       }
 
+      // Process CONTACTS_UPDATE event (automatic contact import from WhatsApp)
+      if (event === "contacts.update") {
+        try {
+          const contacts = Array.isArray(data) ? data : [data];
+          let imported = 0;
+          let updated = 0;
+
+          for (const contactData of contacts) {
+            const { remoteJid, profilePicUrl } = contactData;
+            
+            if (!remoteJid) continue;
+
+            // Extract phone number from remoteJid
+            const phoneNumber = remoteJid.replace('@s.whatsapp.net', '');
+            
+            // Get WhatsApp profile name (Evolution API may provide in pushName)
+            const contactName = contactData.pushName || contactData.name || null;
+
+            console.log(`📇 [Contacts Import] Processando contato do WhatsApp:`, {
+              phoneNumber,
+              name: contactName,
+              hasProfilePic: !!profilePicUrl
+            });
+
+            // Check if contact exists
+            const existingContact = await storage.getContactByPhoneNumber(phoneNumber);
+
+            if (!existingContact) {
+              // Create new contact from WhatsApp sync
+              await storage.createContact({
+                phoneNumber,
+                name: contactName,
+                document: null,
+                lastConversationId: null,
+                lastConversationDate: null,
+                totalConversations: 0,
+                hasRecurringIssues: false,
+                status: 'active',
+              });
+              imported++;
+              console.log(`✅ [Contacts Import] Novo contato importado: ${phoneNumber} (${contactName || 'sem nome'})`);
+              
+              webhookLogger.success('CONTACT_IMPORTED', `Contato importado do WhatsApp`, {
+                phoneNumber,
+                name: contactName,
+                source: 'whatsapp_sync'
+              });
+            } else {
+              // Update existing contact name if provided and different
+              if (contactName && existingContact.name !== contactName) {
+                await storage.updateContact(existingContact.id, {
+                  name: contactName,
+                });
+                updated++;
+                console.log(`✏️ [Contacts Import] Contato atualizado: ${phoneNumber} → ${contactName}`);
+                
+                webhookLogger.info('CONTACT_UPDATED', `Nome do contato atualizado`, {
+                  phoneNumber,
+                  oldName: existingContact.name,
+                  newName: contactName,
+                  source: 'whatsapp_sync'
+                });
+              }
+            }
+          }
+
+          console.log(`📊 [Contacts Import] Sincronização concluída: ${imported} novos, ${updated} atualizados`);
+          
+          webhookLogger.success('CONTACTS_SYNC_COMPLETED', `Sincronização de contatos concluída`, {
+            imported,
+            updated,
+            total: contacts.length
+          });
+
+          return res.json({ 
+            success: true, 
+            processed: true, 
+            imported, 
+            updated,
+            total: contacts.length 
+          });
+        } catch (error) {
+          console.error(`❌ [Contacts Import] Erro ao importar contatos:`, error);
+          webhookLogger.error('CONTACTS_IMPORT_ERROR', `Erro ao importar contatos`, {
+            error: error instanceof Error ? error.message : String(error)
+          });
+          return res.json({ success: true, processed: false, reason: "import_error" });
+        }
+      }
+
       // Process other MESSAGES_* events
       if (event.startsWith("messages.")) {
         console.log(`📨 [Evolution] Evento de mensagem: ${event}`);

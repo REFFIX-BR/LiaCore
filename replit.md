@@ -60,6 +60,7 @@ The frontend is developed with React, TypeScript, Vite, `shadcn/ui` (Radix UI), 
 **Personalized Dashboards**: Role-specific dashboards offer relevant KPIs and data, with the Admin Dashboard providing system health, cost analysis, and activity logs.
 
 **Contact Management System**: Centralized client database for tracking conversation history, and enabling proactive service by creating/updating contacts, reopening conversations, and providing a frontend page for search and detailed views.
+- **WhatsApp Contact Sync** (Implemented 2024-10-12): Automatic contact import via Evolution API `contacts.update` webhook. When contacts are added/updated in WhatsApp, they're automatically imported to the system with phone number, name, and profile picture URL. System processes bulk sync, creates new contacts, updates existing names, and logs all operations via WebSocket for real-time monitoring.
 
 **Message Deletion System** (Implemented 2024-10-12): Supervisors and agents can delete assistant messages from both database and WhatsApp via Evolution API:
   - **Backend**: DELETE `/api/messages/:id` endpoint with role-based permissions (ADMIN/SUPERVISOR or assigned AGENT)

@@ -1,0 +1,112 @@
+2025-10-12 18:12:03.45
+97290aca
+User
+"apikey": "DEB41EA69259-4DCF-B8D3-22E3902949D0"
+2025-10-12 18:12:03.45
+97290aca
+User
+}
+2025-10-12 18:12:03.45
+97290aca
+User
+📨 [INFO] [webhook] Webhook event: contacts.update | {"instance":"Leads","event":"contacts.update"}
+2025-10-12 18:12:03.45
+97290aca
+User
+ℹ️ [Webhook Monitor] [CONNECTION] Webhook recebido: contacts.update { instance: 'Leads', timestamp: '2025-10-12T21:12:03.452Z' }
+2025-10-12 18:12:03.45
+97290aca
+User
+📱 [Evolution Webhook] Evento recebido: contacts.update { instance: 'Leads', event: 'contacts.update' }
+2025-10-12 18:12:03.45
+97290aca
+User
+❓ [Evolution] Evento desconhecido: contacts.update
+2025-10-12 18:12:03.45
+97290aca
+User
+9:12:03 PM [express] POST /api/webhooks/evolution 200 in 1ms :: {"success":true,"processed":false,"r…
+2025-10-12 18:12:08.53
+97290aca
+User
+🔍 [Evolution DEBUG] Payload completo: {
+2025-10-12 18:12:08.53
+97290aca
+User
+"event": "contacts.update",
+2025-10-12 18:12:08.53
+97290aca
+User
+"instance": "Leads",
+2025-10-12 18:12:08.53
+97290aca
+User
+"data": [
+2025-10-12 18:12:08.53
+97290aca
+User
+{
+2025-10-12 18:12:08.53
+97290aca
+User
+"remoteJid": "5524981175973@s.whatsapp.net",
+2025-10-12 18:12:08.53
+97290aca
+User
+"profilePicUrl": "https://pps.whatsapp.net/v/t61.24694-24/327533213_717971587080185_6460658935158746092_n.jpg?ccb=11-4&oh=01_Q5Aa2wFk0E4iP_nTBfTvbohV5G8Qmaci6kIkoTnC6yISW47vgg&oe=68F91F32&_nc_sid=5e03e0&_nc_cat=104",
+2025-10-12 18:12:08.53
+97290aca
+User
+"instanceId": "397e1aa4-8cb8-4627-8340-9689b6464d6a"
+2025-10-12 18:12:08.53
+97290aca
+User
+}
+2025-10-12 18:12:08.53
+97290aca
+User
+],
+2025-10-12 18:12:08.53
+97290aca
+User
+"destination": "https://health-link-connect-mczebende.replit.app/api/webhooks/evolution",
+2025-10-12 18:12:08.53
+97290aca
+User
+"date_time": "2025-10-12T18:12:08.448Z",
+2025-10-12 18:12:08.53
+97290aca
+User
+"sender": "5524981175973@s.whatsapp.net",
+2025-10-12 18:12:08.53
+97290aca
+User
+"server_url": "https://evolutionapi.trtelecom.net",
+2025-10-12 18:12:08.53
+97290aca
+User
+"apikey": "DEB41EA69259-4DCF-B8D3-22E3902949D0"
+2025-10-12 18:12:08.53
+97290aca
+User
+}
+2025-10-12 18:12:08.53
+97290aca
+User
+📨 [INFO] [webhook] Webhook event: contacts.update | {"instance":"Leads","event":"contacts.update"}
+2025-10-12 18:12:08.53
+97290aca
+User
+ℹ️ [Webhook Monitor] [CONNECTION] Webhook recebido: contacts.update { instance: 'Leads', timestamp: '2025-10-12T21:12:08.533Z' }
+2025-10-12 18:12:08.53
+97290aca
+User
+📱 [Evolution Webhook] Evento recebido: contacts.update { instance: 'Leads', event: 'contacts.update' }
+2025-10-12 18:12:08.53
+97290aca
+User
+❓ [Evolution] Evento desconhecido: contacts.update
+2025-10-12 18:12:08.53
+97290aca
+User
+9:12:08 PM [express] POST /api/webhooks/evolution 200 in 1ms :: {"success":true,"processed":false,"r…
