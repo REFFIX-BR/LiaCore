@@ -6,6 +6,16 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Development Environment Configuration
+
+⚠️ **IMPORTANT - Production Database in Development** (Updated 2024-10-12):
+- Development environment is configured to use **production PostgreSQL database** via `DATABASE_URL` secret
+- **Why**: Local development receives WhatsApp webhooks from production Evolution API instance
+- **Impact**: All development changes affect production data directly
+- **Benefit**: Allows real-time testing with live WhatsApp messages and eliminates "conversation not found" errors
+- **Risk**: Developer must be cautious - any database operations or testing affects real customer data
+- **Recommendation**: Consider setting up separate Evolution API instance for development or use staging database for safer testing
+
 ## System Architecture
 
 ### UI/UX Decisions
@@ -43,8 +53,8 @@ The frontend is developed with React, TypeScript, Vite, `shadcn/ui` (Radix UI), 
 - **Conversation Intelligence System**: Provides real-time analysis of customer messages including sentiment analysis, 4-level urgency classification, technical problem detection, recurrence detection (tracking by CPF/CNPJ), and automatic persistence of CPF/CNPJ. It also includes an AI function for prioritizing technical support.
 
 **Real-Time Monitoring**: A Supervisor Dashboard provides KPIs, live conversation queues, alerts, transcripts, and human intervention controls.
-- **Live Logs System** (Implemented 2024-10-12): WebSocket-powered real-time event monitoring page (`/live-logs`) displaying all system events with intelligent filters (Routing, Messages, Errors), live statistics, pause/resume controls, and detailed JSON inspection. Tracks MESSAGE_RECEIVED, AI_RESPONSE, CONVERSATION_ROUTED, TRANSFER_TO_HUMAN, and 10+ critical events for operational visibility.
-- **Agent Reasoning Logs** (Implemented 2024-10-12): Dedicated real-time monitoring system (`/agent-logs`) that visualizes AI assistant decision-making, routing logic, and function calls. WebSocket-based interface displays reasoning (🧠), routing decisions (🔀), function calls (🛠️), decisions (🎯), and errors (❌) with full context, allowing supervisors to understand what AI assistants are "thinking" during conversations. Integrated at 4 critical points in OpenAI processing: routing decisions, function calls, inter-assistant routing, and conversation finalization.
+- **Live Logs System** (Implemented 2024-10-12): WebSocket-powered real-time event monitoring page (`/live-logs`) displaying all system events with intelligent filters (Routing, Messages, Errors), live statistics, pause/resume controls, and detailed JSON inspection. Tracks MESSAGE_RECEIVED, AI_RESPONSE, CONVERSATION_ROUTED, TRANSFER_TO_HUMAN, and 10+ critical events for operational visibility. Uses WebSocket endpoint `/ws/webhook-logs`.
+- **Agent Reasoning Logs** (Implemented 2024-10-12): Dedicated real-time monitoring system (`/agent-logs`) that visualizes AI assistant decision-making, routing logic, and function calls. WebSocket-based interface displays reasoning (🧠), routing decisions (🔀), function calls (🛠️), decisions (🎯), and errors (❌) with full context, allowing supervisors to understand what AI assistants are "thinking" during conversations. Integrated at 4 critical points in OpenAI processing: routing decisions, function calls, inter-assistant routing, and conversation finalization. Uses WebSocket endpoint `/ws/reasoning`.
 
 **Continuous Learning System**: An autonomous GPT-4 agent suggests prompt improvements based on supervisor interventions and feedback (implicit and explicit). A hybrid training system allows supervisors to mark training segments or create sessions for prompt generation.
 
