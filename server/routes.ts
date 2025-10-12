@@ -1604,9 +1604,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // This prevents reopening when client is just responding to NPS survey
         const metadata = conversation.metadata as any || {};
         
-        // Regex mais flexível: aceita "9", "9.", "Nota 9", "nota: 8", etc.
-        // Extrai primeiro número de 0-10 encontrado (10 primeiro, depois 0-9)
-        const npsMatch = messageText.trim().match(/\b(10|[0-9])\b/);
+        // Regex RIGOROSA: aceita APENAS mensagens que são praticamente só um número
+        // Aceita: "9", "10", "nota 9", "9 estrelas", "minha nota: 8"
+        // Rejeita: "preciso de 2 vias", "aguardando 10 minutos", "cpf 12345"
+        // Verifica se a mensagem toda tem no máximo 25 chars E é um padrão de avaliação
+        const trimmed = messageText.trim();
+        const npsMatch = trimmed.length <= 25 && /^\s*(minha\s+)?(nota|avaliação)?[:\s]*([0-9]|10)([.\s!]*(estrelas?|pontos?)?)?$/i.test(trimmed)
+          ? trimmed.match(/\b(10|[0-9])\b/)
+          : null;
         
         console.log(`🔍 [NPS Debug] Conversa ${conversation.id}:`, {
           awaitingNPS: metadata.awaitingNPS,
