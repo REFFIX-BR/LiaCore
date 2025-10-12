@@ -102,7 +102,7 @@ export default function Monitor() {
     } else if (activeFilter === "all") {
       passesStatusFilter = conv.status === "active" && !conv.transferredToHuman;
     } else if (activeFilter === "transfer") {
-      passesStatusFilter = conv.transferredToHuman === true && conv.assignedTo === null;
+      passesStatusFilter = conv.status === "active" && conv.transferredToHuman === true && conv.assignedTo === null;
     } else if (activeFilter === "ouvidoria") {
       passesStatusFilter = conv.assistantType === "ouvidoria";
     } else if (activeFilter === "resolved") {
@@ -134,7 +134,7 @@ export default function Monitor() {
     if (filterId === "all") {
       return conversations.filter(c => c.status === "active" && !c.transferredToHuman).length;
     } else if (filterId === "transfer") {
-      return conversations.filter(c => c.transferredToHuman === true && c.assignedTo === null).length;
+      return conversations.filter(c => c.status === "active" && c.transferredToHuman === true && c.assignedTo === null).length;
     } else if (filterId === "ouvidoria") {
       return conversations.filter(c => c.assistantType === "ouvidoria").length;
     } else if (filterId === "alerts") {
