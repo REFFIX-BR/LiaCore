@@ -1,0 +1,61 @@
+Análise Crítica e Diagnóstico
+Primeiro, a observação mais importante:
+O prompt que você criou é excelente, mas ele NÃO é um prompt RAG. Ele é um System Prompt (ou Prompt de Sistema / Instruções Base). E essa distinção é fundamental.
+System Prompt (O que você criou): Define a personalidade, as regras de comportamento e as grades de segurança (guardrails) do assistente. É o "DNA" ou a "constituição" dele. Ele governa todas as respostas, independentemente da tarefa. As regras como "não use JSON", "transfira se o cliente pedir" e "não invente dados" são perfeitas para isso.
+Prompt RAG (O que precisamos criar/refinar): É um prompt específico para a tarefa de responder com base em contexto recuperado. Ele é usado no momento da consulta e instrui o modelo sobre como usar os trechos de texto que foram recuperados do Upstash Vector para responder à pergunta do usuário.
+Conclusão do Diagnóstico: Você já tem um System Prompt de alta qualidade. Agora, precisamos criar um prompt RAG igualmente bom e garantir que eles trabalhem juntos.
+Onde o seu "System Prompt" deve viver?
+Ele deve ser a base das instructions de cada um dos seus Assistentes na OpenAI. Por exemplo, as instruções do LIA Suporte começariam exatamente com essas regras.
+code
+Code
+# Instructions para o Assistant "LIA Suporte" na OpenAI
+
+## REGRAS ABSOLUTAS - NUNCA VIOLAR
+**1. NUNCA retorne JSON nas respostas ao cliente**
+   - Sempre responda em linguagem natural
+   - JSON é apenas para comunicação interna
+**2. SEMPRE use transferir_para_humano quando cliente pedir**
+   - Sem exceção
+   - Imediatamente
+   - Não tente convencer a continuar com IA
+... (todas as suas outras regras) ...
+
+---
+
+## Persona e Objetivos do LIA Suporte
+Você é a LIA, uma especialista em suporte técnico da TR Telecom. Seu objetivo é diagnosticar e resolver problemas de conexão de forma clara e paciente...
+Como Melhorar o Contexto com um Verdadeiro Prompt RAG
+Agora, vamos criar o prompt que será usado quando a function consultar_base_de_conhecimento for chamada e retornar um contexto. Este prompt é construído dinamicamente, em tempo de execução.
+O objetivo dele é forçar o modelo a se basear exclusivamente nos fatos recuperados, evitando alucinações e garantindo que a resposta venha da sua base de conhecimento.
+Modelo de Prompt RAG (para ser usado no LIA CORTEX)
+code
+Code
+--- CONTEXTO DA BASE DE CONHECIMENTO ---
+{contexto_recuperado_do_upstash}
+
+--- HISTÓRICO RECENTE DO CHAT ---
+{historico_da_conversa}
+
+--- PERGUNTA DO USUÁRIO ---
+{pergunta_do_usuario}
+
+--- SUA TAREFA ---
+1.  **Analise a PERGUNTA DO USUÁRIO** usando o HISTÓRICO DO CHAT para entender o que está sendo pedido.
+2.  **Formule uma resposta precisa e concisa usando APENAS as informações contidas no CONTEXTO DA BASE DE CONHECIMENTO.**
+3.  **Se a resposta para a PERGUNTA não estiver no CONTEXTO fornecido, responda de forma clara e honesta:** "Não encontrei essa informação específica na minha base de conhecimento. Posso tentar te ajudar de outra forma?"
+4.  **NUNCA** mencione a existência da "base de conhecimento" ou do "contexto" na sua resposta. Aja como se você soubesse a informação naturalmente.
+5.  Responda seguindo todas as regras absolutas e de persona definidas para você.
+Por que este prompt RAG é eficaz?
+Estrutura Clara (---): Separa inequivocamente as diferentes fontes de informação para o modelo (contexto factual, histórico da conversa e a tarefa a ser executada).
+Grounded Generation (Regra 3): A regra mais importante de um sistema RAG. Ela instrui o modelo sobre o que fazer quando a informação não está disponível. Isso combate diretamente a alucinação e aumenta a confiança no sistema.
+Foco Exclusivo no Contexto (Regra 2): A instrução "usando APENAS as informações contidas no CONTEXTO" força o modelo a priorizar os dados que você forneceu em vez de seu conhecimento de treinamento geral.
+Experiência do Usuário Fluida (Regra 4): Evita que a IA pareça um robô que está "lendo um manual". A resposta deve parecer natural, escondendo a mecânica do RAG do cliente final.
+Integração com as Regras Gerais (Regra 5): Garante que, mesmo ao executar a tarefa RAG, a IA ainda respeite o System Prompt original (mensagens curtas, uso de emojis, etc.).
+Fluxo Unificado: Como Tudo Funciona Junto
+O LIA Suporte tem o seu System Prompt configurado nas suas instructions na OpenAI.
+Um cliente pergunta: "Qual a taxa de upload do plano Fibra Gamer?"
+O assistente determina que precisa de informação e chama a function: consultar_base_de_conhecimento(query: "taxa de upload plano Fibra Gamer").
+O LIA CORTEX executa a busca no Upstash e obtém o seguinte texto: [Contexto Recuperado] "O plano Fibra Gamer oferece 1 Gbit/s de download e 500 Mbit/s de upload. É otimizado para baixa latência..."
+Agora, o LIA CORTEX monta o Prompt RAG final e o envia de volta para a OpenAI para que o assistente formule a resposta.
+O assistente recebe tanto as suas instruções permanentes (o System Prompt) quanto a tarefa específica (o Prompt RAG) e gera a resposta final, seguindo todas as regras:
+"O plano Fibra Gamer conta com uma taxa de upload de 500 Mbit/s! É ideal para streaming e jogos online. 😉"

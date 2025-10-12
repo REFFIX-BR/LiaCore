@@ -445,22 +445,31 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
         const results = await searchKnowledge(query, 3);
         
         if (results.length === 0) {
-          return JSON.stringify({
-            contexto: "Não foram encontradas informações específicas sobre este tópico na base de conhecimento.",
-            relevancia: 0,
-            fonte: "Base de Conhecimento TR Telecom",
-          });
+          return `--- CONTEXTO DA BASE DE CONHECIMENTO ---
+Não foram encontradas informações específicas sobre este tópico na base de conhecimento.
+
+--- SUA TAREFA ---
+1. Informe ao cliente de forma natural e honesta que não encontrou a informação específica.
+2. Ofereça transferir para um atendente humano que possa ajudar.
+3. NUNCA mencione "base de conhecimento" ou "contexto" - aja naturalmente.
+4. Responda seguindo todas as regras absolutas e de persona definidas para você.`;
         }
         
-        const contexto = results.map(r => r.chunk.content).join('\n\n');
-        const relevancia = results[0]?.score || 0;
+        const contextoRecuperado = results.map(r => r.chunk.content).join('\n\n');
         const fonte = results[0]?.chunk.source || "Base de Conhecimento TR Telecom";
         
-        return JSON.stringify({
-          contexto,
-          relevancia,
-          fonte,
-        });
+        // Retorna PROMPT RAG ESTRUTURADO conforme recomendação do especialista
+        return `--- CONTEXTO DA BASE DE CONHECIMENTO ---
+${contextoRecuperado}
+
+--- SUA TAREFA ---
+1. **Analise a pergunta do cliente** usando o histórico da conversa para entender o contexto completo.
+2. **Formule uma resposta precisa e concisa usando APENAS as informações contidas no CONTEXTO DA BASE DE CONHECIMENTO acima.**
+3. **Se a resposta não estiver no CONTEXTO fornecido, seja honesto:** Informe que não encontrou a informação específica e ofereça ajuda de outra forma.
+4. **NUNCA mencione** a existência da "base de conhecimento" ou do "contexto" na sua resposta. Aja como se você soubesse a informação naturalmente.
+5. **Responda seguindo todas as regras absolutas e de persona definidas para você.**
+
+Fonte: ${fonte}`;
 
       case "transferir_para_humano":
         const departamento = args.departamento || args.department || "Suporte Geral";
