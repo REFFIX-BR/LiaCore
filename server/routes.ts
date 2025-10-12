@@ -1373,7 +1373,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
             seconds: message.audioMessage.seconds
           });
           
-          messageText = `[Áudio recebido]`;
+          // Transcrever áudio automaticamente com Whisper
+          if (audioUrl) {
+            try {
+              console.log(`🎤 [Evolution] Baixando áudio para transcrição...`);
+              
+              // Baixar áudio da URL
+              const audioResponse = await fetch(audioUrl);
+              if (!audioResponse.ok) {
+                throw new Error(`Falha ao baixar áudio: ${audioResponse.status}`);
+              }
+              
+              const audioArrayBuffer = await audioResponse.arrayBuffer();
+              const audioBuffer = Buffer.from(audioArrayBuffer);
+              const audioBase64 = audioBuffer.toString('base64');
+              
+              console.log(`✅ [Evolution] Áudio baixado (${(audioBuffer.length / 1024).toFixed(2)}KB)`);
+              
+              // Transcrever com Whisper
+              const { transcribeAudio, isValidAudioSize } = await import("./lib/audio");
+              
+              if (!isValidAudioSize(audioBase64)) {
+                console.log(`⚠️ [Evolution] Áudio fora do tamanho permitido - usando apenas texto padrão`);
+                messageText = `[Áudio recebido - muito grande para transcrição]`;
+              } else {
+                const transcription = await transcribeAudio(audioBase64, message.audioMessage.mimetype || 'audio/ogg');
+                
+                if (transcription) {
+                  messageText = `[Áudio enviado]\n\n🎤 Transcrição automática:\n${transcription}`;
+                  console.log(`✅ [Evolution] Áudio transcrito: ${transcription.substring(0, 100)}...`);
+                } else {
+                  messageText = `[Áudio recebido - transcrição não disponível]`;
+                  console.log(`⚠️ [Evolution] Falha na transcrição do áudio`);
+                }
+              }
+            } catch (error) {
+              console.error(`❌ [Evolution] Erro ao processar áudio:`, error);
+              messageText = `[Áudio recebido]`;
+            }
+          } else {
+            messageText = `[Áudio recebido - URL não disponível]`;
+          }
         } else if (message?.stickerMessage) {
           // Stickers não devem gerar resposta genérica - cliente está expressando emoção
           console.log(`✨ [Evolution] Cliente enviou sticker - interpretando como interação positiva`);
