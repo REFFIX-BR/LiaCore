@@ -31,6 +31,7 @@ import ActivityLogs from "@/pages/ActivityLogs";
 import Ouvidoria from "@/pages/Ouvidoria";
 import Contacts from "@/pages/Contacts";
 import LiveLogs from "@/pages/LiveLogs";
+import AgentLogs from "@/pages/AgentLogs";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -109,6 +110,9 @@ function Router() {
       </Route>
       <Route path="/live-logs">
         {() => <ProtectedRoute component={LiveLogs} />}
+      </Route>
+      <Route path="/agent-logs">
+        {() => <ProtectedRoute component={AgentLogs} />}
       </Route>
       <Route path="/test-chat">
         {() => <ProtectedRoute component={TestChat} />}

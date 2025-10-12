@@ -44,6 +44,7 @@ The frontend is developed with React, TypeScript, Vite, `shadcn/ui` (Radix UI), 
 
 **Real-Time Monitoring**: A Supervisor Dashboard provides KPIs, live conversation queues, alerts, transcripts, and human intervention controls.
 - **Live Logs System** (Implemented 2024-10-12): WebSocket-powered real-time event monitoring page (`/live-logs`) displaying all system events with intelligent filters (Routing, Messages, Errors), live statistics, pause/resume controls, and detailed JSON inspection. Tracks MESSAGE_RECEIVED, AI_RESPONSE, CONVERSATION_ROUTED, TRANSFER_TO_HUMAN, and 10+ critical events for operational visibility.
+- **Agent Reasoning Logs** (Implemented 2024-10-12): Dedicated real-time monitoring system (`/agent-logs`) that visualizes AI assistant decision-making, routing logic, and function calls. WebSocket-based interface displays reasoning (🧠), routing decisions (🔀), function calls (🛠️), decisions (🎯), and errors (❌) with full context, allowing supervisors to understand what AI assistants are "thinking" during conversations. Integrated at 4 critical points in OpenAI processing: routing decisions, function calls, inter-assistant routing, and conversation finalization.
 
 **Continuous Learning System**: An autonomous GPT-4 agent suggests prompt improvements based on supervisor interventions and feedback (implicit and explicit). A hybrid training system allows supervisors to mark training segments or create sessions for prompt generation.
 

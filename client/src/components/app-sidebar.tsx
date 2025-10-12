@@ -113,6 +113,12 @@ const menuCategories: MenuCategory[] = [
         icon: Activity,
         roles: ["ADMIN", "SUPERVISOR"],
       },
+      {
+        title: "Logs dos Agentes IA",
+        url: "/agent-logs",
+        icon: Brain,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
     ],
   },
   {

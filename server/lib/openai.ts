@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { assistantCache } from "./redis-config";
+import { agentLogger } from "./agent-logger";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -179,6 +180,13 @@ Responda apenas com o nome do assistente (suporte, comercial, financeiro, aprese
     
     console.log(`🎯 [Routing] Message routed to ${finalType} (${assistantId})`);
     
+    // Log AI routing decision
+    agentLogger.routing('cortex', `Mensagem roteada para ${finalType.toUpperCase()}`, {
+      reasoning: `Analisou a mensagem "${message.substring(0, 100)}..." e determinou que o assistente ${finalType.toUpperCase()} é o mais adequado`,
+      toAssistant: finalType,
+      confidence: 0.85,
+    });
+    
     return {
       assistantType: finalType,
       assistantId: assistantId,
@@ -281,6 +289,21 @@ export async function sendMessageAndGetResponse(
                   transferred: true,
                   transferredTo: transferResult.departamento
                 };
+                
+                // Log AI decision to transfer to human
+                const assistantType = Object.keys(ASSISTANT_IDS).find(key => ASSISTANT_IDS[key as keyof typeof ASSISTANT_IDS] === assistantId) || 'unknown';
+                const args = JSON.parse(toolCall.function.arguments);
+                agentLogger.functionCall(
+                  assistantType, 
+                  'transferir_para_humano',
+                  `Transferindo para humano - Departamento: ${transferResult.departamento}`,
+                  {
+                    conversationId,
+                    department: transferResult.departamento,
+                    reason: args.motivo || 'Não especificado',
+                    decision: 'Cliente precisa de atendimento humano especializado'
+                  }
+                );
               }
             }
             
@@ -293,6 +316,20 @@ export async function sendMessageAndGetResponse(
                   assistantTarget: routingResult.assistente,
                   routingReason: routingResult.motivo
                 };
+                
+                // Log AI routing decision
+                const fromAssistant = Object.keys(ASSISTANT_IDS).find(key => ASSISTANT_IDS[key as keyof typeof ASSISTANT_IDS] === assistantId) || 'unknown';
+                agentLogger.routing(
+                  fromAssistant,
+                  `Roteando para assistente ${routingResult.assistente.toUpperCase()}`,
+                  {
+                    conversationId,
+                    fromAssistant,
+                    toAssistant: routingResult.assistente,
+                    routingReason: routingResult.motivo,
+                    decision: 'Conversa requer especialização de outro assistente'
+                  }
+                );
               }
             }
             
@@ -304,6 +341,18 @@ export async function sendMessageAndGetResponse(
                   resolved: true,
                   resolveReason: resolveResult.motivo
                 };
+                
+                // Log AI decision to finalize conversation
+                const assistantType = Object.keys(ASSISTANT_IDS).find(key => ASSISTANT_IDS[key as keyof typeof ASSISTANT_IDS] === assistantId) || 'unknown';
+                agentLogger.decision(
+                  assistantType,
+                  'Finalizando conversa - Problema resolvido',
+                  {
+                    conversationId,
+                    resolveReason: resolveResult.motivo,
+                    decision: 'Conversa pode ser finalizada autonomamente'
+                  }
+                );
               }
             }
             

@@ -5233,6 +5233,10 @@ A resposta deve:
 
   // Setup WebSocket for real-time webhook logs
   webhookLogger.setupWebSocket(httpServer);
+  
+  // Setup WebSocket for real-time agent reasoning logs
+  const { agentLogger } = await import("./lib/agent-logger");
+  agentLogger.setupWebSocket(httpServer);
 
   // Endpoint to get webhook logs
   app.get("/api/webhook-logs", authenticate, requireAdmin, (req, res) => {
@@ -5250,6 +5254,24 @@ A resposta deve:
   app.post("/api/webhook-logs/clear", authenticate, requireAdmin, (req, res) => {
     webhookLogger.clearLogs();
     return res.json({ success: true, message: "Logs cleared" });
+  });
+
+  // Endpoint to get agent reasoning logs
+  app.get("/api/agent-logs", authenticate, requireAdmin, (req, res) => {
+    const logs = agentLogger.getLogs();
+    return res.json({ logs });
+  });
+
+  // Endpoint to get agent logs stats
+  app.get("/api/agent-logs/stats", authenticate, requireAdmin, (req, res) => {
+    const stats = agentLogger.getStats();
+    return res.json(stats);
+  });
+
+  // Endpoint to clear agent logs
+  app.post("/api/agent-logs/clear", authenticate, requireAdmin, (req, res) => {
+    agentLogger.clearLogs();
+    return res.json({ success: true, message: "Agent logs cleared" });
   });
 
   // ============================================================================
