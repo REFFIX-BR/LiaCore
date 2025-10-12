@@ -102,6 +102,16 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 - **Automated Testing**: Comprehensive test suite validates all optimizations with measurable metrics (server/test-redis-optimization.ts).
 - **Economic Impact**: Reduces estimated 10,000 daily Redis requests to ~3,000 (-70%), with proportional cost savings for scaling applications.
 
+**Contact Management System** (Implemented 2024-10-12): Centralized client database for conversation history and proactive service:
+- **Automatic Tracking**: Contacts auto-created/updated on every conversation creation and reopen event with phoneNumber (unique), name, document (CPF/CNPJ), lastConversationId, totalConversations, hasRecurringIssues, status (active/inactive).
+- **API Endpoints**: 
+  - `GET /api/contacts` - List all contacts with search (name/phone/document) and filters (status, recurring issues)
+  - `GET /api/contacts/:id` - Contact details with full conversation history
+  - `POST /api/contacts/reopen` - Reopen conversation (sends WhatsApp message via Evolution API, creates/reactivates conversation)
+- **Frontend Page**: `/contacts` with search, filters, detailed view, and conversation history accessible to ADMIN, SUPERVISOR, and AGENT roles
+- **Monitor Integration**: Conversation visibility extended to 12 hours for finalized conversations, with Contacts serving as permanent client record
+- **Benefits**: Enables reopening conversations after 12h, maintains complete client history, identifies recurring issues, supports proactive service
+
 ## External Dependencies
 
 **Third-Party Services**:

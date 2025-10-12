@@ -53,6 +53,19 @@ export default function Contacts() {
   const { data: contacts = [], isLoading } = useQuery<Contact[]>({
     queryKey: ["/api/contacts", { search, status: statusFilter === "all" ? undefined : statusFilter }],
     refetchInterval: 10000,
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (search) params.append("search", search);
+      if (statusFilter !== "all") params.append("status", statusFilter);
+      
+      const url = `/api/contacts${params.toString() ? `?${params.toString()}` : ""}`;
+      const response = await fetch(url, { credentials: "include" });
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch contacts");
+      }
+      return response.json();
+    },
   });
 
   // Query selected contact details
