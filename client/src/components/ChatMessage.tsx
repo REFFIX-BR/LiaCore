@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { Check, CheckCheck, FileText, Download } from "lucide-react";
+import { AudioPlayer } from "@/components/AudioPlayer";
 
 export interface Message {
   id: string;
@@ -16,6 +17,7 @@ export interface Message {
   imageBase64?: string | null;
   pdfBase64?: string | null;
   pdfName?: string | null;
+  audioUrl?: string | null;
 }
 
 interface ChatMessageProps {
@@ -189,6 +191,13 @@ export function ChatMessage({ message }: ChatMessageProps) {
               <span>{message.pdfName}</span>
               <Download className="h-4 w-4" />
             </Button>
+          )}
+
+          {/* Áudio do WhatsApp - player de áudio */}
+          {message.audioUrl && (
+            <div className="mb-2">
+              <AudioPlayer audioUrl={message.audioUrl} />
+            </div>
           )}
 
           {/* Conteúdo da mensagem */}

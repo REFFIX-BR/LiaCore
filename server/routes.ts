@@ -1289,6 +1289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let imageBase64: string | undefined = undefined;
         let pdfBase64: string | undefined = undefined;
         let pdfName: string | undefined = undefined;
+        let audioUrl: string | undefined = undefined;
         
         if (message?.conversation) {
           messageText = message.conversation;
@@ -1362,6 +1363,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? `[Vídeo] ${message.videoMessage.caption}` 
             : `[Vídeo recebido]`;
         } else if (message?.audioMessage) {
+          // Extract mediaUrl if available (S3/MinIO)
+          audioUrl = data?.message?.mediaUrl;
+          
+          console.log(`🎙️ [Evolution] Áudio detectado:`, {
+            hasMediaUrl: !!audioUrl,
+            mediaUrl: audioUrl?.substring(0, 100) || 'não disponível',
+            mimetype: message.audioMessage.mimetype,
+            seconds: message.audioMessage.seconds
+          });
+          
           messageText = `[Áudio recebido]`;
         } else if (message?.stickerMessage) {
           // Stickers não devem gerar resposta genérica - cliente está expressando emoção
@@ -1673,6 +1684,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           hasPdf: !!pdfBase64,
           pdfLength: pdfBase64?.length || 0,
           pdfName: pdfName || 'nenhum',
+          hasAudio: !!audioUrl,
+          audioUrl: audioUrl?.substring(0, 100) || 'nenhum',
           messagePreview: messageText.substring(0, 100)
         });
         
@@ -1684,6 +1697,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           imageBase64: imageBase64,
           pdfBase64: pdfBase64,
           pdfName: pdfName,
+          audioUrl: audioUrl,
         });
 
         // If conversation is transferred to human, don't auto-respond
