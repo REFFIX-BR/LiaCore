@@ -32,7 +32,9 @@ import {
   type UpdateComplaint,
   type TrainingSession,
   type InsertTrainingSession,
-  type UpdateTrainingSession
+  type UpdateTrainingSession,
+  type RagAnalytics,
+  type InsertRagAnalytics
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -209,6 +211,17 @@ export interface IStorage {
   updateTrainingSession(id: string, updates: UpdateTrainingSession): Promise<TrainingSession | undefined>;
   completeTrainingSession(id: string, completedBy: string): Promise<TrainingSession | undefined>;
   applyTrainingSession(id: string, appliedBy: string, improvedPrompt: string): Promise<TrainingSession | undefined>;
+
+  // RAG Analytics
+  createRagAnalytics(analytics: InsertRagAnalytics): Promise<RagAnalytics>;
+  getRagAnalyticsByConversation(conversationId: string): Promise<RagAnalytics[]>;
+  getRagAnalyticsByDateRange(startDate: Date, endDate: Date): Promise<RagAnalytics[]>;
+  getRagAnalyticsSummary(startDate: Date, endDate: Date): Promise<{
+    totalQueries: number;
+    successRate: number;
+    byAssistant: { assistantType: string; count: number; successRate: number }[];
+    topQueries: { query: string; count: number }[];
+  }>;
 }
 
 export class MemStorage implements IStorage {
@@ -1026,6 +1039,36 @@ export class MemStorage implements IStorage {
     
     this.trainingSessions.set(id, updated);
     return updated;
+  }
+
+  // RAG Analytics (stub implementation - not used in MemStorage)
+  async createRagAnalytics(analytics: InsertRagAnalytics): Promise<RagAnalytics> {
+    const id = randomUUID();
+    const ragAnalytic: RagAnalytics = {
+      id,
+      ...analytics,
+      sources: analytics.sources || [],
+      executionTime: analytics.executionTime || null,
+      createdAt: new Date(),
+    };
+    return ragAnalytic;
+  }
+
+  async getRagAnalyticsByConversation(conversationId: string): Promise<RagAnalytics[]> {
+    return [];
+  }
+
+  async getRagAnalyticsByDateRange(startDate: Date, endDate: Date): Promise<RagAnalytics[]> {
+    return [];
+  }
+
+  async getRagAnalyticsSummary(startDate: Date, endDate: Date) {
+    return {
+      totalQueries: 0,
+      successRate: 0,
+      byAssistant: [],
+      topQueries: []
+    };
   }
 }
 
@@ -2166,6 +2209,75 @@ export class DbStorage implements IStorage {
       .where(eq(trainingSessions.id, id))
       .returning();
     return updated;
+  }
+
+  // RAG Analytics
+  async createRagAnalytics(insertAnalytics: InsertRagAnalytics): Promise<RagAnalytics> {
+    const [analytics] = await db.insert(schema.ragAnalytics)
+      .values(insertAnalytics)
+      .returning();
+    return analytics;
+  }
+
+  async getRagAnalyticsByConversation(conversationId: string): Promise<RagAnalytics[]> {
+    return await db.select()
+      .from(schema.ragAnalytics)
+      .where(eq(schema.ragAnalytics.conversationId, conversationId))
+      .orderBy(desc(schema.ragAnalytics.createdAt));
+  }
+
+  async getRagAnalyticsByDateRange(startDate: Date, endDate: Date): Promise<RagAnalytics[]> {
+    return await db.select()
+      .from(schema.ragAnalytics)
+      .where(
+        and(
+          gte(schema.ragAnalytics.createdAt, startDate),
+          lte(schema.ragAnalytics.createdAt, endDate)
+        )
+      )
+      .orderBy(desc(schema.ragAnalytics.createdAt));
+  }
+
+  async getRagAnalyticsSummary(startDate: Date, endDate: Date) {
+    const analytics = await this.getRagAnalyticsByDateRange(startDate, endDate);
+    
+    const totalQueries = analytics.length;
+    const successfulQueries = analytics.filter(a => a.resultsFound).length;
+    const successRate = totalQueries > 0 ? (successfulQueries / totalQueries) * 100 : 0;
+
+    // Group by assistant
+    const byAssistantMap = new Map<string, { count: number; successful: number }>();
+    analytics.forEach(a => {
+      const existing = byAssistantMap.get(a.assistantType) || { count: 0, successful: 0 };
+      byAssistantMap.set(a.assistantType, {
+        count: existing.count + 1,
+        successful: existing.successful + (a.resultsFound ? 1 : 0)
+      });
+    });
+
+    const byAssistant = Array.from(byAssistantMap.entries()).map(([assistantType, data]) => ({
+      assistantType,
+      count: data.count,
+      successRate: (data.successful / data.count) * 100
+    }));
+
+    // Top queries
+    const queryCountMap = new Map<string, number>();
+    analytics.forEach(a => {
+      queryCountMap.set(a.query, (queryCountMap.get(a.query) || 0) + 1);
+    });
+
+    const topQueries = Array.from(queryCountMap.entries())
+      .map(([query, count]) => ({ query, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    return {
+      totalQueries,
+      successRate,
+      byAssistant,
+      topQueries
+    };
   }
 
   private getWeekNumber(date: Date): number {

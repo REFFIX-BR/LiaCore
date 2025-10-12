@@ -141,12 +141,23 @@ if (redisConnection) {
       const conversation = await storage.getConversation(conversationId);
       
       if (!conversation) {
-        prodLogger.error('worker', 'Conversation not found', new Error(`Conversation not found: ${conversationId}`), {
+        // Fail gracefully: conversa pode ter sido deletada/arquivada enquanto job estava na fila
+        prodLogger.warn('worker', 'Conversation deleted before processing', {
           conversationId,
           fromNumber,
           jobId: job.id,
+          action: 'skipping_job'
         });
-        throw new Error(`Conversation not found: ${conversationId}`);
+        
+        // Marcar idempotência mesmo assim para evitar reprocessamento
+        await markJobProcessed(idempotencyKey!);
+        
+        // Retornar sucesso (não é erro, conversa foi removida intencionalmente)
+        return { 
+          status: 'skipped', 
+          reason: 'conversation_deleted',
+          conversationId 
+        };
       }
       
       prodLogger.info('worker', 'Processing message', {

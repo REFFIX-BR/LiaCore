@@ -2885,6 +2885,119 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
     }
   });
 
+  // ==================== RAG ANALYTICS ROUTES ====================
+
+  // Get RAG analytics summary with date range
+  app.get("/api/rag-analytics/summary", authenticate, requireAdmin, async (req, res) => {
+    try {
+      // Validate date parameters
+      const startParam = req.query.start as string | undefined;
+      const endParam = req.query.end as string | undefined;
+      
+      let startDate: Date;
+      let endDate: Date;
+      
+      if (startParam) {
+        startDate = new Date(startParam);
+        if (isNaN(startDate.getTime())) {
+          return res.status(400).json({ error: "Invalid start date format" });
+        }
+      } else {
+        startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // Default: last 7 days
+      }
+      
+      if (endParam) {
+        endDate = new Date(endParam);
+        if (isNaN(endDate.getTime())) {
+          return res.status(400).json({ error: "Invalid end date format" });
+        }
+      } else {
+        endDate = new Date();
+      }
+      
+      // Validate date range
+      if (startDate > endDate) {
+        return res.status(400).json({ error: "Start date must be before end date" });
+      }
+      
+      const summary = await storage.getRagAnalyticsSummary(startDate, endDate);
+      return res.json(summary);
+    } catch (error) {
+      console.error("Get RAG analytics summary error:", error);
+      return res.status(500).json({ error: "Failed to retrieve RAG analytics summary" });
+    }
+  });
+
+  // Get RAG analytics by conversation (requires admin or ownership)
+  app.get("/api/rag-analytics/conversation/:id", authenticate, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid conversation ID" });
+      }
+      
+      // Verify user has access to this conversation
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      
+      // Only ADMIN or assigned agent can view analytics
+      const user = req.user!;
+      if (user.role !== 'ADMIN' && conversation.assignedTo !== user.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const analytics = await storage.getRagAnalyticsByConversation(id);
+      return res.json(analytics);
+    } catch (error) {
+      console.error("Get RAG analytics by conversation error:", error);
+      return res.status(500).json({ error: "Failed to retrieve RAG analytics" });
+    }
+  });
+
+  // Get all RAG analytics with date range filter (ADMIN only)
+  app.get("/api/rag-analytics", authenticate, requireAdmin, async (req, res) => {
+    try {
+      // Validate date parameters
+      const startParam = req.query.start as string | undefined;
+      const endParam = req.query.end as string | undefined;
+      
+      let startDate: Date;
+      let endDate: Date;
+      
+      if (startParam) {
+        startDate = new Date(startParam);
+        if (isNaN(startDate.getTime())) {
+          return res.status(400).json({ error: "Invalid start date format" });
+        }
+      } else {
+        startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Default: last 30 days
+      }
+      
+      if (endParam) {
+        endDate = new Date(endParam);
+        if (isNaN(endParam.getTime())) {
+          return res.status(400).json({ error: "Invalid end date format" });
+        }
+      } else {
+        endDate = new Date();
+      }
+      
+      // Validate date range
+      if (startDate > endDate) {
+        return res.status(400).json({ error: "Start date must be before end date" });
+      }
+      
+      const analytics = await storage.getRagAnalyticsByDateRange(startDate, endDate);
+      return res.json(analytics);
+    } catch (error) {
+      console.error("Get RAG analytics error:", error);
+      return res.status(500).json({ error: "Failed to retrieve RAG analytics" });
+    }
+  });
+
   // ==================== LEARNING SYSTEM ROUTES ====================
 
   // Create learning event

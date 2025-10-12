@@ -433,3 +433,28 @@ export type UpdateComplaint = z.infer<typeof updateComplaintSchema>;
 export type TrainingSession = typeof trainingSessions.$inferSelect;
 export type InsertTrainingSession = z.infer<typeof insertTrainingSessionSchema>;
 export type UpdateTrainingSession = z.infer<typeof updateTrainingSessionSchema>;
+
+// RAG Analytics Table
+export const ragAnalytics = pgTable("rag_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull(),
+  assistantType: text("assistant_type").notNull(), // Qual assistant usou RAG
+  query: text("query").notNull(), // Query enviada para busca
+  resultsCount: integer("results_count").notNull(), // Quantos chunks foram retornados
+  resultsFound: boolean("results_found").notNull(), // Se encontrou resultados ou não
+  sources: jsonb("sources"), // Array de sources dos chunks retornados
+  executionTime: integer("execution_time"), // Tempo de execução em ms (opcional)
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  conversationIdIdx: index("rag_analytics_conversation_id_idx").on(table.conversationId),
+  assistantTypeIdx: index("rag_analytics_assistant_type_idx").on(table.assistantType),
+  createdAtIdx: index("rag_analytics_created_at_idx").on(table.createdAt),
+}));
+
+export const insertRagAnalyticsSchema = createInsertSchema(ragAnalytics).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type RagAnalytics = typeof ragAnalytics.$inferSelect;
+export type InsertRagAnalytics = z.infer<typeof insertRagAnalyticsSchema>;

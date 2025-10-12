@@ -441,8 +441,33 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
 
       case "consultar_base_de_conhecimento":
         const query = args.query || "";
+        const startTime = Date.now();
         const { searchKnowledge } = await import("./upstash");
         const results = await searchKnowledge(query, 3);
+        const executionTime = Date.now() - startTime;
+        
+        // Track RAG usage for analytics
+        if (conversationId) {
+          try {
+            const { storage } = await import("../storage");
+            const conversation = await storage.getConversation(conversationId);
+            
+            if (conversation) {
+              await storage.createRagAnalytics({
+                conversationId,
+                assistantType: conversation.assistantType,
+                query,
+                resultsCount: results.length,
+                resultsFound: results.length > 0,
+                sources: results.map(r => r.chunk.source),
+                executionTime
+              });
+            }
+          } catch (error) {
+            console.error('❌ [RAG Analytics] Failed to track:', error);
+            // Continue even if tracking fails
+          }
+        }
         
         if (results.length === 0) {
           return `--- CONTEXTO DA BASE DE CONHECIMENTO ---
