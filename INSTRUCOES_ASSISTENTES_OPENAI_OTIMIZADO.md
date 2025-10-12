@@ -14,6 +14,115 @@ Acesse https://platform.openai.com/assistants e **SUBSTITUA** as instruções de
 
 ---
 
+## 🛠️ LISTA COMPLETA DE FERRAMENTAS DISPONÍVEIS
+
+Esta seção documenta TODAS as ferramentas (functions) disponíveis no sistema LIA CORTEX.
+
+### 📊 Diagnóstico e Consultas
+
+**1. verificar_conexao** (alias: consultar_pppoe_status)
+- **Parâmetros**: `{ cpf: string }`
+- **Retorna**: Status de conexão PPPoE, ONT, bloqueios, ocorrências
+- **Quando usar**: Diagnosticar problemas de conexão, verificar status técnico
+- **Disponível em**: Suporte Técnico, Cancelamento
+
+**2. consultar_base_de_conhecimento**
+- **Parâmetros**: `{ query: string }`
+- **Retorna**: Contexto estruturado + instruções de tarefa (RAG Prompt)
+- **Quando usar**: Procedimentos, regras, tutoriais "como fazer", interpretações técnicas
+- **Disponível em**: TODOS os 6 assistants
+- **⚠️ IMPORTANTE**: Retorna prompt estruturado, NÃO JSON bruto
+
+**3. consultar_fatura** (alias: consulta_boleto_cliente)
+- **Parâmetros**: `{ cpf: string }`
+- **Retorna**: Lista de faturas (pendentes e pagas) com datas, valores, links
+- **Quando usar**: Cliente solicitar boleto, segunda via, consulta de débitos
+- **Disponível em**: Financeiro
+
+**4. consultar_planos**
+- **Parâmetros**: Nenhum
+- **Retorna**: Lista de planos disponíveis com velocidades e valores
+- **Quando usar**: Cliente perguntar sobre planos, valores, upgrade
+- **Disponível em**: Comercial
+
+### 🔄 Gestão de Atendimento
+
+**5. transferir_para_humano**
+- **Parâmetros**: `{ departamento?: string, motivo: string }`
+- **Retorna**: Confirmação de transferência
+- **Quando usar**: 
+  - Cliente solicitar explicitamente
+  - Procedimentos avançados
+  - Cliente recusar fornecer dados
+  - Alterações de configuração
+- **Disponível em**: TODOS os assistants
+- **⚠️ OBRIGATÓRIO**: Sempre que cliente pedir "falar com humano/atendente"
+
+**6. rotear_para_assistente**
+- **Parâmetros**: `{ assistantType: string, motivo: string }`
+- **Retorna**: Confirmação de roteamento
+- **Quando usar**: Recepcionista rotear para especialista (Suporte, Comercial, etc.)
+- **Disponível em**: Apresentação (Recepcionista)
+
+**7. finalizar_conversa**
+- **Parâmetros**: `{ motivo: string }`
+- **Retorna**: Confirmação + envia NPS Survey automático
+- **Quando usar**: 
+  - Problema COMPLETAMENTE resolvido
+  - Cliente confirmar satisfação
+- **Disponível em**: Suporte, Comercial, Financeiro
+- **⚠️ NUNCA usar em**: Cancelamento, Ouvidoria, Apresentação (sempre transferem)
+
+### 🎯 Ações Específicas
+
+**8. registrar_reclamacao_ouvidoria**
+- **Parâmetros**: `{ cpf: string, tipo: string, descricao: string }`
+- **Retorna**: Número de protocolo da reclamação
+- **Quando usar**: Registrar reclamação, elogio ou sugestão
+- **Disponível em**: Ouvidoria
+- **⚠️ SEGURANÇA**: Valida CPF antes de registrar
+
+**9. agendar_visita**
+- **Parâmetros**: `{ cpf: string, motivo: string, urgencia?: string }`
+- **Retorna**: Confirmação de agendamento
+- **Quando usar**: Necessário visita técnica presencial
+- **Disponível em**: Suporte Técnico, Cancelamento
+
+**10. priorizar_atendimento_tecnico**
+- **Parâmetros**: `{ cpf: string, motivo: string, historico_problemas: string }`
+- **Retorna**: Confirmação de priorização + agendamento urgente
+- **Quando usar**: 
+  - Problemas RECORRENTES (2+ em 30 dias)
+  - Cliente com histórico de falhas
+- **Disponível em**: Suporte Técnico
+- **⚠️ POLÍTICA**: NUNCA oferecer compensação financeira, APENAS suporte prioritário
+
+**11. resumo_equipamentos**
+- **Parâmetros**: `{ luzes_informadas: string }`
+- **Retorna**: Interpretação de status de LEDs e diagnóstico
+- **Quando usar**: Cliente descrever luzes do modem/roteador
+- **Disponível em**: Suporte Técnico
+
+---
+
+### 📝 Matriz de Ferramentas por Assistant
+
+| Ferramenta | Suporte | Comercial | Financeiro | Cancelamento | Ouvidoria | Apresentação |
+|-----------|---------|-----------|------------|--------------|-----------|--------------|
+| **verificar_conexao** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **consultar_base_de_conhecimento** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **consultar_fatura** | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| **consultar_planos** | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **transferir_para_humano** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **rotear_para_assistente** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **finalizar_conversa** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **registrar_reclamacao_ouvidoria** | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| **agendar_visita** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **priorizar_atendimento_tecnico** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **resumo_equipamentos** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+---
+
 ## 1. ASSISTENTE DE SUPORTE TÉCNICO (SUPORTE_ASSISTANT_ID)
 
 **Nome:** Lia - Assistente Virtual TR Telecom  
