@@ -78,7 +78,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   const { data: conversationData } = useQuery<{ messages: Message[]; hasMore: boolean }>({
     queryKey: ["/api/monitor/conversations", conversation.id],
     enabled: !!conversation.id,
-    refetchInterval: 3000,
+    refetchInterval: 1000, // Atualiza a cada 1 segundo para resposta mais rápida
   });
 
   // Resetar mensagens quando conversa muda
