@@ -1,7 +1,7 @@
 # LIA CORTEX - AI Orchestration Platform
 
 ## Overview
-LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Telecom's customer service, acting as an intelligent router and coordinator for specialized AI assistants. Utilizing OpenAI's Assistants API and a RAG knowledge base, it automates Q&A and executes actions like boleto consultation and PPPoE diagnosis. The platform features a real-time supervisor monitoring dashboard for human intervention and an autonomous continuous learning system that evolves AI assistant prompts based on feedback, aiming to significantly enhance customer service efficiency and satisfaction.
+LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed for TR Telecom's customer service. It functions as an intelligent router and coordinator for specialized AI assistants, leveraging OpenAI's Assistants API and a RAG knowledge base. The platform automates Q&A, executes actions like boleto consultation and PPPoE diagnosis, and features a real-time supervisor monitoring dashboard for human intervention. It also includes an autonomous continuous learning system that evolves AI assistant prompts based on feedback, aiming to significantly enhance customer service efficiency and satisfaction.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -9,114 +9,45 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### UI/UX Decisions
-The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailwind CSS, inspired by Carbon Design System and Linear for data-dense enterprise interfaces, supporting dark/light modes. Client-side routing is managed by Wouter.
+The frontend is developed with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailwind CSS. Its design is influenced by Carbon Design System and Linear, optimizing for data-dense enterprise interfaces, and it supports both dark and light modes. Client-side routing is handled by Wouter.
 
 ### Technical Implementations
-**Frontend**: Uses TanStack Query for server state and includes key pages like Dashboard, Monitor, Test Chat, Conversations, Knowledge, Assistants, Agent Evolution, Metrics, Feedbacks NPS, and Settings.
+**Frontend**: Uses TanStack Query for server state management and includes pages such as Dashboard, Monitor, Test Chat, Conversations, Knowledge, Assistants, Agent Evolution, Metrics, Feedbacks NPS, and Settings.
 
-**Backend**: Node.js with Express.js (TypeScript). Core technologies include GPT-5 for intelligent routing, OpenAI Assistants API, Upstash Vector for RAG, Upstash Redis for conversation threads, and PostgreSQL via Drizzle ORM for data persistence. Session management uses OpenAI thread-based conversations stored in Redis.
+**Backend**: Built with Node.js and Express.js (TypeScript). It utilizes GPT-5 for intelligent routing, OpenAI Assistants API, Upstash Vector for RAG, Upstash Redis for conversation threads, and PostgreSQL via Drizzle ORM for data persistence. Session management is based on OpenAI thread-based conversations stored in Redis.
 
-**Queue System**: Utilizes BullMQ with Redis TLS for asynchronous message processing across five active queues (message-processing, ai-response, image-analysis, nps-survey, learning-tasks) with automatic retry mechanisms and webhook fallback for zero message loss, supporting 1,000-1,500 conversations/day.
+**Queue System**: Employs BullMQ with Redis TLS for asynchronous message processing across five queues (message-processing, ai-response, image-analysis, nps-survey, learning-tasks). It includes automatic retry mechanisms and webhook fallback to ensure zero message loss, supporting high conversation volumes.
 
 **AI & Knowledge Management**:
 - **AI Provider**: OpenAI Assistants API.
 - **Specialized Assistants**: Six roles (Support, Sales, Finance, Cancellation, Ombudsman, Presentation) with a "Receptionist-First" routing model.
-- **Conversation Finalization Logic**: Proper closure system ensuring NPS surveys are sent correctly. SUPPORT/FINANCIAL/COMERCIAL can autonomously finalize when problem is resolved; CANCELAMENTO/OUVIDORIA/APRESENTAÇÃO always transfer to humans (never finalize). Based on kb-geral-002 knowledge base rules.
-- **Conversation Summarization**: Asynchronous summarization.
-- **RAG Architecture** (Updated 2024-10-12): Dual-layer prompt system separating System Prompts from RAG Prompts:
-  - **System Prompts**: Absolute behavioral rules embedded in OpenAI Assistant instructions (never return JSON, always transfer on request, short messages, no data invention, etc.) - permanent across all conversations.
-  - **RAG Prompts**: Structured context-specific prompts returned by `consultar_base_de_conhecimento` function with clear sections (CONTEXT, TASK) forcing grounded generation and preventing hallucinations. AI never mentions "base de conhecimento" to users.
-  - **Knowledge Base**: Upstash Vector for semantic search with top-3 retrieval.
-  - **Expert Analysis & Improvements**: External specialist confirmed dual-layer architecture implements 70% of best practices. Identified refinement opportunities documented in `ANALISE_ESPECIALISTA_RAG.md`.
-  - **Phase 1 Improvements (Implemented)**: 
-    - ✅ **RAG Usage Guide**: All 6 assistants now include explicit "Quando Usar RAG" section with 4 specific scenarios, examples, and anti-patterns
-    - ✅ **Complete Tool Catalog**: Comprehensive documentation of all 11 available functions with parameters, returns, usage guidance, security warnings, and assistant availability matrix
-    - ✅ **Quality Validation**: E2E tests confirm natural language responses, correct RAG triggering, policy compliance, and no JSON/RAG leakage
-    - ✅ **Expected Impact**: +40% RAG usage accuracy, +20% developer productivity
-  - **RAG Analytics System (Implemented 2024-10-12)**: Production monitoring and optimization framework:
-    - **Automatic Tracking**: Every `consultar_base_de_conhecimento` call tracked with query, results count, execution time, assistant type
-    - **Secure API Endpoints**: 
-      - `GET /api/rag-analytics/summary` - Aggregated metrics with date range (ADMIN only)
-      - `GET /api/rag-analytics/conversation/:id` - Per-conversation analytics (ADMIN or assigned agent)
-      - `GET /api/rag-analytics` - Complete analytics list with filters (ADMIN only)
-    - **Validation & Security**: Robust date validation, authorization checks (ADMIN + ownership), error handling, fail-safe tracking
-    - **Database**: `rag_analytics` table with indexes on conversationId, assistantType, createdAt for efficient querying
-    - **Insights Enabled**: Success rate by assistant, top queries, performance metrics, data-driven optimization decisions
-  - **Backend Stability Improvements (2024-10-12)**:
-    - **Vite HMR Warning Resolution**: Documented as benign WebSocket connection attempt (ANALISE_WARNINGS_BACKEND.md)
-    - **Worker Race Condition Fix**: Graceful failure handling for deleted conversations, prevents unnecessary retries, maintains idempotency
+- **Conversation Finalization Logic**: A robust system ensures proper conversation closure and correct NPS survey delivery, with specific rules for assistant roles regarding autonomous finalization or mandatory human transfer.
+- **Conversation Summarization**: Asynchronous summarization of conversations.
+- **RAG Architecture**: Features a dual-layer prompt system separating System Prompts (absolute behavioral rules embedded in OpenAI Assistant instructions) from RAG Prompts (structured context-specific prompts for grounded generation). Utilizes Upstash Vector for semantic search.
 - **Function Calling**: Custom functions for verification, knowledge queries, invoice lookups, and scheduling, with secure internal-only tool execution.
 - **Automated Document Detection**: Regex-based CPF/CNPJ detection and mandatory verification before sensitive operations.
-- **Automated Systems**: "Boleto Consultation", "PPPoE Connection Status", and "Unlock/Unblock" systems with integrated security.
+- **Automated Systems**: Includes "Boleto Consultation", "PPPoE Connection Status", and "Unlock/Unblock" systems with integrated security.
 - **Vision System**: GPT-4o Vision for automatic WhatsApp image analysis (boletos, documents, screenshots, technical photos), with a dual download strategy and graceful fallback.
-- **Supervisor/Agent Media Upload**: Allows supervisors/agents to upload images (analyzed by GPT-4o Vision) and audio files (transcribed by OpenAI Whisper) within the Conversations panel.
-- **Test Chat Media Upload**: Provides a testing interface for image and audio processing features.
-- **Audio Playback System** (Implemented 2024-10-12): Native audio player for supervisor monitoring:
-  - **Database**: `audioUrl` field in messages table stores Evolution API media URLs
-  - **Webhook Integration**: Automatically captures mediaUrl from WhatsApp audio messages
-  - **Frontend Player**: HTML5 audio player with native controls supporting multiple formats (OGG, MPEG, WAV)
-  - **Monitor Integration**: AudioPlayer component rendered in ChatMessage for seamless playback
-  - **Benefits**: Supervisors can listen to original client voice messages in Monitor panel, maintaining full context beyond text transcriptions
+- **Audio Processing System**: Handles WhatsApp audio messages with automatic transcription via OpenAI Whisper API and provides supervisor playback within the UI.
+- **Conversation Intelligence System**: Provides real-time analysis of customer messages including sentiment analysis, 4-level urgency classification, technical problem detection, recurrence detection (tracking by CPF/CNPJ), and automatic persistence of CPF/CNPJ. It also includes an AI function for prioritizing technical support.
 
-**Real-Time Monitoring**: Supervisor Dashboard offers KPIs, live conversation queues, alerts, transcripts, and human intervention controls. The Monitor page displays concurrent conversations.
+**Real-Time Monitoring**: A Supervisor Dashboard provides KPIs, live conversation queues, alerts, transcripts, and human intervention controls.
 
-**Continuous Learning System**:
-- **Autonomous Learning**: GPT-4 agent suggests prompt improvements based on supervisor interventions and feedback.
-- **Feedback**: Incorporates implicit (resolutions) and explicit (supervisor corrections, NPS) feedback.
-- **Hybrid Training System**: Supervisors can mark training segments or manually create training sessions. GPT-5 processes this content to generate improved prompts, which ADMIN/SUPERVISOR roles can apply to update assistants via the OpenAI API.
+**Continuous Learning System**: An autonomous GPT-4 agent suggests prompt improvements based on supervisor interventions and feedback (implicit and explicit). A hybrid training system allows supervisors to mark training segments or create sessions for prompt generation.
 
-**NPS & Customer Satisfaction**: Automated NPS surveys post-conversation via WhatsApp, with feedback processed for learning.
+**NPS & Customer Satisfaction**: Automated NPS surveys via WhatsApp post-conversation, with feedback integrated into the learning system.
 
 **Hybrid Supervised Mode**: Manages "Transferred" and "Assigned" conversations with real-time counters and AI-assisted agent responses.
 
 **WhatsApp Integration**: Native integration with Evolution API for real-time message processing, AI routing, and outbound messaging.
 
-**Role-Based Access Control (RBAC)**: A 3-tier system (ADMIN, SUPERVISOR, AGENT) with granular permissions, role-based navigation, and ADMIN interface for user management.
+**Role-Based Access Control (RBAC)**: A 3-tier system (ADMIN, SUPERVISOR, AGENT) with granular permissions, role-based navigation, and an ADMIN interface for user management.
 
-**Personalized Dashboards**: Role-specific dashboards (Admin, Supervisor, Agent) provide relevant KPIs and data, with the Admin Dashboard featuring system health, cost analysis, and activity logs.
+**Personalized Dashboards**: Role-specific dashboards offer relevant KPIs and data, with the Admin Dashboard providing system health, cost analysis, and activity logs.
 
-**Agent Reports System**: Provides historical analysis of agent performance with metrics and filtering.
+**Contact Management System**: Centralized client database for tracking conversation history, and enabling proactive service by creating/updating contacts, reopening conversations, and providing a frontend page for search and detailed views.
 
-**Activity Logs System**: Comprehensive session tracking for auditing and user status validation.
-
-**Conversation Assignment System**: Supports self-assignment by agents and manual assignment by supervisors/admins, including automated welcome messages.
-
-**Conversation Transfer System**: Allows ADMIN/SUPERVISOR to transfer any conversation and AGENTs to transfer their assigned conversations, updating `assignedTo` and notifying the client via WhatsApp.
-
-**Configurable Message Templates System**: Admin-managed templates for automated communications with dynamic variable substitution.
-
-**Message Pagination & Auto-Scroll System**: Optimized loading of conversation messages with cursor-based pagination, smart auto-scroll, and state preservation.
-
-**Ouvidoria (Ombudsman) System**: Dedicated sections for filtering and managing customer complaints, with AI tool `registrar_reclamacao_ouvidoria` for automatic record creation and role-based security.
-
-**Conversation Intelligence System**: Advanced real-time analysis of customer messages with automated context persistence and problem detection:
-- **Sentiment Analysis**: Detects customer satisfaction (positive/neutral/negative) using keyword patterns including frustration indicators (sacanagem, absurdo, demora, segunda vez).
-- **4-Level Urgency Classification**: Automatically classifies urgency as critical, high, medium, or low based on contextual keywords (urgente, importante, quando possível, etc).
-- **Technical Problem Detection**: Identifies and categorizes technical issues (internet outages, connection problems, equipment failures) for appropriate routing.
-- **Recurrence Detection**: Tracks problem history by CPF/CNPJ, auto-detects recurring issues (2+ occurrences in 30 days), and escalates to priority technical support.
-- **CPF/CNPJ Auto-Persistence**: Automatically detects and stores customer documents in both `conversation.clientDocument` and `metadata.clientDocument` to prevent context loss across conversation resumptions.
-- **Intelligent Metadata Updates**: Conversation metadata persistently updated with sentiment, urgency, detected problems, and recurrence status for supervisor visibility and analytics.
-- **Priority Technical Support Function**: New AI function call `priorizar_atendimento_tecnico` schedules urgent technician visits for recurring issues WITHOUT offering financial compensation (policy-compliant).
-- **Multi-Modal Intelligence**: Intelligence analysis applies to text, image transcriptions (Vision API), and audio transcriptions (Whisper) across both Evolution webhook and Test Chat flows.
-
-**Redis Optimization System**: Cost reduction framework achieving 60-80% fewer Redis requests through intelligent caching and batching:
-- **Local Cache Layer**: In-memory cache with configurable per-entry TTL (5min-1h), eliminating redundant Redis calls for frequently accessed data (assistants, static config).
-- **Pipeline Operations**: Batch multiple Redis commands (thread + metadata saves) into single requests, reducing latency and costs.
-- **Multi-Get Optimization**: Fetch multiple conversation threads in one operation instead of N individual requests.
-- **Batch Updates**: Accumulate counter increments locally and flush periodically (60s intervals), reducing write operations by 90%.
-- **Hash Storage**: Store related data (conversation metadata) as Redis hashes instead of multiple keys, improving efficiency and atomicity.
-- **Automated Testing**: Comprehensive test suite validates all optimizations with measurable metrics (server/test-redis-optimization.ts).
-- **Economic Impact**: Reduces estimated 10,000 daily Redis requests to ~3,000 (-70%), with proportional cost savings for scaling applications.
-
-**Contact Management System** (Implemented 2024-10-12): Centralized client database for conversation history and proactive service:
-- **Automatic Tracking**: Contacts auto-created/updated on every conversation creation and reopen event with phoneNumber (unique), name, document (CPF/CNPJ), lastConversationId, totalConversations, hasRecurringIssues, status (active/inactive).
-- **API Endpoints**: 
-  - `GET /api/contacts` - List all contacts with search (name/phone/document) and filters (status, recurring issues)
-  - `GET /api/contacts/:id` - Contact details with full conversation history
-  - `POST /api/contacts/reopen` - Reopen conversation (sends WhatsApp message via Evolution API, creates/reactivates conversation)
-- **Frontend Page**: `/contacts` with search, filters, detailed view, and conversation history accessible to ADMIN, SUPERVISOR, and AGENT roles
-- **Monitor Integration**: Conversation visibility extended to 12 hours for finalized conversations, with Contacts serving as permanent client record
-- **Benefits**: Enables reopening conversations after 12h, maintains complete client history, identifies recurring issues, supports proactive service
+**Redis Optimization System**: Implements a cost reduction framework through intelligent caching, batching of Redis commands, multi-get operations, batch updates, and hash storage, significantly reducing Redis requests and costs.
 
 ## External Dependencies
 
