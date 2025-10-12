@@ -23,7 +23,10 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 - **Specialized Assistants**: Six roles (Support, Sales, Finance, Cancellation, Ombudsman, Presentation) with a "Receptionist-First" routing model.
 - **Conversation Finalization Logic**: Proper closure system ensuring NPS surveys are sent correctly. SUPPORT/FINANCIAL/COMERCIAL can autonomously finalize when problem is resolved; CANCELAMENTO/OUVIDORIA/APRESENTAÇÃO always transfer to humans (never finalize). Based on kb-geral-002 knowledge base rules.
 - **Conversation Summarization**: Asynchronous summarization.
-- **RAG**: Knowledge base using Upstash Vector.
+- **RAG Architecture** (Improved 2024-10-12): Dual-layer prompt system separating System Prompts from RAG Prompts:
+  - **System Prompts**: Absolute behavioral rules embedded in OpenAI Assistant instructions (never return JSON, always transfer on request, short messages, no data invention, etc.) - permanent across all conversations.
+  - **RAG Prompts**: Structured context-specific prompts returned by `consultar_base_de_conhecimento` function with clear sections (CONTEXT, TASK) forcing grounded generation and preventing hallucinations. AI never mentions "base de conhecimento" to users.
+  - **Knowledge Base**: Upstash Vector for semantic search with top-3 retrieval.
 - **Function Calling**: Custom functions for verification, knowledge queries, invoice lookups, and scheduling, with secure internal-only tool execution.
 - **Automated Document Detection**: Regex-based CPF/CNPJ detection and mandatory verification before sensitive operations.
 - **Automated Systems**: "Boleto Consultation", "PPPoE Connection Status", and "Unlock/Unblock" systems with integrated security.
