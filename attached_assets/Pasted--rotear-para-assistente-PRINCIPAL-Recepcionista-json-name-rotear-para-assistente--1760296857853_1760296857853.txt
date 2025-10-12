@@ -1,0 +1,186 @@
+### rotear_para_assistente ⭐ PRINCIPAL (Recepcionista)
+```json
+{
+  "name": "rotear_para_assistente",
+  "description": "Roteia a conversa para um ASSISTENTE DE IA especializado. Esta é a função PRINCIPAL da recepcionista - use sempre para encaminhar clientes aos assistentes de IA (Suporte, Comercial, Financeiro, Cancelamento, Ouvidoria). NÃO use transferir_para_humano para isso.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "assistantType": {
+        "type": "string",
+        "enum": ["suporte", "comercial", "financeiro", "cancelamento", "ouvidoria"],
+        "description": "Tipo do assistente de IA especializado para onde rotear"
+      },
+      "motivo": {
+        "type": "string",
+        "description": "Motivo do roteamento para o assistente"
+      }
+    },
+    "required": ["assistantType", "motivo"]
+  }
+}
+```
+
+### transferir_para_humano ⚠️ USO RARO (Recepcionista)
+```json
+{
+  "name": "transferir_para_humano",
+  "description": "Transfere a conversa para um atendente HUMANO. Para recepcionista: use APENAS quando cliente solicitar explicitamente falar com pessoa ('quero falar com atendente') ou recusar fornecer CPF. Para outros assistentes: use quando necessário escalação humana.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "departamento": {
+        "type": "string",
+        "description": "Departamento de destino (ex: Suporte Técnico, Comercial, Financeiro)"
+      },
+      "motivo": {
+        "type": "string", 
+        "description": "Motivo da transferência"
+      }
+    },
+    "required": ["departamento", "motivo"]
+  }
+}
+```
+
+### consultar_pppoe_status
+```json
+{
+  "name": "consultar_pppoe_status",
+  "description": "Consulta o status detalhado da conexão PPPoE e ONT do cliente, incluindo status online/offline, velocidade, tempo conectado e ocorrências ativas",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "cpf": {
+        "type": "string",
+        "description": "CPF ou CNPJ do cliente (apenas números ou formatado)"
+      }
+    },
+    "required": ["cpf"]
+  }
+}
+```
+
+### resumo_equipamentos
+```json
+{
+  "name": "resumo_equipamentos",
+  "description": "Retorna informações sobre equipamentos de rede e interpretação de status de luzes (Power, LOS, PON, etc.)",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "status_luzes": {
+        "type": "string",
+        "description": "Status das luzes relatado pelo cliente (ex: 'Power verde, LOS vermelho')"
+      }
+    }
+  }
+}
+```
+
+### consultar_boleto_cliente
+```json
+{
+  "name": "consultar_boleto_cliente",
+  "description": "Consulta informações de faturas e boletos do cliente. Retorna dados como nome, data de vencimento, valor, linha digitável e QR Code PIX",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "cpf": {
+        "type": "string",
+        "description": "CPF ou CNPJ do cliente (apenas números ou formatado)"
+      }
+    },
+    "required": ["cpf"]
+  }
+}
+```
+
+### consultar_base_de_conhecimento
+```json
+{
+  "name": "consultar_base_de_conhecimento",
+  "description": "Busca informações na base de conhecimento da empresa",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "Consulta para buscar na base"
+      }
+    },
+    "required": ["query"]
+  }
+}
+```
+
+### agendar_visita
+```json
+{
+  "name": "agendar_visita",
+  "description": "Agenda visita técnica",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "string",
+        "description": "Data preferencial"
+      },
+      "horario": {
+        "type": "string",
+        "description": "Horário preferencial"
+      }
+    }
+  }
+}
+```
+
+### consultar_planos
+```json
+{
+  "name": "consultar_planos",
+  "description": "Lista os planos disponíveis",
+  "parameters": {
+    "type": "object",
+    "properties": {}
+  }
+}
+```
+
+### buscar_cep
+```json
+{
+  "name": "buscar_cep",
+  "description": "Busca informações de endereço a partir do CEP (Cidade, Bairro, Rua)",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "cep": {
+        "type": "string",
+        "description": "CEP a ser consultado (formato: 12345-678 ou 12345678)"
+      }
+    },
+    "required": ["cep"]
+  }
+}
+```
+
+### finalizar_conversa ⭐ NOVA
+```json
+{
+  "name": "finalizar_conversa",
+  "description": "Finaliza a conversa quando o atendimento for concluído com sucesso. Dispara automaticamente uma pesquisa NPS ao cliente via WhatsApp.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "motivo": {
+        "type": "string",
+        "description": "Motivo da finalização (ex: 'Problema resolvido', 'Cliente informado sobre planos', 'Dúvida esclarecida')"
+      }
+    },
+    "required": ["motivo"]
+  }
+}
+```
+
+---
