@@ -17,6 +17,7 @@ The frontend is developed with React, TypeScript, Vite, `shadcn/ui` (Radix UI), 
 **Backend**: Built with Node.js and Express.js (TypeScript). It utilizes GPT-5 for intelligent routing, OpenAI Assistants API, Upstash Vector for RAG, Upstash Redis for conversation threads, and PostgreSQL via Drizzle ORM for data persistence. Session management is based on OpenAI thread-based conversations stored in Redis.
 
 **Queue System**: Employs BullMQ with Redis TLS for asynchronous message processing across five queues (message-processing, ai-response, image-analysis, nps-survey, learning-tasks). It includes automatic retry mechanisms and webhook fallback to ensure zero message loss, supporting high conversation volumes.
+- **Worker Recovery System** (Implemented 2024-10-12): Automatic fallback mechanism that recovers conversations by chatId when primary ID lookup fails. Prevents message loss from audio transcriptions and ensures AI responses even when conversation references become stale, with detailed logging for production diagnostics.
 
 **AI & Knowledge Management**:
 - **AI Provider**: OpenAI Assistants API.
@@ -46,8 +47,10 @@ The frontend is developed with React, TypeScript, Vite, `shadcn/ui` (Radix UI), 
 **Continuous Learning System**: An autonomous GPT-4 agent suggests prompt improvements based on supervisor interventions and feedback (implicit and explicit). A hybrid training system allows supervisors to mark training segments or create sessions for prompt generation.
 
 **NPS & Customer Satisfaction**: Automated NPS surveys via WhatsApp post-conversation, with feedback integrated into the learning system.
+- **NPS Detection System** (Fixed 2024-10-12): Rigororous regex validation ensures only genuine rating responses (0-10) are processed as NPS feedback. Messages like "preciso de 2 vias" or "aguardando 10 minutos" are correctly identified as regular messages, preventing false NPS detection and ensuring proper conversation reopening after finalization.
 
 **Hybrid Supervised Mode**: Manages "Transferred" and "Assigned" conversations with real-time counters and AI-assisted agent responses.
+- **Agent Welcome Message System** (Implemented 2024-10-12): Automatic welcome message sent via WhatsApp when AI transfers conversation to human agent. Message intelligently requests CPF/CNPJ if not already in database, or proceeds with standard greeting if customer is already registered. Template-based system allows customization per department.
 
 **WhatsApp Integration**: Native integration with Evolution API for real-time message processing, AI routing, and outbound messaging.
 
