@@ -33,6 +33,18 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
     - ✅ **Complete Tool Catalog**: Comprehensive documentation of all 11 available functions with parameters, returns, usage guidance, security warnings, and assistant availability matrix
     - ✅ **Quality Validation**: E2E tests confirm natural language responses, correct RAG triggering, policy compliance, and no JSON/RAG leakage
     - ✅ **Expected Impact**: +40% RAG usage accuracy, +20% developer productivity
+  - **RAG Analytics System (Implemented 2024-10-12)**: Production monitoring and optimization framework:
+    - **Automatic Tracking**: Every `consultar_base_de_conhecimento` call tracked with query, results count, execution time, assistant type
+    - **Secure API Endpoints**: 
+      - `GET /api/rag-analytics/summary` - Aggregated metrics with date range (ADMIN only)
+      - `GET /api/rag-analytics/conversation/:id` - Per-conversation analytics (ADMIN or assigned agent)
+      - `GET /api/rag-analytics` - Complete analytics list with filters (ADMIN only)
+    - **Validation & Security**: Robust date validation, authorization checks (ADMIN + ownership), error handling, fail-safe tracking
+    - **Database**: `rag_analytics` table with indexes on conversationId, assistantType, createdAt for efficient querying
+    - **Insights Enabled**: Success rate by assistant, top queries, performance metrics, data-driven optimization decisions
+  - **Backend Stability Improvements (2024-10-12)**:
+    - **Vite HMR Warning Resolution**: Documented as benign WebSocket connection attempt (ANALISE_WARNINGS_BACKEND.md)
+    - **Worker Race Condition Fix**: Graceful failure handling for deleted conversations, prevents unnecessary retries, maintains idempotency
 - **Function Calling**: Custom functions for verification, knowledge queries, invoice lookups, and scheduling, with secure internal-only tool execution.
 - **Automated Document Detection**: Regex-based CPF/CNPJ detection and mandatory verification before sensitive operations.
 - **Automated Systems**: "Boleto Consultation", "PPPoE Connection Status", and "Unlock/Unblock" systems with integrated security.
