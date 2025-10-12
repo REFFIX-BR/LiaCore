@@ -142,7 +142,7 @@ async function sendWhatsAppDocument(phoneNumber: string, pdfBase64: string, file
 }
 
 // Helper function to send WhatsApp message via Evolution API
-async function sendWhatsAppMessage(phoneNumber: string, text: string, instanceName?: string): Promise<boolean> {
+async function sendWhatsAppMessage(phoneNumber: string, text: string, instanceName?: string): Promise<{ success: boolean; whatsappMessageId?: string | null; remoteJid?: string | null }> {
   // Use instance específica da conversa ou fallback para env var
   const instance = instanceName || EVOLUTION_CONFIG.instance;
   
@@ -152,7 +152,7 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string, instanceNa
       hasKey: !!EVOLUTION_CONFIG.apiKey, 
       instance: instance || 'undefined' 
     });
-    return false;
+    return { success: false };
   }
 
   try {
@@ -192,7 +192,7 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string, instanceNa
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ [Evolution] Erro ao enviar mensagem (${response.status}):`, errorText);
-      return false;
+      return { success: false };
     }
 
     const result = await response.json();
@@ -200,10 +200,14 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string, instanceNa
       messageId: result.key?.id,
       status: result.status,
     });
-    return true;
+    return { 
+      success: true, 
+      whatsappMessageId: result.key?.id || null,
+      remoteJid: result.key?.remoteJid || null 
+    };
   } catch (error) {
     console.error("❌ [Evolution] Erro ao enviar mensagem:", error);
-    return false;
+    return { success: false };
   }
 }
 

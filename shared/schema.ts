@@ -90,6 +90,8 @@ export const messages = pgTable("messages", {
   pdfBase64: text("pdf_base64"), // PDF em base64 (para download)
   pdfName: text("pdf_name"), // Nome do arquivo PDF
   audioUrl: text("audio_url"), // URL do áudio original (WhatsApp/Evolution API)
+  whatsappMessageId: text("whatsapp_message_id"), // ID da mensagem no WhatsApp (para deletar)
+  remoteJid: text("remote_jid"), // JID do chat WhatsApp (necessário para deletar)
 }, (table) => ({
   // Índices para queries rápidas de mensagens e paginação
   conversationIdIdx: index("messages_conversation_id_idx").on(table.conversationId),
