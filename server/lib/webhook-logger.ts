@@ -16,6 +16,26 @@ class WebhookLogger {
   private wss: WebSocketServer | null = null;
   private clients: Set<WebSocket> = new Set();
 
+  handleConnection(ws: WebSocket) {
+    this.clients.add(ws);
+
+    // Enviar histórico de logs ao conectar
+    ws.send(JSON.stringify({
+      type: 'history',
+      logs: this.logs,
+    }));
+
+    ws.on('close', () => {
+      console.log('🔌 [WebSocket] Cliente desconectado do monitor de webhook');
+      this.clients.delete(ws);
+    });
+
+    ws.on('error', (error) => {
+      console.error('🔌 [WebSocket] Erro:', error);
+      this.clients.delete(ws);
+    });
+  }
+
   setupWebSocket(server: Server) {
     this.wss = new WebSocketServer({ 
       server,
@@ -24,23 +44,7 @@ class WebhookLogger {
 
     this.wss.on('connection', (ws: WebSocket) => {
       console.log('🔌 [WebSocket] Cliente conectado ao monitor de webhook');
-      this.clients.add(ws);
-
-      // Enviar histórico de logs ao conectar
-      ws.send(JSON.stringify({
-        type: 'history',
-        logs: this.logs,
-      }));
-
-      ws.on('close', () => {
-        console.log('🔌 [WebSocket] Cliente desconectado do monitor de webhook');
-        this.clients.delete(ws);
-      });
-
-      ws.on('error', (error) => {
-        console.error('🔌 [WebSocket] Erro:', error);
-        this.clients.delete(ws);
-      });
+      this.handleConnection(ws);
     });
 
     console.log('✅ [WebSocket] Servidor de logs configurado em /ws/webhook-logs');

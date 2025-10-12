@@ -41,7 +41,7 @@ export default function AgentLogs() {
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/agent-logs`;
+    const wsUrl = `${protocol}//${window.location.host}/ws/reasoning`;
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;

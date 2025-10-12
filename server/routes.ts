@@ -5235,7 +5235,7 @@ A resposta deve:
   // Setup WebSocket for real-time webhook logs
   webhookLogger.setupWebSocket(httpServer);
   
-  // Setup WebSocket for real-time agent reasoning logs
+  // Setup WebSocket for real-time agent reasoning logs  
   agentLogger.setupWebSocket(httpServer);
 
   // Endpoint to get webhook logs

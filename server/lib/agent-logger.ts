@@ -30,12 +30,32 @@ class AgentLogger {
   private wss: WebSocketServer | null = null;
   private clients: Set<WebSocket> = new Set();
 
+  handleConnection(ws: WebSocket) {
+    this.clients.add(ws);
+
+    // Enviar histórico de logs ao conectar
+    ws.send(JSON.stringify({
+      type: 'history',
+      logs: this.logs,
+    }));
+
+    ws.on('close', () => {
+      console.log('🤖 [Agent Logger] Cliente desconectado do monitor de agentes');
+      this.clients.delete(ws);
+    });
+
+    ws.on('error', (error) => {
+      console.error('🤖 [Agent Logger] Erro:', error);
+      this.clients.delete(ws);
+    });
+  }
+
   setupWebSocket(server: Server) {
     console.log('🔧 [Agent Logger] Configurando WebSocket Server...');
     try {
       this.wss = new WebSocketServer({ 
         server,
-        path: '/ws/agent-logs'
+        path: '/ws/reasoning'
       });
       console.log('✅ [Agent Logger] WebSocketServer criado com sucesso');
     } catch (error) {
@@ -45,26 +65,10 @@ class AgentLogger {
 
     this.wss.on('connection', (ws: WebSocket) => {
       console.log('🤖 [Agent Logger] Cliente conectado ao monitor de agentes');
-      this.clients.add(ws);
-
-      // Enviar histórico de logs ao conectar
-      ws.send(JSON.stringify({
-        type: 'history',
-        logs: this.logs,
-      }));
-
-      ws.on('close', () => {
-        console.log('🤖 [Agent Logger] Cliente desconectado do monitor de agentes');
-        this.clients.delete(ws);
-      });
-
-      ws.on('error', (error) => {
-        console.error('🤖 [Agent Logger] Erro:', error);
-        this.clients.delete(ws);
-      });
+      this.handleConnection(ws);
     });
 
-    console.log('✅ [Agent Logger] Servidor de logs de agentes configurado em /ws/agent-logs');
+    console.log('✅ [Agent Logger] Servidor de logs de agentes configurado em /ws/reasoning');
   }
 
   log(
