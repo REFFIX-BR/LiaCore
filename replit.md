@@ -57,6 +57,15 @@ The frontend is developed with React, TypeScript, Vite, `shadcn/ui` (Radix UI), 
 
 **Contact Management System**: Centralized client database for tracking conversation history, and enabling proactive service by creating/updating contacts, reopening conversations, and providing a frontend page for search and detailed views.
 
+**Message Deletion System** (Implemented 2024-10-12): Supervisors and agents can delete assistant messages from both database and WhatsApp via Evolution API:
+  - **Backend**: DELETE `/api/messages/:id` endpoint with role-based permissions (ADMIN/SUPERVISOR or assigned AGENT)
+  - **WhatsApp Integration**: Calls Evolution API `/chat/deleteMessageForEveryone` endpoint (2-day deletion window applies)
+  - **Metadata Capture**: System captures `whatsappMessageId` and `remoteJid` when AI/supervisor messages are sent via `sendWhatsAppMessage()`
+  - **Storage**: Added `getMessage()`, `updateMessage()`, `deleteMessage()` methods to storage interface
+  - **Frontend UI**: Hover-reveal delete button (Trash2 icon) for assistant messages in Monitor conversation details
+  - **Fallback Handling**: Graceful degradation - deletes from database even if WhatsApp deletion fails (e.g., time limit exceeded)
+  - **Benefits**: Allows correction of AI errors, removal of sensitive information, and message management within WhatsApp's deletion policies
+
 **Redis Optimization System**: Implements a cost reduction framework through intelligent caching, batching of Redis commands, multi-get operations, batch updates, and hash storage, significantly reducing Redis requests and costs.
 
 ## External Dependencies

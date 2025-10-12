@@ -142,7 +142,11 @@ async function sendWhatsAppDocument(phoneNumber: string, pdfBase64: string, file
 }
 
 // Helper function to send WhatsApp message via Evolution API
-async function sendWhatsAppMessage(phoneNumber: string, text: string, instanceName?: string): Promise<{ success: boolean; whatsappMessageId?: string | null; remoteJid?: string | null }> {
+async function sendWhatsAppMessage(
+  phoneNumber: string, 
+  text: string, 
+  instanceName?: string
+): Promise<{ success: boolean; whatsappMessageId?: string; remoteJid?: string }> {
   // Use instance específica da conversa ou fallback para env var
   const instance = instanceName || EVOLUTION_CONFIG.instance;
   
@@ -201,13 +205,63 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string, instanceNa
       status: result.status,
     });
     return { 
-      success: true, 
-      whatsappMessageId: result.key?.id || null,
-      remoteJid: result.key?.remoteJid || null 
+      success: true,
+      whatsappMessageId: result.key?.id || undefined,
+      remoteJid: result.key?.remoteJid || undefined
     };
   } catch (error) {
     console.error("❌ [Evolution] Erro ao enviar mensagem:", error);
     return { success: false };
+  }
+}
+
+// Helper function to delete WhatsApp message via Evolution API
+async function deleteWhatsAppMessage(
+  whatsappMessageId: string, 
+  remoteJid: string, 
+  instanceName?: string
+): Promise<boolean> {
+  const instance = instanceName || EVOLUTION_CONFIG.instance;
+  
+  if (!EVOLUTION_CONFIG.apiUrl || !EVOLUTION_CONFIG.apiKey || !instance) {
+    console.error("❌ [Evolution] Credenciais não configuradas para deletar mensagem");
+    return false;
+  }
+
+  try {
+    let baseUrl = EVOLUTION_CONFIG.apiUrl.trim();
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = `https://${baseUrl}`;
+    }
+    
+    const url = `${baseUrl}/chat/deleteMessageForEveryone/${instance}`;
+    
+    console.log(`🗑️ [Evolution] Deletando mensagem ${whatsappMessageId} via instância ${instance}`);
+    
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': EVOLUTION_CONFIG.apiKey,
+      },
+      body: JSON.stringify({
+        id: whatsappMessageId,
+        remoteJid: remoteJid,
+        fromMe: true, // Mensagens enviadas pelo bot
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ [Evolution] Erro ao deletar mensagem (${response.status}):`, errorText);
+      return false;
+    }
+
+    console.log(`✅ [Evolution] Mensagem ${whatsappMessageId} deletada com sucesso`);
+    return true;
+  } catch (error) {
+    console.error("❌ [Evolution] Erro ao deletar mensagem:", error);
+    return false;
   }
 }
 
@@ -930,8 +984,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         npsSurveyMessage = npsSurveyMessage.replace(/{clientName}/g, conversation.clientName || 'Cliente');
         
         try {
-          await sendWhatsAppMessage(chatId, npsSurveyMessage, conversation.evolutionInstance || undefined);
-          console.log(`📊 [NPS] Pesquisa enviada ao cliente ${clientName}`);
+          const result = await sendWhatsAppMessage(chatId, npsSurveyMessage, conversation.evolutionInstance || undefined);
+          if (result.success) {
+            console.log(`📊 [NPS] Pesquisa enviada ao cliente ${clientName}`);
+          }
         } catch (error) {
           console.error("❌ [NPS] Erro ao enviar pesquisa:", error);
         }
@@ -1572,7 +1628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const alreadyTemplate = await storage.getMessageTemplateByKey('nps_already_submitted');
             const alreadyMessage = alreadyTemplate?.template || `Obrigado! Seu feedback já foi registrado anteriormente.`;
             
-            await sendWhatsAppMessage(phoneNumber, alreadyMessage, conversation.evolutionInstance || undefined);
+            const result = await sendWhatsAppMessage(phoneNumber, alreadyMessage, conversation.evolutionInstance || undefined);
             return res.json({ 
               success: true, 
               processed: true, 
@@ -1626,7 +1682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const thankYouTemplate = await storage.getMessageTemplateByKey('nps_thank_you');
           const thankYouMessage = thankYouTemplate?.template || `Obrigado! Seu feedback já foi registrado!`;
           
-          await sendWhatsAppMessage(phoneNumber, thankYouMessage, conversation.evolutionInstance || undefined);
+          const result = await sendWhatsAppMessage(phoneNumber, thankYouMessage, conversation.evolutionInstance || undefined);
           
           return res.json({ 
             success: true, 
@@ -2112,7 +2168,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
               
               // Send routing message to WhatsApp
-              await sendWhatsAppMessage(clientPhoneNumber, responseText, conversationRef.evolutionInstance || undefined);
+              const routingResult = await sendWhatsAppMessage(clientPhoneNumber, responseText, conversationRef.evolutionInstance || undefined);
+              // Atualizar última mensagem com IDs do WhatsApp
+              if (routingResult.success && (routingResult.whatsappMessageId || routingResult.remoteJid)) {
+                const recentMessages = await storage.getRecentMessagesByConversationId(conversationRef.id, 1);
+                if (recentMessages.length > 0 && recentMessages[0].role === 'assistant') {
+                  await storage.updateMessage(recentMessages[0].id, {
+                    whatsappMessageId: routingResult.whatsappMessageId,
+                    remoteJid: routingResult.remoteJid,
+                  });
+                }
+              }
               
             } // Handle conversation resolution if requested by AI
             else if (resolved) {
@@ -2155,8 +2221,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               npsSurveyMessage = npsSurveyMessage.replace(/{clientName}/g, conversationRef.clientName || 'Cliente');
               
               try {
-                await sendWhatsAppMessage(clientPhoneNumber, npsSurveyMessage, conversationRef.evolutionInstance || undefined);
-                console.log(`📊 [NPS] Pesquisa enviada ao cliente ${clientName}`);
+                const result = await sendWhatsAppMessage(clientPhoneNumber, npsSurveyMessage, conversationRef.evolutionInstance || undefined);
+                if (result.success) {
+                  console.log(`📊 [NPS] Pesquisa enviada ao cliente ${clientName}`);
+                }
               } catch (error) {
                 console.error("❌ [NPS] Erro ao enviar pesquisa:", error);
               }
@@ -2257,7 +2325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     : ((welcomeResult.response as any)?.response || 'Olá! Estou aqui para ajudar.');
                   
                   // Store the welcome message
-                  await storage.createMessage({
+                  const initialWelcomeMessage = await storage.createMessage({
                     conversationId: conversationRef.id,
                     role: "assistant",
                     content: welcomeMessage,
@@ -2267,7 +2335,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   console.log(`✅ [Evolution Welcome] Mensagem gerada: ${welcomeMessage.substring(0, 100)}...`);
                   
                   // Send welcome message to WhatsApp
-                  await sendWhatsAppMessage(clientPhoneNumber, welcomeMessage, conversationRef.evolutionInstance || undefined);
+                  const sendWelcomeResult = await sendWhatsAppMessage(clientPhoneNumber, welcomeMessage, conversationRef.evolutionInstance || undefined);
+                  // Atualizar mensagem com IDs do WhatsApp
+                  if (sendWelcomeResult.success && (sendWelcomeResult.whatsappMessageId || sendWelcomeResult.remoteJid)) {
+                    await storage.updateMessage(initialWelcomeMessage.id, {
+                      whatsappMessageId: sendWelcomeResult.whatsappMessageId,
+                      remoteJid: sendWelcomeResult.remoteJid,
+                    });
+                  }
                   
                   webhookLogger.success('WELCOME_MESSAGE_SENT', `Mensagem de boas-vindas do ${newAssistantType} enviada`, {
                     conversationId: conversationRef.id,
@@ -2314,13 +2389,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             
             // Send response back to WhatsApp via Evolution API
-            const sent = await sendWhatsAppMessage(clientPhoneNumber, responseText, conversationRef.evolutionInstance || undefined);
-            if (sent) {
+            const sendResult = await sendWhatsAppMessage(clientPhoneNumber, responseText, conversationRef.evolutionInstance || undefined);
+            if (sendResult.success) {
               webhookLogger.success('MESSAGE_SENT', `Mensagem enviada ao WhatsApp`, {
                 phoneNumber: clientPhoneNumber,
                 clientName,
               });
               console.log(`📤 [Evolution] Resposta enviada ao WhatsApp com sucesso`);
+              // Atualizar última mensagem da IA com IDs do WhatsApp para permitir deleção
+              if (sendResult.whatsappMessageId || sendResult.remoteJid) {
+                const recentMessages = await storage.getRecentMessagesByConversationId(conversationRef.id, 1);
+                if (recentMessages.length > 0 && recentMessages[0].role === 'assistant') {
+                  await storage.updateMessage(recentMessages[0].id, {
+                    whatsappMessageId: sendResult.whatsappMessageId,
+                    remoteJid: sendResult.remoteJid,
+                  });
+                }
+              }
             } else {
               webhookLogger.error('SEND_FAILED', `Falha ao enviar resposta ao WhatsApp`, {
                 phoneNumber: clientPhoneNumber,
@@ -4423,15 +4508,31 @@ A resposta deve:
             }
           } else if (audioBase64) {
             // Para áudio, por enquanto enviar apenas a transcrição (Evolution API pode não suportar áudio)
-            whatsappSent = await sendWhatsAppMessage(phoneNumber, processedContent, conversation.evolutionInstance || undefined);
-            if (whatsappSent) {
+            const result = await sendWhatsAppMessage(phoneNumber, processedContent, conversation.evolutionInstance || undefined);
+            whatsappSent = result.success;
+            if (result.success) {
               console.log(`✅ [Supervisor] Transcrição de áudio enviada ao WhatsApp: ${phoneNumber}`);
+              // Atualizar mensagem com IDs do WhatsApp
+              if (result.whatsappMessageId || result.remoteJid) {
+                await storage.updateMessage(message.id, {
+                  whatsappMessageId: result.whatsappMessageId,
+                  remoteJid: result.remoteJid,
+                });
+              }
             }
           } else {
             // Mensagem de texto normal
-            whatsappSent = await sendWhatsAppMessage(phoneNumber, processedContent, conversation.evolutionInstance || undefined);
-            if (whatsappSent) {
+            const result = await sendWhatsAppMessage(phoneNumber, processedContent, conversation.evolutionInstance || undefined);
+            whatsappSent = result.success;
+            if (result.success) {
               console.log(`✅ [Supervisor] Mensagem enviada ao WhatsApp: ${phoneNumber}`);
+              // Atualizar mensagem com IDs do WhatsApp para permitir deleção futura
+              if (result.whatsappMessageId || result.remoteJid) {
+                await storage.updateMessage(message.id, {
+                  whatsappMessageId: result.whatsappMessageId,
+                  remoteJid: result.remoteJid,
+                });
+              }
             }
           }
           
@@ -4588,7 +4689,7 @@ A resposta deve:
       welcomeMessage = welcomeMessage.replace(/{agentName}/g, agentFirstName);
 
       // Salvar mensagem no histórico
-      await storage.createMessage({
+      const welcomeMessageRecord = await storage.createMessage({
         conversationId: id,
         role: "assistant",
         content: welcomeMessage,
@@ -4607,7 +4708,15 @@ A resposta deve:
       
       if (phoneNumber) {
         try {
-          whatsappSent = await sendWhatsAppMessage(phoneNumber, welcomeMessage, conversation.evolutionInstance || undefined);
+          const result = await sendWhatsAppMessage(phoneNumber, welcomeMessage, conversation.evolutionInstance || undefined);
+          whatsappSent = result.success;
+          // Atualizar mensagem com IDs do WhatsApp
+          if (result.success && (result.whatsappMessageId || result.remoteJid)) {
+            await storage.updateMessage(welcomeMessageRecord.id, {
+              whatsappMessageId: result.whatsappMessageId,
+              remoteJid: result.remoteJid,
+            });
+          }
           
           if (whatsappSent) {
             webhookLogger.success('AGENT_ASSIGNED', `Conversa atribuída a ${agent.fullName}`, {
@@ -4729,7 +4838,7 @@ A resposta deve:
         .replace(/{notes}/g, notes || '');
 
       // Salvar mensagem no histórico
-      await storage.createMessage({
+      const transferMessageRecord = await storage.createMessage({
         conversationId: id,
         role: "assistant",
         content: transferMessage,
@@ -4748,7 +4857,15 @@ A resposta deve:
       
       if (phoneNumber) {
         try {
-          whatsappSent = await sendWhatsAppMessage(phoneNumber, transferMessage, conversation.evolutionInstance || undefined);
+          const result = await sendWhatsAppMessage(phoneNumber, transferMessage, conversation.evolutionInstance || undefined);
+          whatsappSent = result.success;
+          // Atualizar mensagem com IDs do WhatsApp
+          if (result.success && (result.whatsappMessageId || result.remoteJid)) {
+            await storage.updateMessage(transferMessageRecord.id, {
+              whatsappMessageId: result.whatsappMessageId,
+              remoteJid: result.remoteJid,
+            });
+          }
           
           if (whatsappSent) {
             webhookLogger.success('CONVERSATION_TRANSFERRED', `Conversa transferida para ${targetAgent.fullName}`, {
@@ -4797,6 +4914,85 @@ A resposta deve:
       });
     } catch (error) {
       console.error("Transfer conversation error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Delete message (DB + WhatsApp)
+  app.delete("/api/messages/:id", authenticate, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const currentUser = req.user!;
+
+      // Buscar mensagem
+      const message = await storage.getMessage(id);
+      if (!message) {
+        return res.status(404).json({ error: "Mensagem não encontrada" });
+      }
+
+      // Buscar conversa para verificar permissões
+      const conversation = await storage.getConversation(message.conversationId);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversa não encontrada" });
+      }
+
+      // Verificar permissões
+      const isAdminOrSupervisor = currentUser.role === 'ADMIN' || currentUser.role === 'SUPERVISOR';
+      const isAssignedAgent = conversation.assignedTo === currentUser.userId;
+
+      if (!isAdminOrSupervisor && !isAssignedAgent) {
+        return res.status(403).json({ 
+          error: "Você não tem permissão para deletar esta mensagem" 
+        });
+      }
+
+      // Verificar se mensagem é do assistente (não permitir deletar mensagens do usuário)
+      if (message.role !== 'assistant') {
+        return res.status(400).json({ 
+          error: "Não é possível deletar mensagens do cliente" 
+        });
+      }
+
+      let whatsappDeleted = false;
+
+      // Deletar do WhatsApp se tiver whatsappMessageId
+      if (message.whatsappMessageId && message.remoteJid) {
+        try {
+          whatsappDeleted = await deleteWhatsAppMessage(
+            message.whatsappMessageId,
+            message.remoteJid,
+            conversation.evolutionInstance || undefined
+          );
+
+          if (whatsappDeleted) {
+            console.log(`✅ [Delete] Mensagem deletada do WhatsApp: ${message.whatsappMessageId}`);
+            webhookLogger.success('MESSAGE_DELETED_WHATSAPP', `Mensagem deletada do WhatsApp`, {
+              messageId: id,
+              conversationId: conversation.id,
+              deletedBy: currentUser.fullName,
+            });
+          } else {
+            console.warn(`⚠️ [Delete] Falha ao deletar do WhatsApp (limite de tempo ou erro)`);
+          }
+        } catch (error) {
+          console.error("❌ [Delete] Erro ao deletar do WhatsApp:", error);
+        }
+      }
+
+      // Deletar do banco de dados
+      await storage.deleteMessage(id);
+
+      console.log(`🗑️ [Delete] Mensagem ${id} deletada do banco por ${currentUser.fullName}`);
+
+      return res.json({ 
+        success: true, 
+        whatsappDeleted,
+        message: whatsappDeleted 
+          ? "Mensagem deletada do banco e do WhatsApp" 
+          : "Mensagem deletada do banco (não foi possível deletar do WhatsApp)"
+      });
+    } catch (error) {
+      console.error("Delete message error:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });

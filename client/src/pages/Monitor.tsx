@@ -74,6 +74,34 @@ export default function Monitor() {
     },
   });
 
+  const deleteMessageMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      const response = await fetch(`/api/messages/${messageId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erro ao deletar mensagem');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations", activeConvId] });
+      toast({ 
+        title: "Mensagem Deletada", 
+        description: data.message || "Mensagem removida com sucesso"
+      });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Erro ao Deletar", 
+        description: error.message,
+        variant: "destructive"
+      });
+    },
+  });
+
   const departments = [
     { id: "all", label: "Todos", value: "all" },
     { id: "apresentacao", label: "Apresentação", value: "apresentacao" },
@@ -319,6 +347,7 @@ export default function Monitor() {
                 onTransfer={handleTransfer}
                 onAddNote={handleAddNote}
                 onMarkResolved={handleMarkResolved}
+                onDeleteMessage={(messageId) => deleteMessageMutation.mutate(messageId)}
               />
             )}
           </div>

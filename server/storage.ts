@@ -69,6 +69,9 @@ export interface IStorage {
   getRecentMessagesByConversationId(conversationId: string, limit: number): Promise<Message[]>;
   getMessagesPaginated(conversationId: string, options: { limit?: number; before?: string }): Promise<{ messages: Message[]; hasMore: boolean }>;
   createMessage(message: InsertMessage): Promise<Message>;
+  getMessage(id: string): Promise<Message | undefined>;
+  updateMessage(id: string, updates: Partial<Message>): Promise<void>;
+  deleteMessage(id: string): Promise<void>;
   
   // Alerts
   getActiveAlerts(): Promise<Alert[]>;
@@ -540,6 +543,21 @@ export class MemStorage implements IStorage {
     };
     this.messages.set(id, message);
     return message;
+  }
+
+  async getMessage(id: string): Promise<Message | undefined> {
+    return this.messages.get(id);
+  }
+
+  async updateMessage(id: string, updates: Partial<Message>): Promise<void> {
+    const message = this.messages.get(id);
+    if (message) {
+      this.messages.set(id, { ...message, ...updates });
+    }
+  }
+
+  async deleteMessage(id: string): Promise<void> {
+    this.messages.delete(id);
   }
 
   async getActiveAlerts(): Promise<Alert[]> {
@@ -1421,6 +1439,22 @@ export class DbStorage implements IStorage {
   async createMessage(insertMsg: InsertMessage): Promise<Message> {
     const [message] = await db.insert(schema.messages).values(insertMsg).returning();
     return message;
+  }
+
+  async getMessage(id: string): Promise<Message | undefined> {
+    const [message] = await db.select().from(schema.messages)
+      .where(eq(schema.messages.id, id));
+    return message;
+  }
+
+  async updateMessage(id: string, updates: Partial<Message>): Promise<void> {
+    await db.update(schema.messages)
+      .set(updates)
+      .where(eq(schema.messages.id, id));
+  }
+
+  async deleteMessage(id: string): Promise<void> {
+    await db.delete(schema.messages).where(eq(schema.messages.id, id));
   }
 
   // Alerts

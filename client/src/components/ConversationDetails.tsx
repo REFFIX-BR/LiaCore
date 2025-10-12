@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User, Bot, Pause, Play, FileText, UserPlus } from "lucide-react";
+import { User, Bot, Pause, Play, FileText, UserPlus, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState, useEffect, useRef } from "react";
@@ -62,6 +62,7 @@ interface ConversationDetailsProps {
   onTransfer: (department: string, notes: string) => void;
   onAddNote: (note: string) => void;
   onMarkResolved: () => void;
+  onDeleteMessage?: (messageId: string) => void;
 }
 
 const functionIcons: Record<string, string> = {
@@ -81,6 +82,7 @@ export function ConversationDetails({
   onTransfer,
   onAddNote,
   onMarkResolved,
+  onDeleteMessage,
 }: ConversationDetailsProps) {
   const [transferDept, setTransferDept] = useState("");
   const [transferNotes, setTransferNotes] = useState("");
@@ -130,7 +132,7 @@ export function ConversationDetails({
           <ScrollArea className="h-[500px]">
             <div className="space-y-4 pt-4">
               {messages.map((msg) => (
-                <div key={msg.id} className="flex gap-3">
+                <div key={msg.id} className="flex gap-3 group">
                   <Avatar className="h-8 w-8 flex-shrink-0">
                     <AvatarFallback>
                       {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
@@ -145,6 +147,17 @@ export function ConversationDetails({
                       <span className="text-xs text-muted-foreground">
                         {formatDistanceToNow(msg.timestamp, { addSuffix: true, locale: ptBR })}
                       </span>
+                      {msg.role === "assistant" && onDeleteMessage && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => onDeleteMessage(msg.id)}
+                          data-testid={`button-delete-message-${msg.id}`}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
                     <p className="text-sm bg-muted p-3 rounded-lg">
                       {typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)}
