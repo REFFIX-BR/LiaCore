@@ -1347,15 +1347,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
             mediaUrl
           );
           
-          messageText = processedDocument.text;
           pdfBase64 = processedDocument.base64;
           pdfName = processedDocument.fileName;
           
+          // Extrair texto do PDF se for um arquivo PDF
+          const isPdf = message.documentMessage.mimetype?.includes('pdf') || 
+                        pdfName?.toLowerCase().endsWith('.pdf');
+          
+          if (isPdf && pdfBase64) {
+            try {
+              console.log(`📝 [Evolution] Extraindo texto do PDF...`);
+              const { extractPdfText, truncatePdfText, isValidPdfSize } = await import("./lib/pdf");
+              
+              if (!isValidPdfSize(pdfBase64)) {
+                console.log(`⚠️ [Evolution] PDF muito grande (>10MB) - usando apenas nome do arquivo`);
+                messageText = `[Documento PDF] ${pdfName || 'documento.pdf'}\n\n⚠️ Documento muito grande para análise automática.`;
+              } else {
+                const extractedText = await extractPdfText(pdfBase64);
+                
+                if (extractedText) {
+                  // Truncar texto se for muito longo
+                  const { text: finalText, wasTruncated } = truncatePdfText(extractedText);
+                  
+                  messageText = `[Documento PDF recebido: ${pdfName || 'documento.pdf'}]\n\n📄 Conteúdo do documento:\n${finalText}`;
+                  
+                  console.log(`✅ [Evolution] Texto extraído do PDF:`, {
+                    fileName: pdfName,
+                    textLength: extractedText.length,
+                    wasTruncated,
+                    preview: finalText.substring(0, 200)
+                  });
+                } else {
+                  messageText = `[Documento PDF] ${pdfName || 'documento.pdf'}\n\n⚠️ Não foi possível extrair texto. Pode ser um PDF escaneado (imagem).`;
+                  console.log(`⚠️ [Evolution] Falha ao extrair texto do PDF - possivelmente PDF escaneado`);
+                }
+              }
+            } catch (error) {
+              console.error(`❌ [Evolution] Erro ao processar PDF:`, error);
+              messageText = `[Documento PDF] ${pdfName || 'documento.pdf'}`;
+            }
+          } else {
+            // Não é PDF, apenas usar nome do arquivo
+            messageText = processedDocument.text;
+          }
+          
           console.log(`✅ [Evolution] Documento processado:`, {
-            messageText,
+            messageText: messageText.substring(0, 100),
             hasBase64: !!pdfBase64,
             base64Length: pdfBase64?.length || 0,
-            fileName: pdfName
+            fileName: pdfName,
+            isPdf
           });
         } else if (message?.videoMessage) {
           // Handle videos with or without caption
