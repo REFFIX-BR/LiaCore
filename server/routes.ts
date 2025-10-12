@@ -7,6 +7,7 @@ import { z } from "zod";
 import { storeConversationThread, getConversationThread, searchKnowledge } from "./lib/upstash";
 import { RedisCache } from "./lib/redis-config";
 import { webhookLogger } from "./lib/webhook-logger";
+import { agentLogger } from "./lib/agent-logger";
 import { authenticate, authenticateWithTracking, requireAdmin, requireAdminOrSupervisor, requireAnyRole } from "./middleware/auth";
 import { hashPassword, comparePasswords, generateToken, getUserFromUser } from "./lib/auth";
 import OpenAI from "openai";
@@ -5235,7 +5236,6 @@ A resposta deve:
   webhookLogger.setupWebSocket(httpServer);
   
   // Setup WebSocket for real-time agent reasoning logs
-  const { agentLogger } = await import("./lib/agent-logger");
   agentLogger.setupWebSocket(httpServer);
 
   // Endpoint to get webhook logs
