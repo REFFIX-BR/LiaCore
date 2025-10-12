@@ -138,26 +138,52 @@ if (redisConnection) {
       const { prodLogger, logWorkerError } = await import('./lib/production-logger');
       
       // 1. Get conversation to determine assistant
-      const conversation = await storage.getConversation(conversationId);
+      let conversation = await storage.getConversation(conversationId);
       
       if (!conversation) {
-        // Fail gracefully: conversa pode ter sido deletada/arquivada enquanto job estava na fila
-        prodLogger.warn('worker', 'Conversation deleted before processing', {
-          conversationId,
-          fromNumber,
-          jobId: job.id,
-          action: 'skipping_job'
-        });
+        // CRÍTICO: Conversa não encontrada - pode ser race condition ou conversa deletada
+        console.error(`❌ [CRITICAL WORKER] Conversa ID ${conversationId} NÃO ENCONTRADA no banco!`);
+        console.error(`🔍 [DEBUG] Tentando buscar por chatId: ${chatId}`);
         
-        // Marcar idempotência mesmo assim para evitar reprocessamento
-        await markJobProcessed(idempotencyKey!);
+        // Tentar buscar por chatId como fallback
+        conversation = await storage.getConversationByChatId(chatId);
         
-        // Retornar sucesso (não é erro, conversa foi removida intencionalmente)
-        return { 
-          status: 'skipped', 
-          reason: 'conversation_deleted',
-          conversationId 
-        };
+        if (conversation) {
+          console.log(`✅ [RECOVERY] Conversa encontrada por chatId! ID correto: ${conversation.id}`);
+          console.log(`⚠️ [WARNING] Job tinha ID errado: ${conversationId} vs correto: ${conversation.id}`);
+          
+          prodLogger.warn('worker', 'Conversation ID mismatch - recovered by chatId', {
+            wrongConversationId: conversationId,
+            correctConversationId: conversation.id,
+            chatId,
+            fromNumber,
+            jobId: job.id,
+          });
+          
+          // Continuar processamento com conversa correta
+        } else {
+          // Conversa realmente não existe
+          prodLogger.error('worker', 'Conversation not found - deleted or never created', {
+            conversationId,
+            chatId,
+            fromNumber,
+            jobId: job.id,
+            action: 'skipping_job'
+          });
+          
+          console.error(`❌ [FATAL] Conversa ${conversationId} / ${chatId} não existe no banco!`);
+          
+          // Marcar idempotência mesmo assim para evitar reprocessamento
+          await markJobProcessed(idempotencyKey!);
+          
+          // Retornar sucesso (não é erro, conversa foi removida intencionalmente)
+          return { 
+            status: 'skipped', 
+            reason: 'conversation_not_found',
+            conversationId,
+            chatId
+          };
+        }
       }
       
       prodLogger.info('worker', 'Processing message', {
