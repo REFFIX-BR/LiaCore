@@ -1163,12 +1163,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const departmentName = result.transferredTo || 'nossa equipe';
             
             let welcomeMessage = welcomeTemplate?.template || 
-              `Olá! Sou da equipe de ${departmentName} da TR Telecom. Vi que você precisa de ajuda e já estou cuidando do seu atendimento. Como posso ajudar? 😊`;
+              `Olá! Sou da equipe de ${departmentName} da TR Telecom. Vi que você precisa de ajuda e já estou cuidando do seu atendimento.`;
             
             // Substituir variáveis
             welcomeMessage = welcomeMessage
               .replace(/{clientName}/g, conversation.clientName)
               .replace(/{departmentName}/g, departmentName);
+            
+            // 🆕 SOLICITAR CPF SE NÃO ESTIVER NO BANCO
+            if (!conversation.clientDocument) {
+              welcomeMessage += `\n\nPara que eu possa te ajudar da melhor forma, por favor, me informe seu CPF ou CNPJ.`;
+              console.log(`📋 [Transfer Welcome] Solicitando CPF para ${conversation.clientName} (não cadastrado)`);
+            } else {
+              welcomeMessage += ` Como posso ajudar? 😊`;
+              console.log(`📋 [Transfer Welcome] CPF já cadastrado para ${conversation.clientName}`);
+            }
             
             // Enviar via WhatsApp
             const sent = await sendWhatsAppMessage(
