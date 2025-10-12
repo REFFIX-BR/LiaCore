@@ -1154,6 +1154,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         });
 
+        // 🆕 ENVIAR MENSAGEM DE BOAS-VINDAS DO AGENTE HUMANO
+        const metadata = conversation.metadata as any;
+        if (metadata?.source === 'evolution_api' && conversation.clientId) {
+          try {
+            // Buscar template de boas-vindas de transferência
+            const welcomeTemplate = await storage.getMessageTemplateByKey('agent_welcome');
+            const departmentName = result.transferredTo || 'nossa equipe';
+            
+            let welcomeMessage = welcomeTemplate?.template || 
+              `Olá! Sou da equipe de ${departmentName} da TR Telecom. Vi que você precisa de ajuda e já estou cuidando do seu atendimento. Como posso ajudar? 😊`;
+            
+            // Substituir variáveis
+            welcomeMessage = welcomeMessage
+              .replace(/{clientName}/g, conversation.clientName)
+              .replace(/{departmentName}/g, departmentName);
+            
+            // Enviar via WhatsApp
+            const sent = await sendWhatsAppMessage(
+              conversation.clientId, 
+              welcomeMessage, 
+              conversation.evolutionInstance || undefined
+            );
+            
+            if (sent) {
+              console.log(`✅ [Transfer Welcome] Mensagem de boas-vindas enviada para ${conversation.clientName}`);
+              
+              // Salvar mensagem no histórico
+              await storage.createMessage({
+                conversationId: conversation.id,
+                role: "assistant",
+                content: welcomeMessage,
+                assistant: "Agente Humano",
+              });
+            }
+          } catch (error) {
+            console.error(`❌ [Transfer Welcome] Erro ao enviar boas-vindas:`, error);
+            // Não bloqueia a transferência se falhar
+          }
+        }
+
         return res.json({
           success: true,
           response: responseText,
