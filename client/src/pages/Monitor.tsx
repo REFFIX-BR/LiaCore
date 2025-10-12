@@ -37,7 +37,7 @@ export default function Monitor() {
     queryKey: ["/api/monitor/conversations", activeConvId],
     queryFn: () => monitorAPI.getConversationDetails(activeConvId!),
     enabled: !!activeConvId,
-    refetchInterval: 1000, // Atualiza detalhes a cada 1 segundo
+    refetchInterval: 3000, // Atualiza detalhes a cada 3 segundos
   });
 
   const transferMutation = useMutation({
