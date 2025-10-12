@@ -28,6 +28,15 @@ The frontend is developed with React, TypeScript, Vite, `shadcn/ui` (Radix UI), 
 - **Automated Document Detection**: Regex-based CPF/CNPJ detection and mandatory verification before sensitive operations.
 - **Automated Systems**: Includes "Boleto Consultation", "PPPoE Connection Status", and "Unlock/Unblock" systems with integrated security.
 - **Vision System**: GPT-4o Vision for automatic WhatsApp image analysis (boletos, documents, screenshots, technical photos), with a dual download strategy and graceful fallback.
+- **PDF Text Extraction System** (Implemented 2024-10-12): Automatic text extraction from PDF documents for AI analysis:
+  - **Library**: pdf-parse for native PDF text extraction
+  - **Webhook Integration**: Automatically extracts text from PDFs received via WhatsApp
+  - **Validation**: Format detection (mimetype/extension), size limit (10MB max)
+  - **Text Processing**: Extracts full document text, truncates if >15k chars (~3,750 tokens) to prevent token limits
+  - **AI Integration**: Formats message with document name + full extracted text for contextual AI responses
+  - **Fallback Handling**: Detects scanned PDFs (no extractable text), oversized documents, extraction errors
+  - **Storage**: Original PDF base64 + fileName stored in database for supervisor download
+  - **Benefits**: AI can read and respond to PDF content (contracts, invoices, technical documents) while supervisors retain original files
 - **Audio Processing System**: Handles WhatsApp audio messages with automatic transcription via OpenAI Whisper API and provides supervisor playback within the UI.
 - **Conversation Intelligence System**: Provides real-time analysis of customer messages including sentiment analysis, 4-level urgency classification, technical problem detection, recurrence detection (tracking by CPF/CNPJ), and automatic persistence of CPF/CNPJ. It also includes an AI function for prioritizing technical support.
 
