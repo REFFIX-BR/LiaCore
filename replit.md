@@ -51,6 +51,12 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 - **Vision System**: GPT-4o Vision for automatic WhatsApp image analysis (boletos, documents, screenshots, technical photos), with a dual download strategy and graceful fallback.
 - **Supervisor/Agent Media Upload**: Allows supervisors/agents to upload images (analyzed by GPT-4o Vision) and audio files (transcribed by OpenAI Whisper) within the Conversations panel.
 - **Test Chat Media Upload**: Provides a testing interface for image and audio processing features.
+- **Audio Playback System** (Implemented 2024-10-12): Native audio player for supervisor monitoring:
+  - **Database**: `audioUrl` field in messages table stores Evolution API media URLs
+  - **Webhook Integration**: Automatically captures mediaUrl from WhatsApp audio messages
+  - **Frontend Player**: HTML5 audio player with native controls supporting multiple formats (OGG, MPEG, WAV)
+  - **Monitor Integration**: AudioPlayer component rendered in ChatMessage for seamless playback
+  - **Benefits**: Supervisors can listen to original client voice messages in Monitor panel, maintaining full context beyond text transcriptions
 
 **Real-Time Monitoring**: Supervisor Dashboard offers KPIs, live conversation queues, alerts, transcripts, and human intervention controls. The Monitor page displays concurrent conversations.
 
