@@ -458,3 +458,36 @@ export const insertRagAnalyticsSchema = createInsertSchema(ragAnalytics).omit({
 
 export type RagAnalytics = typeof ragAnalytics.$inferSelect;
 export type InsertRagAnalytics = z.infer<typeof insertRagAnalyticsSchema>;
+
+// Contacts Table - Customer/Client Management
+export const contacts = pgTable("contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  phoneNumber: text("phone_number").notNull().unique(), // WhatsApp number (chatId without @s.whatsapp.net)
+  name: text("name"), // Client name (when identified)
+  document: text("document"), // CPF or CNPJ (when verified)
+  lastConversationId: varchar("last_conversation_id"), // Reference to last conversation
+  lastConversationDate: timestamp("last_conversation_date"), // When last interacted
+  totalConversations: integer("total_conversations").notNull().default(0),
+  hasRecurringIssues: boolean("has_recurring_issues").notNull().default(false),
+  status: text("status").notNull().default("active"), // 'active' or 'inactive'
+  metadata: jsonb("metadata"), // Extra information (problems history, notes, etc)
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  phoneNumberIdx: index("contacts_phone_number_idx").on(table.phoneNumber),
+  documentIdx: index("contacts_document_idx").on(table.document),
+  statusIdx: index("contacts_status_idx").on(table.status),
+  lastConversationDateIdx: index("contacts_last_conversation_date_idx").on(table.lastConversationDate),
+}));
+
+export const insertContactSchema = createInsertSchema(contacts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateContactSchema = insertContactSchema.partial();
+
+export type Contact = typeof contacts.$inferSelect;
+export type InsertContact = z.infer<typeof insertContactSchema>;
+export type UpdateContact = z.infer<typeof updateContactSchema>;

@@ -36,7 +36,8 @@ import {
   Cog,
   UserPlus,
   History,
-  AlertTriangle
+  AlertTriangle,
+  Contact
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
@@ -123,6 +124,12 @@ const menuCategories: MenuCategory[] = [
         title: "Conversas",
         url: "/conversations",
         icon: MessageSquare,
+        roles: ["ADMIN", "SUPERVISOR", "AGENT"],
+      },
+      {
+        title: "Contatos",
+        url: "/contacts",
+        icon: Contact,
         roles: ["ADMIN", "SUPERVISOR", "AGENT"],
       },
     ],

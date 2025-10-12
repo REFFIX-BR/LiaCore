@@ -34,7 +34,10 @@ import {
   type InsertTrainingSession,
   type UpdateTrainingSession,
   type RagAnalytics,
-  type InsertRagAnalytics
+  type InsertRagAnalytics,
+  type Contact,
+  type InsertContact,
+  type UpdateContact
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -222,6 +225,24 @@ export interface IStorage {
     byAssistant: { assistantType: string; count: number; successRate: number }[];
     topQueries: { query: string; count: number }[];
   }>;
+
+  // Contacts
+  createContact(contact: InsertContact): Promise<Contact>;
+  getContact(id: string): Promise<Contact | undefined>;
+  getContactByPhoneNumber(phoneNumber: string): Promise<Contact | undefined>;
+  getAllContacts(): Promise<Contact[]>;
+  getContactsWithFilters(params: {
+    search?: string;
+    status?: string;
+    hasRecurringIssues?: boolean;
+  }): Promise<Contact[]>;
+  updateContact(id: string, updates: UpdateContact): Promise<Contact | undefined>;
+  updateContactFromConversation(phoneNumber: string, conversationId: string, conversationData: {
+    name?: string;
+    document?: string;
+    hasRecurringIssues?: boolean;
+  }): Promise<Contact>;
+  deleteContact(id: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -239,6 +260,7 @@ export class MemStorage implements IStorage {
   private activityLogs: Map<string, ActivityLog>;
   private complaints: Map<string, Complaint>;
   private trainingSessions: Map<string, TrainingSession>;
+  private contacts: Map<string, Contact>;
 
   constructor() {
     this.users = new Map();
@@ -252,6 +274,7 @@ export class MemStorage implements IStorage {
     this.satisfactionFeedback = new Map();
     this.suggestedResponses = new Map();
     this.registrationRequests = new Map();
+    this.contacts = new Map();
     this.activityLogs = new Map();
     this.complaints = new Map();
     this.trainingSessions = new Map();
@@ -1069,6 +1092,129 @@ export class MemStorage implements IStorage {
       byAssistant: [],
       topQueries: []
     };
+  }
+
+  // Contacts
+  async createContact(insertContact: InsertContact): Promise<Contact> {
+    const id = randomUUID();
+    const now = new Date();
+    const contact: Contact = {
+      id,
+      ...insertContact,
+      phoneNumber: insertContact.phoneNumber,
+      name: insertContact.name || null,
+      document: insertContact.document || null,
+      lastConversationId: insertContact.lastConversationId || null,
+      lastConversationDate: insertContact.lastConversationDate || null,
+      totalConversations: insertContact.totalConversations || 0,
+      hasRecurringIssues: insertContact.hasRecurringIssues || false,
+      status: insertContact.status || 'active',
+      metadata: insertContact.metadata || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.contacts.set(id, contact);
+    return contact;
+  }
+
+  async getContact(id: string): Promise<Contact | undefined> {
+    return this.contacts.get(id);
+  }
+
+  async getContactByPhoneNumber(phoneNumber: string): Promise<Contact | undefined> {
+    return Array.from(this.contacts.values()).find(
+      (contact) => contact.phoneNumber === phoneNumber
+    );
+  }
+
+  async getAllContacts(): Promise<Contact[]> {
+    return Array.from(this.contacts.values())
+      .sort((a, b) => (b.lastConversationDate?.getTime() || 0) - (a.lastConversationDate?.getTime() || 0));
+  }
+
+  async getContactsWithFilters(params: {
+    search?: string;
+    status?: string;
+    hasRecurringIssues?: boolean;
+  }): Promise<Contact[]> {
+    let contacts = Array.from(this.contacts.values());
+
+    if (params.search) {
+      const searchLower = params.search.toLowerCase();
+      contacts = contacts.filter((c) =>
+        c.name?.toLowerCase().includes(searchLower) ||
+        c.phoneNumber.includes(params.search!) ||
+        c.document?.includes(params.search!)
+      );
+    }
+
+    if (params.status) {
+      contacts = contacts.filter((c) => c.status === params.status);
+    }
+
+    if (params.hasRecurringIssues !== undefined) {
+      contacts = contacts.filter((c) => c.hasRecurringIssues === params.hasRecurringIssues);
+    }
+
+    return contacts.sort((a, b) => (b.lastConversationDate?.getTime() || 0) - (a.lastConversationDate?.getTime() || 0));
+  }
+
+  async updateContact(id: string, updates: UpdateContact): Promise<Contact | undefined> {
+    const existing = this.contacts.get(id);
+    if (!existing) return undefined;
+
+    const updated: Contact = {
+      ...existing,
+      ...updates,
+      updatedAt: new Date(),
+    };
+
+    this.contacts.set(id, updated);
+    return updated;
+  }
+
+  async updateContactFromConversation(
+    phoneNumber: string,
+    conversationId: string,
+    conversationData: {
+      name?: string;
+      document?: string;
+      hasRecurringIssues?: boolean;
+    }
+  ): Promise<Contact> {
+    let contact = await this.getContactByPhoneNumber(phoneNumber);
+
+    if (!contact) {
+      // Create new contact
+      contact = await this.createContact({
+        phoneNumber,
+        name: conversationData.name || null,
+        document: conversationData.document || null,
+        lastConversationId: conversationId,
+        lastConversationDate: new Date(),
+        totalConversations: 1,
+        hasRecurringIssues: conversationData.hasRecurringIssues || false,
+        status: 'active',
+      });
+    } else {
+      // Update existing contact
+      const updated = await this.updateContact(contact.id, {
+        name: conversationData.name || contact.name,
+        document: conversationData.document || contact.document,
+        lastConversationId: conversationId,
+        lastConversationDate: new Date(),
+        totalConversations: contact.totalConversations + 1,
+        hasRecurringIssues: conversationData.hasRecurringIssues || contact.hasRecurringIssues,
+        status: 'active',
+      });
+      contact = updated!;
+    }
+
+    return contact;
+  }
+
+  async deleteContact(id: string): Promise<void> {
+    this.contacts.delete(id);
   }
 }
 
@@ -2286,6 +2432,125 @@ export class DbStorage implements IStorage {
     d.setUTCDate(d.getUTCDate() + 4 - dayNum);
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
     return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  }
+
+  // Contacts
+  async createContact(insertContact: InsertContact): Promise<Contact> {
+    const [contact] = await db.insert(schema.contacts)
+      .values(insertContact)
+      .returning();
+    return contact;
+  }
+
+  async getContact(id: string): Promise<Contact | undefined> {
+    const [contact] = await db.select()
+      .from(schema.contacts)
+      .where(eq(schema.contacts.id, id));
+    return contact;
+  }
+
+  async getContactByPhoneNumber(phoneNumber: string): Promise<Contact | undefined> {
+    const [contact] = await db.select()
+      .from(schema.contacts)
+      .where(eq(schema.contacts.phoneNumber, phoneNumber));
+    return contact;
+  }
+
+  async getAllContacts(): Promise<Contact[]> {
+    return await db.select()
+      .from(schema.contacts)
+      .orderBy(desc(schema.contacts.lastConversationDate));
+  }
+
+  async getContactsWithFilters(params: {
+    search?: string;
+    status?: string;
+    hasRecurringIssues?: boolean;
+  }): Promise<Contact[]> {
+    const conditions = [];
+
+    if (params.status) {
+      conditions.push(eq(schema.contacts.status, params.status));
+    }
+
+    if (params.hasRecurringIssues !== undefined) {
+      conditions.push(eq(schema.contacts.hasRecurringIssues, params.hasRecurringIssues));
+    }
+
+    if (params.search) {
+      const searchConditions = or(
+        sql`LOWER(${schema.contacts.name}) LIKE ${`%${params.search.toLowerCase()}%`}`,
+        sql`${schema.contacts.phoneNumber} LIKE ${`%${params.search}%`}`,
+        sql`${schema.contacts.document} LIKE ${`%${params.search}%`}`
+      );
+      if (searchConditions) {
+        conditions.push(searchConditions);
+      }
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    return await db.select()
+      .from(schema.contacts)
+      .where(whereClause)
+      .orderBy(desc(schema.contacts.lastConversationDate));
+  }
+
+  async updateContact(id: string, updates: UpdateContact): Promise<Contact | undefined> {
+    const [updated] = await db.update(schema.contacts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(schema.contacts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateContactFromConversation(
+    phoneNumber: string,
+    conversationId: string,
+    conversationData: {
+      name?: string;
+      document?: string;
+      hasRecurringIssues?: boolean;
+    }
+  ): Promise<Contact> {
+    let contact = await this.getContactByPhoneNumber(phoneNumber);
+
+    if (!contact) {
+      // Create new contact
+      contact = await this.createContact({
+        phoneNumber,
+        name: conversationData.name || null,
+        document: conversationData.document || null,
+        lastConversationId: conversationId,
+        lastConversationDate: new Date(),
+        totalConversations: 1,
+        hasRecurringIssues: conversationData.hasRecurringIssues || false,
+        status: 'active',
+      });
+    } else {
+      // Update existing contact - increment totalConversations
+      const updated = await db.update(schema.contacts)
+        .set({
+          name: conversationData.name || contact.name,
+          document: conversationData.document || contact.document,
+          lastConversationId: conversationId,
+          lastConversationDate: new Date(),
+          totalConversations: sql`${schema.contacts.totalConversations} + 1`,
+          hasRecurringIssues: conversationData.hasRecurringIssues || contact.hasRecurringIssues,
+          status: 'active',
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.contacts.id, contact.id))
+        .returning();
+      
+      contact = updated[0];
+    }
+
+    return contact;
+  }
+
+  async deleteContact(id: string): Promise<void> {
+    await db.delete(schema.contacts).where(eq(schema.contacts.id, id));
   }
 }
 

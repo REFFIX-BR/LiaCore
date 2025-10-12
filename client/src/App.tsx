@@ -29,6 +29,7 @@ import AgentReports from "@/pages/AgentReports";
 import RegistrationRequests from "@/pages/RegistrationRequests";
 import ActivityLogs from "@/pages/ActivityLogs";
 import Ouvidoria from "@/pages/Ouvidoria";
+import Contacts from "@/pages/Contacts";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -140,6 +141,9 @@ function Router() {
       </Route>
       <Route path="/ouvidoria">
         {() => <AdminSupervisorRoute component={Ouvidoria} />}
+      </Route>
+      <Route path="/contacts">
+        {() => <ProtectedRoute component={Contacts} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

@@ -730,6 +730,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           },
         });
+
+        // Auto-create/update contact
+        try {
+          const phoneNumber = clientId || chatId.split('@')[0];
+          await storage.updateContactFromConversation(phoneNumber, conversation.id, {
+            name: clientName || undefined,
+          });
+          console.log(`📇 [Contacts] Created/updated contact for ${phoneNumber}`);
+        } catch (error) {
+          console.error(`❌ [Contacts] Error creating/updating contact:`, error);
+        }
       } else if (!threadId) {
         // Existing conversation but no thread - create one
         threadId = await createThread();
@@ -758,6 +769,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateConversation(conversation.id, updateData);
         // Update local object
         Object.assign(conversation, updateData);
+
+        // Auto-update contact on conversation reopen
+        try {
+          const phoneNumber = conversation.clientId || chatId.split('@')[0];
+          await storage.updateContactFromConversation(phoneNumber, conversation.id, {
+            name: conversation.clientName || undefined,
+            document: conversation.clientDocument || undefined,
+          });
+          console.log(`📇 [Contacts] Updated contact on reopen for ${phoneNumber}`);
+        } catch (error) {
+          console.error(`❌ [Contacts] Error updating contact on reopen:`, error);
+        }
       }
 
       // 🧠 ANÁLISE DE INTELIGÊNCIA: Sentiment, Urgência e Problemas Técnicos
@@ -5097,6 +5120,135 @@ A resposta deve:
       }
       console.error("❌ [Complaints] Error updating complaint:", error);
       return res.status(500).json({ error: "Error updating complaint" });
+    }
+  });
+
+  // ==================== CONTACTS ROUTES ====================
+  
+  // Get all contacts with optional filters
+  app.get("/api/contacts", authenticate, async (req, res) => {
+    try {
+      const { search, status, hasRecurringIssues } = req.query;
+
+      const contacts = await storage.getContactsWithFilters({
+        search: search as string | undefined,
+        status: status as string | undefined,
+        hasRecurringIssues: hasRecurringIssues === 'true' ? true : hasRecurringIssues === 'false' ? false : undefined,
+      });
+
+      console.log(`✅ [Contacts] Retrieved ${contacts.length} contacts`);
+      return res.json(contacts);
+    } catch (error) {
+      console.error("❌ [Contacts] Error fetching contacts:", error);
+      return res.status(500).json({ error: "Error fetching contacts" });
+    }
+  });
+
+  // Get contact by ID with conversation history
+  app.get("/api/contacts/:id", authenticate, async (req, res) => {
+    try {
+      const contact = await storage.getContact(req.params.id);
+
+      if (!contact) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+
+      // Get all conversations for this contact (by phone number)
+      const allConversations = await storage.getAllConversations();
+      const contactConversations = allConversations.filter(
+        conv => conv.chatId.includes(contact.phoneNumber)
+      );
+
+      return res.json({
+        ...contact,
+        conversations: contactConversations,
+      });
+    } catch (error) {
+      console.error("❌ [Contacts] Error fetching contact:", error);
+      return res.status(500).json({ error: "Error fetching contact" });
+    }
+  });
+
+  // Reopen conversation with a contact
+  app.post("/api/contacts/reopen", authenticate, async (req, res) => {
+    try {
+      const { contactId, message } = req.body;
+
+      if (!contactId) {
+        return res.status(400).json({ error: "Contact ID is required" });
+      }
+
+      const contact = await storage.getContact(contactId);
+
+      if (!contact) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+
+      // Send message via Evolution API
+      const chatId = `${contact.phoneNumber}@s.whatsapp.net`;
+      const messageToSend = message || "Olá! Estamos entrando em contato para dar continuidade ao seu atendimento.";
+
+      const evolutionUrl = process.env.EVOLUTION_API_URL;
+      const evolutionApiKey = process.env.EVOLUTION_API_KEY;
+      const evolutionInstance = process.env.EVOLUTION_INSTANCE_NAME;
+
+      if (!evolutionUrl || !evolutionApiKey || !evolutionInstance) {
+        return res.status(500).json({ error: "Evolution API not configured" });
+      }
+
+      const response = await fetch(`${evolutionUrl}/message/sendText/${evolutionInstance}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': evolutionApiKey,
+        },
+        body: JSON.stringify({
+          number: chatId,
+          text: messageToSend,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Evolution API error: ${response.statusText}`);
+      }
+
+      // Create or update conversation
+      let conversation = await storage.getConversationByChatId(chatId);
+
+      if (!conversation) {
+        // Create new conversation
+        conversation = await storage.createConversation({
+          chatId,
+          clientName: contact.name || contact.phoneNumber,
+          clientId: contact.phoneNumber,
+          clientDocument: contact.document || undefined,
+          assistantType: 'cortex',
+          status: 'active',
+          metadata: { reopened: true, reopenedBy: req.user?.id, reopenedAt: new Date() },
+        });
+      } else {
+        // Reactivate existing conversation
+        await storage.updateConversation(conversation.id, {
+          status: 'active',
+          lastMessageTime: new Date(),
+          metadata: { 
+            ...conversation.metadata as any, 
+            reopened: true, 
+            reopenedBy: req.user?.id, 
+            reopenedAt: new Date() 
+          },
+        });
+      }
+
+      console.log(`✅ [Contacts] Reopened conversation with contact ${contact.phoneNumber}`);
+      return res.json({ 
+        success: true, 
+        message: "Conversation reopened successfully",
+        conversation,
+      });
+    } catch (error) {
+      console.error("❌ [Contacts] Error reopening conversation:", error);
+      return res.status(500).json({ error: "Error reopening conversation" });
     }
   });
 
