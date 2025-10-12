@@ -31,10 +31,17 @@ class AgentLogger {
   private clients: Set<WebSocket> = new Set();
 
   setupWebSocket(server: Server) {
-    this.wss = new WebSocketServer({ 
-      server,
-      path: '/ws/agent-logs'
-    });
+    console.log('🔧 [Agent Logger] Configurando WebSocket Server...');
+    try {
+      this.wss = new WebSocketServer({ 
+        server,
+        path: '/ws/agent-logs'
+      });
+      console.log('✅ [Agent Logger] WebSocketServer criado com sucesso');
+    } catch (error) {
+      console.error('❌ [Agent Logger] Erro ao criar WebSocketServer:', error);
+      return;
+    }
 
     this.wss.on('connection', (ws: WebSocket) => {
       console.log('🤖 [Agent Logger] Cliente conectado ao monitor de agentes');
