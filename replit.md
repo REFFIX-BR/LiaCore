@@ -43,6 +43,7 @@ The frontend is developed with React, TypeScript, Vite, `shadcn/ui` (Radix UI), 
 - **Conversation Intelligence System**: Provides real-time analysis of customer messages including sentiment analysis, 4-level urgency classification, technical problem detection, recurrence detection (tracking by CPF/CNPJ), and automatic persistence of CPF/CNPJ. It also includes an AI function for prioritizing technical support.
 
 **Real-Time Monitoring**: A Supervisor Dashboard provides KPIs, live conversation queues, alerts, transcripts, and human intervention controls.
+- **Live Logs System** (Implemented 2024-10-12): WebSocket-powered real-time event monitoring page (`/live-logs`) displaying all system events with intelligent filters (Routing, Messages, Errors), live statistics, pause/resume controls, and detailed JSON inspection. Tracks MESSAGE_RECEIVED, AI_RESPONSE, CONVERSATION_ROUTED, TRANSFER_TO_HUMAN, and 10+ critical events for operational visibility.
 
 **Continuous Learning System**: An autonomous GPT-4 agent suggests prompt improvements based on supervisor interventions and feedback (implicit and explicit). A hybrid training system allows supervisors to mark training segments or create sessions for prompt generation.
 

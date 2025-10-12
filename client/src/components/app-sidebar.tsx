@@ -107,6 +107,12 @@ const menuCategories: MenuCategory[] = [
         icon: Wifi,
         roles: ["ADMIN"],
       },
+      {
+        title: "Logs em Tempo Real",
+        url: "/live-logs",
+        icon: Activity,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
     ],
   },
   {

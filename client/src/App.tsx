@@ -30,6 +30,7 @@ import RegistrationRequests from "@/pages/RegistrationRequests";
 import ActivityLogs from "@/pages/ActivityLogs";
 import Ouvidoria from "@/pages/Ouvidoria";
 import Contacts from "@/pages/Contacts";
+import LiveLogs from "@/pages/LiveLogs";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -105,6 +106,9 @@ function Router() {
       </Route>
       <Route path="/webhook-monitor">
         {() => <ProtectedRoute component={WebhookMonitor} />}
+      </Route>
+      <Route path="/live-logs">
+        {() => <ProtectedRoute component={LiveLogs} />}
       </Route>
       <Route path="/test-chat">
         {() => <ProtectedRoute component={TestChat} />}
