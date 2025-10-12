@@ -72,6 +72,8 @@ export default function AgentLogs() {
 
     ws.onerror = (error) => {
       console.error('Agent Logs WebSocket error:', error);
+      console.error('Agent Logs WebSocket URL was:', wsUrl);
+      console.error('Agent Logs WebSocket readyState:', ws.readyState);
     };
 
     ws.onclose = () => {
