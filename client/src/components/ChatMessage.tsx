@@ -136,10 +136,10 @@ export function ChatMessage({ message }: ChatMessageProps) {
       className={`flex w-full mb-4 px-4 ${isUser ? 'justify-start' : 'justify-end'}`}
       data-testid={`message-${message.role}`}
     >
-      <div className={`flex flex-col max-w-[70%] ${isUser ? 'items-start' : 'items-end'}`}>
+      <div className={`flex flex-col max-w-[70%] min-w-0 ${isUser ? 'items-start' : 'items-end'}`}>
         {/* Bubble da mensagem */}
         <div 
-          className={`rounded-xl px-4 py-3 ${
+          className={`rounded-xl px-4 py-3 overflow-hidden ${
             isUser 
               ? 'bg-muted dark:bg-muted/80 text-foreground rounded-tl-sm' 
               : 'bg-primary dark:bg-primary/90 text-primary-foreground rounded-tr-sm'
@@ -193,7 +193,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
           {/* Conteúdo da mensagem */}
           {messageContent && (
-            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+            <p className="text-sm leading-relaxed whitespace-pre-wrap break-all overflow-wrap-anywhere">
               {messageContent}
             </p>
           )}
@@ -204,7 +204,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
               <p className="text-xs font-medium mb-1 opacity-80">
                 📎 Análise automática da imagem
               </p>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{imageAnalysis}</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap break-all">{imageAnalysis}</p>
             </div>
           )}
 
@@ -214,7 +214,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
               <p className="text-xs font-medium mb-1 opacity-80">
                 🎤 Transcrição automática
               </p>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{audioTranscription}</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap break-all">{audioTranscription}</p>
             </div>
           )}
 
