@@ -66,7 +66,7 @@ The frontend is developed with React, TypeScript, Vite, `shadcn/ui` (Radix UI), 
 - **Agent Welcome Message System** (Implemented 2024-10-12): Automatic welcome message sent via WhatsApp when AI transfers conversation to human agent. Message intelligently requests CPF/CNPJ if not already in database, or proceeds with standard greeting if customer is already registered. Template-based system allows customization per department.
 
 **WhatsApp Integration**: Native integration with Evolution API for real-time message processing, AI routing, and outbound messaging.
-- **Multi-Instance Evolution API Support** (Implemented 2024-10-13): Dynamic API key lookup supporting multiple WhatsApp instances with per-instance secrets. System tries instance-specific key first (EVOLUTION_API_KEY_{instance}), falls back to global EVOLUTION_API_KEY. Enables simultaneous operation of multiple Evolution API instances (e.g., testecortex1, Leads) with automatic key resolution in message sending and media downloads.
+- **Multi-Instance Evolution API Support** (Implemented 2024-10-13): Dynamic API key lookup supporting multiple WhatsApp instances with per-instance secrets. System tries instance-specific key first (EVOLUTION_API_KEY_{instance}), falls back to global EVOLUTION_API_KEY. Enables simultaneous operation of multiple Evolution API instances (Leads, testecortex1, Cobranca) with automatic key resolution in message sending and media downloads.
 
 **Role-Based Access Control (RBAC)**: A 3-tier system (ADMIN, SUPERVISOR, AGENT) with granular permissions, role-based navigation, and an ADMIN interface for user management.
 
