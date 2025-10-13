@@ -8,6 +8,7 @@ export const QUEUE_NAMES = {
   IMAGE_ANALYSIS: 'image-analysis',
   NPS_SURVEY: 'nps-survey',
   LEARNING_TASKS: 'learning-tasks',
+  INACTIVITY_FOLLOWUP: 'inactivity-followup',
 } as const;
 
 // Queue configurations with different priorities and retry strategies
@@ -87,6 +88,21 @@ export const QUEUE_CONFIGS = {
       },
     },
   },
+  [QUEUE_NAMES.INACTIVITY_FOLLOWUP]: {
+    defaultJobOptions: {
+      attempts: 2,
+      backoff: {
+        type: 'exponential' as const,
+        delay: 5000,
+      },
+      removeOnComplete: {
+        count: 100,
+      },
+      removeOnFail: {
+        count: 50,
+      },
+    },
+  },
 };
 
 // Create queues
@@ -127,6 +143,14 @@ export const learningTasksQueue = new Queue(
   {
     connection: redisConnection,
     ...QUEUE_CONFIGS[QUEUE_NAMES.LEARNING_TASKS],
+  }
+);
+
+export const inactivityFollowupQueue = new Queue(
+  QUEUE_NAMES.INACTIVITY_FOLLOWUP,
+  {
+    connection: redisConnection,
+    ...QUEUE_CONFIGS[QUEUE_NAMES.INACTIVITY_FOLLOWUP],
   }
 );
 
@@ -185,6 +209,16 @@ export interface LearningTaskJob {
   data: any;
 }
 
+export interface InactivityFollowupJob {
+  conversationId: string;
+  chatId: string;
+  clientId: string;
+  clientName: string;
+  evolutionInstance?: string;
+  scheduledAt: number;
+  lastClientMessageTime: number;
+}
+
 // Helper functions to add jobs
 export async function addMessageToQueue(data: MessageProcessingJob, priority?: number) {
   return await messageQueue.add('process-message', data, {
@@ -216,6 +250,34 @@ export async function addLearningTaskToQueue(data: LearningTaskJob) {
   });
 }
 
+export async function addInactivityFollowupToQueue(data: InactivityFollowupJob) {
+  const TEN_MINUTES = 10 * 60 * 1000; // 10 minutos em milissegundos
+  
+  return await inactivityFollowupQueue.add('check-inactivity', data, {
+    delay: TEN_MINUTES,
+    jobId: `inactivity-${data.conversationId}`, // ID único para poder cancelar depois
+    priority: 5,
+  });
+}
+
+export async function cancelInactivityFollowup(conversationId: string) {
+  try {
+    const jobId = `inactivity-${conversationId}`;
+    const job = await inactivityFollowupQueue.getJob(jobId);
+    
+    if (job) {
+      await job.remove();
+      console.log(`✅ [Inactivity] Follow-up cancelado para conversa ${conversationId}`);
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error(`❌ [Inactivity] Erro ao cancelar follow-up:`, error);
+    return false;
+  }
+}
+
 // Graceful shutdown
 export async function closeQueues() {
   console.log('🔴 Closing queues...');
@@ -224,6 +286,7 @@ export async function closeQueues() {
   await imageAnalysisQueue.close();
   await npsSurveyQueue.close();
   await learningTasksQueue.close();
+  await inactivityFollowupQueue.close();
   await redisConnection.quit();
   console.log('✅ Queues closed successfully');
 }
