@@ -38,8 +38,13 @@ function getEvolutionApiKey(instanceName?: string): string | undefined {
 async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, caption?: string, instanceName?: string): Promise<boolean> {
   const instance = instanceName || EVOLUTION_CONFIG.instance;
   
-  if (!EVOLUTION_CONFIG.apiUrl || !EVOLUTION_CONFIG.apiKey || !instance) {
-    console.error("❌ [Evolution] Credenciais não configuradas para envio de imagem");
+  // Busca API key específica da instância
+  const apiKey = getEvolutionApiKey(instance);
+  
+  if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
+    console.error("❌ [Evolution] Credenciais não configuradas para envio de imagem", {
+      triedKey: instance ? `EVOLUTION_API_KEY_${instance}` : 'EVOLUTION_API_KEY'
+    });
     return false;
   }
 
@@ -70,7 +75,7 @@ async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, capti
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        apikey: EVOLUTION_CONFIG.apiKey,
+        apikey: apiKey,
       },
       body: JSON.stringify({
         number: normalizedNumber,
@@ -97,8 +102,13 @@ async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, capti
 async function sendWhatsAppDocument(phoneNumber: string, pdfBase64: string, fileName?: string, caption?: string, instanceName?: string): Promise<boolean> {
   const instance = instanceName || EVOLUTION_CONFIG.instance;
   
-  if (!EVOLUTION_CONFIG.apiUrl || !EVOLUTION_CONFIG.apiKey || !instance) {
-    console.error("❌ [Evolution] Credenciais não configuradas para envio de documento");
+  // Busca API key específica da instância
+  const apiKey = getEvolutionApiKey(instance);
+  
+  if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
+    console.error("❌ [Evolution] Credenciais não configuradas para envio de documento", {
+      triedKey: instance ? `EVOLUTION_API_KEY_${instance}` : 'EVOLUTION_API_KEY'
+    });
     return false;
   }
 
@@ -129,7 +139,7 @@ async function sendWhatsAppDocument(phoneNumber: string, pdfBase64: string, file
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        apikey: EVOLUTION_CONFIG.apiKey,
+        apikey: apiKey,
       },
       body: JSON.stringify({
         number: normalizedNumber,
@@ -239,8 +249,13 @@ async function deleteWhatsAppMessage(
 ): Promise<boolean> {
   const instance = instanceName || EVOLUTION_CONFIG.instance;
   
-  if (!EVOLUTION_CONFIG.apiUrl || !EVOLUTION_CONFIG.apiKey || !instance) {
-    console.error("❌ [Evolution] Credenciais não configuradas para deletar mensagem");
+  // Busca API key específica da instância
+  const apiKey = getEvolutionApiKey(instance);
+  
+  if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
+    console.error("❌ [Evolution] Credenciais não configuradas para deletar mensagem", {
+      triedKey: instance ? `EVOLUTION_API_KEY_${instance}` : 'EVOLUTION_API_KEY'
+    });
     return false;
   }
 
@@ -258,7 +273,7 @@ async function deleteWhatsAppMessage(
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': EVOLUTION_CONFIG.apiKey,
+        'apikey': apiKey,
       },
       body: JSON.stringify({
         id: whatsappMessageId,
