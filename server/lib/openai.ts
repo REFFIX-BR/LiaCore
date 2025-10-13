@@ -628,7 +628,7 @@ Fonte: ${fonte}`;
         });
 
       case "rotear_para_assistente":
-        const assistente = args.departamento || args.department || args.assistente || "Suporte";
+        const assistente = args.assistantType || args.assistente || args.departamento || args.department || "Suporte";
         const motivo_roteamento = args.motivo || args.reason || "Roteamento interno";
         
         console.log("🎭 [Routing] IA solicitou roteamento para ASSISTENTE:", { chatId, assistente, motivo: motivo_roteamento });
