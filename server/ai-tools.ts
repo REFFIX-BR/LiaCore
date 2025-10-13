@@ -159,10 +159,6 @@ export async function consultaBoletoCliente(
   conversationContext: { conversationId: string },
   storage: IStorage
 ): Promise<ConsultaBoletoResult[]> {
-  const startTime = Date.now();
-  const maxRetries = 3;
-  let lastError: Error | null = null;
-
   try {
     // Validação de segurança OBRIGATÓRIA: contexto da conversa deve ser fornecido
     if (!conversationContext || !conversationContext.conversationId) {
@@ -185,60 +181,19 @@ export async function consultaBoletoCliente(
     }
 
     // Log sem dados sensíveis - apenas operação
-    console.log(`📋 [AI Tool] Consultando boletos (conversação: ${conversationContext.conversationId}) - tentativas máximas: ${maxRetries}`);
+    console.log(`📋 [AI Tool] Consultando boletos (conversação: ${conversationContext.conversationId})`);
 
-    // Retry com backoff exponencial
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      let timeoutId: NodeJS.Timeout | null = null;
-      try {
-        console.log(`🔄 [AI Tool] Tentativa ${attempt}/${maxRetries} de consulta à API de boletos`);
-        
-        const controller = new AbortController();
-        timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+    const boletos = await fetchWithRetry<ConsultaBoletoResult[]>(
+      "https://webhook.trtelecom.net/webhook/consulta_boleto",
+      { documento },
+      { operationName: "consulta de boletos" }
+    );
+    
+    console.log(`📋 [AI Tool] ${boletos?.length || 0} boleto(s) encontrado(s)`);
 
-        const response = await fetch("https://webhook.trtelecom.net/webhook/consulta_boleto", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ documento }),
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const boletos = await response.json() as ConsultaBoletoResult[];
-        const duration = Date.now() - startTime;
-        
-        console.log(`✅ [AI Tool] Consulta concluída com sucesso - ${boletos?.length || 0} boletos encontrados em ${duration}ms (tentativa ${attempt}/${maxRetries})`);
-
-        return boletos;
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        const duration = Date.now() - startTime;
-        
-        if (attempt < maxRetries) {
-          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Backoff exponencial: 1s, 2s, 4s (max 5s)
-          console.warn(`⚠️  [AI Tool] Tentativa ${attempt} falhou após ${duration}ms: ${lastError.message}. Aguardando ${delay}ms antes de tentar novamente...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        } else {
-          console.error(`❌ [AI Tool] Todas as ${maxRetries} tentativas falharam após ${duration}ms`);
-        }
-      } finally {
-        if (timeoutId) clearTimeout(timeoutId);
-      }
-    }
-
-    // Se chegou aqui, todas as tentativas falharam - criar erro informativo
-    const duration = Date.now() - startTime;
-    const errorMessage = `Falha ao consultar boletos após ${maxRetries} tentativas em ${duration}ms`;
-    const wrappedError = new Error(errorMessage, { cause: lastError });
-    throw wrappedError;
+    return boletos;
   } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`❌ [AI Tool] Erro ao consultar boletos após ${duration}ms:`, error);
+    console.error("❌ [AI Tool] Erro ao consultar boletos:", error);
     throw error;
   }
 }
@@ -255,10 +210,6 @@ export async function consultaStatusConexao(
   conversationContext: { conversationId: string },
   storage: IStorage
 ): Promise<StatusConexaoResult[]> {
-  const startTime = Date.now();
-  const maxRetries = 3;
-  let lastError: Error | null = null;
-
   try {
     // Validação de segurança OBRIGATÓRIA
     if (!conversationContext || !conversationContext.conversationId) {
@@ -279,60 +230,19 @@ export async function consultaStatusConexao(
       throw new Error("Não é permitido consultar documentos de outros clientes");
     }
 
-    console.log(`🔌 [AI Tool] Consultando status de conexão (conversação: ${conversationContext.conversationId}) - tentativas máximas: ${maxRetries}`);
+    console.log(`🔌 [AI Tool] Consultando status de conexão (conversação: ${conversationContext.conversationId})`);
 
-    // Retry com backoff exponencial
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      let timeoutId: NodeJS.Timeout | null = null;
-      try {
-        console.log(`🔄 [AI Tool] Tentativa ${attempt}/${maxRetries} de consulta à API de status PPPoE`);
-        
-        const controller = new AbortController();
-        timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+    const conexoes = await fetchWithRetry<StatusConexaoResult[]>(
+      "https://webhook.trtelecom.net/webhook/check_pppoe_status",
+      { documento },
+      { operationName: "consulta de status PPPoE" }
+    );
+    
+    console.log(`📋 [AI Tool] ${conexoes?.length || 0} conexão(ões) encontrada(s)`);
 
-        const response = await fetch("https://webhook.trtelecom.net/webhook/check_pppoe_status", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ documento }),
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const conexoes = await response.json() as StatusConexaoResult[];
-        const duration = Date.now() - startTime;
-        
-        console.log(`✅ [AI Tool] Status PPPoE consultado com sucesso - ${conexoes?.length || 0} conexão(ões) encontrada(s) em ${duration}ms (tentativa ${attempt}/${maxRetries})`);
-
-        return conexoes;
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        const duration = Date.now() - startTime;
-        
-        if (attempt < maxRetries) {
-          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Backoff exponencial: 1s, 2s, 4s (max 5s)
-          console.warn(`⚠️  [AI Tool] Tentativa ${attempt} falhou após ${duration}ms: ${lastError.message}. Aguardando ${delay}ms antes de tentar novamente...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        } else {
-          console.error(`❌ [AI Tool] Todas as ${maxRetries} tentativas falharam após ${duration}ms`);
-        }
-      } finally {
-        if (timeoutId) clearTimeout(timeoutId);
-      }
-    }
-
-    // Se chegou aqui, todas as tentativas falharam - criar erro informativo
-    const duration = Date.now() - startTime;
-    const errorMessage = `Falha ao consultar status de conexão após ${maxRetries} tentativas em ${duration}ms`;
-    const wrappedError = new Error(errorMessage, { cause: lastError });
-    throw wrappedError;
+    return conexoes;
   } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`❌ [AI Tool] Erro ao consultar status de conexão após ${duration}ms:`, error);
+    console.error("❌ [AI Tool] Erro ao consultar status de conexão:", error);
     throw error;
   }
 }
