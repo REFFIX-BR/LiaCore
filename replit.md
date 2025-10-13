@@ -33,7 +33,7 @@ The frontend is developed with React, TypeScript, Vite, `shadcn/ui` (Radix UI), 
 **AI & Knowledge Management**:
 - **AI Provider**: OpenAI Assistants API.
 - **Specialized Assistants**: Six roles (Support, Sales, Finance, Cancellation, Ombudsman, Presentation) with a "Receptionist-First" routing model.
-- **AI Routing Architecture** (Critical 2024-10-12): APRESENTAÇÃO (Receptionist) assistant uses `rotear_para_assistente` function to route to specialized AI assistants (Support, Commercial, Finance, etc.) and `transferir_para_humano` ONLY for explicit human agent requests or CPF refusal. This ensures proper AI-first workflow.
+- **AI Routing Architecture** (Critical 2024-10-13): APRESENTAÇÃO (Receptionist) assistant uses **ONLY** `rotear_para_assistente` function to route to specialized AI assistants (Support, Commercial, Finance, etc.). It does NOT have access to `transferir_para_humano` - only specialized assistants can transfer to human agents. This ensures proper AI-first workflow where receptionist routes to specialists, and specialists handle human escalation when needed.
 - **Conversation Finalization Logic**: A robust system ensures proper conversation closure and correct NPS survey delivery, with specific rules for assistant roles regarding autonomous finalization or mandatory human transfer.
 - **Conversation Summarization**: Asynchronous summarization of conversations.
 - **RAG Architecture**: Features a dual-layer prompt system separating System Prompts (absolute behavioral rules embedded in OpenAI Assistant instructions) from RAG Prompts (structured context-specific prompts for grounded generation). Utilizes Upstash Vector for semantic search.
