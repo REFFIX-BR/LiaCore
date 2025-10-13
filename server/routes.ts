@@ -1409,6 +1409,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Extract message text content
         let messageText: string | null = null;
         let imageBase64: string | undefined = undefined;
+        let imageMediaUrl: string | undefined = undefined; // URL da imagem para worker
         let pdfBase64: string | undefined = undefined;
         let pdfName: string | undefined = undefined;
         let audioUrl: string | undefined = undefined;
@@ -1423,6 +1424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Extrair mediaUrl se disponível (S3/MinIO)
           const mediaUrl = data?.message?.mediaUrl;
+          imageMediaUrl = mediaUrl; // Salvar para passar ao worker
           
           console.log(`📸 [Evolution] Imagem detectada:`, {
             url: message.imageMessage.url,
@@ -1445,7 +1447,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`✅ [Evolution] Imagem processada:`, {
             messageText: messageText.substring(0, 100),
             hasBase64: !!imageBase64,
-            base64Length: imageBase64?.length || 0
+            base64Length: imageBase64?.length || 0,
+            hasMediaUrl: !!imageMediaUrl
           });
         } else if (message?.documentMessage) {
           // Process document/PDF - download base64
@@ -1937,6 +1940,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             evolutionInstance: instance,
             clientName,
             hasImage: !!imageBase64, // Indicar se tem imagem
+            imageUrl: imageMediaUrl, // URL da imagem para análise pelo worker
           }, 1); // Priority 1 (highest)
 
           prodLogger.info('conversation', 'Mensagem enfileirada para processamento', {
