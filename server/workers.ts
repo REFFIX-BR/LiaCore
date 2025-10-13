@@ -47,19 +47,22 @@ import { storage } from './storage';
 async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?: string): Promise<boolean> {
   const evolutionInstance = instance || process.env.EVOLUTION_API_INSTANCE;
   
-  // Tenta API key específica da instância primeiro, senão usa global
+  // Tenta API key e URL específicos da instância primeiro, senão usa global
   const apiKey = evolutionInstance 
     ? (process.env[`EVOLUTION_API_KEY_${evolutionInstance}`] || process.env.EVOLUTION_API_KEY)
     : process.env.EVOLUTION_API_KEY;
   
-  let baseUrl = process.env.EVOLUTION_API_URL;
+  let baseUrl = evolutionInstance
+    ? (process.env[`EVOLUTION_API_URL_${evolutionInstance}`] || process.env.EVOLUTION_API_URL)
+    : process.env.EVOLUTION_API_URL;
 
   if (!evolutionInstance || !apiKey || !baseUrl) {
     console.error('❌ Evolution API config missing', { 
       evolutionInstance, 
       hasApiKey: !!apiKey, 
       baseUrl,
-      triedKey: `EVOLUTION_API_KEY_${evolutionInstance}` 
+      triedKey: `EVOLUTION_API_KEY_${evolutionInstance}`,
+      triedUrl: `EVOLUTION_API_URL_${evolutionInstance}`
     });
     return false;
   }

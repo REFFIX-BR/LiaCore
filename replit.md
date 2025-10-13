@@ -28,6 +28,7 @@ The frontend is developed with React, TypeScript, Vite, `shadcn/ui` (Radix UI), 
 
 **Queue System**: Employs BullMQ with Redis TLS for asynchronous message processing across five queues (message-processing, ai-response, image-analysis, nps-survey, learning-tasks). It includes automatic retry mechanisms and webhook fallback to ensure zero message loss, supporting high conversation volumes.
 - **Worker Recovery System** (Implemented 2024-10-12): Automatic fallback mechanism that recovers conversations by chatId when primary ID lookup fails. Prevents message loss from audio transcriptions and ensures AI responses even when conversation references become stale, with detailed logging for production diagnostics.
+- **OpenAI Thread Concurrency Lock** (Implemented 2024-10-13): Redis-based distributed lock system prevents "Can't add messages to thread while a run active" errors during concurrent message processing. Uses unique lock tokens (timestamp+random), 120s TTL (exceeds 90s circuit breaker), and atomic Lua script for safe release ensuring only lock owner can delete. Implements retry logic with 30s timeout and finally block guarantees cleanup even on errors.
 
 **AI & Knowledge Management**:
 - **AI Provider**: OpenAI Assistants API.
@@ -65,6 +66,7 @@ The frontend is developed with React, TypeScript, Vite, `shadcn/ui` (Radix UI), 
 - **Agent Welcome Message System** (Implemented 2024-10-12): Automatic welcome message sent via WhatsApp when AI transfers conversation to human agent. Message intelligently requests CPF/CNPJ if not already in database, or proceeds with standard greeting if customer is already registered. Template-based system allows customization per department.
 
 **WhatsApp Integration**: Native integration with Evolution API for real-time message processing, AI routing, and outbound messaging.
+- **Multi-Instance Evolution API Support** (Implemented 2024-10-13): Dynamic API key lookup supporting multiple WhatsApp instances with per-instance secrets. System tries instance-specific key first (EVOLUTION_API_KEY_{instance}), falls back to global EVOLUTION_API_KEY. Enables simultaneous operation of multiple Evolution API instances (e.g., testecortex1, Leads) with automatic key resolution in message sending and media downloads.
 
 **Role-Based Access Control (RBAC)**: A 3-tier system (ADMIN, SUPERVISOR, AGENT) with granular permissions, role-based navigation, and an ADMIN interface for user management.
 

@@ -52,6 +52,12 @@ class AgentLogger {
 
   setupWebSocket(server: Server) {
     console.log('🔧 [Agent Logger] Configurando WebSocket Server...');
+    
+    // Debug: Log all upgrade events
+    server.on('upgrade', (req, socket, head) => {
+      console.log(`🔍 [Debug] HTTP Upgrade request: ${req.url}`);
+    });
+    
     try {
       this.wss = new WebSocketServer({ 
         server,

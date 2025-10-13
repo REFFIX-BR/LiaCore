@@ -5,8 +5,6 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL;
-
 export interface EvolutionMessageKey {
   id: string;
   remoteJid: string;
@@ -16,9 +14,21 @@ export interface EvolutionMessageKey {
 /**
  * Get Evolution API key for a specific instance
  */
-function getEvolutionApiKey(instance: string): string | undefined {
+function getEvolutionApiKey(instance?: string): string | undefined {
   // Tenta API key específica da instância primeiro, senão usa global
-  return process.env[`EVOLUTION_API_KEY_${instance}`] || process.env.EVOLUTION_API_KEY;
+  return instance
+    ? (process.env[`EVOLUTION_API_KEY_${instance}`] || process.env.EVOLUTION_API_KEY)
+    : process.env.EVOLUTION_API_KEY;
+}
+
+/**
+ * Get Evolution API URL for a specific instance
+ */
+function getEvolutionApiUrl(instance?: string): string | undefined {
+  // Tenta URL específica da instância primeiro, senão usa global
+  return instance
+    ? (process.env[`EVOLUTION_API_URL_${instance}`] || process.env.EVOLUTION_API_URL)
+    : process.env.EVOLUTION_API_URL;
 }
 
 /**
@@ -56,11 +66,13 @@ export async function downloadImageFromEvolution(
 ): Promise<string | null> {
   try {
     const apiKey = getEvolutionApiKey(instance);
+    const apiUrl = getEvolutionApiUrl(instance);
     
-    if (!EVOLUTION_API_URL || !apiKey) {
+    if (!apiUrl || !apiKey) {
       console.error('❌ [Vision] EVOLUTION_API_URL ou EVOLUTION_API_KEY não configurados', {
         instance,
-        triedKey: `EVOLUTION_API_KEY_${instance}`
+        triedKey: `EVOLUTION_API_KEY_${instance}`,
+        triedUrl: `EVOLUTION_API_URL_${instance}`
       });
       return null;
     }
@@ -68,10 +80,10 @@ export async function downloadImageFromEvolution(
     console.log(`📥 [Vision] Iniciando download de imagem da Evolution API...`);
     console.log(`🔍 [Vision] MessageKey:`, JSON.stringify(messageKey));
     console.log(`🔍 [Vision] Instance: ${instance}`);
-    console.log(`🔍 [Vision] URL: ${EVOLUTION_API_URL}/chat/getBase64FromMediaMessage/${instance}`);
+    console.log(`🔍 [Vision] URL: ${apiUrl}/chat/getBase64FromMediaMessage/${instance}`);
 
     const response = await axios.post(
-      `${EVOLUTION_API_URL}/chat/getBase64FromMediaMessage/${instance}`,
+      `${apiUrl}/chat/getBase64FromMediaMessage/${instance}`,
       {
         message: {
           key: messageKey,
