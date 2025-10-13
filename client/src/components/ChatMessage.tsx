@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Check, CheckCheck, FileText, Download } from "lucide-react";
+import { Check, CheckCheck, FileText, Download, Lock } from "lucide-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
 
 export interface Message {
@@ -18,6 +18,8 @@ export interface Message {
   pdfBase64?: string | null;
   pdfName?: string | null;
   audioUrl?: string | null;
+  isPrivate?: boolean;
+  sentBy?: string | null;
 }
 
 interface ChatMessageProps {
@@ -175,6 +177,17 @@ export function ChatMessage({ message }: ChatMessageProps) {
             <Badge variant="outline" className="mb-2 text-xs flex items-center gap-1">
               <FileText className="h-3 w-3" />
               <span>{pdfFileName}</span>
+            </Badge>
+          )}
+
+          {/* Badge de Mensagem Privada */}
+          {message.isPrivate && (
+            <Badge 
+              variant="secondary" 
+              className="mb-2 text-xs flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-700"
+            >
+              <Lock className="h-3 w-3" />
+              <span>Mensagem Privada</span>
             </Badge>
           )}
 
