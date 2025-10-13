@@ -92,6 +92,8 @@ export const messages = pgTable("messages", {
   audioUrl: text("audio_url"), // URL do áudio original (WhatsApp/Evolution API)
   whatsappMessageId: text("whatsapp_message_id"), // ID da mensagem no WhatsApp (para deletar)
   remoteJid: text("remote_jid"), // JID do chat WhatsApp (necessário para deletar)
+  isPrivate: boolean("is_private").default(false), // Mensagens privadas (notas internas, não enviadas ao cliente)
+  sendBy: text("send_by"), // Identificador de quem enviou (supervisor, agent, ai, client)
 }, (table) => ({
   // Índices para queries rápidas de mensagens e paginação
   conversationIdIdx: index("messages_conversation_id_idx").on(table.conversationId),
