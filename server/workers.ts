@@ -389,6 +389,9 @@ if (redisConnection) {
         });
       }
 
+      // Flag para controlar se deve enviar a mensagem da Apresentação
+      let shouldSendPresentationMessage = true;
+
       if (result.routed && result.assistantTarget) {
         console.log(`🎭 [Worker] Routed to assistant: ${result.assistantTarget}`);
         
@@ -423,6 +426,9 @@ if (redisConnection) {
             });
 
             console.log(`✅ [Worker] Welcome message sent from ${result.assistantTarget}`);
+            
+            // Não enviar mensagem da Apresentação (evita duplicidade)
+            shouldSendPresentationMessage = false;
           } catch (welcomeError) {
             console.error(`❌ [Worker] Error sending welcome message:`, welcomeError);
             // Continue anyway - routing was successful
@@ -439,22 +445,26 @@ if (redisConnection) {
         });
       }
 
-      // 9. Send response back to customer
-      const messageSent = await sendWhatsAppMessage(fromNumber, result.response, evolutionInstance);
-      
-      if (!messageSent) {
-        throw new Error('Failed to send WhatsApp message - Evolution API error');
-      }
+      // 9. Send response back to customer (apenas se não houve roteamento)
+      if (shouldSendPresentationMessage) {
+        const messageSent = await sendWhatsAppMessage(fromNumber, result.response, evolutionInstance);
+        
+        if (!messageSent) {
+          throw new Error('Failed to send WhatsApp message - Evolution API error');
+        }
 
-      // 10. Store AI response (only if message was sent successfully)
-      await storage.createMessage({
-        conversationId,
-        role: 'assistant',
-        content: result.response,
-        functionCall: result.functionCalls && result.functionCalls.length > 0 
-          ? result.functionCalls[0] // Store first function call (most relevant)
-          : undefined,
-      });
+        // 10. Store AI response (only if message was sent successfully)
+        await storage.createMessage({
+          conversationId,
+          role: 'assistant',
+          content: result.response,
+          functionCall: result.functionCalls && result.functionCalls.length > 0 
+            ? result.functionCalls[0] // Store first function call (most relevant)
+            : undefined,
+        });
+      } else {
+        console.log(`⏩ [Worker] Skipping presentation message - routing already handled`);
+      }
 
       // 11. Handle inactivity follow-up (somente se conversa ainda estiver ativa com IA)
       if (!result.transferred && !result.resolved && conversation.status === 'active') {
