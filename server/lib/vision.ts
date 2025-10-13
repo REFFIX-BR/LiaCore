@@ -6,12 +6,19 @@ const openai = new OpenAI({
 });
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL;
-const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY;
 
 export interface EvolutionMessageKey {
   id: string;
   remoteJid: string;
   fromMe: boolean;
+}
+
+/**
+ * Get Evolution API key for a specific instance
+ */
+function getEvolutionApiKey(instance: string): string | undefined {
+  // Tenta API key específica da instância primeiro, senão usa global
+  return process.env[`EVOLUTION_API_KEY_${instance}`] || process.env.EVOLUTION_API_KEY;
 }
 
 /**
@@ -48,8 +55,13 @@ export async function downloadImageFromEvolution(
   instance: string
 ): Promise<string | null> {
   try {
-    if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY) {
-      console.error('❌ [Vision] EVOLUTION_API_URL ou EVOLUTION_API_KEY não configurados');
+    const apiKey = getEvolutionApiKey(instance);
+    
+    if (!EVOLUTION_API_URL || !apiKey) {
+      console.error('❌ [Vision] EVOLUTION_API_URL ou EVOLUTION_API_KEY não configurados', {
+        instance,
+        triedKey: `EVOLUTION_API_KEY_${instance}`
+      });
       return null;
     }
 
@@ -69,7 +81,7 @@ export async function downloadImageFromEvolution(
       {
         headers: {
           'Content-Type': 'application/json',
-          'apikey': EVOLUTION_API_KEY,
+          'apikey': apiKey,
         },
         timeout: 30000,
       }
