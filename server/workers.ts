@@ -591,8 +591,19 @@ Responda apenas com o número (0 a 10).
           return { skipped: true, reason: 'client_already_responded' };
         }
 
-        // 5. Send follow-up message
-        const followupMessage = `Olá ${clientName}, você está aí? Podemos dar continuidade no atendimento?`;
+        // 5. Get message template from database
+        const messageTemplates = await storage.getAllMessageTemplates();
+        const inactivityTemplate = messageTemplates.find((t) => t.key === 'inactivity_followup');
+        
+        let followupMessage = `Olá ${clientName}, você está aí? Podemos dar continuidade no atendimento?`; // Fallback
+        
+        if (inactivityTemplate) {
+          // Substituir variáveis no template
+          followupMessage = inactivityTemplate.template.replace(/{clientName}/g, clientName);
+          console.log(`✅ [Inactivity Worker] Usando template personalizado: ${inactivityTemplate.key}`);
+        } else {
+          console.warn(`⚠️ [Inactivity Worker] Template de inatividade não encontrado - usando mensagem padrão`);
+        }
         
         console.log(`📤 [Inactivity Worker] Enviando mensagem de follow-up para ${clientName}`);
         const messageSent = await sendWhatsAppMessage(clientId, followupMessage, evolutionInstance);
