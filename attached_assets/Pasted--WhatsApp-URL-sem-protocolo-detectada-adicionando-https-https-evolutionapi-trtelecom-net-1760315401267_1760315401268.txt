@@ -1,0 +1,375 @@
+⚠️  [WhatsApp] URL sem protocolo detectada, adicionando https://: https://evolutionapi.trtelecom.net
+📤 [WhatsApp] Sending message to: 5524993120102 via https://evolutionapi.trtelecom.net/message/sendText/Leads
+❌ Error sending WhatsApp message: Error: Evolution API error: Unauthorized
+    at sendWhatsAppMessage (/home/runner/workspace/server/workers.ts:86:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Worker.Worker.connection (/home/runner/workspace/server/workers.ts:287:27)
+    at async <anonymous> (/home/runner/workspace/node_modules/bullmq/src/classes/worker.ts:939:26)
+❌ [Worker] Error processing message: Error: Failed to send WhatsApp message - Evolution API error
+    at Worker.Worker.connection (/home/runner/workspace/server/workers.ts:290:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/bullmq/src/classes/worker.ts:939:26)
+❌ [Worker] Message processing failed: {
+  jobId: '442',
+  error: 'Failed to send WhatsApp message - Evolution API error'
+}
+⏰ [Learning Scheduler] Executando análise periódica...
+🧠 [LIA Cortex Analysis] Iniciando análise de eventos de aprendizagem...
+📭 [LIA Cortex Analysis] Nenhum evento de aprendizagem encontrado
+✅ [Learning Scheduler] Análise concluída: 0 sugestões geradas
+12:24:07 AM [express] GET /api/dashboard/admin 200 in 264ms :: {"systemStatus":{"api":true,"database"…
+🔌 [WebSocket] Cliente conectado ao monitor de webhook
+🔌 [WebSocket] Cliente desconectado do monitor de webhook
+12:25:08 AM [express] GET /api/webhook-logs/stats 304 in 1ms :: {"total":0,"last5Minutes":0,"lastHour…
+🔌 [WebSocket] Cliente conectado ao monitor de webhook
+🔌 [WebSocket] Cliente desconectado do monitor de webhook
+12:25:13 AM [express] GET /api/auth/me 304 in 158ms :: {"user":{"id":"f8071e6d-446b-4c84-b175-6ff7f54…
+12:25:13 AM [express] GET /api/dashboard/admin 200 in 83ms :: {"systemStatus":{"api":true,"database":…
+12:25:43 AM [express] GET /api/dashboard/admin 200 in 169ms :: {"systemStatus":{"api":true,"database"…
+12:26:13 AM [express] GET /api/dashboard/admin 200 in 179ms :: {"systemStatus":{"api":true,"database"…
+🔄 [Worker] Processing message from 5524993120102 {
+  jobId: '443',
+  idempotencyKey: 'A51FB021749A9FA75F9F0A51FD38D192',
+  conversationId: '6e36929b-db1f-4689-9a4f-7b313444a617',
+  hasImage: false,
+  evolutionInstance: 'Leads'
+}
+⚙️ [INFO] [worker] Processing message | {"conversationId":"6e36929b-db1f-4689-9a4f-7b313444a617","fromNumber":"5524993120102","jobId":"443","hasImage":false}
+🔵 [OpenAI] Sending message: {
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa',
+  assistantId: 'asst_CDkh1oE8YvKLtJYs3WY4rJX8',
+  providedAssistantId: 'asst_CDkh1oE8YvKLtJYs3WY4rJX8',
+  usedFallback: false
+}
+12:26:44 AM [express] GET /api/dashboard/admin 200 in 66ms :: {"systemStatus":{"api":true,"database":…
+🔵 [OpenAI] Run created: {
+  runId: 'run_SK4qbS7xQ93ecSYVW7hgiPXn',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa'
+}
+🔄 [OpenAI] Polling run: {
+  status: 'queued',
+  runId: 'run_SK4qbS7xQ93ecSYVW7hgiPXn',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa',
+  attempt: 0
+}
+🔄 [OpenAI] Polling run: {
+  status: 'in_progress',
+  runId: 'run_SK4qbS7xQ93ecSYVW7hgiPXn',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa',
+  attempt: 1
+}
+🔄 [OpenAI] Polling run: {
+  status: 'requires_action',
+  runId: 'run_SK4qbS7xQ93ecSYVW7hgiPXn',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa',
+  attempt: 2
+}
+🔧 [OpenAI] Handling tool calls...
+🔄 [OpenAI] Polling run: {
+  status: 'queued',
+  runId: 'run_SK4qbS7xQ93ecSYVW7hgiPXn',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa',
+  attempt: 3
+}
+🔄 [OpenAI] Polling run: {
+  status: 'in_progress',
+  runId: 'run_SK4qbS7xQ93ecSYVW7hgiPXn',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa',
+  attempt: 4
+}
+🔵 [OpenAI] Run completed: {
+  runId: 'run_SK4qbS7xQ93ecSYVW7hgiPXn',
+  status: 'completed',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa'
+}
+🔍 [OpenAI DEBUG] Last message: {
+  "id": "msg_n2MQI26lPDFGQGBrPOGgeWBw",
+  "object": "thread.message",
+  "created_at": 1760315210,
+  "assistant_id": "asst_CDkh1oE8YvKLtJYs3WY4rJX8",
+  "thread_id": "thread_lz94sl1Zf7U2opXdbU13IqLa",
+  "run_id": "run_SK4qbS7xQ93ecSYVW7hgiPXn",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": {
+        "value": "Tentei verificar sua conexão, mas o sistema está momentaneamente indisponível para essa consulta. Enquanto isso, você pode me informar se o modem/roteador já foi reiniciado? Isso ajuda bastante no diagnóstico.",
+        "annotations": []
+      }
+    }
+  ],
+  "attachments": [],
+  "metadata": {}
+}
+⚠️  [WhatsApp] URL sem protocolo detectada, adicionando https://: https://evolutionapi.trtelecom.net
+📤 [WhatsApp] Sending message to: 5524993120102 via https://evolutionapi.trtelecom.net/message/sendText/Leads
+🔄 [Worker] Processing message from 5524993120102 {
+  jobId: '444',
+  idempotencyKey: 'A52A264960CF9F6E68749F71899968D7',
+  conversationId: '6e36929b-db1f-4689-9a4f-7b313444a617',
+  hasImage: false,
+  evolutionInstance: 'Leads'
+}
+⚙️ [INFO] [worker] Processing message | {"conversationId":"6e36929b-db1f-4689-9a4f-7b313444a617","fromNumber":"5524993120102","jobId":"444","hasImage":false}
+🔵 [OpenAI] Sending message: {
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa',
+  assistantId: 'asst_CDkh1oE8YvKLtJYs3WY4rJX8',
+  providedAssistantId: 'asst_CDkh1oE8YvKLtJYs3WY4rJX8',
+  usedFallback: false
+}
+❌ Error sending WhatsApp message: Error: Evolution API error: Unauthorized
+    at sendWhatsAppMessage (/home/runner/workspace/server/workers.ts:86:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Worker.Worker.connection (/home/runner/workspace/server/workers.ts:287:27)
+    at async <anonymous> (/home/runner/workspace/node_modules/bullmq/src/classes/worker.ts:939:26)
+❌ [Worker] Error processing message: Error: Failed to send WhatsApp message - Evolution API error
+    at Worker.Worker.connection (/home/runner/workspace/server/workers.ts:290:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/bullmq/src/classes/worker.ts:939:26)
+❌ [Worker] Message processing failed: {
+  jobId: '443',
+  error: 'Failed to send WhatsApp message - Evolution API error'
+}
+🔄 [Worker] Processing message from 5524993120102 {
+  jobId: '443',
+  idempotencyKey: 'A51FB021749A9FA75F9F0A51FD38D192',
+  conversationId: '6e36929b-db1f-4689-9a4f-7b313444a617',
+  hasImage: false,
+  evolutionInstance: 'Leads'
+}
+⚙️ [INFO] [worker] Processing message | {"conversationId":"6e36929b-db1f-4689-9a4f-7b313444a617","fromNumber":"5524993120102","jobId":"443","hasImage":false}
+🔵 [OpenAI] Sending message: {
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa',
+  assistantId: 'asst_CDkh1oE8YvKLtJYs3WY4rJX8',
+  providedAssistantId: 'asst_CDkh1oE8YvKLtJYs3WY4rJX8',
+  usedFallback: false
+}
+Assistant run error: BadRequestError: 400 Can't add messages to thread_lz94sl1Zf7U2opXdbU13IqLa while a run run_a1It0qIGxOK8sY25sShtrx1j is active.
+    at Function.generate (/home/runner/workspace/node_modules/openai/src/core/error.ts:72:14)
+    at OpenAI.makeStatusError (/home/runner/workspace/node_modules/openai/src/client.ts:478:28)
+    at OpenAI.makeRequest (/home/runner/workspace/node_modules/openai/src/client.ts:728:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async CircuitBreaker.execute (/home/runner/workspace/server/lib/openai.ts:35:22)
+    at async sendMessageAndGetResponse (/home/runner/workspace/server/lib/openai.ts:247:5)
+    at async Worker.Worker.connection (/home/runner/workspace/server/workers.ts:251:22)
+    at async <anonymous> (/home/runner/workspace/node_modules/bullmq/src/classes/worker.ts:939:26) {
+  status: 400,
+  headers: Headers {
+    date: 'Mon, 13 Oct 2025 00:26:54 GMT',
+    'content-type': 'application/json',
+    'content-length': '217',
+    connection: 'keep-alive',
+    'openai-version': '2020-10-01',
+    'openai-organization': 'user-embip2ayvfjzq4ph1eypkn4m',
+    'openai-project': 'proj_xCjWAn3Jxf5HJmk12XBi9Yc2',
+    'x-request-id': 'req_02c3dbdf0b431a3a865282f80bb34b3f',
+    'openai-processing-ms': '68',
+    'x-envoy-upstream-service-time': '76',
+    'x-openai-proxy-wasm': 'v0.1',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+    'cf-cache-status': 'DYNAMIC',
+    'set-cookie': '__cf_bm=9KH7YMLg1aJQJ5q.q0uHNBSJdV5Ao.PGwLhgSbNOjNg-1760315214-1.0.1.1-eNoMCsenjcQdOH_dfjlz1dxJ5tkxUPPSVsPDrLTksFv_F3j.zPI0OcdNzoAdZUeAbXZqYRLjsDMHpUt2rzYdb9gIrl.iHv81B2zI0MmRx_A; path=/; expires=Mon, 13-Oct-25 00:56:54 GMT; domain=.api.openai.com; HttpOnly; Secure; SameSite=None, _cfuvid=iI9NkkOZaASUBu1eBtvwFaloQ0UKjyJe14EnciJkzLo-1760315214458-0.0.1.1-604800000; path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None',
+    'x-content-type-options': 'nosniff',
+    server: 'cloudflare',
+    'cf-ray': '98dab5497bcda6ee-ORD',
+    'alt-svc': 'h3=":443"; ma=86400'
+  },
+  requestID: 'req_02c3dbdf0b431a3a865282f80bb34b3f',
+  error: {
+    message: "Can't add messages to thread_lz94sl1Zf7U2opXdbU13IqLa while a run run_a1It0qIGxOK8sY25sShtrx1j is active.",
+    type: 'invalid_request_error',
+    param: null,
+    code: null
+  },
+  code: null,
+  param: null,
+  type: 'invalid_request_error'
+}
+⚠️  [WhatsApp] URL sem protocolo detectada, adicionando https://: https://evolutionapi.trtelecom.net
+📤 [WhatsApp] Sending message to: 5524993120102 via https://evolutionapi.trtelecom.net/message/sendText/Leads
+❌ Error sending WhatsApp message: Error: Evolution API error: Unauthorized
+    at sendWhatsAppMessage (/home/runner/workspace/server/workers.ts:86:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Worker.Worker.connection (/home/runner/workspace/server/workers.ts:287:27)
+    at async <anonymous> (/home/runner/workspace/node_modules/bullmq/src/classes/worker.ts:939:26)
+❌ [Worker] Error processing message: Error: Failed to send WhatsApp message - Evolution API error
+    at Worker.Worker.connection (/home/runner/workspace/server/workers.ts:290:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/bullmq/src/classes/worker.ts:939:26)
+❌ [Worker] Message processing failed: {
+  jobId: '443',
+  error: 'Failed to send WhatsApp message - Evolution API error'
+}
+🔵 [OpenAI] Run created: {
+  runId: 'run_a1It0qIGxOK8sY25sShtrx1j',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa'
+}
+🔄 [OpenAI] Polling run: {
+  status: 'queued',
+  runId: 'run_a1It0qIGxOK8sY25sShtrx1j',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa',
+  attempt: 0
+}
+🔄 [OpenAI] Polling run: {
+  status: 'in_progress',
+  runId: 'run_a1It0qIGxOK8sY25sShtrx1j',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa',
+  attempt: 1
+}
+🔵 [OpenAI] Run completed: {
+  runId: 'run_a1It0qIGxOK8sY25sShtrx1j',
+  status: 'completed',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa'
+}
+🔍 [OpenAI DEBUG] Last message: {
+  "id": "msg_xCKXfNGMSt88xpzNdI7GL6fO",
+  "object": "thread.message",
+  "created_at": 1760315220,
+  "assistant_id": "asst_CDkh1oE8YvKLtJYs3WY4rJX8",
+  "thread_id": "thread_lz94sl1Zf7U2opXdbU13IqLa",
+  "run_id": "run_a1It0qIGxOK8sY25sShtrx1j",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": {
+        "value": "Obrigada, Francelina! Para continuar, preciso do seu CPF completo para verificar sua conexão, por favor.",
+        "annotations": []
+      }
+    }
+  ],
+  "attachments": [],
+  "metadata": {}
+}
+⚠️  [WhatsApp] URL sem protocolo detectada, adicionando https://: https://evolutionapi.trtelecom.net
+📤 [WhatsApp] Sending message to: 5524993120102 via https://evolutionapi.trtelecom.net/message/sendText/Leads
+❌ Error sending WhatsApp message: Error: Evolution API error: Unauthorized
+    at sendWhatsAppMessage (/home/runner/workspace/server/workers.ts:86:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Worker.Worker.connection (/home/runner/workspace/server/workers.ts:287:27)
+    at async <anonymous> (/home/runner/workspace/node_modules/bullmq/src/classes/worker.ts:939:26)
+❌ [Worker] Error processing message: Error: Failed to send WhatsApp message - Evolution API error
+    at Worker.Worker.connection (/home/runner/workspace/server/workers.ts:290:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/bullmq/src/classes/worker.ts:939:26)
+❌ [Worker] Message processing failed: {
+  jobId: '444',
+  error: 'Failed to send WhatsApp message - Evolution API error'
+}
+12:27:14 AM [express] GET /api/dashboard/admin 200 in 169ms :: {"systemStatus":{"api":true,"database"…
+🔄 [Worker] Processing message from 5524993120102 {
+  jobId: '444',
+  idempotencyKey: 'A52A264960CF9F6E68749F71899968D7',
+  conversationId: '6e36929b-db1f-4689-9a4f-7b313444a617',
+  hasImage: false,
+  evolutionInstance: 'Leads'
+}
+⚙️ [INFO] [worker] Processing message | {"conversationId":"6e36929b-db1f-4689-9a4f-7b313444a617","fromNumber":"5524993120102","jobId":"444","hasImage":false}
+🔵 [OpenAI] Sending message: {
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa',
+  assistantId: 'asst_CDkh1oE8YvKLtJYs3WY4rJX8',
+  providedAssistantId: 'asst_CDkh1oE8YvKLtJYs3WY4rJX8',
+  usedFallback: false
+}
+🔵 [OpenAI] Run created: {
+  runId: 'run_YclARPf1lsCQfyzt2Lb3I9JE',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa'
+}
+🔄 [OpenAI] Polling run: {
+  status: 'queued',
+  runId: 'run_YclARPf1lsCQfyzt2Lb3I9JE',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa',
+  attempt: 0
+}
+🔄 [OpenAI] Polling run: {
+  status: 'in_progress',
+  runId: 'run_YclARPf1lsCQfyzt2Lb3I9JE',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa',
+  attempt: 1
+}
+🔄 [OpenAI] Polling run: {
+  status: 'in_progress',
+  runId: 'run_YclARPf1lsCQfyzt2Lb3I9JE',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa',
+  attempt: 2
+}
+🔄 [OpenAI] Polling run: {
+  status: 'requires_action',
+  runId: 'run_YclARPf1lsCQfyzt2Lb3I9JE',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa',
+  attempt: 3
+}
+🔧 [OpenAI] Handling tool calls...
+🔀 [Transfer] IA solicitou transferência para HUMANO: {
+  chatId: 'whatsapp_5524993120102',
+  departamento: 'Suporte Técnico',
+  motivo: 'Cliente não informou CPF para verificação'
+}
+🛠️ [Agent LIA Suporte Técnico] [FUNCTION_TRANSFERIR_PARA_HUMANO] Transferindo para humano - Departamento: Suporte Técnico 
+   Details: {
+  "conversationId": "6e36929b-db1f-4689-9a4f-7b313444a617",
+  "department": "Suporte Técnico",
+  "reason": "Cliente não informou CPF para verificação",
+  "decision": "Cliente precisa de atendimento ...
+🔄 [OpenAI] Polling run: {
+  status: 'queued',
+  runId: 'run_YclARPf1lsCQfyzt2Lb3I9JE',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa',
+  attempt: 4
+}
+🔄 [OpenAI] Polling run: {
+  status: 'in_progress',
+  runId: 'run_YclARPf1lsCQfyzt2Lb3I9JE',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa',
+  attempt: 5
+}
+🔵 [OpenAI] Run completed: {
+  runId: 'run_YclARPf1lsCQfyzt2Lb3I9JE',
+  status: 'completed',
+  threadId: 'thread_lz94sl1Zf7U2opXdbU13IqLa'
+}
+🔍 [OpenAI DEBUG] Last message: {
+  "id": "msg_0G5xTPajIHFUbxyvA8goabJL",
+  "object": "thread.message",
+  "created_at": 1760315246,
+  "assistant_id": "asst_CDkh1oE8YvKLtJYs3WY4rJX8",
+  "thread_id": "thread_lz94sl1Zf7U2opXdbU13IqLa",
+  "run_id": "run_YclARPf1lsCQfyzt2Lb3I9JE",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": {
+        "value": "Estou transferindo seu atendimento para um atendente humano, Francelina. Por favor, aguarde um momento.",
+        "annotations": []
+      }
+    }
+  ],
+  "attachments": [],
+  "metadata": {}
+}
+🔀 [Worker] Conversation transferred to human
+⚠️  [WhatsApp] URL sem protocolo detectada, adicionando https://: https://evolutionapi.trtelecom.net
+📤 [WhatsApp] Sending message to: 5524993120102 via https://evolutionapi.trtelecom.net/message/sendText/Leads
+❌ Error sending WhatsApp message: Error: Evolution API error: Unauthorized
+    at sendWhatsAppMessage (/home/runner/workspace/server/workers.ts:86:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Worker.Worker.connection (/home/runner/workspace/server/workers.ts:287:27)
+    at async <anonymous> (/home/runner/workspace/node_modules/bullmq/src/classes/worker.ts:939:26)
+❌ [Worker] Error processing message: Error: Failed to send WhatsApp message - Evolution API error
+    at Worker.Worker.connection (/home/runner/workspace/server/workers.ts:290:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/bullmq/src/classes/worker.ts:939:26)
+❌ [Worker] Message processing failed: {
+  jobId: '444',
+  error: 'Failed to send WhatsApp message - Evolution API error'
+}
+12:27:44 AM [express] GET /api/dashboard/admin 200 in 225ms :: {"systemStatus":{"api":true,"database"…
+^C🔴 Closing queues...
+🔴 Closing workers...
+✅ Queues closed successfully
+🔌 [Redis] Connection closed
+✅ Workers closed successfully
+12:28:45 AM [express] GET /api/dashboard/admin 200 in 175ms :: {"systemStatus":{"api":true,"database"…
+12:29:15 AM [express] GET /api/dashboard/admin 200 in 177ms :: {"systemStatus":{"api":true,"database"…
