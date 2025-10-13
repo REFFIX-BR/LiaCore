@@ -277,6 +277,7 @@ export async function sendMessageAndGetResponse(
   routed?: boolean;
   assistantTarget?: string;
   routingReason?: string;
+  functionCalls?: Array<{name: string; arguments: string}>;
 }> {
   // Adquire lock para evitar concorrência na mesma thread
   const lock = await acquireThreadLock(threadId);
@@ -329,6 +330,7 @@ export async function sendMessageAndGetResponse(
     let transferData: { transferred?: boolean; transferredTo?: string } = {};
     let resolveData: { resolved?: boolean; resolveReason?: string } = {};
     let routingData: { routed?: boolean; assistantTarget?: string; routingReason?: string } = {};
+    let functionCalls: Array<{name: string; arguments: string}> = [];
 
     while (run.status === "queued" || run.status === "in_progress" || run.status === "requires_action") {
       if (attempts >= maxAttempts) {
@@ -342,6 +344,12 @@ export async function sendMessageAndGetResponse(
         const toolCalls = run.required_action.submit_tool_outputs.tool_calls;
         const toolOutputs = await Promise.all(
           toolCalls.map(async (toolCall) => {
+            // Capture function call for persistence
+            functionCalls.push({
+              name: toolCall.function.name,
+              arguments: toolCall.function.arguments
+            });
+            
             const result = await handleToolCall(toolCall.function.name, toolCall.function.arguments, chatId, conversationId);
             
             // Check if this was a transfer call (para HUMANO - bloqueia IA)
@@ -486,7 +494,8 @@ export async function sendMessageAndGetResponse(
           response: responseText,
           ...transferData,
           ...resolveData,
-          ...routingData
+          ...routingData,
+          functionCalls: functionCalls.length > 0 ? functionCalls : undefined
         };
       }
     }
@@ -497,7 +506,8 @@ export async function sendMessageAndGetResponse(
       return {
         response: `Entendido! Vou transferir você para ${transferData.transferredTo || 'um atendente humano'}. Em instantes você será atendido por nossa equipe.`,
         ...transferData,
-        ...resolveData
+        ...resolveData,
+        functionCalls: functionCalls.length > 0 ? functionCalls : undefined
       };
     }
 
@@ -506,7 +516,8 @@ export async function sendMessageAndGetResponse(
       console.log("✅ [OpenAI] Routing requested but no response - using fallback message");
       return {
         response: `Perfeito! Vou conectar você com nosso time de ${routingData.assistantTarget}. Um momento!`,
-        ...routingData
+        ...routingData,
+        functionCalls: functionCalls.length > 0 ? functionCalls : undefined
       };
     }
 
@@ -515,7 +526,8 @@ export async function sendMessageAndGetResponse(
       console.log("✅ [OpenAI] Resolve requested but no response - using fallback message");
       return {
         response: "Atendimento finalizado com sucesso! Em breve você receberá uma pesquisa de satisfação.",
-        ...resolveData
+        ...resolveData,
+        functionCalls: functionCalls.length > 0 ? functionCalls : undefined
       };
     }
 

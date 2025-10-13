@@ -340,6 +340,9 @@ if (redisConnection) {
         conversationId,
         role: 'assistant',
         content: result.response,
+        functionCall: result.functionCalls && result.functionCalls.length > 0 
+          ? result.functionCalls[0] // Store first function call (most relevant)
+          : undefined,
       });
 
       console.log(`✅ [Worker] Message processed successfully`);
