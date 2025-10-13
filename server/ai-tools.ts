@@ -90,6 +90,10 @@ export async function consultaBoletoCliente(
   conversationContext: { conversationId: string },
   storage: IStorage
 ): Promise<ConsultaBoletoResult[]> {
+  const startTime = Date.now();
+  const maxRetries = 3;
+  let lastError: Error | null = null;
+
   try {
     // Validação de segurança OBRIGATÓRIA: contexto da conversa deve ser fornecido
     if (!conversationContext || !conversationContext.conversationId) {
@@ -112,27 +116,56 @@ export async function consultaBoletoCliente(
     }
 
     // Log sem dados sensíveis - apenas operação
-    console.log(`📋 [AI Tool] Consultando boletos (conversação: ${conversationContext.conversationId})`);
+    console.log(`📋 [AI Tool] Consultando boletos (conversação: ${conversationContext.conversationId}) - tentativas máximas: ${maxRetries}`);
 
-    const response = await fetch("https://webhook.trtelecom.net/webhook/consulta_boleto", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ documento }),
-    });
+    // Retry com backoff exponencial
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 [AI Tool] Tentativa ${attempt}/${maxRetries} de consulta à API de boletos`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
-    if (!response.ok) {
-      console.error(`❌ [AI Tool] Erro na consulta de boletos: ${response.status} ${response.statusText}`);
-      throw new Error(`Erro ao consultar boletos: ${response.statusText}`);
+        const response = await fetch("https://webhook.trtelecom.net/webhook/consulta_boleto", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ documento }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const boletos = await response.json() as ConsultaBoletoResult[];
+        const duration = Date.now() - startTime;
+        
+        console.log(`✅ [AI Tool] Consulta concluída com sucesso - ${boletos?.length || 0} boletos encontrados em ${duration}ms (tentativa ${attempt}/${maxRetries})`);
+
+        return boletos;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        const duration = Date.now() - startTime;
+        
+        if (attempt < maxRetries) {
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Backoff exponencial: 1s, 2s, 4s (max 5s)
+          console.warn(`⚠️  [AI Tool] Tentativa ${attempt} falhou após ${duration}ms: ${lastError.message}. Aguardando ${delay}ms antes de tentar novamente...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          console.error(`❌ [AI Tool] Todas as ${maxRetries} tentativas falharam após ${duration}ms`);
+        }
+      }
     }
 
-    const boletos = await response.json() as ConsultaBoletoResult[];
-    console.log(`✅ [AI Tool] Consulta concluída - ${boletos?.length || 0} boletos encontrados`);
-
-    return boletos;
+    // Se chegou aqui, todas as tentativas falharam
+    throw lastError || new Error("Falha ao consultar boletos após múltiplas tentativas");
   } catch (error) {
-    console.error("❌ [AI Tool] Erro ao consultar boletos:", error);
+    const duration = Date.now() - startTime;
+    console.error(`❌ [AI Tool] Erro ao consultar boletos após ${duration}ms:`, error);
     throw error;
   }
 }
