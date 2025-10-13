@@ -1336,6 +1336,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/webhooks/evolution", async (req, res) => {
     const { prodLogger, logWebhookEvent } = await import("./lib/production-logger");
     
+    // ⏸️ WEBHOOK PAUSE SYSTEM - Set WEBHOOK_PAUSED=true to temporarily stop processing
+    if (process.env.WEBHOOK_PAUSED === 'true') {
+      console.log(`⏸️  [Evolution] Webhook pausado - ignorando evento`);
+      return res.json({ 
+        success: true, 
+        processed: false, 
+        reason: "webhook_paused",
+        message: "Webhook temporariamente pausado" 
+      });
+    }
+    
     try {
       const { event: rawEvent, instance, data } = req.body;
 

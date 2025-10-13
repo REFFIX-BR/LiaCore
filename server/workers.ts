@@ -176,13 +176,18 @@ if (redisConnection) {
           // Continuar processamento com conversa correta
         } else {
           // Conversa realmente não existe
-          prodLogger.error('worker', 'Conversation not found - deleted or never created', {
-            conversationId,
-            chatId,
-            fromNumber,
-            jobId: job.id,
-            action: 'skipping_job'
-          });
+          prodLogger.error(
+            'worker', 
+            'Conversation not found - deleted or never created',
+            new Error(`Conversation not found: ${conversationId}`),
+            {
+              conversationId,
+              chatId,
+              fromNumber,
+              jobId: job.id,
+              action: 'skipping_job'
+            }
+          );
           
           console.error(`❌ [FATAL] Conversa ${conversationId} / ${chatId} não existe no banco!`);
           
