@@ -176,7 +176,11 @@ export async function consultaBoletoCliente(
 
     // CRÍTICO: Validação de documento usando valor do BANCO DE DADOS (fonte confiável)
     // Não confiar em parâmetros do caller - usar apenas dados persistidos
-    if (conversation.clientDocument && conversation.clientDocument !== documento) {
+    // Normalizar documentos (remover formatação) antes de comparar
+    const documentoNormalizado = documento.replace(/\D/g, '');
+    const clientDocumentNormalizado = conversation.clientDocument?.replace(/\D/g, '');
+    
+    if (clientDocumentNormalizado && clientDocumentNormalizado !== documentoNormalizado) {
       console.error(`❌ [AI Tool Security] Tentativa de consulta de documento diferente do cliente da conversa`);
       throw new Error("Não é permitido consultar documentos de outros clientes");
     }
@@ -225,8 +229,11 @@ export async function consultaStatusConexao(
       throw new Error("Conversa não encontrada - contexto de segurança inválido");
     }
 
-    // Validação de documento
-    if (conversation.clientDocument && conversation.clientDocument !== documento) {
+    // Validação de documento (normalizar antes de comparar)
+    const documentoNormalizado = documento.replace(/\D/g, '');
+    const clientDocumentNormalizado = conversation.clientDocument?.replace(/\D/g, '');
+    
+    if (clientDocumentNormalizado && clientDocumentNormalizado !== documentoNormalizado) {
       console.error(`❌ [AI Tool Security] Tentativa de consulta de documento diferente do cliente`);
       throw new Error("Não é permitido consultar documentos de outros clientes");
     }
@@ -281,7 +288,11 @@ export async function solicitarDesbloqueio(
     }
 
     // CRÍTICO: Validação de documento usando valor do BANCO DE DADOS (fonte confiável)
-    if (conversation.clientDocument !== documento) {
+    // Normalizar documentos (remover formatação) antes de comparar
+    const documentoNormalizado = documento.replace(/\D/g, '');
+    const clientDocumentNormalizado = conversation.clientDocument.replace(/\D/g, '');
+    
+    if (clientDocumentNormalizado !== documentoNormalizado) {
       console.error(`❌ [AI Tool Security] Tentativa de desbloqueio de documento diferente do cliente da conversa`);
       throw new Error("Não é permitido desbloquear conexão de outros clientes");
     }
