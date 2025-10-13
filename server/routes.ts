@@ -811,11 +811,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           threadId,
         });
       } else if (conversation.status === 'resolved') {
-        // Reopen resolved conversation and reset transfer if needed
-        console.log(`🔄 [Reopen] Reabrindo conversa finalizada: ${chatId}`);
+        // Reopen resolved conversation and reset to Apresentacao (fresh start)
+        console.log(`🔄 [Reopen] Reabrindo conversa finalizada: ${chatId} - Resetando para Apresentação`);
         
         const updateData: any = {
           status: 'active',
+          assistantType: 'apresentacao', // SEMPRE volta para apresentação em nova conversa
         };
         
         // Se estava transferida, resetar para IA voltar a responder
@@ -1768,10 +1769,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // 1. Resolved conversation without awaiting NPS - reopen normally
         // 2. Resolved conversation awaiting NPS but client sent non-NPS message - clear flag and reopen
         if (conversation.status === 'resolved') {
-          console.log(`🔄 [Evolution Reopen] Reabrindo conversa finalizada: ${chatId} (${clientName})`);
+          console.log(`🔄 [Evolution Reopen] Reabrindo conversa finalizada: ${chatId} (${clientName}) - Resetando para Apresentação`);
           
           const updateData: any = {
             status: 'active',
+            assistantType: 'apresentacao', // SEMPRE volta para apresentação em nova conversa
           };
           
           // Se estava aguardando NPS mas cliente enviou outra mensagem, limpar flag

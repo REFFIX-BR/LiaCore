@@ -14,6 +14,11 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed 
   - Solution: Strip formatting before comparison in all 3 validation functions
   - Affected functions: `consultaBoletoCliente`, `consultaStatusConexao`, `solicitarDesbloqueio`
 - ✅ Financial assistant can now successfully query invoices (boletos) without asking for CPF again
+- ✅ **CONVERSATION REOPEN FIX**: Resolved conversations now reset to "Apresentação" assistant
+  - Problem: When reopening finalized conversations, they stayed with last assistant (e.g., Suporte)
+  - Solution: Added `assistantType: 'apresentacao'` when changing status from 'resolved' to 'active'
+  - Location: Both webhook endpoints in `server/routes.ts` (lines ~817 and ~1779)
+  - Now every new interaction starts fresh with the presentation assistant
 - Security: All logs mask sensitive information (CPF/CNPJ)
 
 ## User Preferences
