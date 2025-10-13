@@ -182,6 +182,10 @@ export async function consultaStatusConexao(
   conversationContext: { conversationId: string },
   storage: IStorage
 ): Promise<StatusConexaoResult[]> {
+  const startTime = Date.now();
+  const maxRetries = 3;
+  let lastError: Error | null = null;
+
   try {
     // Validação de segurança OBRIGATÓRIA
     if (!conversationContext || !conversationContext.conversationId) {
@@ -202,27 +206,56 @@ export async function consultaStatusConexao(
       throw new Error("Não é permitido consultar documentos de outros clientes");
     }
 
-    console.log(`🔌 [AI Tool] Consultando status de conexão (conversação: ${conversationContext.conversationId})`);
+    console.log(`🔌 [AI Tool] Consultando status de conexão (conversação: ${conversationContext.conversationId}) - tentativas máximas: ${maxRetries}`);
 
-    const response = await fetch("https://webhook.trtelecom.net/webhook/check_pppoe_status", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ documento }),
-    });
+    // Retry com backoff exponencial
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 [AI Tool] Tentativa ${attempt}/${maxRetries} de consulta à API de status PPPoE`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
-    if (!response.ok) {
-      console.error(`❌ [AI Tool] Erro na consulta de conexão: ${response.status} ${response.statusText}`);
-      throw new Error(`Erro ao consultar status de conexão: ${response.statusText}`);
+        const response = await fetch("https://webhook.trtelecom.net/webhook/check_pppoe_status", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ documento }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const conexoes = await response.json() as StatusConexaoResult[];
+        const duration = Date.now() - startTime;
+        
+        console.log(`✅ [AI Tool] Status PPPoE consultado com sucesso - ${conexoes?.length || 0} conexão(ões) encontrada(s) em ${duration}ms (tentativa ${attempt}/${maxRetries})`);
+
+        return conexoes;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        const duration = Date.now() - startTime;
+        
+        if (attempt < maxRetries) {
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Backoff exponencial: 1s, 2s, 4s (max 5s)
+          console.warn(`⚠️  [AI Tool] Tentativa ${attempt} falhou após ${duration}ms: ${lastError.message}. Aguardando ${delay}ms antes de tentar novamente...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          console.error(`❌ [AI Tool] Todas as ${maxRetries} tentativas falharam após ${duration}ms`);
+        }
+      }
     }
 
-    const conexoes = await response.json() as StatusConexaoResult[];
-    console.log(`✅ [AI Tool] Consulta concluída - ${conexoes?.length || 0} conexão(ões) encontrada(s)`);
-
-    return conexoes;
+    // Se chegou aqui, todas as tentativas falharam
+    throw lastError || new Error("Falha ao consultar status de conexão após múltiplas tentativas");
   } catch (error) {
-    console.error("❌ [AI Tool] Erro ao consultar status de conexão:", error);
+    const duration = Date.now() - startTime;
+    console.error(`❌ [AI Tool] Erro ao consultar status de conexão após ${duration}ms:`, error);
     throw error;
   }
 }
