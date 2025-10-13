@@ -4408,7 +4408,7 @@ A resposta deve:
   app.post("/api/conversations/:id/send-message", authenticate, async (req, res) => {
     try {
       const { id } = req.params;
-      const { content, suggestionId, wasEdited, supervisorName, imageBase64, audioBase64, audioMimeType, pdfBase64, pdfName } = req.body;
+      const { content, suggestionId, wasEdited, supervisorName, imageBase64, audioBase64, audioMimeType, pdfBase64, pdfName, isPrivate } = req.body;
 
       const conversation = await storage.getConversation(id);
       if (!conversation) {
@@ -4614,6 +4614,8 @@ A resposta deve:
         imageBase64: imageBase64 || null, // Salvar imagem para exibição no frontend
         pdfBase64: pdfBase64 || null, // Salvar PDF para download no frontend
         pdfName: pdfName || null, // Nome do arquivo PDF
+        isPrivate: isPrivate || false, // Mensagem privada (não enviada ao cliente)
+        sentBy: isPrivate ? req.user!.userId : null, // ID do usuário que enviou a mensagem privada
       });
 
       // Atualizar conversa
@@ -4622,8 +4624,18 @@ A resposta deve:
         lastMessageTime: new Date(),
       });
 
-      // ENVIAR MENSAGEM VIA WHATSAPP
+      // ENVIAR MENSAGEM VIA WHATSAPP (NÃO enviar mensagens privadas)
       let whatsappSent = false;
+      
+      // Se for mensagem privada, NÃO enviar ao WhatsApp
+      if (isPrivate) {
+        console.log(`🔒 [Private Message] Mensagem privada criada - NÃO enviada ao WhatsApp`);
+        return res.json({ 
+          message,
+          whatsappSent: false,
+          isPrivate: true
+        });
+      }
       
       // Priorizar clientId, depois chatId (sendWhatsAppMessage normaliza automaticamente)
       const phoneNumber = conversation.clientId || conversation.chatId;
