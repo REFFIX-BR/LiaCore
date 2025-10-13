@@ -580,13 +580,56 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
         });
 
       case "consultar_fatura":
-        return JSON.stringify({
-          valor: "R$ 129,90",
-          vencimento: "15/11/2024",
-          status: "em aberto",
-          codigo_barras: "34191.79001 01043.510047 91020.150008 1 96610000012990",
-          protocolo: `#${Math.floor(Math.random() * 1000000)}`,
-        });
+        // REDIRECIONAR para consulta_boleto_cliente (API real)
+        if (!conversationId) {
+          console.error("❌ [AI Tool] consultar_fatura chamada sem conversationId");
+          return JSON.stringify({
+            error: "Contexto de conversa não disponível para consulta de boletos"
+          });
+        }
+        
+        const { executeAssistantTool: executeToolFatura } = await import("../ai-tools");
+        const { storage: storageFatura } = await import("../storage");
+        
+        try {
+          // Buscar documento do cliente automaticamente da conversa
+          const conversationFatura = await storageFatura.getConversation(conversationId);
+          
+          if (!conversationFatura) {
+            console.error("❌ [AI Tool] Conversa não encontrada:", conversationId);
+            return JSON.stringify({
+              error: "Conversa não encontrada"
+            });
+          }
+          
+          if (!conversationFatura.clientDocument) {
+            console.warn("⚠️ [AI Tool] Cliente ainda não forneceu CPF/CNPJ");
+            return JSON.stringify({
+              error: "Para consultar seus boletos, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
+            });
+          }
+          
+          // Injetar documento automaticamente nos args
+          const argsWithDocumentFatura = {
+            ...args,
+            documento: conversationFatura.clientDocument
+          };
+          
+          const boletosFatura = await executeToolFatura(
+            "consulta_boleto_cliente",
+            argsWithDocumentFatura,
+            { conversationId },
+            storageFatura
+          );
+          
+          console.log(`✅ [AI Tool] Boletos consultados com sucesso via consultar_fatura`);
+          return JSON.stringify(boletosFatura);
+        } catch (error) {
+          console.error("❌ [AI Tool] Erro ao consultar boletos via consultar_fatura:", error);
+          return JSON.stringify({
+            error: error instanceof Error ? error.message : "Erro ao consultar boletos"
+          });
+        }
 
       case "consultar_base_de_conhecimento":
         const query = args.query || "";
