@@ -19,6 +19,75 @@
 
 import type { IStorage } from "./storage";
 
+/**
+ * Helper genérico para fazer chamadas HTTP com retry automático e timeout
+ * @param url URL do endpoint
+ * @param body Corpo da requisição
+ * @param options Opções adicionais (maxRetries, timeout, operation name para logs)
+ * @returns Response JSON
+ */
+async function fetchWithRetry<T>(
+  url: string,
+  body: Record<string, any>,
+  options: {
+    maxRetries?: number;
+    timeout?: number;
+    operationName?: string;
+  } = {}
+): Promise<T> {
+  const { maxRetries = 3, timeout = 30000, operationName = "requisição" } = options;
+  const startTime = Date.now();
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    let timeoutId: NodeJS.Timeout | null = null;
+    try {
+      console.log(`🔄 [AI Tool] Tentativa ${attempt}/${maxRetries} de ${operationName}`);
+      
+      const controller = new AbortController();
+      timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json() as T;
+      const duration = Date.now() - startTime;
+      
+      console.log(`✅ [AI Tool] ${operationName} concluída com sucesso em ${duration}ms (tentativa ${attempt}/${maxRetries})`);
+
+      return result;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const duration = Date.now() - startTime;
+      
+      if (attempt < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        console.warn(`⚠️  [AI Tool] Tentativa ${attempt} falhou após ${duration}ms: ${lastError.message}. Aguardando ${delay}ms antes de tentar novamente...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        console.error(`❌ [AI Tool] Todas as ${maxRetries} tentativas de ${operationName} falharam após ${duration}ms`);
+      }
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  }
+
+  // Se chegou aqui, todas as tentativas falharam
+  const duration = Date.now() - startTime;
+  const errorMessage = `Falha ao executar ${operationName} após ${maxRetries} tentativas em ${duration}ms`;
+  throw new Error(errorMessage, { cause: lastError });
+}
+
 interface ConsultaBoletoResult {
   NOME?: string;
   CIDADE?: string;
@@ -120,11 +189,12 @@ export async function consultaBoletoCliente(
 
     // Retry com backoff exponencial
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      let timeoutId: NodeJS.Timeout | null = null;
       try {
         console.log(`🔄 [AI Tool] Tentativa ${attempt}/${maxRetries} de consulta à API de boletos`);
         
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+        timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
         const response = await fetch("https://webhook.trtelecom.net/webhook/consulta_boleto", {
           method: "POST",
@@ -134,8 +204,6 @@ export async function consultaBoletoCliente(
           body: JSON.stringify({ documento }),
           signal: controller.signal,
         });
-
-        clearTimeout(timeoutId);
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -158,11 +226,16 @@ export async function consultaBoletoCliente(
         } else {
           console.error(`❌ [AI Tool] Todas as ${maxRetries} tentativas falharam após ${duration}ms`);
         }
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
       }
     }
 
-    // Se chegou aqui, todas as tentativas falharam
-    throw lastError || new Error("Falha ao consultar boletos após múltiplas tentativas");
+    // Se chegou aqui, todas as tentativas falharam - criar erro informativo
+    const duration = Date.now() - startTime;
+    const errorMessage = `Falha ao consultar boletos após ${maxRetries} tentativas em ${duration}ms`;
+    const wrappedError = new Error(errorMessage, { cause: lastError });
+    throw wrappedError;
   } catch (error) {
     const duration = Date.now() - startTime;
     console.error(`❌ [AI Tool] Erro ao consultar boletos após ${duration}ms:`, error);
@@ -210,11 +283,12 @@ export async function consultaStatusConexao(
 
     // Retry com backoff exponencial
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      let timeoutId: NodeJS.Timeout | null = null;
       try {
         console.log(`🔄 [AI Tool] Tentativa ${attempt}/${maxRetries} de consulta à API de status PPPoE`);
         
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+        timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
         const response = await fetch("https://webhook.trtelecom.net/webhook/check_pppoe_status", {
           method: "POST",
@@ -224,8 +298,6 @@ export async function consultaStatusConexao(
           body: JSON.stringify({ documento }),
           signal: controller.signal,
         });
-
-        clearTimeout(timeoutId);
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -248,11 +320,16 @@ export async function consultaStatusConexao(
         } else {
           console.error(`❌ [AI Tool] Todas as ${maxRetries} tentativas falharam após ${duration}ms`);
         }
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
       }
     }
 
-    // Se chegou aqui, todas as tentativas falharam
-    throw lastError || new Error("Falha ao consultar status de conexão após múltiplas tentativas");
+    // Se chegou aqui, todas as tentativas falharam - criar erro informativo
+    const duration = Date.now() - startTime;
+    const errorMessage = `Falha ao consultar status de conexão após ${maxRetries} tentativas em ${duration}ms`;
+    const wrappedError = new Error(errorMessage, { cause: lastError });
+    throw wrappedError;
   } catch (error) {
     const duration = Date.now() - startTime;
     console.error(`❌ [AI Tool] Erro ao consultar status de conexão após ${duration}ms:`, error);
@@ -300,20 +377,11 @@ export async function solicitarDesbloqueio(
 
     console.log(`🔓 [AI Tool] Solicitando desbloqueio (conversação: ${conversationContext.conversationId})`);
 
-    const response = await fetch("https://webhook.trtelecom.net/webhook/consulta_desbloqueio", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ documento }),
-    });
-
-    if (!response.ok) {
-      console.error(`❌ [AI Tool] Erro na solicitação de desbloqueio: ${response.status} ${response.statusText}`);
-      throw new Error(`Erro ao solicitar desbloqueio: ${response.statusText}`);
-    }
-
-    const resultado = await response.json() as DesbloqueioResult[];
+    const resultado = await fetchWithRetry<DesbloqueioResult[]>(
+      "https://webhook.trtelecom.net/webhook/consulta_desbloqueio",
+      { documento },
+      { operationName: "solicitação de desbloqueio" }
+    );
     
     // A API retorna um array, pegamos o primeiro item
     const desbloqueio = resultado[0];
@@ -321,7 +389,7 @@ export async function solicitarDesbloqueio(
     const status = desbloqueio?.data?.[0]?.status?.[0]?.status || 'N';
     const obs = desbloqueio?.data?.[0]?.resposta?.[0]?.obs || 'Erro ao processar desbloqueio';
     
-    console.log(`✅ [AI Tool] Desbloqueio processado - Status: ${status} - Obs: ${obs}`);
+    console.log(`📋 [AI Tool] Desbloqueio processado - Status: ${status} - Obs: ${obs}`);
 
     return desbloqueio;
   } catch (error) {
@@ -440,32 +508,23 @@ export async function abrirTicketCRM(
 
     console.log(`🎫 [AI Tool] Abrindo ticket no CRM (conversação: ${conversationContext.conversationId}, setor: ${setor}, motivo: ${motivo})`);
 
-    const response = await fetch("https://webhook.trtelecom.net/webhook/abrir_ticket", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    const resultado = await fetchWithRetry<AbrirTicketResult[]>(
+      "https://webhook.trtelecom.net/webhook/abrir_ticket",
+      {
         documento: conversation.clientDocument,
         resumo: resumo,
         setor: setor.toUpperCase(),
         motivo: motivo.toUpperCase(),
         finalizar: "S"
-      }),
-    });
-
-    if (!response.ok) {
-      console.error(`❌ [AI Tool] Erro na abertura de ticket: ${response.status} ${response.statusText}`);
-      throw new Error(`Erro ao abrir ticket no CRM: ${response.statusText}`);
-    }
-
-    const resultado = await response.json() as AbrirTicketResult[];
+      },
+      { operationName: "abertura de ticket no CRM" }
+    );
     
     // A API retorna um array, pegamos o primeiro item
     const ticket = resultado[0];
     const protocolo = ticket?.data?.[0]?.resposta?.[0]?.protocolo || 'ERRO';
     
-    console.log(`✅ [AI Tool] Ticket criado com sucesso - Protocolo: ${protocolo}`);
+    console.log(`📋 [AI Tool] Ticket criado com sucesso - Protocolo: ${protocolo}`);
 
     return ticket;
   } catch (error) {
