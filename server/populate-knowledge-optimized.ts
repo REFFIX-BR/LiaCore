@@ -831,6 +831,155 @@ A função retorna protocolo no formato:
 - Documento é obtido do banco de dados (não do parâmetro)`,
     source: "Manual de Processos TR Telecom - Sistema CRM",
     metadata: { category: "geral", topic: "abertura-tickets", priority: "high" }
+  },
+
+  // ============================================================================
+  // ROTEAMENTO ENTRE ASSISTENTES IA (APRESENTAÇÃO)
+  // ============================================================================
+  {
+    id: "kb-apresentacao-001",
+    name: "Regras de Roteamento Entre Assistentes IA",
+    content: `## ROTEAMENTO INTELIGENTE - USE rotear_para_assistente
+
+**IMPORTANTE:** A Apresentação (você) deve rotear para ASSISTENTES DE IA especializados, NÃO para atendentes humanos!
+
+### 🎯 QUANDO ROTEAR PARA CADA ASSISTENTE
+
+**1. FINANCEIRO (financeiro):**
+Use rotear_para_assistente({ "assistantType": "financeiro", "motivo": "..." }) quando:
+- Cliente pedir: "boleto", "fatura", "segunda via", "conta para pagar", "débito"
+- Cliente perguntar: "quanto devo?", "tem conta atrasada?", "qual vencimento?"
+- Assuntos: pagamento, cobrança, parcelamento, valores
+
+**2. SUPORTE (suporte):**
+Use rotear_para_assistente({ "assistantType": "suporte", "motivo": "..." }) quando:
+- Cliente relatar: "internet caiu", "sem sinal", "lento", "não conecta"
+- Cliente perguntar: "problema técnico", "modem", "roteador", "WiFi"
+- Assuntos: conexão, equipamentos, problemas técnicos
+
+**3. COMERCIAL (comercial):**
+Use rotear_para_assistente({ "assistantType": "comercial", "motivo": "..." }) quando:
+- Cliente pedir: "mudar plano", "upgrade", "melhorar velocidade", "contratar"
+- Cliente perguntar: "quais planos?", "quanto custa?", "promoção?"
+- Assuntos: vendas, planos, upgrades, novos serviços
+
+**4. CANCELAMENTO (cancelamento):**
+Use rotear_para_assistente({ "assistantType": "cancelamento", "motivo": "..." }) quando:
+- Cliente pedir: "cancelar", "desistir", "não quero mais"
+- Assuntos: cancelamento de serviço
+
+**5. OUVIDORIA (ouvidoria):**
+Use rotear_para_assistente({ "assistantType": "ouvidoria", "motivo": "..." }) quando:
+- Cliente quiser: "reclamar", "elogiar", "sugerir"
+- Assuntos: reclamações formais, elogios, sugestões
+
+### ⚠️ QUANDO USAR transferir_para_humano
+
+Use transferir_para_humano APENAS quando:
+- Cliente EXPLICITAMENTE pedir: "quero falar com atendente", "falar com humano", "transfere para pessoa"
+- Cliente recusar continuar com IA
+- Cliente insistir em atendimento humano
+
+### ❌ NUNCA FAÇA ISSO
+
+- ❌ NUNCA use transferir_para_humano para boleto → Use rotear_para_assistente({ "assistantType": "financeiro" })
+- ❌ NUNCA use transferir_para_humano para problema técnico → Use rotear_para_assistente({ "assistantType": "suporte" })
+- ❌ NUNCA use transferir_para_humano para planos → Use rotear_para_assistente({ "assistantType": "comercial" })`,
+    source: "Manual de Operação LIA CORTEX - Roteamento Inteligente",
+    metadata: { category: "apresentacao", topic: "roteamento-ia", priority: "critical" }
+  },
+
+  {
+    id: "kb-apresentacao-002", 
+    name: "Exemplos Práticos de Roteamento",
+    content: `## EXEMPLOS DE ROTEAMENTO CORRETO
+
+### Exemplo 1: Cliente pede boleto
+**Cliente:** "Preciso do boleto para pagar"
+**CORRETO:** rotear_para_assistente({ "assistantType": "financeiro", "motivo": "Cliente solicitou boleto" })
+**ERRADO:** ❌ transferir_para_humano
+
+### Exemplo 2: Internet caiu
+**Cliente:** "Internet não funciona"
+**CORRETO:** rotear_para_assistente({ "assistantType": "suporte", "motivo": "Problema de conexão" })
+**ERRADO:** ❌ transferir_para_humano
+
+### Exemplo 3: Quer mudar plano
+**Cliente:** "Quero um plano mais rápido"
+**CORRETO:** rotear_para_assistente({ "assistantType": "comercial", "motivo": "Upgrade de plano" })
+**ERRADO:** ❌ transferir_para_humano
+
+### Exemplo 4: Pede atendente humano
+**Cliente:** "Quero falar com um atendente de verdade"
+**CORRETO:** transferir_para_humano({ "departamento": "Suporte Geral", "motivo": "Cliente solicitou atendente humano" })
+
+### Exemplo 5: Quer cancelar
+**Cliente:** "Quero cancelar meu serviço"
+**CORRETO:** rotear_para_assistente({ "assistantType": "cancelamento", "motivo": "Solicitação de cancelamento" })
+**ERRADO:** ❌ transferir_para_humano
+
+### REGRA DE OURO
+🎯 **SEMPRE tente resolver com IA especializada PRIMEIRO**
+🎯 **Só transfira para humano se cliente PEDIR EXPLICITAMENTE**`,
+    source: "Manual de Operação LIA CORTEX - Boas Práticas",
+    metadata: { category: "apresentacao", topic: "exemplos-roteamento", priority: "critical" }
+  },
+
+  {
+    id: "kb-apresentacao-003",
+    name: "Capacidades de Cada Assistente IA",
+    content: `## O QUE CADA ASSISTENTE CONSEGUE FAZER
+
+### 💰 FINANCEIRO
+**Pode fazer sozinho:**
+- Consultar boletos e faturas (função: consultar_fatura)
+- Informar valores, vencimentos, débitos
+- Gerar segunda via de boleto
+- Informar histórico de pagamentos
+
+**Quando rotear para ele:**
+- Qualquer pergunta sobre: boleto, fatura, pagamento, cobrança, débito
+
+### 🔧 SUPORTE TÉCNICO  
+**Pode fazer sozinho:**
+- Verificar status de conexão PPPoE (função: verificar_conexao)
+- Diagnosticar problemas de internet
+- Orientar sobre luzes do modem
+- Orientar reinicialização de equipamentos
+
+**Quando rotear para ele:**
+- Problemas: internet lenta, sem conexão, quedas, modem
+
+### 🛍️ COMERCIAL
+**Pode fazer sozinho:**
+- Consultar planos disponíveis (função: consultar_planos)
+- Informar preços e velocidades
+- Explicar promoções
+- Processar upgrade de plano
+
+**Quando rotear para ele:**
+- Cliente quer: mudar plano, conhecer planos, upgrade, contratar
+
+### ❌ CANCELAMENTO
+**Pode fazer sozinho:**
+- Processar pedido de cancelamento
+- Oferecer alternativas/retenção
+- Verificar multas/pendências
+
+**Quando rotear para ele:**
+- Cliente quer: cancelar serviço, encerrar contrato
+
+### 📢 OUVIDORIA
+**Pode fazer sozinho:**
+- Registrar reclamações formais (função: registrar_reclamacao_ouvidoria)
+- Registrar elogios
+- Registrar sugestões
+- Gerar protocolo de ouvidoria
+
+**Quando rotear para ele:**
+- Cliente quer: reclamar formalmente, elogiar, sugerir melhorias`,
+    source: "Manual de Operação LIA CORTEX - Capacidades dos Assistentes",
+    metadata: { category: "apresentacao", topic: "capacidades-assistentes", priority: "high" }
   }
 ];
 
