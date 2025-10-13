@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { startLearningScheduler } from "./lib/learning-scheduler";
+import { runAutoMigrations } from "./lib/auto-migrate";
 
 const app = express();
 app.use(express.json({ limit: '50mb' })); // Support large base64 images/audio
@@ -44,6 +45,9 @@ app.use((req, res, next) => {
     console.log('🚀 [Startup] Initializing LIA CORTEX server...');
     console.log(`📍 [Startup] Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`📍 [Startup] Port: ${process.env.PORT || '5000'}`);
+    
+    // Run auto-migrations before starting server
+    await runAutoMigrations();
     
     const server = await registerRoutes(app);
     console.log('✅ [Startup] Routes registered successfully');
