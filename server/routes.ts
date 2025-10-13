@@ -4615,7 +4615,7 @@ A resposta deve:
         pdfBase64: pdfBase64 || null, // Salvar PDF para download no frontend
         pdfName: pdfName || null, // Nome do arquivo PDF
         isPrivate: isPrivate || false, // Mensagem privada (não enviada ao cliente)
-        sentBy: isPrivate ? req.user!.userId : null, // ID do usuário que enviou a mensagem privada
+        sentBy: req.user!.userId, // ID do usuário que enviou a mensagem (sempre preenchido)
       });
 
       // Atualizar conversa

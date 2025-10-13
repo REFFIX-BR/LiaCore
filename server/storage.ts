@@ -1401,7 +1401,13 @@ export class DbStorage implements IStorage {
   async getMessagesPaginated(conversationId: string, options: { limit?: number; before?: string }): Promise<{ messages: Message[]; hasMore: boolean }> {
     const limit = options.limit || 15;
     
-    let query = db.select().from(schema.messages)
+    // Buscar mensagens com LEFT JOIN para incluir dados do usuário que enviou
+    let query = db.select({
+      message: schema.messages,
+      user: schema.users,
+    })
+      .from(schema.messages)
+      .leftJoin(schema.users, eq(schema.messages.sentBy, schema.users.id))
       .where(eq(schema.messages.conversationId, conversationId))
       .$dynamic();
     
@@ -1425,15 +1431,21 @@ export class DbStorage implements IStorage {
     }
     
     // Ordenar DESC e pegar limit + 1 para saber se há mais
-    const messages = await query
+    const results = await query
       .orderBy(desc(schema.messages.timestamp))
       .limit(limit + 1);
     
-    const hasMore = messages.length > limit;
-    const result = hasMore ? messages.slice(0, limit) : messages;
+    const hasMore = results.length > limit;
+    const resultsToUse = hasMore ? results.slice(0, limit) : results;
+    
+    // Mapear resultados para incluir o nome do usuário
+    const messages = resultsToUse.map(r => ({
+      ...r.message,
+      sentByName: r.user?.fullName || null,
+    }));
     
     // Retornar em ordem ASC (mais antigas primeiro)
-    return { messages: result.reverse(), hasMore };
+    return { messages: messages.reverse() as any, hasMore };
   }
 
   async createMessage(insertMsg: InsertMessage): Promise<Message> {
