@@ -121,6 +121,64 @@ async function markJobProcessed(jobId: string, ttlSeconds = 86400): Promise<void
   await redisConnection.setex(key, ttlSeconds, 'processed');
 }
 
+// Chat-level concurrency lock (prevents parallel processing of same chat messages)
+async function acquireChatLock(chatId: string, timeoutMs: number = 30000): Promise<{ acquired: boolean; lockValue?: string }> {
+  if (!redisConnection) return { acquired: true }; // No Redis = no lock needed
+  
+  const lockKey = `chat-processing-lock:${chatId}`;
+  const lockValue = `lock-${Date.now()}-${Math.random()}`;
+  const maxWaitTime = Date.now() + timeoutMs;
+  
+  while (Date.now() < maxWaitTime) {
+    try {
+      // TTL de 60s (tempo máximo razoável para processar uma mensagem)
+      const acquired = await redisConnection.set(lockKey, lockValue, 'EX', 60, 'NX');
+      
+      if (acquired === 'OK') {
+        console.log(`🔒 [Worker] Chat lock acquired for ${chatId}`);
+        return { acquired: true, lockValue };
+      }
+      
+      // Se não conseguiu, aguarda 200ms e tenta novamente
+      console.log(`⏳ [Worker] Waiting for chat lock: ${chatId}...`);
+      await new Promise(resolve => setTimeout(resolve, 200));
+    } catch (error) {
+      console.error(`❌ [Worker] Error acquiring chat lock for ${chatId}:`, error);
+      return { acquired: false };
+    }
+  }
+  
+  console.warn(`⏰ [Worker] Chat lock timeout for ${chatId} after ${timeoutMs}ms`);
+  return { acquired: false };
+}
+
+async function releaseChatLock(chatId: string, lockValue: string): Promise<void> {
+  if (!redisConnection) return;
+  
+  const lockKey = `chat-processing-lock:${chatId}`;
+  
+  try {
+    // Lua script para verificar e deletar atomicamente (só deleta se for meu lock)
+    const luaScript = `
+      if redis.call("get", KEYS[1]) == ARGV[1] then
+        return redis.call("del", KEYS[1])
+      else
+        return 0
+      end
+    `;
+    
+    const result = await redisConnection.eval(luaScript, 1, lockKey, lockValue);
+    
+    if (result === 1) {
+      console.log(`🔓 [Worker] Chat lock released for ${chatId}`);
+    } else {
+      console.warn(`⚠️  [Worker] Chat lock for ${chatId} was already released or taken by another worker`);
+    }
+  } catch (error) {
+    console.error(`❌ [Worker] Error releasing chat lock for ${chatId}:`, error);
+  }
+}
+
 // Workers are only created if Redis is available
 let messageProcessingWorker: Worker<MessageProcessingJob> | undefined;
 let imageAnalysisWorker: Worker<ImageAnalysisJob> | undefined;
@@ -148,6 +206,14 @@ if (redisConnection) {
         hasImage,
         evolutionInstance,
       });
+
+    // Acquire chat-level lock to prevent concurrent processing
+    const chatLock = await acquireChatLock(chatId);
+    
+    if (!chatLock.acquired) {
+      console.error(`❌ [Worker] Could not acquire chat lock for ${chatId} - message will be retried`);
+      throw new Error(`Chat lock timeout for ${chatId} - concurrent processing detected`);
+    }
 
     try {
       const { prodLogger, logWorkerError } = await import('./lib/production-logger');
@@ -428,6 +494,11 @@ if (redisConnection) {
     } catch (error) {
       console.error(`❌ [Worker] Error processing message:`, error);
       throw error;
+    } finally {
+      // Always release chat lock, even on error
+      if (chatLock.lockValue) {
+        await releaseChatLock(chatId, chatLock.lockValue);
+      }
     }
   },
   {
