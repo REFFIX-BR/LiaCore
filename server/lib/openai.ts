@@ -566,7 +566,9 @@ export async function sendMessageAndGetResponse(
 
 async function handleToolCall(functionName: string, argsString: string, chatId?: string, conversationId?: string): Promise<string> {
   try {
+    console.log(`🔧 [AI Tool] Handling function call: ${functionName}`);
     const args = JSON.parse(argsString);
+    console.log(`🔧 [AI Tool] Function arguments:`, JSON.stringify(args));
 
     switch (functionName) {
       case "verificar_conexao":
