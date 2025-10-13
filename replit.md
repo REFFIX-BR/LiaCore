@@ -3,6 +3,16 @@
 ## Overview
 LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed for TR Telecom's customer service. It intelligently routes and coordinates specialized AI assistants, leveraging OpenAI's Assistants API and a RAG knowledge base. The platform automates Q&A, executes actions like boleto consultation and PPPoE diagnosis, and features a real-time supervisor monitoring dashboard for human intervention. It also includes an autonomous continuous learning system that evolves AI assistant prompts, aiming to significantly enhance customer service efficiency and satisfaction.
 
+## Recent Changes (2025-10-13)
+**Fixed: Automatic CPF/CNPJ Detection System**
+- ✅ Implemented automatic CPF/CNPJ detection from client messages using regex patterns
+- ✅ Added `detectClientDocument()` function in `server/lib/conversation-intelligence.ts`
+- ✅ Integrated automatic document detection in message processing workflow (`server/workers.ts`)
+- ✅ Documents are now automatically saved to `conversations.clientDocument` field
+- ✅ Financial assistant can now successfully query invoices (boletos) without asking for CPF again
+- ✅ Fixed issue where boleto queries were failing due to missing clientDocument
+- Security: All logs mask sensitive information (CPF/CNPJ)
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 

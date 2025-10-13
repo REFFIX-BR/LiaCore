@@ -370,7 +370,28 @@ if (redisConnection) {
         throw new Error(`No assistant ID available for ${conversation.assistantType}. Configure as variáveis de ambiente em produção!`);
       }
 
-      // 7. Send message to OpenAI and get response
+      // 7. Detectar e salvar CPF/CNPJ automaticamente (se presente na mensagem)
+      try {
+        const { detectClientDocument, persistClientDocument, getPersistedDocument } = await import('./lib/conversation-intelligence');
+        
+        // Verificar se já existe documento salvo
+        const existingDocument = await getPersistedDocument(conversationId);
+        
+        if (!existingDocument) {
+          // Tentar detectar documento na mensagem atual
+          const detectedDocument = detectClientDocument(enhancedMessage);
+          
+          if (detectedDocument) {
+            await persistClientDocument(conversationId, detectedDocument);
+            console.log(`✅ [Worker] CPF/CNPJ detectado e salvo automaticamente na conversa ${conversationId}`);
+          }
+        }
+      } catch (docError) {
+        console.error(`❌ [Worker] Erro ao detectar/salvar documento:`, docError);
+        // Não falhar o processamento por causa disso
+      }
+
+      // 8. Send message to OpenAI and get response
       const result = await sendMessageAndGetResponse(
         threadId,
         assistantId,

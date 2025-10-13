@@ -283,6 +283,46 @@ export async function getPersistedDocument(conversationId: string): Promise<stri
 }
 
 /**
+ * Detecta e extrai CPF ou CNPJ de uma mensagem
+ * @param message Mensagem do cliente
+ * @returns CPF/CNPJ limpo (apenas números) ou null se não encontrado
+ */
+export function detectClientDocument(message: string): string | null {
+  if (!message) return null;
+
+  // Remove espaços e caracteres especiais para facilitar a busca
+  const cleanMessage = message.replace(/\s+/g, ' ');
+
+  // Regex para CPF: 000.000.000-00 ou 00000000000
+  const cpfRegex = /\b(\d{3}\.?\d{3}\.?\d{3}-?\d{2})\b/g;
+  const cpfMatch = cleanMessage.match(cpfRegex);
+
+  if (cpfMatch) {
+    // Limpar formatação (manter apenas números)
+    const cpfLimpo = cpfMatch[0].replace(/\D/g, '');
+    if (cpfLimpo.length === 11) {
+      console.log(`📋 [Document Detection] CPF detectado (mascarado: ***.***.*Fragment-**)`);
+      return cpfLimpo;
+    }
+  }
+
+  // Regex para CNPJ: 00.000.000/0000-00 ou 00000000000000
+  const cnpjRegex = /\b(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})\b/g;
+  const cnpjMatch = cleanMessage.match(cnpjRegex);
+
+  if (cnpjMatch) {
+    // Limpar formatação (manter apenas números)
+    const cnpjLimpo = cnpjMatch[0].replace(/\D/g, '');
+    if (cnpjLimpo.length === 14) {
+      console.log(`📋 [Document Detection] CNPJ detectado (mascarado: **.***.***/****-**)`);
+      return cnpjLimpo;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Gera resumo de inteligência para logging
  */
 export function generateIntelligenceSummary(data: {

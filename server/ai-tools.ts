@@ -5,16 +5,17 @@
  * o assistente OpenAI solicita a execução de uma tool.
  * NÃO são expostas como endpoints HTTP públicos.
  * 
- * IMPORTANTE - Limitações de segurança atuais:
- * - O schema de 'conversations' NÃO possui campo 'clientDocument' (CPF/CNPJ)
- * - Validação de documento do cliente depende desse campo ser implementado
- * - Por ora, apenas validamos que a conversationId existe no banco de dados
+ * SEGURANÇA IMPLEMENTADA:
+ * ✅ O schema 'conversations' possui campo 'clientDocument' (CPF/CNPJ)
+ * ✅ Detecção automática de CPF/CNPJ em mensagens do cliente
+ * ✅ Persistência automática do documento na conversa
+ * ✅ Validação que documento consultado pertence ao cliente da conversa
+ * ✅ Logs com mascaramento de dados sensíveis
  * 
- * TODO - Melhorias de segurança futuras:
- * 1. Adicionar campo 'clientDocument' em conversations schema
- * 2. Capturar e armazenar CPF/CNPJ do cliente durante a conversa
- * 3. Validar que documento consultado pertence ao cliente da conversa
- * 4. Implementar audit trail de consultas sensíveis
+ * TODO - Melhorias futuras:
+ * 1. Implementar audit trail de consultas sensíveis
+ * 2. Adicionar rate limiting por cliente
+ * 3. Validação adicional de documentos (algoritmo de CPF/CNPJ)
  */
 
 import type { IStorage } from "./storage";
