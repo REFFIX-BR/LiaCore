@@ -12,7 +12,7 @@ export function setupWebSockets(server: Server) {
     if (path === '/ws/webhook-logs') {
       console.log('🔌 [WebSocket] Cliente conectado ao monitor de webhook');
       webhookLogger.handleConnection(ws);
-    } else if (path === '/ws/agent-logs') {
+    } else if (path === '/ws/reasoning') {
       console.log('🤖 [Agent Logger] Cliente conectado ao monitor de agentes');
       agentLogger.handleConnection(ws);
     } else if (path?.startsWith('/?token=')) {
