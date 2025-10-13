@@ -153,10 +153,30 @@ export default function Monitor() {
   });
 
   const getConversationCountByDepartment = (deptValue: string) => {
-    if (deptValue === "all") {
-      return conversations.filter(c => c.status === "active").length;
-    }
-    return conversations.filter(c => c.assistantType === deptValue && c.status === "active").length;
+    return conversations.filter(c => {
+      let passesDepartmentFilter = true;
+      let passesStatusFilter = true;
+
+      // Department filter
+      if (deptValue !== "all") {
+        passesDepartmentFilter = c.assistantType === deptValue;
+      }
+
+      // Status filter (same logic as main filter)
+      if (activeFilter === "alerts") {
+        passesStatusFilter = alerts.some(alert => alert.conversationId === c.id);
+      } else if (activeFilter === "all") {
+        passesStatusFilter = c.status === "active" && !c.transferredToHuman;
+      } else if (activeFilter === "transfer") {
+        passesStatusFilter = c.status === "active" && c.transferredToHuman === true && c.assignedTo === null;
+      } else if (activeFilter === "ouvidoria") {
+        passesStatusFilter = c.assistantType === "ouvidoria";
+      } else if (activeFilter === "resolved") {
+        passesStatusFilter = c.status === "resolved";
+      }
+
+      return passesDepartmentFilter && passesStatusFilter;
+    }).length;
   };
 
   const getConversationCountByFilter = (filterId: string) => {
