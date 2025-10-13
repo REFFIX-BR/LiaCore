@@ -767,21 +767,15 @@ Fonte: ${fonte}`;
         }
 
       case "agendar_visita":
+        console.warn("⚠️ [AI Tool] agendar_visita chamada - função não implementada");
         return JSON.stringify({
-          protocolo: `#VST-${Math.floor(Math.random() * 1000000)}`,
-          data_agendada: args.data || "Próxima terça-feira",
-          horario: args.horario || "14:00-18:00",
-          tecnico: "João Silva",
-          status: "confirmado",
+          error: "Função de agendamento de visita não está disponível no momento. Por favor, solicite transferência para atendimento humano."
         });
 
       case "consultar_planos":
+        console.warn("⚠️ [AI Tool] consultar_planos chamada - função não implementada");
         return JSON.stringify({
-          planos: [
-            { nome: "Fibra 300", velocidade: "300 Mbps", valor: "R$ 99,90" },
-            { nome: "Fibra 500", velocidade: "500 Mbps", valor: "R$ 129,90" },
-            { nome: "Fibra Gamer", velocidade: "1 Gbps", valor: "R$ 199,90" },
-          ],
+          error: "Consulta de planos deve ser feita através do site ou com atendimento humano. Por favor, solicite transferência para o comercial."
         });
 
       case "consulta_boleto_cliente":
