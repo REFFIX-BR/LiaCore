@@ -5215,19 +5215,33 @@ A resposta deve:
 
       // Enviar pesquisa NPS para cliente via WhatsApp
       const metadata = conversation.metadata as any;
+      console.log(`🔍 [NPS Debug] Checando condições para envio de NPS:`, {
+        hasEvolutionMetadata: metadata?.source === 'evolution_api',
+        hasClientId: !!conversation.clientId,
+        clientId: conversation.clientId,
+        chatId: conversation.chatId,
+        evolutionInstance: conversation.evolutionInstance
+      });
+      
       if (metadata?.source === 'evolution_api' && conversation.clientId) {
         // Buscar template de NPS
         const npsTemplate = await storage.getMessageTemplateByKey('nps_survey');
         let npsMessage = npsTemplate?.template || 
-          `Olá ${conversation.clientName}!\nSeu atendimento foi finalizado.\n\nPesquisa de Satisfação\n\nEm uma escala de 0 a 10, qual a satisfação com atendimento?\n\nDigite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
+          `Olá ${conversation.clientName}!\n\nSeu atendimento foi finalizado.\n\n*Pesquisa de Satisfação*\n\nEm uma escala de 0 a 10, qual sua satisfação com o atendimento?\n\nDigite um número de *0* (muito insatisfeito) a *10* (muito satisfeito).`;
         
         // Substituir variáveis
         npsMessage = npsMessage.replace(/{clientName}/g, conversation.clientName);
 
+        console.log(`📤 [NPS] Enviando pesquisa NPS para ${conversation.clientName} (${conversation.clientId})`);
         const sent = await sendWhatsAppMessage(conversation.clientId, npsMessage, conversation.evolutionInstance || undefined);
-        if (sent) {
-          console.log(`📊 [NPS] Pesquisa enviada para ${conversation.clientName} (${conversation.clientId})`);
+        
+        if (sent.success) {
+          console.log(`✅ [NPS] Pesquisa enviada com sucesso para ${conversation.clientName}`);
+        } else {
+          console.error(`❌ [NPS] Falha ao enviar pesquisa - sem sucesso`);
         }
+      } else {
+        console.warn(`⚠️  [NPS] Pesquisa NPS NÃO enviada - Condições não atendidas`);
       }
 
       console.log(`✅ [Resolve] Conversa ${id} finalizada por ${currentUser.fullName}`);
