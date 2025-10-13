@@ -24,6 +24,16 @@ const EVOLUTION_CONFIG = {
   instance: process.env.EVOLUTION_API_INSTANCE,
 };
 
+// Helper function to get API key for specific instance
+function getEvolutionApiKey(instanceName?: string): string | undefined {
+  if (!instanceName) {
+    return process.env.EVOLUTION_API_KEY;
+  }
+  
+  // Tenta API key específica da instância primeiro, senão usa global
+  return process.env[`EVOLUTION_API_KEY_${instanceName}`] || process.env.EVOLUTION_API_KEY;
+}
+
 // Helper function to send WhatsApp image via Evolution API
 async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, caption?: string, instanceName?: string): Promise<boolean> {
   const instance = instanceName || EVOLUTION_CONFIG.instance;
@@ -152,11 +162,15 @@ async function sendWhatsAppMessage(
   // Use instance específica da conversa ou fallback para env var
   const instance = instanceName || EVOLUTION_CONFIG.instance;
   
-  if (!EVOLUTION_CONFIG.apiUrl || !EVOLUTION_CONFIG.apiKey || !instance) {
+  // Busca API key específica da instância
+  const apiKey = getEvolutionApiKey(instance);
+  
+  if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
     console.error("❌ [Evolution] Credenciais não configuradas", { 
       hasUrl: !!EVOLUTION_CONFIG.apiUrl, 
-      hasKey: !!EVOLUTION_CONFIG.apiKey, 
-      instance: instance || 'undefined' 
+      hasKey: !!apiKey, 
+      instance: instance || 'undefined',
+      triedKey: instance ? `EVOLUTION_API_KEY_${instance}` : 'EVOLUTION_API_KEY'
     });
     return { success: false };
   }
@@ -186,7 +200,7 @@ async function sendWhatsAppMessage(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': EVOLUTION_CONFIG.apiKey,
+        'apikey': apiKey,
       },
       body: JSON.stringify({
         number: normalizedNumber,

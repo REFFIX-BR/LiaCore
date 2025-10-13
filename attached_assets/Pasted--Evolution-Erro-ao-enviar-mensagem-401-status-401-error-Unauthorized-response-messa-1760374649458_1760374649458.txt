@@ -1,0 +1,29 @@
+❌ [Evolution] Erro ao enviar mensagem (401): {"status":401,"error":"Unauthorized","response":{"message":"Unauthorized"}}
+❌ [Webhook Monitor] [WHATSAPP_SEND_FAILED] Falha ao enviar mensagem do supervisor {
+  conversationId: '6ce251a2-c317-4cb0-888b-b9178118da0e',
+  phoneNumber: '120363302196798887@g.us'
+}
+✉️ [Supervisor] Mensagem salva na conversa 6ce251a2-c317-4cb0-888b-b9178118da0e
+4:55:16 PM [express] POST /api/conversations/6ce251a2-c317-4cb0-888b-b9178118da0e/send-message 200 i…
+4:55:16 PM [express] GET /api/conversations/assigned 304 in 94ms :: [{"id":"b7942309-4312-4b6a-be1b-…
+4:55:17 PM [express] GET /api/monitor/conversations/6ce251a2-c317-4cb0-888b-b9178118da0e 200 in 128m…
+4:55:17 PM [express] GET /api/conversations/transferred 304 in 167ms :: [{"id":"b226617d-d0c8-42ea-b…
+4:55:20 PM [express] GET /api/monitor/conversations/6ce251a2-c317-4cb0-888b-b9178118da0e 304 in 131m…
+4:55:22 PM [express] GET /api/conversations/assigned 200 in 96ms :: [{"id":"b226617d-d0c8-42ea-bbf2-…
+4:55:22 PM [express] GET /api/conversations/transferred 200 in 34ms :: [{"id":"dc68fd78-400b-4aa6-94…
+4:55:23 PM [express] GET /api/monitor/conversations/6ce251a2-c317-4cb0-888b-b9178118da0e 304 in 135m…
+4:55:27 PM [express] GET /api/monitor/conversations/6ce251a2-c317-4cb0-888b-b9178118da0e 200 in 126m…
+📚 [Learning] Evento de sucesso criado para apresentacao
+🔍 [NPS Debug] Checando condições para envio de NPS: {
+  hasEvolutionMetadata: true,
+  hasClientId: true,
+  clientId: '120363302196798887@g.us',
+  chatId: 'whatsapp_120363302196798887@g.us',
+  evolutionInstance: 'Cobranca'
+}
+📤 [NPS] Enviando pesquisa NPS para Kyulucas (120363302196798887@g.us)
+📤 [Evolution] Enviando mensagem para 120363302196798887@g.us via instância Cobranca (https://evolutionapi.trtelecom.net/message/sendText/Cobranca)
+4:55:27 PM [express] GET /api/conversations/assigned 304 in 92ms :: [{"id":"b226617d-d0c8-42ea-bbf2-…
+❌ [Evolution] Erro ao enviar mensagem (401): {"status":401,"error":"Unauthorized","response":{"message":"Unauthorized"}}
+❌ [NPS] Falha ao enviar pesquisa - sem sucesso
+✅ [Resolve] Conversa 6ce251a2-c317-4cb0-888b-b9178118da0e finalizada por Administrador
