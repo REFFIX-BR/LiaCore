@@ -50,16 +50,27 @@ export interface ConversationDetails {
 export const monitorAPI = {
   getConversations: async (): Promise<ConversationData[]> => {
     const response = await fetch("/api/monitor/conversations");
+    if (!response.ok) {
+      console.error("Failed to fetch conversations:", response.status, response.statusText);
+      return [];
+    }
     return response.json();
   },
 
   getConversationDetails: async (id: string): Promise<ConversationDetails> => {
     const response = await fetch(`/api/monitor/conversations/${id}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch conversation details: ${response.status}`);
+    }
     return response.json();
   },
 
   getAlerts: async (): Promise<AlertData[]> => {
     const response = await fetch("/api/monitor/alerts");
+    if (!response.ok) {
+      console.error("Failed to fetch alerts:", response.status, response.statusText);
+      return [];
+    }
     return response.json();
   },
 
