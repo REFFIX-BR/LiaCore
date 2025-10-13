@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Check, CheckCheck, FileText, Download } from "lucide-react";
+import { Check, CheckCheck, FileText, Download, Lock } from "lucide-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
 
 export interface Message {
@@ -18,6 +18,9 @@ export interface Message {
   pdfBase64?: string | null;
   pdfName?: string | null;
   audioUrl?: string | null;
+  isPrivate?: boolean;
+  sentBy?: string | null;
+  sentByName?: string | null;
 }
 
 interface ChatMessageProps {
@@ -178,6 +181,17 @@ export function ChatMessage({ message }: ChatMessageProps) {
             </Badge>
           )}
 
+          {/* Badge de Mensagem Privada */}
+          {message.isPrivate && (
+            <Badge 
+              variant="secondary" 
+              className="mb-2 text-xs flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-700"
+            >
+              <Lock className="h-3 w-3" />
+              <span>Mensagem Privada</span>
+            </Badge>
+          )}
+
           {/* PDF com base64 salvo - mostrar botão de download */}
           {message.pdfBase64 && message.pdfName && (
             <Button
@@ -244,13 +258,22 @@ export function ChatMessage({ message }: ChatMessageProps) {
           )}
         </div>
 
-        {/* Timestamp e status */}
-        <div className={`flex items-center gap-1 mt-1 px-2 ${isUser ? 'justify-start' : 'justify-end'}`}>
-          <span className="text-xs text-muted-foreground">
-            {format(message.timestamp, 'MMM dd, hh:mm a')}
-          </span>
-          {!isUser && (
-            <CheckCheck className="h-3 w-3 text-muted-foreground" />
+        {/* Timestamp, status e informação de quem enviou */}
+        <div className={`flex flex-col gap-0.5 mt-1 px-2 ${isUser ? 'items-start' : 'items-end'}`}>
+          <div className={`flex items-center gap-1`}>
+            <span className="text-xs text-muted-foreground">
+              {format(message.timestamp, 'MMM dd, hh:mm a')}
+            </span>
+            {!isUser && (
+              <CheckCheck className="h-3 w-3 text-muted-foreground" />
+            )}
+          </div>
+          
+          {/* Mostrar quem enviou a mensagem (quando foi enviada por um humano) */}
+          {message.sentByName && !isUser && (
+            <span className="text-xs text-muted-foreground/70">
+              Enviado por {message.sentByName}
+            </span>
           )}
         </div>
       </div>

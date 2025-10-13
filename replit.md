@@ -48,6 +48,10 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 
 **Message Deletion System**: Supervisors and agents can delete assistant messages from the database and WhatsApp (within WhatsApp's 2-day window), allowing correction of AI errors and removal of sensitive information.
 
+**Private Messages System**: Supervisors and agents can send internal private messages within conversations that are visible in the chat interface but NOT sent to the client via WhatsApp. These messages include `isPrivate` and `sentBy` fields in the database, display a distinctive yellow badge in the UI, and enable secure internal collaboration and notes between team members without customer visibility.
+
+**Message Attribution System**: All messages sent by supervisors and agents display the sender's name ("Enviado por [Nome]") beneath the timestamp in the chat interface. This enables complete audit trails and transparency about which team member interacted with each customer, supporting quality control and performance tracking.
+
 **Redis Optimization System**: Implements intelligent caching, batching, multi-get operations, batch updates, and hash storage to reduce Redis requests and costs.
 
 ## External Dependencies

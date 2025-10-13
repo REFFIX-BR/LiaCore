@@ -7,7 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, ChevronDown, X, Image as ImageIcon, Mic, Users, FileText } from "lucide-react";
+import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, ChevronDown, X, Image as ImageIcon, Mic, Users, FileText, Lock } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -65,6 +66,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   const [showTransferDialog, setShowTransferDialog] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
   const [transferNotes, setTransferNotes] = useState("");
+  const [isPrivateMessage, setIsPrivateMessage] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -315,7 +317,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
 
   // Enviar mensagem
   const sendMutation = useMutation({
-    mutationFn: async ({ content, suggestionId, wasEdited, imageBase64, audioBase64, audioMimeType, pdfBase64, pdfName }: { content: string; suggestionId?: string | null; wasEdited?: boolean; imageBase64?: string; audioBase64?: string; audioMimeType?: string; pdfBase64?: string; pdfName?: string }) => {
+    mutationFn: async ({ content, suggestionId, wasEdited, imageBase64, audioBase64, audioMimeType, pdfBase64, pdfName, isPrivate }: { content: string; suggestionId?: string | null; wasEdited?: boolean; imageBase64?: string; audioBase64?: string; audioMimeType?: string; pdfBase64?: string; pdfName?: string; isPrivate?: boolean }) => {
       const response = await apiRequest(
         `/api/conversations/${conversation.id}/send-message`, 
         "POST",
@@ -328,7 +330,8 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
           audioBase64,
           audioMimeType,
           pdfBase64,
-          pdfName
+          pdfName,
+          isPrivate
         }
       );
       return response.json();
@@ -341,6 +344,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
       setSelectedImage(null);
       setSelectedAudio(null);
       setSelectedPdf(null);
+      setIsPrivateMessage(false);
       if (data.imageAnalyzed || data.audioTranscribed) {
         const descriptions = [];
         if (data.imageAnalyzed) descriptions.push("Imagem analisada");
@@ -454,7 +458,8 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         audioBase64: selectedAudio?.base64,
         audioMimeType: selectedAudio?.mimeType,
         pdfBase64: selectedPdf?.base64,
-        pdfName: selectedPdf?.name
+        pdfName: selectedPdf?.name,
+        isPrivate: isPrivateMessage
       });
     }
   };
@@ -469,7 +474,8 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         audioBase64: selectedAudio?.base64,
         audioMimeType: selectedAudio?.mimeType,
         pdfBase64: selectedPdf?.base64,
-        pdfName: selectedPdf?.name
+        pdfName: selectedPdf?.name,
+        isPrivate: isPrivateMessage
       });
     }
   };
@@ -483,7 +489,8 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         audioBase64: selectedAudio?.base64,
         audioMimeType: selectedAudio?.mimeType,
         pdfBase64: selectedPdf?.base64,
-        pdfName: selectedPdf?.name
+        pdfName: selectedPdf?.name,
+        isPrivate: isPrivateMessage
       });
     }
   };
@@ -833,6 +840,23 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               )}
             </Button>
           </div>
+        </div>
+
+        {/* Checkbox de Mensagem Privada */}
+        <div className="flex items-center space-x-2">
+          <Checkbox 
+            id="private-message" 
+            checked={isPrivateMessage}
+            onCheckedChange={(checked) => setIsPrivateMessage(checked as boolean)}
+            data-testid="checkbox-private-message"
+          />
+          <Label 
+            htmlFor="private-message" 
+            className="text-sm font-medium cursor-pointer flex items-center gap-1"
+          >
+            <Lock className="h-3 w-3" />
+            Mensagem Privada (não enviada ao cliente)
+          </Label>
         </div>
 
         {isEditingAI && (

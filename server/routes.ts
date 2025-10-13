@@ -24,12 +24,27 @@ const EVOLUTION_CONFIG = {
   instance: process.env.EVOLUTION_API_INSTANCE,
 };
 
+// Helper function to get API key for specific instance
+function getEvolutionApiKey(instanceName?: string): string | undefined {
+  if (!instanceName) {
+    return process.env.EVOLUTION_API_KEY;
+  }
+  
+  // Tenta API key específica da instância primeiro, senão usa global
+  return process.env[`EVOLUTION_API_KEY_${instanceName}`] || process.env.EVOLUTION_API_KEY;
+}
+
 // Helper function to send WhatsApp image via Evolution API
 async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, caption?: string, instanceName?: string): Promise<boolean> {
   const instance = instanceName || EVOLUTION_CONFIG.instance;
   
-  if (!EVOLUTION_CONFIG.apiUrl || !EVOLUTION_CONFIG.apiKey || !instance) {
-    console.error("❌ [Evolution] Credenciais não configuradas para envio de imagem");
+  // Busca API key específica da instância
+  const apiKey = getEvolutionApiKey(instance);
+  
+  if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
+    console.error("❌ [Evolution] Credenciais não configuradas para envio de imagem", {
+      triedKey: instance ? `EVOLUTION_API_KEY_${instance}` : 'EVOLUTION_API_KEY'
+    });
     return false;
   }
 
@@ -60,7 +75,7 @@ async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, capti
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        apikey: EVOLUTION_CONFIG.apiKey,
+        apikey: apiKey,
       },
       body: JSON.stringify({
         number: normalizedNumber,
@@ -87,8 +102,13 @@ async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, capti
 async function sendWhatsAppDocument(phoneNumber: string, pdfBase64: string, fileName?: string, caption?: string, instanceName?: string): Promise<boolean> {
   const instance = instanceName || EVOLUTION_CONFIG.instance;
   
-  if (!EVOLUTION_CONFIG.apiUrl || !EVOLUTION_CONFIG.apiKey || !instance) {
-    console.error("❌ [Evolution] Credenciais não configuradas para envio de documento");
+  // Busca API key específica da instância
+  const apiKey = getEvolutionApiKey(instance);
+  
+  if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
+    console.error("❌ [Evolution] Credenciais não configuradas para envio de documento", {
+      triedKey: instance ? `EVOLUTION_API_KEY_${instance}` : 'EVOLUTION_API_KEY'
+    });
     return false;
   }
 
@@ -119,7 +139,7 @@ async function sendWhatsAppDocument(phoneNumber: string, pdfBase64: string, file
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        apikey: EVOLUTION_CONFIG.apiKey,
+        apikey: apiKey,
       },
       body: JSON.stringify({
         number: normalizedNumber,
@@ -152,11 +172,15 @@ async function sendWhatsAppMessage(
   // Use instance específica da conversa ou fallback para env var
   const instance = instanceName || EVOLUTION_CONFIG.instance;
   
-  if (!EVOLUTION_CONFIG.apiUrl || !EVOLUTION_CONFIG.apiKey || !instance) {
+  // Busca API key específica da instância
+  const apiKey = getEvolutionApiKey(instance);
+  
+  if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
     console.error("❌ [Evolution] Credenciais não configuradas", { 
       hasUrl: !!EVOLUTION_CONFIG.apiUrl, 
-      hasKey: !!EVOLUTION_CONFIG.apiKey, 
-      instance: instance || 'undefined' 
+      hasKey: !!apiKey, 
+      instance: instance || 'undefined',
+      triedKey: instance ? `EVOLUTION_API_KEY_${instance}` : 'EVOLUTION_API_KEY'
     });
     return { success: false };
   }
@@ -186,7 +210,7 @@ async function sendWhatsAppMessage(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': EVOLUTION_CONFIG.apiKey,
+        'apikey': apiKey,
       },
       body: JSON.stringify({
         number: normalizedNumber,
@@ -225,8 +249,13 @@ async function deleteWhatsAppMessage(
 ): Promise<boolean> {
   const instance = instanceName || EVOLUTION_CONFIG.instance;
   
-  if (!EVOLUTION_CONFIG.apiUrl || !EVOLUTION_CONFIG.apiKey || !instance) {
-    console.error("❌ [Evolution] Credenciais não configuradas para deletar mensagem");
+  // Busca API key específica da instância
+  const apiKey = getEvolutionApiKey(instance);
+  
+  if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
+    console.error("❌ [Evolution] Credenciais não configuradas para deletar mensagem", {
+      triedKey: instance ? `EVOLUTION_API_KEY_${instance}` : 'EVOLUTION_API_KEY'
+    });
     return false;
   }
 
@@ -244,7 +273,7 @@ async function deleteWhatsAppMessage(
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': EVOLUTION_CONFIG.apiKey,
+        'apikey': apiKey,
       },
       body: JSON.stringify({
         id: whatsappMessageId,
@@ -4408,7 +4437,7 @@ A resposta deve:
   app.post("/api/conversations/:id/send-message", authenticate, async (req, res) => {
     try {
       const { id } = req.params;
-      const { content, suggestionId, wasEdited, supervisorName, imageBase64, audioBase64, audioMimeType, pdfBase64, pdfName } = req.body;
+      const { content, suggestionId, wasEdited, supervisorName, imageBase64, audioBase64, audioMimeType, pdfBase64, pdfName, isPrivate } = req.body;
 
       const conversation = await storage.getConversation(id);
       if (!conversation) {
@@ -4614,6 +4643,8 @@ A resposta deve:
         imageBase64: imageBase64 || null, // Salvar imagem para exibição no frontend
         pdfBase64: pdfBase64 || null, // Salvar PDF para download no frontend
         pdfName: pdfName || null, // Nome do arquivo PDF
+        isPrivate: isPrivate || false, // Mensagem privada (não enviada ao cliente)
+        sentBy: req.user!.userId, // ID do usuário que enviou a mensagem (sempre preenchido)
       });
 
       // Atualizar conversa
@@ -4622,8 +4653,18 @@ A resposta deve:
         lastMessageTime: new Date(),
       });
 
-      // ENVIAR MENSAGEM VIA WHATSAPP
+      // ENVIAR MENSAGEM VIA WHATSAPP (NÃO enviar mensagens privadas)
       let whatsappSent = false;
+      
+      // Se for mensagem privada, NÃO enviar ao WhatsApp
+      if (isPrivate) {
+        console.log(`🔒 [Private Message] Mensagem privada criada - NÃO enviada ao WhatsApp`);
+        return res.json({ 
+          message,
+          whatsappSent: false,
+          isPrivate: true
+        });
+      }
       
       // Priorizar clientId, depois chatId (sendWhatsAppMessage normaliza automaticamente)
       const phoneNumber = conversation.clientId || conversation.chatId;
