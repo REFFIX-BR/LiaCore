@@ -16,7 +16,7 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 
 **Backend**: Built with Node.js and Express.js (TypeScript). It utilizes GPT-5 for intelligent routing, OpenAI Assistants API, Upstash Vector for RAG, Upstash Redis for conversation threads, and PostgreSQL via Drizzle ORM for data persistence. Session management is based on OpenAI thread-based conversations stored in Redis.
 
-**Queue System**: Employs BullMQ with Redis TLS for asynchronous message processing across six queues (message-processing, ai-response, image-analysis, nps-survey, learning-tasks, inactivity-followup). It includes automatic retry mechanisms and webhook fallback to ensure zero message loss and supports high conversation volumes. A Redis-based distributed lock prevents concurrency issues with OpenAI threads.
+**Queue System**: Employs BullMQ with Redis TLS for asynchronous message processing across six queues (message-processing, ai-response, image-analysis, nps-survey, learning-tasks, inactivity-followup). It includes automatic retry mechanisms and webhook fallback to ensure zero message loss and supports high conversation volumes. A Redis-based distributed lock prevents concurrency issues with OpenAI threads. **Message Concurrency Control**: Implements chat-level locking (60s TTL) to ensure sequential processing of messages from the same chat, preventing out-of-order responses and context confusion.
 
 **AI & Knowledge Management**:
 - **AI Provider**: OpenAI Assistants API.
