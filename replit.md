@@ -23,7 +23,7 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 - **Specialized Assistants**: Six roles (Support, Sales, Finance, Cancellation, Ombudsman, Presentation) with a "Receptionist-First" routing model. The "Receptionist" assistant routes to specialized assistants but cannot transfer to humans; only specialized assistants can.
 - **Conversation Management**: Robust logic for conversation finalization, proper NPS survey delivery, and asynchronous conversation summarization.
 - **RAG Architecture**: Features a dual-layer prompt system separating System Prompts (behavioral rules) from RAG Prompts (context-specific information) using Upstash Vector for semantic search.
-- **Function Calling**: Custom functions for verification, knowledge queries, invoice lookups, and scheduling, with secure internal-only tool execution.
+- **Function Calling**: Custom functions for verification, knowledge queries, invoice lookups, and scheduling, with secure internal-only tool execution. The `consultar_fatura` tool (used by Financeiro assistant) redirects to `consulta_boleto_cliente` for real API calls instead of returning mock data.
 - **Automated Systems**: Includes automated document detection (CPF/CNPJ), "Boleto Consultation", "PPPoE Connection Status", and "Unlock/Unblock" systems with integrated security. An HTTP Resilience System centralizes retry logic with exponential backoff and timeouts for all external API calls to TR Telecom webhooks.
 - **Vision System**: GPT-4o Vision for automatic WhatsApp image analysis with a dual download strategy.
 - **PDF Text Extraction System**: Automatic text extraction from PDF documents for AI analysis, supporting various formats and handling size limits.

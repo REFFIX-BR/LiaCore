@@ -588,7 +588,7 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
           });
         }
         
-        const { executeAssistantTool: executeToolFatura } = await import("../ai-tools");
+        const { consultaBoletoCliente: consultaBoletoFatura } = await import("../ai-tools");
         const { storage: storageFatura } = await import("../storage");
         
         try {
@@ -609,15 +609,9 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
             });
           }
           
-          // Injetar documento automaticamente nos args
-          const argsWithDocumentFatura = {
-            ...args,
-            documento: conversationFatura.clientDocument
-          };
-          
-          const boletosFatura = await executeToolFatura(
-            "consulta_boleto_cliente",
-            argsWithDocumentFatura,
+          // Chamar diretamente a API real
+          const boletosFatura = await consultaBoletoFatura(
+            conversationFatura.clientDocument,
             { conversationId },
             storageFatura
           );
@@ -798,7 +792,7 @@ Fonte: ${fonte}`;
           });
         }
         
-        const { executeAssistantTool } = await import("../ai-tools");
+        const { consultaBoletoCliente } = await import("../ai-tools");
         const { storage } = await import("../storage");
         
         try {
@@ -819,15 +813,9 @@ Fonte: ${fonte}`;
             });
           }
           
-          // Injetar documento automaticamente nos args
-          const argsWithDocument = {
-            ...args,
-            documento: conversation.clientDocument
-          };
-          
-          const boletos = await executeAssistantTool(
-            "consulta_boleto_cliente",
-            argsWithDocument,
+          // Chamar diretamente a API real
+          const boletos = await consultaBoletoCliente(
+            conversation.clientDocument,
             { conversationId },
             storage
           );
