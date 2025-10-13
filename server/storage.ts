@@ -535,11 +535,21 @@ export class MemStorage implements IStorage {
   async createMessage(insertMsg: InsertMessage): Promise<Message> {
     const id = randomUUID();
     const message: Message = {
-      ...insertMsg,
       id,
+      conversationId: insertMsg.conversationId,
+      role: insertMsg.role,
+      content: insertMsg.content,
       timestamp: new Date(),
       functionCall: insertMsg.functionCall || null,
       assistant: insertMsg.assistant || null,
+      imageBase64: insertMsg.imageBase64 || null,
+      pdfBase64: insertMsg.pdfBase64 || null,
+      pdfName: insertMsg.pdfName || null,
+      audioUrl: insertMsg.audioUrl || null,
+      whatsappMessageId: insertMsg.whatsappMessageId || null,
+      remoteJid: insertMsg.remoteJid || null,
+      isPrivate: insertMsg.isPrivate ?? false,
+      sentBy: insertMsg.sentBy || null,
     };
     this.messages.set(id, message);
     return message;
