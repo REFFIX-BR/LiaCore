@@ -1778,7 +1778,9 @@ export class DbStorage implements IStorage {
       workers: true
     };
 
-    // Custo estimado (mock por enquanto)
+    // ⚠️ MOCK DATA - Dashboard Admin Metrics Only
+    // TODO: Implementar integração real com APIs de custo (OpenAI, Upstash)
+    // Este mock NÃO afeta funcionalidades principais do sistema
     const estimatedCost = {
       total: 123.45,
       openai: 80.10,
@@ -1798,13 +1800,17 @@ export class DbStorage implements IStorage {
       agents: activeToday.filter(u => u.role === 'AGENT').length
     };
 
-    // Eventos de segurança (mock)
+    // ⚠️ MOCK DATA - Dashboard Admin Metrics Only
+    // TODO: Implementar sistema real de rastreamento de eventos de segurança
+    // Este mock NÃO afeta funcionalidades principais do sistema
     const securityEvents = {
       total: 0,
       failedLogins: 0
     };
 
-    // Token usage (últimos 30 dias - mock)
+    // ⚠️ MOCK DATA - Dashboard Admin Metrics Only
+    // TODO: Implementar integração real com API da OpenAI para dados de token usage
+    // Este mock NÃO afeta funcionalidades principais do sistema
     const tokenUsage = this.generateMockTokenUsage();
 
     // Atividade recente
@@ -1879,6 +1885,9 @@ export class DbStorage implements IStorage {
     return hourlyData;
   }
 
+  // ⚠️ MOCK DATA GENERATOR - Dashboard Admin Metrics Only
+  // Este método gera dados fictícios de uso de tokens para visualização no dashboard
+  // NÃO afeta funcionalidades principais do sistema
   private generateMockTokenUsage() {
     const usage = [];
     for (let i = 29; i >= 0; i--) {
