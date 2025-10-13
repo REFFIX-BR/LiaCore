@@ -5,6 +5,7 @@ import {
   MessageProcessingJob,
   ImageAnalysisJob,
   NPSSurveyJob,
+  InactivityFollowupJob,
 } from './lib/queue';
 
 // Redis connection for workers (BullMQ requirement)
@@ -124,6 +125,7 @@ async function markJobProcessed(jobId: string, ttlSeconds = 86400): Promise<void
 let messageProcessingWorker: Worker<MessageProcessingJob> | undefined;
 let imageAnalysisWorker: Worker<ImageAnalysisJob> | undefined;
 let npsSurveyWorker: Worker<NPSSurveyJob> | undefined;
+let inactivityFollowupWorker: Worker<InactivityFollowupJob> | undefined;
 
 if (redisConnection) {
   // Worker 1: Process incoming WhatsApp messages
@@ -508,6 +510,88 @@ Responda apenas com o número (0 a 10).
   }
   );
 
+  // Worker 4: Inactivity Follow-up
+  inactivityFollowupWorker = new Worker<InactivityFollowupJob>(
+    QUEUE_NAMES.INACTIVITY_FOLLOWUP,
+    async (job: Job<InactivityFollowupJob>) => {
+      const { conversationId, chatId, clientId, clientName, evolutionInstance, lastClientMessageTime } = job.data;
+
+      // Check idempotency
+      if (await isJobProcessed(job.id!)) {
+        console.log(`⏭️ [Inactivity Worker] Job already processed, skipping: ${job.id}`);
+        return { skipped: true, reason: 'already_processed' };
+      }
+
+      console.log(`⏰ [Inactivity Worker] Checking inactivity for conversation ${conversationId}`);
+
+      try {
+        // 1. Get current conversation status
+        const conversation = await storage.getConversation(conversationId);
+
+        if (!conversation) {
+          console.log(`⚠️ [Inactivity Worker] Conversa não existe mais: ${conversationId}`);
+          await markJobProcessed(job.id!);
+          return { skipped: true, reason: 'conversation_not_found' };
+        }
+
+        // 2. Check if conversation is still active and waiting for client response
+        if (conversation.status !== 'active') {
+          console.log(`⚠️ [Inactivity Worker] Conversa não está mais ativa: ${conversation.status}`);
+          await markJobProcessed(job.id!);
+          return { skipped: true, reason: 'conversation_not_active' };
+        }
+
+        // 3. Check if conversation was transferred to human
+        if (conversation.transferredToHuman) {
+          console.log(`⚠️ [Inactivity Worker] Conversa foi transferida para humano`);
+          await markJobProcessed(job.id!);
+          return { skipped: true, reason: 'transferred_to_human' };
+        }
+
+        // 4. Check if client sent a new message since we scheduled this job
+        if (conversation.lastMessageTime && new Date(conversation.lastMessageTime).getTime() > lastClientMessageTime) {
+          console.log(`⚠️ [Inactivity Worker] Cliente já respondeu - cancelando follow-up`);
+          await markJobProcessed(job.id!);
+          return { skipped: true, reason: 'client_already_responded' };
+        }
+
+        // 5. Send follow-up message
+        const followupMessage = `Olá ${clientName}, você está aí? Podemos dar continuidade no atendimento?`;
+        
+        console.log(`📤 [Inactivity Worker] Enviando mensagem de follow-up para ${clientName}`);
+        const messageSent = await sendWhatsAppMessage(clientId, followupMessage, evolutionInstance);
+
+        if (!messageSent) {
+          throw new Error('Failed to send inactivity follow-up - Evolution API error');
+        }
+
+        // 6. Store the follow-up message in conversation
+        await storage.createMessage({
+          conversationId,
+          role: 'assistant',
+          content: followupMessage,
+        });
+
+        console.log(`✅ [Inactivity Worker] Follow-up enviado com sucesso para ${clientName}`);
+
+        // Mark job as processed
+        await markJobProcessed(job.id!);
+
+        return {
+          success: true,
+          messageSent: true,
+        };
+      } catch (error) {
+        console.error(`❌ [Inactivity Worker] Error:`, error);
+        throw error;
+      }
+    },
+    {
+      connection: redisConnection,
+      concurrency: 2,
+    }
+  );
+
   // Error handlers
   messageProcessingWorker.on('failed', (job, error) => {
     console.error(`❌ [Worker] Message processing failed:`, {
@@ -530,6 +614,13 @@ Responda apenas com o número (0 a 10).
     });
   });
 
+  inactivityFollowupWorker.on('failed', (job, error) => {
+    console.error(`❌ [Inactivity Worker] Failed:`, {
+      jobId: job?.id,
+      error: error.message,
+    });
+  });
+
   // Success handlers
   messageProcessingWorker.on('completed', (job) => {
     console.log(`✅ [Worker] Message completed:`, {
@@ -539,11 +630,12 @@ Responda apenas com o número (0 a 10).
   });
 
   console.log('✅ [Workers] Sistema de workers inicializado');
-  console.log('👷 [Workers] Workers ativos: 3');
+  console.log('👷 [Workers] Workers ativos: 4');
   console.log('⚡ [Workers] Concurrency:');
   console.log('  - Message Processing: 5');
   console.log('  - Image Analysis: 2');
   console.log('  - NPS Survey: 3');
+  console.log('  - Inactivity Follow-up: 2');
 } else {
   console.log('⚠️  [Workers] Redis connection not available - workers disabled');
   console.log('   Webhook will process messages synchronously');
@@ -551,11 +643,12 @@ Responda apenas com o número (0 a 10).
 
 // Graceful shutdown
 async function closeWorkers() {
-  if (messageProcessingWorker || imageAnalysisWorker || npsSurveyWorker) {
+  if (messageProcessingWorker || imageAnalysisWorker || npsSurveyWorker || inactivityFollowupWorker) {
     console.log('🔴 Closing workers...');
     if (messageProcessingWorker) await messageProcessingWorker.close();
     if (imageAnalysisWorker) await imageAnalysisWorker.close();
     if (npsSurveyWorker) await npsSurveyWorker.close();
+    if (inactivityFollowupWorker) await inactivityFollowupWorker.close();
     if (redisConnection) await redisConnection.quit();
     console.log('✅ Workers closed successfully');
   }
@@ -565,4 +658,4 @@ process.on('SIGTERM', closeWorkers);
 process.on('SIGINT', closeWorkers);
 
 // Export workers (may be undefined if Redis is not available)
-export { messageProcessingWorker, imageAnalysisWorker, npsSurveyWorker };
+export { messageProcessingWorker, imageAnalysisWorker, npsSurveyWorker, inactivityFollowupWorker };
