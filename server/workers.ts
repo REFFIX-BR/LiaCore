@@ -206,9 +206,36 @@ if (redisConnection) {
         hasImage,
       });
 
+      // 2. Check if conversation is transferred to human
+      if (conversation.transferredToHuman) {
+        console.log(`👤 [Worker] Conversa transferida para humano - apenas armazenando mensagem`);
+        
+        // Store user message only (no AI processing)
+        await storage.createMessage({
+          conversationId,
+          role: 'user',
+          content: message,
+        });
+
+        // Mark job as processed
+        await markJobProcessed(idempotencyKey!);
+
+        prodLogger.info('worker', 'Message stored for human agent', {
+          conversationId,
+          assignedTo: conversation.assignedTo,
+          status: conversation.status,
+        });
+
+        return {
+          success: true,
+          handledByHuman: true,
+          reason: 'conversation_transferred_to_human',
+        };
+      }
+
       let enhancedMessage = message;
 
-      // 2. If message has image, process it first
+      // 3. If message has image, process it first
       if (hasImage && imageUrl) {
         console.log(`🖼️ [Worker] Image detected, analyzing...`);
         
@@ -225,7 +252,7 @@ if (redisConnection) {
         }
       }
 
-      // 3. Get or create thread ID
+      // 4. Get or create thread ID
       let threadId = conversation.threadId;
       
       if (!threadId) {
@@ -237,7 +264,7 @@ if (redisConnection) {
         });
       }
 
-      // 4. Get assistant ID from conversation type (use ASSISTANT_IDS from openai.ts)
+      // 5. Get assistant ID from conversation type (use ASSISTANT_IDS from openai.ts)
       const { ASSISTANT_IDS } = await import('./lib/openai');
       
       const assistantId = ASSISTANT_IDS[conversation.assistantType as keyof typeof ASSISTANT_IDS] || ASSISTANT_IDS.suporte;
@@ -260,7 +287,7 @@ if (redisConnection) {
         throw new Error(`No assistant ID available for ${conversation.assistantType}. Configure as variáveis de ambiente em produção!`);
       }
 
-      // 5. Send message to OpenAI and get response
+      // 6. Send message to OpenAI and get response
       const result = await sendMessageAndGetResponse(
         threadId,
         assistantId,
@@ -269,7 +296,7 @@ if (redisConnection) {
         conversationId
       );
 
-      // 6. Handle special responses
+      // 7. Handle special responses
       if (result.transferred) {
         console.log(`🔀 [Worker] Conversation transferred to human`);
         
@@ -296,14 +323,14 @@ if (redisConnection) {
         });
       }
 
-      // 7. Send response back to customer
+      // 8. Send response back to customer
       const messageSent = await sendWhatsAppMessage(fromNumber, result.response, evolutionInstance);
       
       if (!messageSent) {
         throw new Error('Failed to send WhatsApp message - Evolution API error');
       }
 
-      // 8. Store AI response (only if message was sent successfully)
+      // 9. Store AI response (only if message was sent successfully)
       await storage.createMessage({
         conversationId,
         role: 'assistant',
