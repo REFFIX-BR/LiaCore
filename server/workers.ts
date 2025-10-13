@@ -213,7 +213,17 @@ if (redisConnection) {
         hasImage,
       });
 
-      // 2. Check if conversation is transferred to human
+      // 2. Cancelar follow-up de inatividade (cliente respondeu)
+      try {
+        const { cancelInactivityFollowup } = await import('./lib/queue');
+        await cancelInactivityFollowup(conversationId);
+        console.log(`✅ [Worker] Follow-up de inatividade cancelado - cliente respondeu`);
+      } catch (cancelError) {
+        console.error(`❌ [Worker] Erro ao cancelar follow-up:`, cancelError);
+        // Não falhar o processamento por causa disso
+      }
+
+      // 3. Check if conversation is transferred to human
       if (conversation.transferredToHuman) {
         console.log(`👤 [Worker] Conversa transferida para humano - apenas armazenando mensagem`);
         
@@ -242,7 +252,7 @@ if (redisConnection) {
 
       let enhancedMessage = message;
 
-      // 3. If message has image, process it first
+      // 4. If message has image, process it first
       if (hasImage && imageUrl) {
         console.log(`🖼️ [Worker] Image detected, analyzing...`);
         
@@ -259,7 +269,7 @@ if (redisConnection) {
         }
       }
 
-      // 4. Get or create thread ID
+      // 5. Get or create thread ID
       let threadId = conversation.threadId;
       
       if (!threadId) {
@@ -271,7 +281,7 @@ if (redisConnection) {
         });
       }
 
-      // 5. Get assistant ID from conversation type (use ASSISTANT_IDS from openai.ts)
+      // 6. Get assistant ID from conversation type (use ASSISTANT_IDS from openai.ts)
       const { ASSISTANT_IDS } = await import('./lib/openai');
       
       const assistantId = ASSISTANT_IDS[conversation.assistantType as keyof typeof ASSISTANT_IDS] || ASSISTANT_IDS.suporte;
@@ -294,7 +304,7 @@ if (redisConnection) {
         throw new Error(`No assistant ID available for ${conversation.assistantType}. Configure as variáveis de ambiente em produção!`);
       }
 
-      // 6. Send message to OpenAI and get response
+      // 7. Send message to OpenAI and get response
       const result = await sendMessageAndGetResponse(
         threadId,
         assistantId,
@@ -303,7 +313,7 @@ if (redisConnection) {
         conversationId
       );
 
-      // 7. Handle special responses
+      // 8. Handle special responses
       if (result.transferred) {
         console.log(`🔀 [Worker] Conversation transferred to human`);
         
@@ -363,14 +373,14 @@ if (redisConnection) {
         });
       }
 
-      // 8. Send response back to customer
+      // 9. Send response back to customer
       const messageSent = await sendWhatsAppMessage(fromNumber, result.response, evolutionInstance);
       
       if (!messageSent) {
         throw new Error('Failed to send WhatsApp message - Evolution API error');
       }
 
-      // 9. Store AI response (only if message was sent successfully)
+      // 10. Store AI response (only if message was sent successfully)
       await storage.createMessage({
         conversationId,
         role: 'assistant',
@@ -379,6 +389,32 @@ if (redisConnection) {
           ? result.functionCalls[0] // Store first function call (most relevant)
           : undefined,
       });
+
+      // 11. Handle inactivity follow-up (somente se conversa ainda estiver ativa com IA)
+      if (!result.transferred && !result.resolved && conversation.status === 'active') {
+        try {
+          const { addInactivityFollowupToQueue, cancelInactivityFollowup } = await import('./lib/queue');
+          
+          // Cancelar qualquer follow-up anterior agendado
+          await cancelInactivityFollowup(conversationId);
+          
+          // Agendar novo follow-up para daqui a 10 minutos
+          await addInactivityFollowupToQueue({
+            conversationId,
+            chatId,
+            clientId: fromNumber,
+            clientName: clientName || 'Cliente',
+            evolutionInstance,
+            scheduledAt: Date.now(),
+            lastClientMessageTime: Date.now(), // Timestamp da última mensagem do cliente
+          });
+          
+          console.log(`⏰ [Worker] Follow-up de inatividade agendado para daqui a 10 minutos`);
+        } catch (followupError) {
+          console.error(`❌ [Worker] Erro ao agendar follow-up de inatividade:`, followupError);
+          // Não falhar o processamento da mensagem por causa disso
+        }
+      }
 
       console.log(`✅ [Worker] Message processed successfully`);
 
