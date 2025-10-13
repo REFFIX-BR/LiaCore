@@ -2928,7 +2928,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Supervisor actions
-  app.post("/api/supervisor/transfer", authenticate, requireAdmin, async (req, res) => {
+  app.post("/api/supervisor/transfer", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
       const { conversationId, department, notes, supervisorId } = req.body;
 
@@ -3020,7 +3020,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/supervisor/resolve", authenticate, requireAdmin, async (req, res) => {
+  app.post("/api/supervisor/resolve", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
       const { conversationId, supervisorId } = req.body;
 
