@@ -36,19 +36,7 @@ class WebhookLogger {
     });
   }
 
-  setupWebSocket(server: Server) {
-    this.wss = new WebSocketServer({ 
-      server,
-      path: '/ws/webhook-logs'
-    });
-
-    this.wss.on('connection', (ws: WebSocket) => {
-      console.log('🔌 [WebSocket] Cliente conectado ao monitor de webhook');
-      this.handleConnection(ws);
-    });
-
-    console.log('✅ [WebSocket] Servidor de logs configurado em /ws/webhook-logs');
-  }
+  // Removed - using unified websocket-manager instead
 
   log(type: WebhookLog['type'], event: string, message: string, details?: any) {
     const log: WebhookLog = {

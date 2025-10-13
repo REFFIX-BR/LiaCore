@@ -8,6 +8,7 @@ import { storeConversationThread, getConversationThread, searchKnowledge } from 
 import { RedisCache } from "./lib/redis-config";
 import { webhookLogger } from "./lib/webhook-logger";
 import { agentLogger } from "./lib/agent-logger";
+import { setupWebSockets } from "./lib/websocket-manager";
 import { authenticate, authenticateWithTracking, requireAdmin, requireAdminOrSupervisor, requireAnyRole } from "./middleware/auth";
 import { hashPassword, comparePasswords, generateToken, getUserFromUser } from "./lib/auth";
 import OpenAI from "openai";
@@ -5232,11 +5233,8 @@ A resposta deve:
 
   const httpServer = createServer(app);
 
-  // Setup WebSocket for real-time webhook logs
-  webhookLogger.setupWebSocket(httpServer);
-  
-  // Setup WebSocket for real-time agent reasoning logs  
-  agentLogger.setupWebSocket(httpServer);
+  // Setup unified WebSocket server for real-time logs (webhook + agent reasoning)
+  setupWebSockets(httpServer);
 
   // Endpoint to get webhook logs
   app.get("/api/webhook-logs", authenticate, requireAdmin, (req, res) => {

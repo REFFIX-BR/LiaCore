@@ -50,32 +50,7 @@ class AgentLogger {
     });
   }
 
-  setupWebSocket(server: Server) {
-    console.log('🔧 [Agent Logger] Configurando WebSocket Server...');
-    
-    // Debug: Log all upgrade events
-    server.on('upgrade', (req, socket, head) => {
-      console.log(`🔍 [Debug] HTTP Upgrade request: ${req.url}`);
-    });
-    
-    try {
-      this.wss = new WebSocketServer({ 
-        server,
-        path: '/ws/reasoning'
-      });
-      console.log('✅ [Agent Logger] WebSocketServer criado com sucesso');
-    } catch (error) {
-      console.error('❌ [Agent Logger] Erro ao criar WebSocketServer:', error);
-      return;
-    }
-
-    this.wss.on('connection', (ws: WebSocket) => {
-      console.log('🤖 [Agent Logger] Cliente conectado ao monitor de agentes');
-      this.handleConnection(ws);
-    });
-
-    console.log('✅ [Agent Logger] Servidor de logs de agentes configurado em /ws/reasoning');
-  }
+  // Removed - using unified websocket-manager instead
 
   log(
     type: AgentLog['type'], 
