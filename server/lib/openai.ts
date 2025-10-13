@@ -308,6 +308,26 @@ export async function sendMessageAndGetResponse(
       usedFallback: !assistantId 
     });
 
+    // Check for active runs and cancel them if found
+    try {
+      const activeRuns = await openaiCircuitBreaker.execute(() =>
+        openai.beta.threads.runs.list(threadId, { limit: 5 })
+      );
+      
+      for (const activeRun of activeRuns.data) {
+        if (activeRun.status === 'queued' || activeRun.status === 'in_progress' || activeRun.status === 'requires_action') {
+          console.warn(`⚠️  [OpenAI] Cancelling active run ${activeRun.id} (status: ${activeRun.status})`);
+          await openaiCircuitBreaker.execute(() =>
+            openai.beta.threads.runs.cancel(activeRun.id, { thread_id: threadId })
+          );
+          await new Promise(resolve => setTimeout(resolve, 500)); // Wait for cancellation
+        }
+      }
+    } catch (error) {
+      console.warn(`⚠️  [OpenAI] Error checking/cancelling active runs:`, error);
+      // Continue anyway
+    }
+
     await openaiCircuitBreaker.execute(() =>
       openai.beta.threads.messages.create(threadId, {
         role: "user",
