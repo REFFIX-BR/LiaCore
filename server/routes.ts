@@ -3039,6 +3039,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.updateConversation(conversationId, {
         status: "resolved",
+        resolvedAt: new Date(),
+        assignedTo: null, // Desatribuir conversa ao finalizar
+        transferredToHuman: false, // Limpar flag de transferência ao finalizar
         metadata: isWhatsApp ? { ...currentMetadata, awaitingNPS: true } : currentMetadata,
       });
 
