@@ -20,7 +20,7 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 
 **AI & Knowledge Management**:
 - **AI Provider**: OpenAI Assistants API.
-- **Specialized Assistants**: Six roles (Support, Sales, Finance, Cancellation, Ombudsman, Presentation) with a "Receptionist-First" routing model. The "Receptionist" assistant routes to specialized assistants but cannot transfer to humans; only specialized assistants can.
+- **Specialized Assistants**: Six roles (Support, Sales, Finance, Cancellation, Ombudsman, Presentation) with a "Receptionist-First" routing model. The "Receptionist" assistant routes to specialized assistants but cannot transfer to humans; only specialized assistants can. **Silent Routing**: When LIA Apresentação routes to a specialist, only the specialist's welcome message is sent to avoid duplicate/confusing messages.
 - **Conversation Management**: Robust logic for conversation finalization, proper NPS survey delivery, and asynchronous conversation summarization.
 - **RAG Architecture**: Features a dual-layer prompt system separating System Prompts (behavioral rules) from RAG Prompts (context-specific information) using Upstash Vector for semantic search.
 - **Function Calling**: Custom functions for verification, knowledge queries, invoice lookups, and scheduling, with secure internal-only tool execution. The `consultar_fatura` tool (used by Financeiro assistant) redirects to `consulta_boleto_cliente` for real API calls instead of returning mock data.
