@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { assistantCache } from "./redis-config";
+import { assistantCache, redisConnection } from "./redis-config";
 import { agentLogger } from "./agent-logger";
 
 const openai = new OpenAI({
@@ -209,6 +209,59 @@ export async function createThread(): Promise<string> {
   return thread.id;
 }
 
+// Thread lock helper usando Redis para evitar concorrência
+async function acquireThreadLock(threadId: string, timeoutMs: number = 30000): Promise<{ acquired: boolean; lockValue?: string }> {
+  const lockKey = `thread-lock:${threadId}`;
+  const lockValue = `lock-${Date.now()}-${Math.random()}`;
+  const maxWaitTime = Date.now() + timeoutMs;
+  
+  while (Date.now() < maxWaitTime) {
+    try {
+      // TTL de 120s (maior que circuit breaker timeout de 90s)
+      const acquired = await redisConnection.set(lockKey, lockValue, 'EX', 120, 'NX');
+      
+      if (acquired === 'OK') {
+        console.log(`🔒 [OpenAI] Lock acquired for thread ${threadId} with value ${lockValue}`);
+        return { acquired: true, lockValue };
+      }
+      
+      // Se não conseguiu, aguarda 100ms e tenta novamente
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      console.error(`❌ [OpenAI] Error acquiring lock for thread ${threadId}:`, error);
+      return { acquired: false };
+    }
+  }
+  
+  console.warn(`⏰ [OpenAI] Lock timeout for thread ${threadId} after ${timeoutMs}ms`);
+  return { acquired: false };
+}
+
+async function releaseThreadLock(threadId: string, lockValue: string): Promise<void> {
+  const lockKey = `thread-lock:${threadId}`;
+  
+  try {
+    // Usa Lua script para verificar e deletar atomicamente (só deleta se for meu lock)
+    const luaScript = `
+      if redis.call("get", KEYS[1]) == ARGV[1] then
+        return redis.call("del", KEYS[1])
+      else
+        return 0
+      end
+    `;
+    
+    const result = await redisConnection.eval(luaScript, 1, lockKey, lockValue);
+    
+    if (result === 1) {
+      console.log(`🔓 [OpenAI] Lock released for thread ${threadId}`);
+    } else {
+      console.warn(`⚠️  [OpenAI] Lock for thread ${threadId} was already released or taken by another worker`);
+    }
+  } catch (error) {
+    console.error(`❌ [OpenAI] Error releasing lock for thread ${threadId}:`, error);
+  }
+}
+
 export async function sendMessageAndGetResponse(
   threadId: string,
   assistantId: string,
@@ -225,6 +278,16 @@ export async function sendMessageAndGetResponse(
   assistantTarget?: string;
   routingReason?: string;
 }> {
+  // Adquire lock para evitar concorrência na mesma thread
+  const lock = await acquireThreadLock(threadId);
+  
+  if (!lock.acquired) {
+    console.error(`❌ [OpenAI] Could not acquire lock for thread ${threadId} - concurrent access detected`);
+    return { 
+      response: "Desculpe, estou processando sua mensagem anterior. Por favor, aguarde um momento." 
+    };
+  }
+  
   try {
     if (!threadId) {
       throw new Error("Thread ID is required");
@@ -461,6 +524,11 @@ export async function sendMessageAndGetResponse(
   } catch (error) {
     console.error("Assistant run error:", error);
     return { response: "Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente." };
+  } finally {
+    // Sempre libera o lock, mesmo em caso de erro (só se foi adquirido)
+    if (lock.lockValue) {
+      await releaseThreadLock(threadId, lock.lockValue);
+    }
   }
 }
 
