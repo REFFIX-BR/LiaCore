@@ -5266,6 +5266,63 @@ A resposta deve:
     }
   });
 
+  // Reset OpenAI thread context (clear AI history while keeping messages in DB)
+  app.post("/api/conversations/:id/reset-thread", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const currentUser = req.user!;
+
+      // Buscar conversa
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversa não encontrada" });
+      }
+
+      console.log(`🔄 [Reset Thread] Iniciando reset do contexto OpenAI para conversa ${id} por ${currentUser.fullName}`);
+
+      // Criar nova thread OpenAI (contexto vazio)
+      const newThreadId = await createThread();
+      
+      console.log(`✅ [Reset Thread] Nova thread criada: ${newThreadId}`);
+
+      // Atualizar threadId no banco de dados
+      await storage.updateConversation(id, {
+        threadId: newThreadId,
+      });
+
+      // Atualizar no Redis também
+      if (conversation.chatId) {
+        await storeConversationThread(conversation.chatId, newThreadId);
+        console.log(`✅ [Reset Thread] Thread atualizada no Redis para chatId ${conversation.chatId}`);
+      }
+
+      // Registrar ação de supervisor
+      await storage.createSupervisorAction({
+        conversationId: id,
+        action: "reset_thread",
+        notes: `Contexto OpenAI resetado por ${currentUser.fullName}. Nova thread: ${newThreadId}`,
+        createdBy: currentUser.fullName || currentUser.username,
+      });
+
+      // Buscar contagem de mensagens mantidas
+      const messages = await storage.getMessagesByConversationId(id);
+      const messageCount = messages.length;
+
+      console.log(`✅ [Reset Thread] Contexto resetado com sucesso! ${messageCount} mensagens mantidas no banco.`);
+
+      return res.json({ 
+        success: true,
+        message: "Contexto OpenAI resetado com sucesso",
+        newThreadId,
+        messagesKept: messageCount,
+        resetBy: currentUser.fullName,
+      });
+    } catch (error) {
+      console.error("❌ [Reset Thread] Erro ao resetar contexto:", error);
+      return res.status(500).json({ error: "Erro ao resetar contexto OpenAI" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // Setup unified WebSocket server for real-time logs (webhook + agent reasoning)

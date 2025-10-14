@@ -3,23 +3,30 @@
 ## Overview
 LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed for TR Telecom's customer service. It intelligently routes and coordinates specialized AI assistants, leveraging OpenAI's Assistants API and a RAG knowledge base. The platform automates Q&A, executes actions like boleto consultation and PPPoE diagnosis, and features a real-time supervisor monitoring dashboard for human intervention. It also includes an autonomous continuous learning system that evolves AI assistant prompts, aiming to significantly enhance customer service efficiency and satisfaction.
 
-## Recent Changes (2025-10-13)
-**Fixed: Automatic CPF/CNPJ Detection & Document Validation**
-- ✅ Implemented automatic CPF/CNPJ detection from client messages using regex patterns
-- ✅ Added `detectClientDocument()` function in `server/lib/conversation-intelligence.ts`
-- ✅ Integrated automatic document detection in message processing workflow (`server/workers.ts`)
-- ✅ Documents are now automatically saved to `conversations.clientDocument` field
-- ✅ **CRITICAL FIX**: Normalized document comparison in security validations (`server/ai-tools.ts`)
-  - Problem: Assistants send formatted CPF (077.678.807-88), but system stores unformatted (07767880788)
-  - Solution: Strip formatting before comparison in all 3 validation functions
-  - Affected functions: `consultaBoletoCliente`, `consultaStatusConexao`, `solicitarDesbloqueio`
-- ✅ Financial assistant can now successfully query invoices (boletos) without asking for CPF again
-- ✅ **CONVERSATION REOPEN FIX**: Resolved conversations now reset to "Apresentação" assistant
-  - Problem: When reopening finalized conversations, they stayed with last assistant (e.g., Suporte)
-  - Solution: Added `assistantType: 'apresentacao'` when changing status from 'resolved' to 'active'
-  - Location: Both webhook endpoints in `server/routes.ts` (lines ~817 and ~1779)
-  - Now every new interaction starts fresh with the presentation assistant
-- Security: All logs mask sensitive information (CPF/CNPJ)
+## Recent Changes (2025-10-14)
+**Added: Thread Context Reset Functionality**
+- ✅ **NEW FEATURE**: Supervisors can now reset OpenAI thread context while keeping messages in database
+  - Problem: Stuck conversations with problematic AI history needed fresh context without losing audit trail
+  - Solution: New endpoint `/api/conversations/:id/reset-thread` (POST)
+  - Creates new OpenAI thread, updates threadId in PostgreSQL and Redis
+  - Preserves all messages in database for compliance/audit
+  - Logs action in supervisor_actions table for accountability
+  - UI: New "Resetar Contexto OpenAI" button in Monitor → Ações tab
+  - Permissions: Admin and Supervisor only (via `requireAdminOrSupervisor` middleware)
+  - Location: `server/routes.ts` (line ~5273), `client/src/pages/Monitor.tsx`, `client/src/components/ConversationDetails.tsx`
+- ✅ **CRITICAL BUG FIX**: Fixed function name mismatch in AI tools
+  - Problem: OpenAI called `consultar_boleto_cliente` (with 'r') but code had `consulta_boleto_cliente` (without 'r')
+  - Root cause: Case statement never matched, function never executed
+  - Solution: Standardized all function names to `consultar_*` pattern (with 'r')
+  - Affected: `consultar_boleto_cliente`, normalized in `server/ai-tools.ts`
+  - Result: Financeiro assistant now successfully queries real boletos from TR Telecom API
+
+**Previous Changes (2025-10-13)**
+- ✅ Automatic CPF/CNPJ detection from client messages
+- ✅ Normalized document comparison in security validations
+- ✅ Financial assistant boleto queries without re-asking for CPF
+- ✅ Conversation reopen fix - resets to Apresentação assistant
+- ✅ All logs mask sensitive information (CPF/CNPJ)
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

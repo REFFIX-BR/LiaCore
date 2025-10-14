@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User, Bot, Pause, Play, FileText, UserPlus, Trash2 } from "lucide-react";
+import { User, Bot, Pause, Play, FileText, UserPlus, Trash2, RotateCcw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState, useEffect, useRef } from "react";
@@ -63,6 +63,7 @@ interface ConversationDetailsProps {
   onAddNote: (note: string) => void;
   onMarkResolved: () => void;
   onDeleteMessage?: (messageId: string) => void;
+  onResetThread?: () => void;
 }
 
 const functionIcons: Record<string, string> = {
@@ -83,6 +84,7 @@ export function ConversationDetails({
   onAddNote,
   onMarkResolved,
   onDeleteMessage,
+  onResetThread,
 }: ConversationDetailsProps) {
   const [transferDept, setTransferDept] = useState("");
   const [transferNotes, setTransferNotes] = useState("");
@@ -305,6 +307,18 @@ export function ConversationDetails({
                 ✅ Marcar como Resolvido
               </Button>
             </div>
+
+            {onResetThread && (
+              <Button 
+                variant="secondary" 
+                onClick={onResetThread} 
+                className="w-full"
+                data-testid="button-reset-thread"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Resetar Contexto OpenAI
+              </Button>
+            )}
 
             <div className="space-y-2">
               <Label>Adicionar Nota Interna</Label>
