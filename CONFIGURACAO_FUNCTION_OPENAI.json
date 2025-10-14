@@ -1,0 +1,11 @@
+{
+  "name": "consulta_boleto_cliente",
+  "description": "Consulta boletos (faturas) pendentes de um cliente usando CPF ou CNPJ. Use esta função quando o cliente perguntar sobre boletos, faturas, ou pagamentos pendentes. IMPORTANTE: O sistema já captura automaticamente o CPF/CNPJ da conversa - você NÃO precisa pedir novamente ao cliente.",
+  "strict": false,
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "additionalProperties": false
+  }
+}
