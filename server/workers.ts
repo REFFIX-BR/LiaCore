@@ -64,28 +64,14 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?:
       evolutionInstance, 
       hasApiKey: !!apiKey, 
       baseUrl,
-      triedKey: `EVOLUTION_API_KEY_${evolutionInstance.toUpperCase()}`,
-      triedUrl: `EVOLUTION_API_URL_${evolutionInstance.toUpperCase()}`
+      triedKey: evolutionInstance ? `EVOLUTION_API_KEY_${evolutionInstance.toUpperCase()}` : 'N/A',
+      triedUrl: evolutionInstance ? `EVOLUTION_API_URL_${evolutionInstance.toUpperCase()}` : 'N/A'
     });
     return false;
   }
 
-  // DEBUG: Log API key info for Principal instance
-  if (evolutionInstance === 'Principal') {
-    console.log(`🔍 [DEBUG] Principal instance auth:`, {
-      instance: evolutionInstance,
-      envKeyName: `EVOLUTION_API_KEY_${evolutionInstance.toUpperCase()}`,
-      hasKey: !!apiKey,
-      keyLength: apiKey?.length || 0,
-      keyPreview: apiKey ? `${apiKey.substring(0, 20)}...` : 'NO KEY',
-      url: baseUrl
-    });
-  }
-
   // Sanitize and validate URL
-  const urlBefore = baseUrl;
   baseUrl = baseUrl.trim(); // Remove espaços extras
-  console.log(`🔍 [URL DEBUG] Before trim: '${urlBefore}' (${urlBefore.length} chars) | After trim: '${baseUrl}' (${baseUrl.length} chars)`);
   
   // Adicionar https:// se não tiver protocolo
   if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
