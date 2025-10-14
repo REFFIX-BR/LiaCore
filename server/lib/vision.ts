@@ -132,7 +132,22 @@ export async function analyzeImageWithVision(
     
     if (!base64Image.startsWith('data:image/')) {
       console.log(`🔧 [Vision] Adicionando prefixo data URI ao base64...`);
-      imageUrl = `data:image/jpeg;base64,${base64Image}`;
+      
+      // Detectar formato da imagem pela assinatura base64
+      let imageFormat = 'jpeg'; // Padrão
+      
+      if (base64Image.startsWith('iVBORw')) {
+        imageFormat = 'png';
+      } else if (base64Image.startsWith('/9j/')) {
+        imageFormat = 'jpeg';
+      } else if (base64Image.startsWith('R0lGOD')) {
+        imageFormat = 'gif';
+      } else if (base64Image.startsWith('UklGR')) {
+        imageFormat = 'webp';
+      }
+      
+      console.log(`🔍 [Vision] Formato detectado: ${imageFormat}`);
+      imageUrl = `data:image/${imageFormat};base64,${base64Image}`;
     }
 
     const response = await openai.chat.completions.create({
