@@ -574,14 +574,78 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
 
     switch (functionName) {
       case "verificar_conexao":
-        return JSON.stringify({
-          status: "online",
-          sinal: "excelente",
-          velocidade_download: "500 Mbps",
-          velocidade_upload: "250 Mbps",
-          latencia: "12ms",
-          pacotes_perdidos: "0%",
-        });
+        if (!conversationId) {
+          console.error("❌ [AI Tool] verificar_conexao chamada sem conversationId");
+          return JSON.stringify({
+            error: "Contexto de conversa não disponível"
+          });
+        }
+        
+        const { consultaStatusConexao } = await import("../ai-tools");
+        const { storage: storageConexao } = await import("../storage");
+        
+        try {
+          console.log(`🔍 [AI Tool Handler] Iniciando consulta de status de conexão para conversação ${conversationId}`);
+          
+          // Buscar documento do cliente automaticamente da conversa
+          const conversationConexao = await storageConexao.getConversation(conversationId);
+          
+          if (!conversationConexao) {
+            console.error("❌ [AI Tool] Conversa não encontrada:", conversationId);
+            return JSON.stringify({
+              error: "Conversa não encontrada"
+            });
+          }
+          
+          console.log(`🔍 [AI Tool Handler] Conversa encontrada. clientDocument: ${conversationConexao.clientDocument ? 'SIM' : 'NÃO'}`);
+          
+          if (!conversationConexao.clientDocument) {
+            console.warn("⚠️ [AI Tool] Cliente ainda não forneceu CPF/CNPJ");
+            return JSON.stringify({
+              error: "Para verificar sua conexão, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
+            });
+          }
+          
+          console.log(`🔍 [AI Tool Handler] Chamando consultaStatusConexao com documento do banco...`);
+          
+          // Chamar diretamente a API real
+          const conexoes = await consultaStatusConexao(
+            conversationConexao.clientDocument,
+            { conversationId },
+            storageConexao
+          );
+          
+          console.log(`✅ [AI Tool Handler] Status de conexão consultado com sucesso: ${conexoes?.length || 0} conexão(ões)`);
+          
+          // Formatar resposta
+          if (!conexoes || conexoes.length === 0) {
+            return JSON.stringify({
+              mensagem: "Não encontrei conexões ativas para este CPF/CNPJ."
+            });
+          }
+          
+          // Mapear conexões para formato simplificado
+          const conexoesFormatadas = conexoes.map(conexao => ({
+            nome_cliente: conexao.nomeCliente,
+            plano: conexao.plano,
+            velocidade: conexao.velocidadeContratada,
+            login: conexao.LOGIN,
+            status_ip: conexao.statusIP,
+            status_pppoe: conexao.statusPPPoE,
+            conectado_desde: conexao.conectadoDesde,
+            minutos_conectado: conexao.minutosConectado
+          }));
+          
+          return JSON.stringify(conexoesFormatadas);
+        } catch (error) {
+          console.error("❌ [AI Tool Handler] Erro ao consultar status de conexão:", error);
+          if (error instanceof Error) {
+            console.error("❌ [AI Tool Handler] Stack trace:", error.stack);
+          }
+          return JSON.stringify({
+            error: error instanceof Error ? error.message : "Erro ao consultar status de conexão"
+          });
+        }
 
       case "consultar_fatura":
         // REDIRECIONAR para consulta_boleto_cliente (API real)
