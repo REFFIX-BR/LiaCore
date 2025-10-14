@@ -62,12 +62,17 @@ app.use((req, res, next) => {
     // importantly only setup vite in development and after
     // setting up all the other routes so the catch-all route
     // doesn't interfere with the other routes
-    if (app.get("env") === "development") {
-      console.log('🔧 [Startup] Setting up Vite (development mode)');
-      await setupVite(app, server);
-    } else {
+    
+    // Force production mode on Replit to avoid Vite middleware timeout issues
+    const isReplit = !!process.env.REPLIT_ENVIRONMENT;
+    const useProduction = isReplit || app.get("env") !== "development";
+    
+    if (useProduction) {
       console.log('📦 [Startup] Serving static files (production mode)');
       serveStatic(app);
+    } else {
+      console.log('🔧 [Startup] Setting up Vite (development mode)');
+      await setupVite(app, server);
     }
 
     // ALWAYS serve the app on the port specified in the environment variable PORT
