@@ -2923,6 +2923,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ADMIN: Reprocessar mensagens travadas (sem webhook)
+  app.post("/api/admin/reprocess-stuck-messages", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const { conversationIds, assistantType, maxMinutesWaiting } = req.body;
+
+      // Buscar todas conversas ativas
+      const allConversations = await storage.getAllActiveConversations();
+      
+      // Filtrar conversas que estão aguardando resposta
+      const stuckConversations = [];
+      
+      for (const conv of allConversations) {
+        // Filtros básicos
+        if (conv.status !== 'active') continue;
+        
+        if (conversationIds && Array.isArray(conversationIds)) {
+          if (!conversationIds.includes(conv.id)) continue;
+        }
+        
+        if (assistantType && conv.assistantType !== assistantType) continue;
+        
+        // Verificar se última mensagem foi do usuário
+        const messages = await storage.getMessagesByConversationId(conv.id);
+        if (messages.length === 0) continue;
+        
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage.role !== 'user') continue;
+        
+        // Verificar tempo de espera se especificado
+        if (maxMinutesWaiting && conv.lastMessageTime) {
+          const minutesWaiting = (Date.now() - conv.lastMessageTime.getTime()) / (1000 * 60);
+          if (minutesWaiting > maxMinutesWaiting) continue;
+        }
+        
+        stuckConversations.push({
+          conversation: conv,
+          lastMessage: lastMessage,
+        });
+        
+        // Limitar a 50 conversas
+        if (stuckConversations.length >= 50) break;
+      }
+
+      if (stuckConversations.length === 0) {
+        return res.json({
+          success: true,
+          message: "Nenhuma mensagem para reprocessar",
+          enqueued: 0,
+          conversations: []
+        });
+      }
+
+      // Importar fila dinamicamente
+      const { addMessageToQueue } = await import("./lib/queue");
+
+      // Enfileirar cada mensagem para reprocessamento
+      const enqueued = await Promise.all(
+        stuckConversations.map(async ({ conversation: conv, lastMessage }) => {
+          try {
+            // Extrair número do chat_id
+            const fromNumber = conv.chatId.replace('whatsapp_', '');
+
+            // Enfileirar mensagem
+            await addMessageToQueue({
+              chatId: conv.chatId,
+              conversationId: conv.id,
+              fromNumber: fromNumber,
+              message: lastMessage.content,
+              messageId: lastMessage.id,
+              timestamp: lastMessage.timestamp ? lastMessage.timestamp.getTime() : Date.now(),
+              hasImage: !!lastMessage.imageBase64,
+              imageUrl: lastMessage.imageBase64 || undefined,
+              evolutionInstance: conv.evolutionInstance || 'Leads',
+              clientName: conv.clientName || undefined,
+            });
+
+            console.log(`✅ [REPROCESS] Mensagem enfileirada: ${conv.clientName} (${conv.id})`);
+
+            const minutesWaiting = conv.lastMessageTime 
+              ? Math.round((Date.now() - conv.lastMessageTime.getTime()) / (1000 * 60))
+              : 0;
+
+            return {
+              id: conv.id,
+              chatId: conv.chatId,
+              clientName: conv.clientName,
+              assistantType: conv.assistantType,
+              minutesWaiting,
+            };
+          } catch (error) {
+            console.error(`❌ [REPROCESS] Erro ao enfileirar conversa ${conv.id}:`, error);
+            return null;
+          }
+        })
+      );
+
+      const successfullyEnqueued = enqueued.filter((item): item is NonNullable<typeof item> => item !== null);
+
+      return res.json({
+        success: true,
+        message: `${successfullyEnqueued.length} mensagem(ns) enfileirada(s) para reprocessamento`,
+        enqueued: successfullyEnqueued.length,
+        total: stuckConversations.length,
+        conversations: successfullyEnqueued,
+      });
+    } catch (error) {
+      console.error("❌ [ADMIN] Erro ao reprocessar mensagens:", error);
+      return res.status(500).json({ 
+        error: "Erro ao reprocessar mensagens", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+
   // Get all active conversations for monitoring (includes resolved from last 24h)
   app.get("/api/monitor/conversations", authenticateWithTracking, async (req, res) => {
     try {
