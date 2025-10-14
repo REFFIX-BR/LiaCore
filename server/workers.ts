@@ -838,12 +838,9 @@ Responda apenas com o número (0 a 10).
         await storage.updateConversation(conversationId, {
           status: 'resolved',
           resolvedAt: new Date(),
-          metadata: {
-            ...(conversation.metadata as any),
-            autoClosed: true,
-            autoClosedReason: 'inactivity',
-            autoClosedAt: new Date().toISOString(),
-          },
+          autoClosed: true,
+          autoClosedReason: 'inactivity',
+          autoClosedAt: new Date(),
         });
 
         console.log(`✅ [Auto-Closure Worker] Conversa ${conversationId} encerrada automaticamente por inatividade`);

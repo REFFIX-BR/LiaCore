@@ -69,6 +69,9 @@ export const conversations = pgTable("conversations", {
   resolvedAt: timestamp("resolved_at"),
   resolutionTime: integer("resolution_time"), // Time in seconds from transfer to resolution
   evolutionInstance: text("evolution_instance"), // Nome da instância Evolution API (para multi-instância)
+  autoClosed: boolean("auto_closed").default(false), // Se a conversa foi encerrada automaticamente por inatividade
+  autoClosedReason: text("auto_closed_reason"), // Motivo do encerramento automático (ex: 'inactivity')
+  autoClosedAt: timestamp("auto_closed_at"), // Quando a conversa foi encerrada automaticamente
 }, (table) => ({
   // Índices para performance em queries de dashboard e monitor
   lastMessageTimeIdx: index("conversations_last_message_time_idx").on(table.lastMessageTime),
