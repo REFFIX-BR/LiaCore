@@ -230,13 +230,20 @@ export async function processWhatsAppImage(
     return { text };
   }
 
-  // NÃO processar com IA - apenas retornar imagem com legenda se houver
-  const text = caption 
-    ? `[Imagem recebida] ${caption}` 
-    : '[Imagem recebida]';
+  // Analisar imagem com Vision
+  const promptWithContext = caption 
+    ? `${caption}\n\nPor favor, analise a imagem considerando a mensagem do cliente acima.`
+    : 'Analise esta imagem em detalhes e extraia todas as informações relevantes. Se for um boleto, extraia identificador, vencimento, valor. Se for um documento, extraia CPF/CNPJ.';
+  
+  const visionAnalysis = await analyzeImageWithVision(base64Image, promptWithContext);
 
-  console.log(`✅ [Vision] Imagem baixada e salva (sem análise de IA)`, {
+  const text = visionAnalysis 
+    ? (caption ? `${caption}\n\n[Análise da imagem: ${visionAnalysis}]` : `[Imagem enviada - ${visionAnalysis}]`)
+    : (caption ? `[Imagem recebida] ${caption}` : '[Imagem recebida]');
+
+  console.log(`✅ [Vision] Imagem processada com análise de IA`, {
     base64Length: base64Image.length,
+    hasAnalysis: !!visionAnalysis,
     returning: { text, hasBase64: true }
   });
   

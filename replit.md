@@ -5,13 +5,18 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Te
 
 ## Recent Changes (2025-10-14)
 
-**✅ FIXED: Image Analysis with Vision - Fallback to Base64**
-- Problem: Images received and saved but not analyzed with Vision (no mediaUrl from Evolution API)
-- Root cause: Worker required `imageUrl` but Evolution webhook doesn't always provide `mediaUrl`
-- Solution: Worker now fetches `imageBase64` from database when URL is unavailable
-- New flow: Check imageUrl → if missing, fetch from DB → analyze with Vision
-- Result: ✅ All images now analyzed successfully (boletos, documents, receipts)
-- Location: `server/workers.ts` (lines 328-363)
+**✅ FIXED: Vision Image Analysis - Complete Fix (3 Critical Issues)**
+- **Problem 1**: Images saved but not analyzed - Vision disabled in webhook
+- **Root cause 1**: `processWhatsAppImage()` had Vision analysis commented out/disabled
+- **Solution 1**: Re-enabled Vision analysis in webhook processing (lines 236-253)
+- **Problem 2**: Vision failing with "unsupported image format" error
+- **Root cause 2**: Hardcoded `jpeg` format in 2 locations (vision.ts line 135, workers.ts line 338)
+- **Solution 2**: Implemented auto-detection via base64 signature (PNG: iVBORw, JPEG: /9j/, GIF: R0lGOD, WebP: UklGR)
+- **Problem 3**: Worker fallback to database didn't detect format
+- **Solution 3**: Added same detection logic to worker's DB fallback
+- **Final flow**: Webhook downloads → Vision analyzes (auto-format) → Worker processes (DB fallback with auto-format)
+- **Result**: ✅ All images (PNG, JPEG, GIF, WebP) now analyzed successfully
+- **Location**: `server/lib/vision.ts` (lines 136-154, 236-253), `server/workers.ts` (lines 340-361)
 
 **✅ OTIMIZADO: Worker Concurrency - Performance 4x Maior**
 - Problem: Workers sobrecarregados - mensagens demorando para processar (5 workers, 10 msg/s)
