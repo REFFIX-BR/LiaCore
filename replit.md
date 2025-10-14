@@ -39,6 +39,20 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed 
   - Assistant instructions updated in `INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md`
   - Location: Financeiro assistant now sends formatted boletos with link, código de barras, and PIX
 
+**Added: Support Assistant Deep Review**
+- ✅ **CRITICAL FIX**: Replaced MOCK data with real API calls in verificar_conexao
+  - Problem: Support assistant was returning fake connection status instead of real data
+  - Solution: Integrated consultaStatusConexao (from ai-tools.ts) to query TR Telecom API
+  - Behavior: Automatically fetches CPF from conversation history (same as Financeiro)
+  - API endpoint: https://webhook.trtelecom.net/webhook/check_pppoe_status
+  - Returns: Real-time PPPoE status, IP status, connection time, plan details
+  - Location: `server/lib/openai.ts` (line ~579)
+- ✅ **INSTRUCTION UPDATE**: Standardized function naming and CPF detection logic
+  - Problem: Instructions referenced consultar_pppoe_status but code uses verificar_conexao
+  - Solution: Updated INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md with correct naming
+  - Enhanced: Added emphasis on checking conversation history for CPF (same pattern as Financeiro)
+  - Benefits: Support assistant now uses CPF from history without re-asking client
+
 **Previous Changes (2025-10-13)**
 - ✅ Automatic CPF/CNPJ detection from client messages
 - ✅ Normalized document comparison in security validations
