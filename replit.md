@@ -25,11 +25,13 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Te
 **✅ FIXED: Multi-Instance Evolution API Key Management**
 - Problem: Supervisor/agent messages saved to database but never sent to WhatsApp
 - Root cause: Code used default API key (testecortex1 instance) for all instances
-- Discovery: testecortex1 doesn't exist (404); active instances are Leads (125 conv), Cobranca (103 conv)
-- Solution: Created `getEvolutionApiKey()` to fetch instance-specific API keys from environment
+- Discovery: testecortex1 doesn't exist (404); active instances are Leads (125 conv), Cobranca (103 conv), Principal (new)
+- Solution: Created `getEvolutionApiKey()` and `getEvolutionApiUrl()` to fetch instance-specific credentials from environment
 - Updated all Evolution functions: sendWhatsAppMessage, sendWhatsAppImage, sendWhatsAppDocument, deleteWhatsAppMessage
 - Test result: ✅ Message sent successfully to 5524988239995 via Leads (ID: 3EB06B50...)
-- Location: `server/routes.ts` (lines 31-44)
+- Environment variables pattern: `EVOLUTION_API_KEY_{INSTANCE_NAME}` and `EVOLUTION_API_URL_{INSTANCE_NAME}` (uppercase)
+- Active instances: Leads, Principal (with Meta token support)
+- Location: `server/routes.ts` (lines 31-60)
 
 **✅ IMPLEMENTED: Two-Stage Automatic Conversation Closure System**
 - Feature: Automated conversation closure for inactive AI conversations to improve resource management
