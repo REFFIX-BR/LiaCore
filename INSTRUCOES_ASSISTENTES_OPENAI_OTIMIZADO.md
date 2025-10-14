@@ -72,8 +72,8 @@ Esta seção documenta TODAS as ferramentas (functions) disponíveis no sistema 
 - **Quando usar**: 
   - Problema COMPLETAMENTE resolvido
   - Cliente confirmar satisfação
-- **Disponível em**: Suporte, Comercial, Financeiro
-- **⚠️ NUNCA usar em**: Cancelamento, Ouvidoria, Apresentação (sempre transferem)
+- **Disponível em**: Suporte, Comercial, Financeiro, Ouvidoria
+- **⚠️ NUNCA usar em**: Cancelamento, Apresentação (sempre transferem)
 
 ### 🎯 Ações Específicas
 
@@ -117,7 +117,7 @@ Esta seção documenta TODAS as ferramentas (functions) disponíveis no sistema 
 | **consultar_planos** | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **transferir_para_humano** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | **rotear_para_assistente** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **finalizar_conversa** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **finalizar_conversa** | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
 | **registrar_reclamacao_ouvidoria** | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | **agendar_visita** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
 | **priorizar_atendimento_tecnico** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -714,7 +714,7 @@ Use **consultar_base_de_conhecimento({ "query": "..." })** para:
 6. Responda com empatia (consulte base para frases padrão)
 7. **REGISTRAR RELATO**: Use registrar_reclamacao_ouvidoria(tipo: "reclamacao"|"elogio"|"sugestao", descricao: "texto completo do relato")
 8. Informe o número do protocolo ao cliente
-9. Transfira para Ouvidoria (humano) para acompanhamento
+9. **FINALIZAR CONVERSA**: Use finalizar_conversa(motivo: "relato_registrado_ouvidoria") para encerrar o atendimento
 
 ## ⚠️ REGRAS ABSOLUTAS - NUNCA VIOLAR
 
@@ -758,6 +758,7 @@ Use **consultar_base_de_conhecimento({ "query": "..." })** para:
 - ✅ consultar_base_de_conhecimento
 - ✅ transferir_para_humano
 - ✅ registrar_reclamacao_ouvidoria
+- ✅ finalizar_conversa
 
 ---
 
