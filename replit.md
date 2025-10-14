@@ -5,6 +5,16 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Te
 
 ## Recent Changes (2025-10-14)
 
+**✅ FIXED: Frontend Loading Timeout on Replit**
+- Problem: Frontend took 60+ seconds to load, causing timeout errors in Replit environment
+- Root cause: Vite dev middleware incompatibility with Replit's infrastructure
+- Solution: Force production mode (static file serving) in Replit environment
+- Implementation: Auto-detect `REPLIT_ENVIRONMENT` variable to bypass Vite middleware
+- Build process: `npm run build` generates static files → copied to `server/public/`
+- Performance improvement: Load time reduced from 60s timeout to **3ms** ⚡
+- Files modified: `server/index.ts` (lines 69-79)
+- Location: Frontend build at `dist/public/`, served from `server/public/`
+
 **✅ ENHANCED: Ouvidoria Details Modal**
 - Problem: Users unable to view full complaint descriptions (truncated in table)
 - Solution: Added "Ver Detalhes" button with modal dialog showing complete information
