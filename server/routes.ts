@@ -1353,6 +1353,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==================== EVOLUTION API WEBHOOKS ====================
   
+  // 🔍 DEBUG ENDPOINT - Captura webhooks brutos
+  app.post("/api/webhooks/evolution/debug", async (req, res) => {
+    const timestamp = new Date().toISOString();
+    const debugInfo = {
+      timestamp,
+      headers: req.headers,
+      body: req.body,
+      bodySize: JSON.stringify(req.body).length,
+      hasAudioMessage: JSON.stringify(req.body).includes('audioMessage'),
+      hasImageMessage: JSON.stringify(req.body).includes('imageMessage'),
+      hasVideoMessage: JSON.stringify(req.body).includes('videoMessage'),
+      event: req.body.event,
+      instance: req.body.instance,
+      messageType: req.body.data?.message ? Object.keys(req.body.data.message)[0] : 'none'
+    };
+    
+    console.log(`\n${'='.repeat(80)}`);
+    console.log(`🔍 [DEBUG WEBHOOK] ${timestamp}`);
+    console.log(`${'='.repeat(80)}`);
+    console.log(JSON.stringify(debugInfo, null, 2));
+    console.log(`\n📦 PAYLOAD COMPLETO:`);
+    console.log(JSON.stringify(req.body, null, 2));
+    console.log(`${'='.repeat(80)}\n`);
+    
+    // Salvar em arquivo para análise
+    const fs = require('fs');
+    const debugDir = '/tmp/webhook-debug';
+    if (!fs.existsSync(debugDir)) {
+      fs.mkdirSync(debugDir, { recursive: true });
+    }
+    const filename = `${debugDir}/webhook-${Date.now()}.json`;
+    fs.writeFileSync(filename, JSON.stringify({ debugInfo, fullPayload: req.body }, null, 2));
+    console.log(`💾 Debug salvo em: ${filename}`);
+    
+    return res.json({ 
+      success: true, 
+      debug: true,
+      saved: filename,
+      info: debugInfo 
+    });
+  });
+  
   // Webhook endpoint for Evolution API events
   app.post("/api/webhooks/evolution", async (req, res) => {
     const { prodLogger, logWebhookEvent } = await import("./lib/production-logger");
