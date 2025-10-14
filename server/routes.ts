@@ -3481,7 +3481,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
       
       // Only ADMIN or assigned agent can view analytics
       const user = req.user!;
-      if (user.role !== 'ADMIN' && conversation.assignedTo !== user.id) {
+      if (user.role !== 'ADMIN' && conversation.assignedTo !== user.userId) {
         return res.status(403).json({ error: "Access denied" });
       }
       
@@ -3514,7 +3514,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
       
       if (endParam) {
         endDate = new Date(endParam);
-        if (isNaN(endParam.getTime())) {
+        if (isNaN(endDate.getTime())) {
           return res.status(400).json({ error: "Invalid end date format" });
         }
       } else {
@@ -4703,14 +4703,19 @@ A resposta deve:
         
         // Detectar comando "start" para iniciar treinamento
         if (hasKeyword(contentLower, 'start')) {
-          const activeSessions = await storage.getActiveTrainingSessionsByConversation(id);
+          const activeSessions = await storage.getActiveTrainingSessions();
+          const conversationSessions = activeSessions.filter(s => s.conversationId === id);
           
-          if (activeSessions.length === 0) {
+          if (conversationSessions.length === 0) {
             // Criar nova sessão de treinamento
+            const validAssistantType = (conversation.assistantType && ['apresentacao', 'comercial', 'financeiro', 'suporte', 'ouvidoria', 'cancelamento'].includes(conversation.assistantType)) 
+              ? conversation.assistantType as 'apresentacao' | 'comercial' | 'financeiro' | 'suporte' | 'ouvidoria' | 'cancelamento'
+              : 'suporte';
+            
             const trainingSession = await storage.createTrainingSession({
               title: `Treinamento: ${conversation.assistantType || 'Geral'} - ${new Date().toLocaleDateString('pt-BR')}`,
-              assistantType: conversation.assistantType || 'support',
-              trainingType: 'keyword_triggered',
+              assistantType: validAssistantType,
+              trainingType: 'conversation',
               conversationId: id,
               content: '', // Será preenchido ao parar
               startedBy: currentUser.id,
@@ -4731,15 +4736,16 @@ A resposta deve:
         
         // Detectar comando "stop" para finalizar treinamento
         if (hasKeyword(contentLower, 'stop')) {
-          const activeSessions = await storage.getActiveTrainingSessionsByConversation(id);
+          const activeSessions = await storage.getActiveTrainingSessions();
+          const conversationSessions = activeSessions.filter(s => s.conversationId === id);
           
-          if (activeSessions.length > 0) {
-            const session = activeSessions[0];
+          if (conversationSessions.length > 0) {
+            const session = conversationSessions[0];
             
             // Coletar todas as mensagens desde o início da sessão
             const messages = await storage.getMessagesByConversationId(id);
             const sessionMessages = messages.filter(m => 
-              new Date(m.createdAt) >= new Date(session.startedAt)
+              m.timestamp && new Date(m.timestamp) >= new Date(session.startedAt)
             );
             
             // Formatar conteúdo do treinamento
@@ -5767,6 +5773,7 @@ A resposta deve:
         complaintType,
         description,
         severity,
+        status: 'novo',
       });
 
       console.log(`✅ [Complaints] Complaint created: ${complaint.id}`);
@@ -5941,7 +5948,7 @@ A resposta deve:
           clientDocument: contact.document || undefined,
           assistantType: 'cortex',
           status: 'active',
-          metadata: { reopened: true, reopenedBy: req.user?.id, reopenedAt: new Date() },
+          metadata: { reopened: true, reopenedBy: req.user?.userId, reopenedAt: new Date() },
         });
       } else {
         // Reactivate existing conversation
@@ -5951,7 +5958,7 @@ A resposta deve:
           metadata: { 
             ...conversation.metadata as any, 
             reopened: true, 
-            reopenedBy: req.user?.id, 
+            reopenedBy: req.user?.userId, 
             reopenedAt: new Date() 
           },
         });
