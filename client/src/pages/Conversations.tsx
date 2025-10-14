@@ -86,16 +86,31 @@ export default function Conversations() {
     return <div className="flex items-center justify-center h-full">Carregando...</div>;
   }
 
-  const transferredActiveConversations = transferredConversations.filter(conv => 
-    conv.status === 'active' || 
-    conv.status === 'queued' ||
-    conv.status === 'resolved'
-  );
-  const assignedActiveConversations = assignedConversations.filter(conv => 
-    conv.status === 'active' || 
-    conv.status === 'queued' ||
-    conv.status === 'resolved'
-  );
+  const transferredActiveConversations = transferredConversations
+    .filter(conv => 
+      conv.status === 'active' || 
+      conv.status === 'queued' ||
+      conv.status === 'resolved'
+    )
+    .sort((a, b) => {
+      // Ordenar por timestamp - mensagens mais recentes primeiro
+      const timeA = new Date(a.lastMessageTime).getTime();
+      const timeB = new Date(b.lastMessageTime).getTime();
+      return timeB - timeA;
+    });
+  
+  const assignedActiveConversations = assignedConversations
+    .filter(conv => 
+      conv.status === 'active' || 
+      conv.status === 'queued' ||
+      conv.status === 'resolved'
+    )
+    .sort((a, b) => {
+      // Ordenar por timestamp - mensagens mais recentes primeiro
+      const timeA = new Date(a.lastMessageTime).getTime();
+      const timeB = new Date(b.lastMessageTime).getTime();
+      return timeB - timeA;
+    });
 
   return (
     <div className="h-[calc(100vh-8rem)] flex gap-4">

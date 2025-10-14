@@ -223,21 +223,28 @@ export default function Monitor() {
     return 0;
   };
 
-  const conversationCards = filteredConversations.map(conv => ({
-    id: conv.id,
-    chatId: conv.chatId,
-    clientName: conv.clientName,
-    assistant: `LIA ${conv.assistantType.charAt(0).toUpperCase() + conv.assistantType.slice(1)}`,
-    duration: conv.duration,
-    lastMessage: conv.lastMessage || "",
-    lastClientMessage: (conv as any).lastClientMessage || "",
-    lastAIMessage: (conv as any).lastAIMessage || "",
-    sentiment: (conv.sentiment || "neutral") as "positive" | "neutral" | "negative",
-    urgency: (conv.urgency || "normal") as "normal" | "high" | "critical",
-    hasAlert: alerts.some(a => a.conversationId === conv.id),
-    transferSuggested: false,
-    lastMessageTime: new Date(conv.lastMessageTime),
-  }));
+  const conversationCards = filteredConversations
+    .sort((a, b) => {
+      // Ordenar por timestamp - mensagens mais recentes primeiro
+      const timeA = new Date(a.lastMessageTime).getTime();
+      const timeB = new Date(b.lastMessageTime).getTime();
+      return timeB - timeA;
+    })
+    .map(conv => ({
+      id: conv.id,
+      chatId: conv.chatId,
+      clientName: conv.clientName,
+      assistant: `LIA ${conv.assistantType.charAt(0).toUpperCase() + conv.assistantType.slice(1)}`,
+      duration: conv.duration,
+      lastMessage: conv.lastMessage || "",
+      lastClientMessage: (conv as any).lastClientMessage || "",
+      lastAIMessage: (conv as any).lastAIMessage || "",
+      sentiment: (conv.sentiment || "neutral") as "positive" | "neutral" | "negative",
+      urgency: (conv.urgency || "normal") as "normal" | "high" | "critical",
+      hasAlert: alerts.some(a => a.conversationId === conv.id),
+      transferSuggested: false,
+      lastMessageTime: new Date(conv.lastMessageTime),
+    }));
 
   const activeConversation = conversations.find(c => c.id === activeConvId);
   const activeMessages = conversationDetails?.messages.map(msg => ({
