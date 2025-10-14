@@ -127,6 +127,13 @@ export async function analyzeImageWithVision(
 ): Promise<string | null> {
   try {
     console.log(`🔍 [Vision] Analisando imagem com GPT-4o Vision...`);
+    console.log(`🔍 [Vision] Base64 length: ${base64Image?.length || 0}, starts with: ${base64Image?.substring(0, 30) || 'EMPTY'}`);
+
+    // Validar se base64 não está vazio
+    if (!base64Image || base64Image.length < 100) {
+      console.error(`❌ [Vision] Base64 inválido ou muito curto: ${base64Image?.length || 0} chars`);
+      return null;
+    }
 
     let imageUrl = base64Image;
     
@@ -149,6 +156,9 @@ export async function analyzeImageWithVision(
       console.log(`🔍 [Vision] Formato detectado: ${imageFormat}`);
       imageUrl = `data:image/${imageFormat};base64,${base64Image}`;
     }
+    
+    console.log(`🔍 [Vision] Final imageUrl length: ${imageUrl.length}, starts with: ${imageUrl.substring(0, 50)}`);
+
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
