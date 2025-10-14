@@ -52,11 +52,11 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?:
   
   // Tenta API key e URL específicos da instância primeiro, senão usa global
   const apiKey = evolutionInstance 
-    ? (process.env[`EVOLUTION_API_KEY_${evolutionInstance.toUpperCase()}`] || process.env.EVOLUTION_API_KEY)
+    ? (process.env[`EVOLUTION_API_KEY_${evolutionInstance}`] || process.env.EVOLUTION_API_KEY)
     : process.env.EVOLUTION_API_KEY;
   
   let baseUrl = evolutionInstance
-    ? (process.env[`EVOLUTION_API_URL_${evolutionInstance.toUpperCase()}`] || process.env.EVOLUTION_API_URL)
+    ? (process.env[`EVOLUTION_API_URL_${evolutionInstance}`] || process.env.EVOLUTION_API_URL)
     : process.env.EVOLUTION_API_URL;
 
   if (!evolutionInstance || !apiKey || !baseUrl) {
@@ -64,8 +64,8 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?:
       evolutionInstance, 
       hasApiKey: !!apiKey, 
       baseUrl,
-      triedKey: evolutionInstance ? `EVOLUTION_API_KEY_${evolutionInstance.toUpperCase()}` : 'N/A',
-      triedUrl: evolutionInstance ? `EVOLUTION_API_URL_${evolutionInstance.toUpperCase()}` : 'N/A'
+      triedKey: `EVOLUTION_API_KEY_${evolutionInstance}`,
+      triedUrl: `EVOLUTION_API_URL_${evolutionInstance}`
     });
     return false;
   }

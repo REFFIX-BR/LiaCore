@@ -5,16 +5,6 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Te
 
 ## Recent Changes (2025-10-14)
 
-**✅ FIXED: Frontend Loading Timeout on Replit**
-- Problem: Frontend took 60+ seconds to load, causing timeout errors in Replit environment
-- Root cause: Vite dev middleware incompatibility with Replit's infrastructure
-- Solution: Force production mode (static file serving) in Replit environment
-- Implementation: Auto-detect `REPLIT_ENVIRONMENT` variable to bypass Vite middleware
-- Build process: `npm run build` generates static files → copied to `server/public/`
-- Performance improvement: Load time reduced from 60s timeout to **3ms** ⚡
-- Files modified: `server/index.ts` (lines 69-79)
-- Location: Frontend build at `dist/public/`, served from `server/public/`
-
 **✅ ENHANCED: Ouvidoria Details Modal**
 - Problem: Users unable to view full complaint descriptions (truncated in table)
 - Solution: Added "Ver Detalhes" button with modal dialog showing complete information
@@ -33,19 +23,13 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Te
 - Location: `INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md` (lines 752-756, 674-678, 718-720)
 
 **✅ FIXED: Multi-Instance Evolution API Key Management**
-- Problem: Supervisor/agent messages saved to database but never sent to WhatsApp; all instances getting 401 Unauthorized
-- Root cause: Code used default API key for all instances; trailing space in EVOLUTION_API_URL breaking URLs
-- Discovery: Active instances are Leads, Cobranca, Principal (each with unique API key)
-- Solution: Implemented instance-specific credential lookup with `.toUpperCase()` normalization and `.trim()` for URLs
+- Problem: Supervisor/agent messages saved to database but never sent to WhatsApp
+- Root cause: Code used default API key (testecortex1 instance) for all instances
+- Discovery: testecortex1 doesn't exist (404); active instances are Leads (125 conv), Cobranca (103 conv)
+- Solution: Created `getEvolutionApiKey()` to fetch instance-specific API keys from environment
 - Updated all Evolution functions: sendWhatsAppMessage, sendWhatsAppImage, sendWhatsAppDocument, deleteWhatsAppMessage
-- Environment variables pattern: `EVOLUTION_API_KEY_{INSTANCE}` and `EVOLUTION_API_URL` (shared URL, instance-specific keys)
-- Configured instances:
-  - Leads: [36-char API key - stored in EVOLUTION_API_KEY_LEADS secret]
-  - Cobranca: [36-char API key - stored in EVOLUTION_API_KEY_COBRANCA secret]
-  - Principal: [202-char Meta token - stored in EVOLUTION_API_KEY_PRINCIPAL secret]
-- URL: evolutionapi.trtelecom.net (shared across all instances)
-- Test result: ✅ All instances sending messages successfully (Leads, Cobranca, Principal)
-- Location: `server/routes.ts`, `server/workers.ts`
+- Test result: ✅ Message sent successfully to 5524988239995 via Leads (ID: 3EB06B50...)
+- Location: `server/routes.ts` (lines 31-44)
 
 **✅ IMPLEMENTED: Two-Stage Automatic Conversation Closure System**
 - Feature: Automated conversation closure for inactive AI conversations to improve resource management
