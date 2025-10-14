@@ -269,6 +269,34 @@ async function deleteWhatsAppMessage(
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
+  // 🧪 ENDPOINT DE TESTE TEMPORÁRIO - Enviar WhatsApp direto
+  app.post("/api/test-whatsapp-send", async (req, res) => {
+    try {
+      const { phoneNumber, message } = req.body;
+      
+      console.log(`🧪 [TEST] Tentando enviar WhatsApp para ${phoneNumber}`);
+      console.log(`🧪 [TEST] Mensagem: ${message}`);
+      console.log(`🧪 [TEST] EVOLUTION_CONFIG:`, {
+        url: EVOLUTION_CONFIG.apiUrl,
+        hasKey: !!EVOLUTION_CONFIG.apiKey,
+        instance: EVOLUTION_CONFIG.instance
+      });
+      
+      const result = await sendWhatsAppMessage(phoneNumber, message);
+      
+      console.log(`🧪 [TEST] Resultado:`, result);
+      
+      return res.json({ 
+        success: result.success,
+        message: result.success ? 'Mensagem enviada!' : 'Falha ao enviar',
+        details: result
+      });
+    } catch (error) {
+      console.error("🧪 [TEST] Erro:", error);
+      return res.status(500).json({ error: String(error) });
+    }
+  });
+  
   // ============================================================================
   // AUTHENTICATION ROUTES
   // ============================================================================
