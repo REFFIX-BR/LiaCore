@@ -23,15 +23,19 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Te
 - Location: `INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md` (lines 752-756, 674-678, 718-720)
 
 **✅ FIXED: Multi-Instance Evolution API Key Management**
-- Problem: Supervisor/agent messages saved to database but never sent to WhatsApp
-- Root cause: Code used default API key (testecortex1 instance) for all instances
-- Discovery: testecortex1 doesn't exist (404); active instances are Leads (125 conv), Cobranca (103 conv), Principal (new)
-- Solution: Created `getEvolutionApiKey()` and `getEvolutionApiUrl()` to fetch instance-specific credentials from environment
+- Problem: Supervisor/agent messages saved to database but never sent to WhatsApp; all instances getting 401 Unauthorized
+- Root cause: Code used default API key for all instances; trailing space in EVOLUTION_API_URL breaking URLs
+- Discovery: Active instances are Leads, Cobranca, Principal (each with unique API key)
+- Solution: Implemented instance-specific credential lookup with `.toUpperCase()` normalization and `.trim()` for URLs
 - Updated all Evolution functions: sendWhatsAppMessage, sendWhatsAppImage, sendWhatsAppDocument, deleteWhatsAppMessage
-- Test result: ✅ Message sent successfully to 5524988239995 via Leads (ID: 3EB06B50...)
-- Environment variables pattern: `EVOLUTION_API_KEY_{INSTANCE_NAME}` and `EVOLUTION_API_URL_{INSTANCE_NAME}` (uppercase)
-- Active instances: Leads, Principal (with Meta token support)
-- Location: `server/routes.ts` (lines 31-60)
+- Environment variables pattern: `EVOLUTION_API_KEY_{INSTANCE}` and `EVOLUTION_API_URL` (shared URL, instance-specific keys)
+- Configured instances:
+  - Leads: [36-char API key - stored in EVOLUTION_API_KEY_LEADS secret]
+  - Cobranca: [36-char API key - stored in EVOLUTION_API_KEY_COBRANCA secret]
+  - Principal: [202-char Meta token - stored in EVOLUTION_API_KEY_PRINCIPAL secret]
+- URL: evolutionapi.trtelecom.net (shared across all instances)
+- Test result: ✅ All instances sending messages successfully (Leads, Cobranca, Principal)
+- Location: `server/routes.ts`, `server/workers.ts`
 
 **✅ IMPLEMENTED: Two-Stage Automatic Conversation Closure System**
 - Feature: Automated conversation closure for inactive AI conversations to improve resource management
