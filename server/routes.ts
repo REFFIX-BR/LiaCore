@@ -24,14 +24,14 @@ const EVOLUTION_CONFIG = {
   instance: process.env.EVOLUTION_API_INSTANCE,
 };
 
-// Helper function to get API key for specific instance
+// Helper function to get API key and URL for specific instance
 function getEvolutionApiKey(instanceName?: string): string | undefined {
   if (!instanceName) {
     return EVOLUTION_CONFIG.apiKey;
   }
   
   // Try to get instance-specific key from environment
-  const instanceKey = process.env[`EVOLUTION_API_KEY_${instanceName}`];
+  const instanceKey = process.env[`EVOLUTION_API_KEY_${instanceName.toUpperCase()}`];
   if (instanceKey) {
     return instanceKey;
   }
@@ -40,12 +40,29 @@ function getEvolutionApiKey(instanceName?: string): string | undefined {
   return EVOLUTION_CONFIG.apiKey;
 }
 
+// Helper function to get API URL for specific instance
+function getEvolutionApiUrl(instanceName?: string): string | undefined {
+  if (!instanceName) {
+    return EVOLUTION_CONFIG.apiUrl;
+  }
+  
+  // Try to get instance-specific URL from environment
+  const instanceUrl = process.env[`EVOLUTION_API_URL_${instanceName.toUpperCase()}`];
+  if (instanceUrl) {
+    return instanceUrl;
+  }
+  
+  // Fallback to default URL
+  return EVOLUTION_CONFIG.apiUrl;
+}
+
 // Helper function to send WhatsApp image via Evolution API
 async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, caption?: string, instanceName?: string): Promise<boolean> {
   const instance = instanceName || EVOLUTION_CONFIG.instance;
   const apiKey = getEvolutionApiKey(instance);
+  const apiUrl = getEvolutionApiUrl(instance);
   
-  if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
+  if (!apiUrl || !apiKey || !instance) {
     console.error("❌ [Evolution] Credenciais não configuradas para envio de imagem");
     return false;
   }
@@ -60,7 +77,7 @@ async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, capti
     }
     
     // Ensure URL has protocol
-    let baseUrl = EVOLUTION_CONFIG.apiUrl.trim();
+    let baseUrl = apiUrl.trim();
     if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
       baseUrl = `https://${baseUrl}`;
     }
@@ -104,8 +121,9 @@ async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, capti
 async function sendWhatsAppDocument(phoneNumber: string, pdfBase64: string, fileName?: string, caption?: string, instanceName?: string): Promise<boolean> {
   const instance = instanceName || EVOLUTION_CONFIG.instance;
   const apiKey = getEvolutionApiKey(instance);
+  const apiUrl = getEvolutionApiUrl(instance);
   
-  if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
+  if (!apiUrl || !apiKey || !instance) {
     console.error("❌ [Evolution] Credenciais não configuradas para envio de documento");
     return false;
   }
@@ -120,7 +138,7 @@ async function sendWhatsAppDocument(phoneNumber: string, pdfBase64: string, file
     }
     
     // Ensure URL has protocol
-    let baseUrl = EVOLUTION_CONFIG.apiUrl.trim();
+    let baseUrl = apiUrl.trim();
     if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
       baseUrl = `https://${baseUrl}`;
     }
@@ -170,10 +188,11 @@ async function sendWhatsAppMessage(
   // Use instance específica da conversa ou fallback para env var
   const instance = instanceName || EVOLUTION_CONFIG.instance;
   const apiKey = getEvolutionApiKey(instance);
+  const apiUrl = getEvolutionApiUrl(instance);
   
-  if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
+  if (!apiUrl || !apiKey || !instance) {
     console.error("❌ [Evolution] Credenciais não configuradas", { 
-      hasUrl: !!EVOLUTION_CONFIG.apiUrl, 
+      hasUrl: !!apiUrl, 
       hasKey: !!apiKey, 
       instance: instance || 'undefined' 
     });
@@ -192,7 +211,7 @@ async function sendWhatsAppMessage(
     }
     
     // Ensure URL has protocol
-    let baseUrl = EVOLUTION_CONFIG.apiUrl.trim();
+    let baseUrl = apiUrl.trim();
     if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
       baseUrl = `https://${baseUrl}`;
     }
@@ -244,14 +263,15 @@ async function deleteWhatsAppMessage(
 ): Promise<boolean> {
   const instance = instanceName || EVOLUTION_CONFIG.instance;
   const apiKey = getEvolutionApiKey(instance);
+  const apiUrl = getEvolutionApiUrl(instance);
   
-  if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
+  if (!apiUrl || !apiKey || !instance) {
     console.error("❌ [Evolution] Credenciais não configuradas para deletar mensagem");
     return false;
   }
 
   try {
-    let baseUrl = EVOLUTION_CONFIG.apiUrl.trim();
+    let baseUrl = apiUrl.trim();
     if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
       baseUrl = `https://${baseUrl}`;
     }
