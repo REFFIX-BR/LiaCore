@@ -8,13 +8,13 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed 
 - ✅ **NEW FEATURE**: Admins can now finalize all active conversations at once
   - Problem: Needed efficient way to close multiple conversations at end of day
   - Solution: New endpoint `/api/supervisor/resolve-all` (POST)
-  - Batch processes all active/transferred/assigned conversations
+  - Batch processes all active/transferred/assigned/queued conversations
   - Automatically sends NPS surveys to WhatsApp clients
   - Creates learning events for each resolved conversation
   - Logs all actions in supervisor_actions table
   - Permissions: Admin only (via `requireAdmin` middleware)
   - Location: `server/routes.ts` (line ~3102)
-  - Usage: Executed SQL to finalize 54 conversations successfully
+  - Usage: Successfully finalized 72 conversations (54 active + 18 queued)
 
 **Added: Thread Context Reset Functionality**
 - ✅ **NEW FEATURE**: Supervisors can now reset OpenAI thread context while keeping messages in database

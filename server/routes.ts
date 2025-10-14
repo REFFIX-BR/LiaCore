@@ -3104,7 +3104,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
       // Buscar todas as conversas (vamos filtrar manualmente)
       const allConversations = await storage.getAllConversations();
       const activeConversations = allConversations.filter(
-        c => c.status === 'active' || c.status === 'transferred' || c.status === 'assigned'
+        c => c.status === 'active' || c.status === 'transferred' || c.status === 'assigned' || c.status === 'queued'
       );
 
       console.log(`🔄 [Bulk Resolve] Iniciando finalização de ${activeConversations.length} conversas...`);
