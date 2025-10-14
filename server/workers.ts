@@ -6,6 +6,8 @@ import {
   ImageAnalysisJob,
   NPSSurveyJob,
   InactivityFollowupJob,
+  AutoClosureJob,
+  addAutoClosureToQueue,
 } from './lib/queue';
 
 // Redis connection for workers (BullMQ requirement)
@@ -723,12 +725,27 @@ Responda apenas com o número (0 a 10).
 
         console.log(`✅ [Inactivity Worker] Follow-up enviado com sucesso para ${clientName}`);
 
+        // 7. Schedule auto-closure job (20 minutes after follow-up)
+        const followupSentAt = Date.now();
+        await addAutoClosureToQueue({
+          conversationId,
+          chatId,
+          clientId,
+          clientName,
+          evolutionInstance,
+          scheduledAt: followupSentAt + (20 * 60 * 1000), // 20 min from now
+          followupSentAt,
+        });
+        
+        console.log(`⏰ [Inactivity Worker] Encerramento automático agendado para ${new Date(followupSentAt + (20 * 60 * 1000)).toLocaleString('pt-BR')}`);
+
         // Mark job as processed
         await markJobProcessed(job.id!);
 
         return {
           success: true,
           messageSent: true,
+          autoClosureScheduled: true,
         };
       } catch (error) {
         console.error(`❌ [Inactivity Worker] Error:`, error);
