@@ -1,7 +1,21 @@
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Clock } from "lucide-react";
+import { AlertTriangle, Clock, Circle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+// Função para calcular cor do indicador baseado no tempo de espera
+function getWaitTimeIndicator(lastMessageTime: Date): { color: string; label: string } {
+  const now = new Date();
+  const minutesWaiting = Math.floor((now.getTime() - lastMessageTime.getTime()) / (1000 * 60));
+  
+  if (minutesWaiting < 10) {
+    return { color: "text-green-500", label: "Recente" };
+  } else if (minutesWaiting < 20) {
+    return { color: "text-yellow-500", label: "Aguardando" };
+  } else {
+    return { color: "text-red-500", label: "Crítico" };
+  }
+}
 
 interface ConversationCardData {
   id: string;
@@ -53,6 +67,7 @@ export function ConversationCard({ conversation, isActive, onClick }: Conversati
   const minutes = Math.floor(conversation.duration / 60);
   const seconds = conversation.duration % 60;
   const durationStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  const waitTimeIndicator = getWaitTimeIndicator(conversation.lastMessageTime);
 
   return (
     <button
@@ -65,6 +80,7 @@ export function ConversationCard({ conversation, isActive, onClick }: Conversati
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Circle className={`h-3 w-3 fill-current flex-shrink-0 ${waitTimeIndicator.color}`} data-testid="wait-indicator" />
             {conversation.hasAlert && (
               <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
             )}
