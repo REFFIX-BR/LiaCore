@@ -326,9 +326,33 @@ if (redisConnection) {
       if (hasImage) {
         console.log(`🖼️ [Worker] Image detected, analyzing...`);
         
-        // Se não tiver URL, buscar base64 do banco de dados
         let imageSource = imageUrl;
         
+        // Se imageUrl for uma URL S3, baixar primeiro
+        if (imageSource && (imageSource.startsWith('http://') || imageSource.startsWith('https://'))) {
+          console.log(`🔗 [Worker] imageUrl é URL S3/MinIO, baixando...`);
+          console.log(`🔍 [Worker] URL: ${imageSource.substring(0, 100)}...`);
+          
+          const { downloadMediaFromUrl } = await import('./lib/vision');
+          const downloadedBase64 = await downloadMediaFromUrl(imageSource);
+          
+          if (downloadedBase64) {
+            // Detectar formato pela assinatura base64
+            let imageFormat = 'jpeg';
+            if (downloadedBase64.startsWith('iVBORw')) imageFormat = 'png';
+            else if (downloadedBase64.startsWith('/9j/')) imageFormat = 'jpeg';
+            else if (downloadedBase64.startsWith('R0lGOD')) imageFormat = 'gif';
+            else if (downloadedBase64.startsWith('UklGR')) imageFormat = 'webp';
+            
+            imageSource = `data:image/${imageFormat};base64,${downloadedBase64}`;
+            console.log(`✅ [Worker] Imagem baixada de S3 via imageUrl (${downloadedBase64.length} chars, formato: ${imageFormat})`);
+          } else {
+            console.error(`❌ [Worker] Falha ao baixar imageUrl de S3: ${imageSource}`);
+            imageSource = ''; // Limpar
+          }
+        }
+        
+        // Se não tiver imageSource válido, buscar base64 do banco de dados
         if (!imageSource) {
           console.log(`📥 [Worker] No imageUrl, fetching from database...`);
           const messages = await storage.getConversationMessages(conversationId);
