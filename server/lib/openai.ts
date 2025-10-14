@@ -587,30 +587,42 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
         try {
           console.log(`🔍 [AI Tool Handler] Iniciando consulta de status de conexão para conversação ${conversationId}`);
           
-          // Buscar documento do cliente automaticamente da conversa
-          const conversationConexao = await storageConexao.getConversation(conversationId);
+          // ESTRATÉGIA 1: Tentar usar documento fornecido como parâmetro (se houver)
+          let documentoParaUsar = args.documento;
           
-          if (!conversationConexao) {
-            console.error("❌ [AI Tool] Conversa não encontrada:", conversationId);
-            return JSON.stringify({
-              error: "Conversa não encontrada"
-            });
+          // ESTRATÉGIA 2: Se não houver documento fornecido, buscar do banco
+          if (!documentoParaUsar) {
+            console.log(`🔍 [AI Tool Handler] Documento não fornecido como parâmetro, buscando no banco...`);
+            
+            const conversationConexao = await storageConexao.getConversation(conversationId);
+            
+            if (!conversationConexao) {
+              console.error("❌ [AI Tool] Conversa não encontrada:", conversationId);
+              return JSON.stringify({
+                error: "Conversa não encontrada"
+              });
+            }
+            
+            console.log(`🔍 [AI Tool Handler] Conversa encontrada. clientDocument: ${conversationConexao.clientDocument ? 'SIM' : 'NÃO'}`);
+            
+            if (!conversationConexao.clientDocument) {
+              console.warn("⚠️ [AI Tool] Cliente ainda não forneceu CPF/CNPJ");
+              return JSON.stringify({
+                error: "Para verificar sua conexão, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
+              });
+            }
+            
+            documentoParaUsar = conversationConexao.clientDocument;
+            console.log(`✅ [AI Tool Handler] CPF encontrado no banco! Usando CPF persistido.`);
+          } else {
+            console.log(`✅ [AI Tool Handler] Usando documento fornecido como parâmetro: ***.***.***-${documentoParaUsar.slice(-2)}`);
           }
           
-          console.log(`🔍 [AI Tool Handler] Conversa encontrada. clientDocument: ${conversationConexao.clientDocument ? 'SIM' : 'NÃO'}`);
-          
-          if (!conversationConexao.clientDocument) {
-            console.warn("⚠️ [AI Tool] Cliente ainda não forneceu CPF/CNPJ");
-            return JSON.stringify({
-              error: "Para verificar sua conexão, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
-            });
-          }
-          
-          console.log(`🔍 [AI Tool Handler] Chamando consultaStatusConexao com documento do banco...`);
+          console.log(`🔍 [AI Tool Handler] Chamando consultaStatusConexao com documento...`);
           
           // Chamar diretamente a API real
           const conexoes = await consultaStatusConexao(
-            conversationConexao.clientDocument,
+            documentoParaUsar,
             { conversationId },
             storageConexao
           );

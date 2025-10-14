@@ -39,6 +39,19 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed 
   - Assistant instructions updated in `INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md`
   - Location: Financeiro assistant now sends formatted boletos with link, código de barras, and PIX
 
+**Added: Automatic CPF Reuse System for Support Assistant**
+- ✅ **CRITICAL FIX**: Support assistant now reuses CPF from database automatically
+  - Problem: After routing from Financeiro→Suporte, assistant was requesting CPF again
+  - Root cause: CPF was in database but not visible in OpenAI thread context after routing
+  - Real case: Customer "Marcio Zebende" (Chat whatsapp_5522997074180) - CPF 08515820790 already in DB
+  - Solution: Modified `verificar_conexao` tool handler to auto-fetch CPF from database
+  - Now works: Tool accepts `documento` as OPTIONAL parameter
+    - If provided → uses it
+    - If NOT provided → automatically fetches from `conversation.clientDocument`
+  - Location: `server/lib/openai.ts` (line ~587)
+  - Impact: Eliminates redundant CPF requests across assistant transitions
+  - Benefit: Same pattern as Financeiro - seamless experience across all assistants
+
 **Added: Flexible CPF/CNPJ Detection System**
 - ✅ **CRITICAL UX FIX**: Enhanced regex to accept partial formatting and spaces
   - Problem: Clients typing CPF with partial formatting (032.98128740) or spaces (032.981.2 8740) were not detected
