@@ -539,9 +539,9 @@ if (redisConnection) {
   },
   {
     connection: redisConnection,
-    concurrency: 15, // Aumentado de 5 para 15 - processa 15 mensagens simultaneamente
+    concurrency: 20, // OTIMIZADO: 20 workers simultâneos (balanceado)
     limiter: {
-      max: 30, // Aumentado de 10 para 30 - permite 30 jobs/segundo
+      max: 50, // OTIMIZADO: 50 jobs/segundo (balanceado)
       duration: 1000,
     },
   }
@@ -591,7 +591,7 @@ if (redisConnection) {
   },
   {
     connection: redisConnection,
-    concurrency: 5, // Aumentado de 2 para 5 - análise de imagens mais rápida
+    concurrency: 8, // OTIMIZADO: 8 workers para análise de imagens
   }
 );
 
@@ -649,7 +649,7 @@ Responda apenas com o número (0 a 10).
   },
   {
     connection: redisConnection,
-    concurrency: 5, // Aumentado de 3 para 5 - envio de NPS mais rápido
+    concurrency: 8, // OTIMIZADO: 8 workers para envio de NPS
   }
   );
 
@@ -910,12 +910,12 @@ Responda apenas com o número (0 a 10).
 
   console.log('✅ [Workers] Sistema de workers inicializado');
   console.log('👷 [Workers] Workers ativos: 5');
-  console.log('⚡ [Workers] Concurrency (OTIMIZADO):');
-  console.log('  - Message Processing: 15 (jobs/s: 30)');
-  console.log('  - Image Analysis: 5');
-  console.log('  - NPS Survey: 5');
-  console.log('  - Inactivity Follow-up: 2');
-  console.log('  - Auto-Closure: 2');
+  console.log('⚡ [Workers] Concurrency (MODERADO - BALANCEADO):');
+  console.log('  - Message Processing: 20 workers (50 jobs/s)');
+  console.log('  - Image Analysis: 8 workers');
+  console.log('  - NPS Survey: 8 workers');
+  console.log('  - Inactivity Follow-up: 2 workers');
+  console.log('  - Auto-Closure: 2 workers');
 } else {
   console.log('⚠️  [Workers] Redis connection not available - workers disabled');
   console.log('   Webhook will process messages synchronously');

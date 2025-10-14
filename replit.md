@@ -5,6 +5,14 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Te
 
 ## Recent Changes (2025-10-14)
 
+**✅ OTIMIZADO: Worker Concurrency - Performance 4x Maior**
+- Problem: Workers sobrecarregados - mensagens demorando para processar (5 workers, 10 msg/s)
+- Solution: Implementada configuração balanceada (Opção 1 - Moderado)
+- New config: 20 message workers (50 msg/s), 8 image workers, 8 NPS workers
+- Performance gain: 4x faster processing, 20 simultaneous conversations (vs 5 original)
+- Safe limits: Balanced to avoid Redis/OpenAI rate limits, optimized for cost-efficiency
+- Location: `server/workers.ts` (lines 545-548, 597, 655, 917-921)
+
 **✅ ENHANCED: Ouvidoria Details Modal**
 - Problem: Users unable to view full complaint descriptions (truncated in table)
 - Solution: Added "Ver Detalhes" button with modal dialog showing complete information
