@@ -792,6 +792,8 @@ Fonte: ${fonte}`;
         const { storage } = await import("../storage");
         
         try {
+          console.log(`🔍 [AI Tool Handler] Iniciando consulta de boletos para conversação ${conversationId}`);
+          
           // Buscar documento do cliente automaticamente da conversa
           const conversation = await storage.getConversation(conversationId);
           
@@ -802,12 +804,16 @@ Fonte: ${fonte}`;
             });
           }
           
+          console.log(`🔍 [AI Tool Handler] Conversa encontrada. clientDocument: ${conversation.clientDocument ? 'SIM' : 'NÃO'}`);
+          
           if (!conversation.clientDocument) {
             console.warn("⚠️ [AI Tool] Cliente ainda não forneceu CPF/CNPJ");
             return JSON.stringify({
               error: "Para consultar seus boletos, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
             });
           }
+          
+          console.log(`🔍 [AI Tool Handler] Chamando consultaBoletoCliente com documento do banco...`);
           
           // Chamar diretamente a API real
           const boletos = await consultaBoletoCliente(
@@ -816,10 +822,13 @@ Fonte: ${fonte}`;
             storage
           );
           
-          console.log(`✅ [AI Tool] Boletos consultados com sucesso`);
+          console.log(`✅ [AI Tool Handler] Boletos consultados com sucesso: ${boletos?.length || 0} boleto(s)`);
           return JSON.stringify(boletos);
         } catch (error) {
-          console.error("❌ [AI Tool] Erro ao consultar boletos:", error);
+          console.error("❌ [AI Tool Handler] Erro ao consultar boletos:", error);
+          if (error instanceof Error) {
+            console.error("❌ [AI Tool Handler] Stack trace:", error.stack);
+          }
           return JSON.stringify({
             error: error instanceof Error ? error.message : "Erro ao consultar boletos"
           });

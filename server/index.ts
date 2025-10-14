@@ -4,6 +4,9 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { startLearningScheduler } from "./lib/learning-scheduler";
 
+// Configurar timezone para horário de Brasília (UTC-3)
+process.env.TZ = 'America/Sao_Paulo';
+
 const app = express();
 app.use(express.json({ limit: '50mb' })); // Support large base64 images/audio
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
