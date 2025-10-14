@@ -335,23 +335,43 @@ if (redisConnection) {
           const lastMessage = messages[0]; // Mensagem mais recente
           
           if (lastMessage?.imageBase64) {
-            // Detectar formato da imagem pela assinatura base64
-            let imageFormat = 'jpeg'; // Padrão
-            const base64 = lastMessage.imageBase64;
+            let base64 = lastMessage.imageBase64;
             
-            if (base64.startsWith('iVBORw')) {
-              imageFormat = 'png';
-            } else if (base64.startsWith('/9j/')) {
-              imageFormat = 'jpeg';
-            } else if (base64.startsWith('R0lGOD')) {
-              imageFormat = 'gif';
-            } else if (base64.startsWith('UklGR')) {
-              imageFormat = 'webp';
+            // Se for URL S3, baixar a imagem primeiro
+            if (base64.startsWith('http://') || base64.startsWith('https://')) {
+              console.log(`🔗 [Worker] Imagem é URL S3/MinIO, baixando...`);
+              console.log(`🔍 [Worker] URL: ${base64.substring(0, 100)}...`);
+              
+              const { downloadMediaFromUrl } = await import('./lib/vision');
+              const downloadedBase64 = await downloadMediaFromUrl(base64);
+              
+              if (downloadedBase64) {
+                base64 = downloadedBase64;
+                console.log(`✅ [Worker] Imagem baixada com sucesso de S3 (${base64.length} caracteres base64)`);
+              } else {
+                console.error(`❌ [Worker] Falha ao baixar imagem de S3: ${base64}`);
+                base64 = ''; // Limpar para evitar erro
+              }
             }
             
-            console.log(`🔍 [Worker] Formato detectado: ${imageFormat}`);
-            imageSource = `data:image/${imageFormat};base64,${base64}`;
-            console.log(`✅ [Worker] Image base64 retrieved from database (${base64.length} chars)`);
+            if (base64) {
+              // Detectar formato da imagem pela assinatura base64
+              let imageFormat = 'jpeg'; // Padrão
+              
+              if (base64.startsWith('iVBORw')) {
+                imageFormat = 'png';
+              } else if (base64.startsWith('/9j/')) {
+                imageFormat = 'jpeg';
+              } else if (base64.startsWith('R0lGOD')) {
+                imageFormat = 'gif';
+              } else if (base64.startsWith('UklGR')) {
+                imageFormat = 'webp';
+              }
+              
+              console.log(`🔍 [Worker] Formato detectado: ${imageFormat}`);
+              imageSource = `data:image/${imageFormat};base64,${base64}`;
+              console.log(`✅ [Worker] Image base64 prepared (${base64.length} chars)`);
+            }
           } else {
             console.warn(`⚠️ [Worker] No image found in database for conversation ${conversationId}`);
           }
