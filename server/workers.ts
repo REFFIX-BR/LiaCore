@@ -83,7 +83,9 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?:
   }
 
   // Sanitize and validate URL
+  const urlBefore = baseUrl;
   baseUrl = baseUrl.trim(); // Remove espaços extras
+  console.log(`🔍 [URL DEBUG] Before trim: '${urlBefore}' (${urlBefore.length} chars) | After trim: '${baseUrl}' (${baseUrl.length} chars)`);
   
   // Adicionar https:// se não tiver protocolo
   if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
