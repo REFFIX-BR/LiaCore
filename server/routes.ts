@@ -24,11 +24,28 @@ const EVOLUTION_CONFIG = {
   instance: process.env.EVOLUTION_API_INSTANCE,
 };
 
+// Helper function to get API key for specific instance
+function getEvolutionApiKey(instanceName?: string): string | undefined {
+  if (!instanceName) {
+    return EVOLUTION_CONFIG.apiKey;
+  }
+  
+  // Try to get instance-specific key from environment
+  const instanceKey = process.env[`EVOLUTION_API_KEY_${instanceName}`];
+  if (instanceKey) {
+    return instanceKey;
+  }
+  
+  // Fallback to default key
+  return EVOLUTION_CONFIG.apiKey;
+}
+
 // Helper function to send WhatsApp image via Evolution API
 async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, caption?: string, instanceName?: string): Promise<boolean> {
   const instance = instanceName || EVOLUTION_CONFIG.instance;
+  const apiKey = getEvolutionApiKey(instance);
   
-  if (!EVOLUTION_CONFIG.apiUrl || !EVOLUTION_CONFIG.apiKey || !instance) {
+  if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
     console.error("❌ [Evolution] Credenciais não configuradas para envio de imagem");
     return false;
   }
@@ -60,7 +77,7 @@ async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, capti
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        apikey: EVOLUTION_CONFIG.apiKey,
+        apikey: apiKey,
       },
       body: JSON.stringify({
         number: normalizedNumber,
@@ -86,8 +103,9 @@ async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, capti
 // Helper function to send WhatsApp PDF/document via Evolution API
 async function sendWhatsAppDocument(phoneNumber: string, pdfBase64: string, fileName?: string, caption?: string, instanceName?: string): Promise<boolean> {
   const instance = instanceName || EVOLUTION_CONFIG.instance;
+  const apiKey = getEvolutionApiKey(instance);
   
-  if (!EVOLUTION_CONFIG.apiUrl || !EVOLUTION_CONFIG.apiKey || !instance) {
+  if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
     console.error("❌ [Evolution] Credenciais não configuradas para envio de documento");
     return false;
   }
@@ -119,7 +137,7 @@ async function sendWhatsAppDocument(phoneNumber: string, pdfBase64: string, file
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        apikey: EVOLUTION_CONFIG.apiKey,
+        apikey: apiKey,
       },
       body: JSON.stringify({
         number: normalizedNumber,
@@ -151,11 +169,12 @@ async function sendWhatsAppMessage(
 ): Promise<{ success: boolean; whatsappMessageId?: string; remoteJid?: string }> {
   // Use instance específica da conversa ou fallback para env var
   const instance = instanceName || EVOLUTION_CONFIG.instance;
+  const apiKey = getEvolutionApiKey(instance);
   
-  if (!EVOLUTION_CONFIG.apiUrl || !EVOLUTION_CONFIG.apiKey || !instance) {
+  if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
     console.error("❌ [Evolution] Credenciais não configuradas", { 
       hasUrl: !!EVOLUTION_CONFIG.apiUrl, 
-      hasKey: !!EVOLUTION_CONFIG.apiKey, 
+      hasKey: !!apiKey, 
       instance: instance || 'undefined' 
     });
     return { success: false };
@@ -186,7 +205,7 @@ async function sendWhatsAppMessage(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': EVOLUTION_CONFIG.apiKey,
+        'apikey': apiKey,
       },
       body: JSON.stringify({
         number: normalizedNumber,
@@ -224,8 +243,9 @@ async function deleteWhatsAppMessage(
   instanceName?: string
 ): Promise<boolean> {
   const instance = instanceName || EVOLUTION_CONFIG.instance;
+  const apiKey = getEvolutionApiKey(instance);
   
-  if (!EVOLUTION_CONFIG.apiUrl || !EVOLUTION_CONFIG.apiKey || !instance) {
+  if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
     console.error("❌ [Evolution] Credenciais não configuradas para deletar mensagem");
     return false;
   }
@@ -244,7 +264,7 @@ async function deleteWhatsAppMessage(
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': EVOLUTION_CONFIG.apiKey,
+        'apikey': apiKey,
       },
       body: JSON.stringify({
         id: whatsappMessageId,
@@ -268,34 +288,6 @@ async function deleteWhatsAppMessage(
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  
-  // 🧪 ENDPOINT DE TESTE TEMPORÁRIO - Enviar WhatsApp direto
-  app.post("/api/test-whatsapp-send", async (req, res) => {
-    try {
-      const { phoneNumber, message } = req.body;
-      
-      console.log(`🧪 [TEST] Tentando enviar WhatsApp para ${phoneNumber}`);
-      console.log(`🧪 [TEST] Mensagem: ${message}`);
-      console.log(`🧪 [TEST] EVOLUTION_CONFIG:`, {
-        url: EVOLUTION_CONFIG.apiUrl,
-        hasKey: !!EVOLUTION_CONFIG.apiKey,
-        instance: EVOLUTION_CONFIG.instance
-      });
-      
-      const result = await sendWhatsAppMessage(phoneNumber, message);
-      
-      console.log(`🧪 [TEST] Resultado:`, result);
-      
-      return res.json({ 
-        success: result.success,
-        message: result.success ? 'Mensagem enviada!' : 'Falha ao enviar',
-        details: result
-      });
-    } catch (error) {
-      console.error("🧪 [TEST] Erro:", error);
-      return res.status(500).json({ error: String(error) });
-    }
-  });
   
   // ============================================================================
   // AUTHENTICATION ROUTES

@@ -1,98 +1,7 @@
 # LIA CORTEX - AI Orchestration Platform
 
 ## Overview
-LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed for TR Telecom's customer service. It intelligently routes and coordinates specialized AI assistants, leveraging OpenAI's Assistants API and a RAG knowledge base. The platform automates Q&A, executes actions like boleto consultation and PPPoE diagnosis, and features a real-time supervisor monitoring dashboard for human intervention. It also includes an autonomous continuous learning system that evolves AI assistant prompts, aiming to significantly enhance customer service efficiency and satisfaction.
-
-## Recent Changes (2025-10-14)
-**Added: Bulk Conversation Resolution System**
-- ✅ **NEW FEATURE**: Admins can now finalize all active conversations at once
-  - Problem: Needed efficient way to close multiple conversations at end of day
-  - Solution: New endpoint `/api/supervisor/resolve-all` (POST)
-  - Batch processes all active/transferred/assigned/queued conversations
-  - Automatically sends NPS surveys to WhatsApp clients
-  - Creates learning events for each resolved conversation
-  - Logs all actions in supervisor_actions table
-  - Permissions: Admin only (via `requireAdmin` middleware)
-  - Location: `server/routes.ts` (line ~3102)
-  - Usage: Successfully finalized 72 conversations (54 active + 18 queued)
-
-**Added: Thread Context Reset Functionality**
-- ✅ **NEW FEATURE**: Supervisors can now reset OpenAI thread context while keeping messages in database
-  - Problem: Stuck conversations with problematic AI history needed fresh context without losing audit trail
-  - Solution: New endpoint `/api/conversations/:id/reset-thread` (POST)
-  - Creates new OpenAI thread, updates threadId in PostgreSQL and Redis
-  - Preserves all messages in database for compliance/audit
-  - Logs action in supervisor_actions table for accountability
-  - UI: New "Resetar Contexto OpenAI" button in Monitor → Ações tab
-  - Permissions: Admin and Supervisor only (via `requireAdminOrSupervisor` middleware)
-  - Location: `server/routes.ts` (line ~5273), `client/src/pages/Monitor.tsx`, `client/src/components/ConversationDetails.tsx`
-- ✅ **CRITICAL BUG FIX**: Fixed function name mismatch in AI tools
-  - Problem: OpenAI called `consultar_boleto_cliente` (with 'r') but code had `consulta_boleto_cliente` (without 'r')
-  - Root cause: Case statement never matched, function never executed
-  - Solution: Standardized all function names to `consultar_*` pattern (with 'r')
-  - Affected: `consultar_boleto_cliente`, normalized in `server/ai-tools.ts`
-  - Result: Financeiro assistant now successfully queries real boletos from TR Telecom API
-- ✅ **FEATURE ENHANCEMENT**: Boleto responses now include payment link
-  - Enhancement: Added `link_pagamento` field to boleto responses
-  - Benefit: Clients can now pay directly via link without typing código de barras
-  - Implementation: Response formatting in `server/lib/openai.ts` (line ~841)
-  - Assistant instructions updated in `INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md`
-  - Location: Financeiro assistant now sends formatted boletos with link, código de barras, and PIX
-
-**Added: Automatic CPF Reuse System for Support Assistant**
-- ✅ **CRITICAL FIX**: Support assistant now reuses CPF from database automatically
-  - Problem: After routing from Financeiro→Suporte, assistant was requesting CPF again
-  - Root cause: CPF was in database but not visible in OpenAI thread context after routing
-  - Real case: Customer "Marcio Zebende" (Chat whatsapp_5522997074180) - CPF 08515820790 already in DB
-  - Solution: Modified `verificar_conexao` tool handler to auto-fetch CPF from database
-  - Now works: Tool accepts `documento` as OPTIONAL parameter
-    - If provided → uses it
-    - If NOT provided → automatically fetches from `conversation.clientDocument`
-  - Location: `server/lib/openai.ts` (line ~587)
-  - Impact: Eliminates redundant CPF requests across assistant transitions
-  - Benefit: Same pattern as Financeiro - seamless experience across all assistants
-
-**Added: Fixed verificar_conexao Blocking Issue**
-- ✅ **CRITICAL FIX**: Assistant now verifies PPPoE status WITHOUT requiring modem reboot first
-  - Problem 1: Instructions required "cliente confirmar que já reiniciou modem" as pre-requisite
-  - Problem 2: Function name mismatch - OpenAI calls `consultar_pppoe_status` but code only had `verificar_conexao`
-  - Real case: Marcio Zebende (Chat whatsapp_5522997074180) - tool was called but fell through to default case
-  - Impact: Assistant responded "sistema instável" instead of querying real API
-  - Solution 1: Changed instructions from "Apenas após reiniciar modem" → "Use SEMPRE que cliente reportar problemas"
-  - Solution 2: Added `consultar_pppoe_status` case handler that redirects to same logic as `verificar_conexao`
-  - New workflow: Verify connection FIRST (using either function name), THEN suggest reboot if offline
-  - Location: `server/lib/openai.ts` (line ~665), `INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md` (lines 26-31, 147-151)
-  - Benefit: Works with both function names + auto-fetches CPF from database + proactive diagnosis
-
-**Added: Flexible CPF/CNPJ Detection System**
-- ✅ **CRITICAL UX FIX**: Enhanced regex to accept partial formatting and spaces
-  - Problem: Clients typing CPF with partial formatting (032.98128740) or spaces (032.981.2 8740) were not detected
-  - Real case: Customer "Sérgio Santos Lourenço" tried 3 times, AI kept asking for CPF again
-  - Solution: Improved detectClientDocument() with multi-strategy approach
-  - Now accepts: `03298128740`, `032.98128740`, `032.981.287-40`, `032.981.2 8740`, etc.
-  - Location: `server/lib/conversation-intelligence.ts` (line ~293)
-  - Impact: Reduces customer frustration and AI re-asking for already provided data
-
-**Added: Support Assistant Deep Review**
-- ✅ **CRITICAL FIX**: Replaced MOCK data with real API calls in verificar_conexao
-  - Problem: Support assistant was returning fake connection status instead of real data
-  - Solution: Integrated consultaStatusConexao (from ai-tools.ts) to query TR Telecom API
-  - Behavior: Automatically fetches CPF from conversation history (same as Financeiro)
-  - API endpoint: https://webhook.trtelecom.net/webhook/check_pppoe_status
-  - Returns: Real-time PPPoE status, IP status, connection time, plan details
-  - Location: `server/lib/openai.ts` (line ~579)
-- ✅ **INSTRUCTION UPDATE**: Standardized function naming and CPF detection logic
-  - Problem: Instructions referenced consultar_pppoe_status but code uses verificar_conexao
-  - Solution: Updated INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md with correct naming
-  - Enhanced: Added emphasis on checking conversation history for CPF (same pattern as Financeiro)
-  - Benefits: Support assistant now uses CPF from history without re-asking client
-
-**Previous Changes (2025-10-13)**
-- ✅ Automatic CPF/CNPJ detection from client messages
-- ✅ Normalized document comparison in security validations
-- ✅ Financial assistant boleto queries without re-asking for CPF
-- ✅ Conversation reopen fix - resets to Apresentação assistant
-- ✅ All logs mask sensitive information (CPF/CNPJ)
+LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Telecom's customer service. It orchestrates specialized AI assistants using OpenAI's Assistants API and a RAG knowledge base to automate Q&A and actions like boleto consultation and PPPoE diagnosis. The platform features a real-time supervisor monitoring dashboard for human intervention and an autonomous continuous learning system that evolves AI assistant prompts, aiming to enhance customer service efficiency and satisfaction. Its business vision is to provide a robust, scalable, and intelligent AI solution that significantly improves customer interaction and operational efficiency for telecommunications.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -100,44 +9,44 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### UI/UX Decisions
-The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailwind CSS. Its design is influenced by Carbon Design System and Linear, optimizing for data-dense enterprise interfaces, and it supports both dark and light modes. Client-side routing is handled by Wouter.
+The frontend, built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailwind CSS, is inspired by Carbon Design System and Linear for data-dense enterprise interfaces, supporting both dark and light modes. Wouter handles client-side routing.
 
 ### Technical Implementations
-**Frontend**: Uses TanStack Query for server state management and includes pages such as Dashboard, Monitor, Test Chat, Conversations, Knowledge, Assistants, Agent Evolution, Metrics, Feedbacks NPS, and Settings.
+**Frontend**: Utilizes TanStack Query for server state management across pages like Dashboard, Monitor, Test Chat, Conversations, Knowledge, Assistants, Agent Evolution, Metrics, Feedbacks NPS, and Settings.
 
-**Backend**: Built with Node.js and Express.js (TypeScript). It utilizes GPT-5 for intelligent routing, OpenAI Assistants API, Upstash Vector for RAG, Upstash Redis for conversation threads, and PostgreSQL via Drizzle ORM for data persistence. Session management is based on OpenAI thread-based conversations stored in Redis.
+**Backend**: Developed with Node.js and Express.js (TypeScript). It leverages GPT-5 for intelligent routing, OpenAI Assistants API, Upstash Vector for RAG, Upstash Redis for conversation threads, and PostgreSQL via Drizzle ORM for data persistence. Session management uses OpenAI thread-based conversations stored in Redis.
 
-**Queue System**: Employs BullMQ with Redis TLS for asynchronous message processing across six queues (message-processing, ai-response, image-analysis, nps-survey, learning-tasks, inactivity-followup). It includes automatic retry mechanisms and webhook fallback to ensure zero message loss and supports high conversation volumes. A Redis-based distributed lock prevents concurrency issues with OpenAI threads. **Message Concurrency Control**: Implements chat-level locking (60s TTL) to ensure sequential processing of messages from the same chat, preventing out-of-order responses and context confusion.
+**Queue System**: Employs BullMQ with Redis TLS for asynchronous processing across six queues (message-processing, ai-response, image-analysis, nps-survey, learning-tasks, inactivity-followup), ensuring message delivery with retries and webhook fallbacks. A Redis-based distributed lock and chat-level locking (60s TTL) prevent concurrency issues and ensure sequential message processing.
 
 **AI & Knowledge Management**:
 - **AI Provider**: OpenAI Assistants API.
-- **Specialized Assistants**: Six roles (Support, Sales, Finance, Cancellation, Ombudsman, Presentation) with a "Receptionist-First" routing model. The "Receptionist" assistant routes to specialized assistants but cannot transfer to humans; only specialized assistants can. **Silent Routing**: When LIA Apresentação routes to a specialist, only the specialist's welcome message is sent to avoid duplicate/confusing messages.
-- **Conversation Management**: Robust logic for conversation finalization, proper NPS survey delivery, and asynchronous conversation summarization.
+- **Specialized Assistants**: Six roles (Support, Sales, Finance, Cancellation, Ombudsman, Presentation) operating with a "Receptionist-First" routing model. "Receptionist" routes to specialists, while only specialists can transfer to humans. Routing is "silent," sending only the specialist's welcome message.
+- **Conversation Management**: Handles conversation finalization, NPS survey delivery, and asynchronous conversation summarization.
 - **RAG Architecture**: Features a dual-layer prompt system separating System Prompts (behavioral rules) from RAG Prompts (context-specific information) using Upstash Vector for semantic search.
-- **Function Calling**: Custom functions for verification, knowledge queries, invoice lookups, and scheduling, with secure internal-only tool execution. The `consultar_fatura` tool (used by Financeiro assistant) redirects to `consulta_boleto_cliente` for real API calls instead of returning mock data.
-- **Automated Systems**: Includes automated document detection (CPF/CNPJ), "Boleto Consultation", "PPPoE Connection Status", and "Unlock/Unblock" systems with integrated security. An HTTP Resilience System centralizes retry logic with exponential backoff and timeouts for all external API calls to TR Telecom webhooks.
-- **Vision System**: GPT-4o Vision for automatic WhatsApp image analysis with a dual download strategy.
-- **PDF Text Extraction System**: Automatic text extraction from PDF documents for AI analysis, supporting various formats and handling size limits.
-- **Audio Processing System**: Handles WhatsApp audio messages with automatic transcription via OpenAI Whisper API.
-- **Conversation Intelligence System**: Provides real-time analysis including sentiment, urgency classification, technical problem detection, recurrence detection, and automatic persistence of CPF/CNPJ.
+- **Function Calling**: Custom functions for verification, knowledge queries, invoice lookups, and scheduling, with secure internal-only tool execution. Tools like `consultar_boleto_cliente` make real API calls.
+- **Automated Systems**: Includes automated document detection (CPF/CNPJ), "Boleto Consultation", "PPPoE Connection Status", and "Unlock/Unblock" systems with integrated security. An HTTP Resilience System centralizes retry logic for external API calls to TR Telecom webhooks. Automated CPF reuse is implemented for seamless transitions between assistants.
+- **Vision System**: GPT-4o Vision for automatic WhatsApp image analysis.
+- **PDF Text Extraction System**: Extracts text from PDF documents for AI analysis.
+- **Audio Processing System**: Transcribes WhatsApp audio messages via OpenAI Whisper API.
+- **Conversation Intelligence System**: Provides real-time analysis of sentiment, urgency, technical problems, recurrence, and automatic persistence of CPF/CNPJ. Enhanced regex detects partially formatted CPF/CNPJ.
 
-**Real-Time Monitoring**: A Supervisor Dashboard provides KPIs, live conversation queues, alerts, transcripts, and human intervention controls. This includes a Live Logs System for real-time event monitoring and an Agent Reasoning Logs system visualizing AI assistant decision-making.
+**Real-Time Monitoring**: The Supervisor Dashboard offers KPIs, live conversation queues, alerts, transcripts, human intervention controls, a Live Logs System, and an Agent Reasoning Logs system.
 
-**Continuous Learning System**: An autonomous GPT-4 agent suggests prompt improvements based on supervisor interventions and feedback.
+**Continuous Learning System**: An autonomous GPT-4 agent suggests prompt improvements based on supervisor feedback.
 
-**NPS & Customer Satisfaction**: Automated NPS surveys via WhatsApp post-conversation, with feedback integrated into the learning system. Features rigorous regex validation for NPS responses and an auto-send system after conversation resolution.
+**NPS & Customer Satisfaction**: Automated NPS surveys via WhatsApp post-conversation, with feedback integrated into the learning system and rigorous regex validation for responses.
 
-**Hybrid Supervised Mode**: Manages "Transferred" and "Assigned" conversations with real-time counters and AI-assisted agent responses. Includes an Agent Welcome Message System and an Inactivity Follow-up System for re-engagement.
+**Hybrid Supervised Mode**: Manages "Transferred" and "Assigned" conversations with real-time counters, AI-assisted agent responses, a Welcome Message System, and an Inactivity Follow-up System.
 
-**WhatsApp Integration**: Native integration with Evolution API for real-time message processing, AI routing, and outbound messaging. Supports multi-instance Evolution API operation with dynamic API key lookup.
+**WhatsApp Integration**: Native integration with Evolution API for real-time messaging, AI routing, and outbound messaging, supporting multi-instance operations with dynamic API key lookup.
 
-**Role-Based Access Control (RBAC)**: A 3-tier system (ADMIN, SUPERVISOR, AGENT) with granular permissions and user management.
+**Role-Based Access Control (RBAC)**: A 3-tier system (ADMIN, SUPERVISOR, AGENT) with granular permissions.
 
-**Personalized Dashboards**: Role-specific dashboards offer relevant KPIs and data, including system health and cost analysis for Admin.
+**Personalized Dashboards**: Role-specific dashboards provide relevant KPIs, including system health and cost analysis for Admins.
 
-**Contact Management System**: Centralized client database for tracking conversation history, enabling proactive service, and includes automatic WhatsApp contact synchronization.
+**Contact Management System**: Centralized client database for conversation history and proactive service, with automatic WhatsApp contact synchronization.
 
-**Message Deletion System**: Supervisors and agents can delete assistant messages from the database and WhatsApp (within WhatsApp's 2-day window), allowing correction of AI errors and removal of sensitive information.
+**Message Deletion System**: Allows supervisors and agents to delete assistant messages from the database and WhatsApp.
 
 **Redis Optimization System**: Implements intelligent caching, batching, multi-get operations, batch updates, and hash storage to reduce Redis requests and costs.
 
