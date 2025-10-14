@@ -5,12 +5,20 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Te
 
 ## Recent Changes (2025-10-14)
 
+**✅ ENHANCED: Ouvidoria Details Modal**
+- Problem: Users unable to view full complaint descriptions (truncated in table)
+- Solution: Added "Ver Detalhes" button with modal dialog showing complete information
+- Modal displays: Protocol ID, formatted date/time, status/type/severity badges, full description, resolution notes
+- UI: Eye icon button + shadcn Dialog component with responsive max-width (2xl) and scrollable content
+- Location: `client/src/pages/Ouvidoria.tsx`
+
 **✅ FIXED: Ouvidoria Complaint Registration - Missing Tool**
 - Problem: 3 conversations routed to Ouvidoria but 0 complaints registered in database
 - Root cause: `registrar_reclamacao_ouvidoria` tool implemented but NOT enabled for the assistant
 - Solution: Added tool to enabled list in `INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md`
 - Updated instructions: Clear guidance on when/how to use (after collecting name, CPF, context)
 - Updated flow: Register complaint → inform protocol → transfer to human
+- Historical import: Created 2 retroactive complaints from existing conversations (Helena Dias, Geova de Lima)
 - ⚠️ **ACTION REQUIRED**: Enable `registrar_reclamacao_ouvidoria` in OpenAI Dashboard for Ouvidoria assistant
 - Location: `INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md` (lines 752-756, 674-678, 718-720)
 
