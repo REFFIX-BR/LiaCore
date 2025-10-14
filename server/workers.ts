@@ -64,10 +64,22 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?:
       evolutionInstance, 
       hasApiKey: !!apiKey, 
       baseUrl,
-      triedKey: `EVOLUTION_API_KEY_${evolutionInstance}`,
-      triedUrl: `EVOLUTION_API_URL_${evolutionInstance}`
+      triedKey: `EVOLUTION_API_KEY_${evolutionInstance.toUpperCase()}`,
+      triedUrl: `EVOLUTION_API_URL_${evolutionInstance.toUpperCase()}`
     });
     return false;
+  }
+
+  // DEBUG: Log API key info for Principal instance
+  if (evolutionInstance === 'Principal') {
+    console.log(`🔍 [DEBUG] Principal instance auth:`, {
+      instance: evolutionInstance,
+      envKeyName: `EVOLUTION_API_KEY_${evolutionInstance.toUpperCase()}`,
+      hasKey: !!apiKey,
+      keyLength: apiKey?.length || 0,
+      keyPreview: apiKey ? `${apiKey.substring(0, 20)}...` : 'NO KEY',
+      url: baseUrl
+    });
   }
 
   // Sanitize and validate URL
