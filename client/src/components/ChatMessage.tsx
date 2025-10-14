@@ -73,6 +73,50 @@ export function ChatMessage({ message }: ChatMessageProps) {
     window.URL.revokeObjectURL(url);
   };
 
+  // Função para fazer download da imagem
+  const downloadImage = () => {
+    if (!message.imageBase64) return;
+    
+    // Detectar formato da imagem pelo prefixo base64
+    let imageType = 'image/jpeg';
+    let extension = 'jpg';
+    
+    const base64Data = message.imageBase64.includes('base64,') 
+      ? message.imageBase64.split('base64,')[1] 
+      : message.imageBase64;
+    
+    // Detectar formato pela assinatura base64
+    if (base64Data.startsWith('iVBORw')) {
+      imageType = 'image/png';
+      extension = 'png';
+    } else if (base64Data.startsWith('R0lGOD')) {
+      imageType = 'image/gif';
+      extension = 'gif';
+    } else if (base64Data.startsWith('UklGR')) {
+      imageType = 'image/webp';
+      extension = 'webp';
+    }
+    
+    // Converter base64 para blob
+    const byteCharacters = atob(base64Data);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: imageType });
+    
+    // Criar URL e fazer download
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `imagem_whatsapp_${format(message.timestamp, 'yyyyMMdd_HHmmss')}.${extension}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
   // Detectar se mensagem tem imagem do WhatsApp (imageBase64)
   const hasWhatsAppImage = !!message.imageBase64;
 
@@ -148,16 +192,22 @@ export function ChatMessage({ message }: ChatMessageProps) {
           }`}
         >
 
-          {/* Imagem do WhatsApp */}
+          {/* Botão de download da imagem do WhatsApp */}
           {hasWhatsAppImage && (
-            <div className="mb-2">
-              <img 
-                src={`data:image/jpeg;base64,${message.imageBase64}`}
-                alt="Imagem enviada pelo cliente"
-                className="max-w-full rounded-md"
-                data-testid="whatsapp-image"
-              />
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={downloadImage}
+              className={`mb-2 flex items-center gap-2 ${
+                isUser 
+                  ? 'hover:bg-background/50' 
+                  : 'hover:bg-primary-foreground/20 text-primary-foreground'
+              }`}
+              data-testid="button-download-image"
+            >
+              <Download className="h-4 w-4" />
+              <span>Baixar Imagem</span>
+            </Button>
           )}
 
           {/* Badge de imagem/áudio/PDF */}

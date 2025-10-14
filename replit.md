@@ -5,6 +5,14 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Te
 
 ## Recent Changes (2025-10-14)
 
+**✅ IMPLEMENTED: Image Download Feature for Supervisors**
+- Feature: Supervisors can now download WhatsApp images directly from chat interface
+- UI: Replaced inline image display with "Baixar Imagem" button in message bubbles
+- Smart detection: Auto-detects image format (PNG, JPEG, GIF, WebP) from base64 signature
+- File naming: Downloads with timestamp `imagem_whatsapp_YYYYMMDD_HHmmss.extension`
+- Benefits: Cleaner UI, on-demand image access for verification without cluttering interface
+- Location: `client/src/components/ChatMessage.tsx` (lines 79-121, 198-214)
+
 **✅ FIXED: Vision Image Analysis - Complete Fix (3 Critical Issues)**
 - **Problem 1**: Images saved but not analyzed - Vision disabled in webhook
 - **Root cause 1**: `processWhatsAppImage()` had Vision analysis commented out/disabled
