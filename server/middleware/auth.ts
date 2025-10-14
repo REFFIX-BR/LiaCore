@@ -17,24 +17,19 @@ export function authenticate(
 ) {
   const token = req.cookies.auth_token;
 
-  console.log(`🔐 [Auth] Checking authentication for ${req.method} ${req.path}`);
-  console.log(`🔐 [Auth] Has auth_token cookie: ${!!token}`);
-  console.log(`🔐 [Auth] All cookies:`, Object.keys(req.cookies));
-
   if (!token) {
-    console.log(`❌ [Auth] No token found - returning 401`);
+    console.log(`❌ [Auth] No token for ${req.method} ${req.path}`);
     return res.status(401).json({ error: "Não autenticado" });
   }
 
   const payload = verifyToken(token);
 
   if (!payload) {
-    console.log(`❌ [Auth] Invalid token - returning 401`);
+    console.log(`❌ [Auth] Invalid token for ${req.method} ${req.path}`);
     res.clearCookie("auth_token");
     return res.status(401).json({ error: "Token inválido ou expirado" });
   }
 
-  console.log(`✅ [Auth] Token valid - user: ${payload.username} (${payload.role})`);
   req.user = payload;
   next();
 }

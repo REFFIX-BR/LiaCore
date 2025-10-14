@@ -4513,8 +4513,11 @@ A resposta deve:
       const { id } = req.params;
       const { content, suggestionId, wasEdited, supervisorName, imageBase64, audioBase64, audioMimeType, pdfBase64, pdfName } = req.body;
 
+      console.log(`📬 [Supervisor] send-message endpoint called - conversationId: ${id}, supervisor: ${supervisorName}`);
+
       const conversation = await storage.getConversation(id);
       if (!conversation) {
+        console.log(`❌ [Supervisor] Conversation not found: ${id}`);
         return res.status(404).json({ error: "Conversation not found" });
       }
 
