@@ -781,6 +781,7 @@ Fonte: ${fonte}`;
         });
 
       case "consulta_boleto_cliente":
+        console.log(`🚨 [DEBUG] ENTRANDO NO CASE consulta_boleto_cliente - conversationId: ${conversationId || 'UNDEFINED'}`);
         if (!conversationId) {
           console.error("❌ [AI Tool] consulta_boleto_cliente chamada sem conversationId");
           return JSON.stringify({
