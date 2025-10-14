@@ -3,6 +3,26 @@
 ## Overview
 LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Telecom's customer service. It orchestrates specialized AI assistants using OpenAI's Assistants API and a RAG knowledge base to automate Q&A and actions like boleto consultation and PPPoE diagnosis. The platform features a real-time supervisor monitoring dashboard for human intervention and an autonomous continuous learning system that evolves AI assistant prompts, aiming to enhance customer service efficiency and satisfaction. Its business vision is to provide a robust, scalable, and intelligent AI solution that significantly improves customer interaction and operational efficiency for telecommunications.
 
+## Recent Changes (2025-10-14)
+
+**✅ FIXED: Ouvidoria Complaint Registration - Missing Tool**
+- Problem: 3 conversations routed to Ouvidoria but 0 complaints registered in database
+- Root cause: `registrar_reclamacao_ouvidoria` tool implemented but NOT enabled for the assistant
+- Solution: Added tool to enabled list in `INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md`
+- Updated instructions: Clear guidance on when/how to use (after collecting name, CPF, context)
+- Updated flow: Register complaint → inform protocol → transfer to human
+- ⚠️ **ACTION REQUIRED**: Enable `registrar_reclamacao_ouvidoria` in OpenAI Dashboard for Ouvidoria assistant
+- Location: `INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md` (lines 752-756, 674-678, 718-720)
+
+**✅ FIXED: Multi-Instance Evolution API Key Management**
+- Problem: Supervisor/agent messages saved to database but never sent to WhatsApp
+- Root cause: Code used default API key (testecortex1 instance) for all instances
+- Discovery: testecortex1 doesn't exist (404); active instances are Leads (125 conv), Cobranca (103 conv)
+- Solution: Created `getEvolutionApiKey()` to fetch instance-specific API keys from environment
+- Updated all Evolution functions: sendWhatsAppMessage, sendWhatsAppImage, sendWhatsAppDocument, deleteWhatsAppMessage
+- Test result: ✅ Message sent successfully to 5524988239995 via Leads (ID: 3EB06B50...)
+- Location: `server/routes.ts` (lines 31-44)
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
