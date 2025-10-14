@@ -570,6 +570,7 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
     const args = JSON.parse(argsString);
     console.log(`🔧 [AI Tool] Function arguments:`, JSON.stringify(args));
     console.log(`🔧 [AI Tool] Context - chatId: ${chatId || 'undefined'}, conversationId: ${conversationId || 'undefined'}`);
+    console.log(`🔧 [AI Tool] Entering switch for function: "${functionName}" (length: ${functionName.length})`);
 
     switch (functionName) {
       case "verificar_conexao":
@@ -918,6 +919,8 @@ Fonte: ${fonte}`;
         }
 
       default:
+        console.error(`❌ [AI Tool] CAIU NO DEFAULT - Função não implementada: "${functionName}"`);
+        console.error(`❌ [AI Tool] Funções disponíveis: verificar_conexao, consultar_fatura, consultar_base_de_conhecimento, consultar_boleto_cliente, etc.`);
         return JSON.stringify({
           error: `Função ${functionName} não implementada`,
         });
