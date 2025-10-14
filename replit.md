@@ -24,10 +24,11 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Te
 
 **✅ FIXED: Multi-Instance Evolution API Key Management - Case Sensitivity Bug**
 - Problem: All WhatsApp messages failing with "Unauthorized" despite correct API keys configured
-- Root cause: Environment variables are uppercase (EVOLUTION_API_KEY_COBRANCA, EVOLUTION_API_KEY_LEADS) but code was searching for mixed case (EVOLUTION_API_KEY_Cobranca, EVOLUTION_API_KEY_Leads)
+- Root cause: Environment variables are uppercase (EVOLUTION_API_KEY_COBRANCA, EVOLUTION_API_KEY_LEADS, EVOLUTION_API_KEY_PRINCIPAL) but code was searching for mixed case
 - Solution: Added `.toUpperCase()` conversion when building environment variable names
 - Updated functions: `getEvolutionApiKey()` in `server/routes.ts` and `sendWhatsAppMessage()` in `server/workers.ts`
-- Test result: ✅ Messages now sent successfully to all instances (Cobranca, Leads)
+- Test result: ✅ Messages now sent successfully to all 3 instances (Cobranca, Leads, Principal)
+- Active instances: Cobranca (billing), Leads (sales/support), Principal (Facebook integration)
 - Location: `server/routes.ts` (line 37), `server/workers.ts` (lines 58, 62)
 
 **✅ IMPLEMENTED: Two-Stage Automatic Conversation Closure System**
