@@ -31,6 +31,19 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Te
 - Test result: ✅ Message sent successfully to 5524988239995 via Leads (ID: 3EB06B50...)
 - Location: `server/routes.ts` (lines 31-44)
 
+**✅ IMPLEMENTED: Two-Stage Automatic Conversation Closure System**
+- Feature: Automated conversation closure for inactive AI conversations to improve resource management
+- Architecture: Two-stage process with inactivity follow-up (10min) → automatic closure (20min additional)
+- Stage 1: After 10 minutes of client inactivity, send follow-up message via `inactivity_followup` template
+- Stage 2: If no client response within 20 more minutes (30min total), auto-close conversation with farewell message
+- Smart cancellation: Both stages cancelled when client responds, preventing premature closure
+- Queue system: New `AUTO_CLOSURE` queue (concurrency: 2) with `AutoClosureJob` interface
+- Worker implementation: `autoClosureWorker` checks conversation state, handles edge cases (transferred, already closed)
+- Message templates: `inactivity_followup` and `auto_closure` stored in database, customizable via Settings page
+- Metadata tracking: Conversations marked with `autoClosed: true`, `autoClosedReason: 'inactivity'`, `autoClosedAt` timestamp
+- Integration: Cancellation logic added to message processing worker (2 locations) to prevent race conditions
+- Location: `server/workers.ts`, `server/lib/queue.ts`, `shared/schema.ts`
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
@@ -44,7 +57,7 @@ The frontend, built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and Ta
 
 **Backend**: Developed with Node.js and Express.js (TypeScript). It leverages GPT-5 for intelligent routing, OpenAI Assistants API, Upstash Vector for RAG, Upstash Redis for conversation threads, and PostgreSQL via Drizzle ORM for data persistence. Session management uses OpenAI thread-based conversations stored in Redis.
 
-**Queue System**: Employs BullMQ with Redis TLS for asynchronous processing across six queues (message-processing, ai-response, image-analysis, nps-survey, learning-tasks, inactivity-followup), ensuring message delivery with retries and webhook fallbacks. A Redis-based distributed lock and chat-level locking (60s TTL) prevent concurrency issues and ensure sequential message processing.
+**Queue System**: Employs BullMQ with Redis TLS for asynchronous processing across seven queues (message-processing, ai-response, image-analysis, nps-survey, learning-tasks, inactivity-followup, auto-closure), ensuring message delivery with retries and webhook fallbacks. A Redis-based distributed lock and chat-level locking (60s TTL) prevent concurrency issues and ensure sequential message processing. Two-stage automatic closure system (10min follow-up → 20min auto-close) manages inactive conversations with smart cancellation when clients respond.
 
 **AI & Knowledge Management**:
 - **AI Provider**: OpenAI Assistants API.
@@ -64,7 +77,7 @@ The frontend, built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and Ta
 
 **NPS & Customer Satisfaction**: Automated NPS surveys via WhatsApp post-conversation, with feedback integrated into the learning system and rigorous regex validation for responses.
 
-**Hybrid Supervised Mode**: Manages "Transferred" and "Assigned" conversations with real-time counters, AI-assisted agent responses, a Welcome Message System, and an Inactivity Follow-up System.
+**Hybrid Supervised Mode**: Manages "Transferred" and "Assigned" conversations with real-time counters, AI-assisted agent responses, a Welcome Message System, an Inactivity Follow-up System, and automatic conversation closure after extended inactivity (30min total: 10min follow-up + 20min grace period).
 
 **WhatsApp Integration**: Native integration with Evolution API for real-time messaging, AI routing, and outbound messaging, supporting multi-instance operations with dynamic API key lookup.
 
