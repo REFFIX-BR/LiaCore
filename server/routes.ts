@@ -3096,6 +3096,107 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
     }
   });
 
+  // Bulk resolve all active conversations
+  app.post("/api/supervisor/resolve-all", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const { supervisorId = "admin" } = req.body;
+
+      // Buscar todas as conversas (vamos filtrar manualmente)
+      const allConversations = await storage.getAllConversations();
+      const activeConversations = allConversations.filter(
+        c => c.status === 'active' || c.status === 'transferred' || c.status === 'assigned'
+      );
+
+      console.log(`🔄 [Bulk Resolve] Iniciando finalização de ${activeConversations.length} conversas...`);
+
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: any[] = [];
+
+      // Resolver cada conversa
+      for (const conversation of activeConversations) {
+        try {
+          // Criar ação de supervisor
+          await storage.createSupervisorAction({
+            conversationId: conversation.id,
+            action: "mark_resolved",
+            notes: "Bulk resolution - End of day cleanup",
+            createdBy: supervisorId,
+          });
+
+          // Preparar metadata para aguardar NPS se for WhatsApp
+          const currentMetadata = conversation.metadata as any || {};
+          const isWhatsApp = currentMetadata?.source === 'evolution_api';
+
+          // Atualizar status da conversa
+          await storage.updateConversation(conversation.id, {
+            status: "resolved",
+            resolvedAt: new Date(),
+            assignedTo: null,
+            transferredToHuman: false,
+            metadata: isWhatsApp ? { ...currentMetadata, awaitingNPS: true } : currentMetadata,
+          });
+
+          // Criar evento de aprendizado
+          const messages = await storage.getMessagesByConversationId(conversation.id);
+          const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+          const lastAiMessage = messages.filter(m => m.role === 'assistant').pop();
+
+          if (lastUserMessage && lastAiMessage) {
+            await storage.createLearningEvent({
+              conversationId: conversation.id,
+              eventType: 'implicit_success',
+              assistantType: conversation.assistantType,
+              userMessage: lastUserMessage.content,
+              aiResponse: lastAiMessage.content,
+              sentiment: conversation.sentiment || 'neutral',
+              resolution: 'success',
+            });
+          }
+
+          // Enviar pesquisa NPS para WhatsApp
+          const metadata = conversation.metadata as any;
+          if (metadata?.source === 'evolution_api' && conversation.clientId) {
+            const npsMessage = `Olá ${conversation.clientName}!
+Seu atendimento foi finalizado.
+
+Pesquisa de Satisfação
+
+Em uma escala de 0 a 10, qual a satisfação com atendimento?
+
+Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
+
+            await sendWhatsAppMessage(conversation.clientId, npsMessage, conversation.evolutionInstance || undefined);
+          }
+
+          successCount++;
+          console.log(`✅ [Bulk Resolve] Conversa ${conversation.id} (${conversation.clientName}) finalizada`);
+        } catch (err) {
+          errorCount++;
+          errors.push({
+            conversationId: conversation.id,
+            clientName: conversation.clientName,
+            error: err instanceof Error ? err.message : String(err)
+          });
+          console.error(`❌ [Bulk Resolve] Erro ao finalizar ${conversation.id}:`, err);
+        }
+      }
+
+      console.log(`✅ [Bulk Resolve] Finalização completa: ${successCount} sucesso, ${errorCount} erros`);
+
+      return res.json({
+        success: true,
+        total: activeConversations.length,
+        resolved: successCount,
+        errors: errorCount,
+        errorDetails: errors.length > 0 ? errors : undefined
+      });
+    } catch (error) {
+      console.error("Bulk resolve error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Knowledge base search
   app.post("/api/knowledge/search", authenticate, async (req, res) => {
     try {

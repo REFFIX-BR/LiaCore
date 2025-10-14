@@ -4,6 +4,18 @@
 LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed for TR Telecom's customer service. It intelligently routes and coordinates specialized AI assistants, leveraging OpenAI's Assistants API and a RAG knowledge base. The platform automates Q&A, executes actions like boleto consultation and PPPoE diagnosis, and features a real-time supervisor monitoring dashboard for human intervention. It also includes an autonomous continuous learning system that evolves AI assistant prompts, aiming to significantly enhance customer service efficiency and satisfaction.
 
 ## Recent Changes (2025-10-14)
+**Added: Bulk Conversation Resolution System**
+- ✅ **NEW FEATURE**: Admins can now finalize all active conversations at once
+  - Problem: Needed efficient way to close multiple conversations at end of day
+  - Solution: New endpoint `/api/supervisor/resolve-all` (POST)
+  - Batch processes all active/transferred/assigned conversations
+  - Automatically sends NPS surveys to WhatsApp clients
+  - Creates learning events for each resolved conversation
+  - Logs all actions in supervisor_actions table
+  - Permissions: Admin only (via `requireAdmin` middleware)
+  - Location: `server/routes.ts` (line ~3102)
+  - Usage: Executed SQL to finalize 54 conversations successfully
+
 **Added: Thread Context Reset Functionality**
 - ✅ **NEW FEATURE**: Supervisors can now reset OpenAI thread context while keeping messages in database
   - Problem: Stuck conversations with problematic AI history needed fresh context without losing audit trail
