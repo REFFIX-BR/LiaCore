@@ -569,6 +569,7 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
     console.log(`🔧 [AI Tool] Handling function call: ${functionName}`);
     const args = JSON.parse(argsString);
     console.log(`🔧 [AI Tool] Function arguments:`, JSON.stringify(args));
+    console.log(`🔧 [AI Tool] Context - chatId: ${chatId || 'undefined'}, conversationId: ${conversationId || 'undefined'}`);
 
     switch (functionName) {
       case "verificar_conexao":
