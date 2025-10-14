@@ -335,8 +335,23 @@ if (redisConnection) {
           const lastMessage = messages[0]; // Mensagem mais recente
           
           if (lastMessage?.imageBase64) {
-            imageSource = `data:image/jpeg;base64,${lastMessage.imageBase64}`;
-            console.log(`✅ [Worker] Image base64 retrieved from database (${lastMessage.imageBase64.length} chars)`);
+            // Detectar formato da imagem pela assinatura base64
+            let imageFormat = 'jpeg'; // Padrão
+            const base64 = lastMessage.imageBase64;
+            
+            if (base64.startsWith('iVBORw')) {
+              imageFormat = 'png';
+            } else if (base64.startsWith('/9j/')) {
+              imageFormat = 'jpeg';
+            } else if (base64.startsWith('R0lGOD')) {
+              imageFormat = 'gif';
+            } else if (base64.startsWith('UklGR')) {
+              imageFormat = 'webp';
+            }
+            
+            console.log(`🔍 [Worker] Formato detectado: ${imageFormat}`);
+            imageSource = `data:image/${imageFormat};base64,${base64}`;
+            console.log(`✅ [Worker] Image base64 retrieved from database (${base64.length} chars)`);
           } else {
             console.warn(`⚠️ [Worker] No image found in database for conversation ${conversationId}`);
           }
