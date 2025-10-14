@@ -52,6 +52,17 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed 
   - Impact: Eliminates redundant CPF requests across assistant transitions
   - Benefit: Same pattern as Financeiro - seamless experience across all assistants
 
+**Added: Fixed verificar_conexao Blocking Issue**
+- ✅ **CRITICAL FIX**: Assistant now verifies PPPoE status WITHOUT requiring modem reboot first
+  - Problem: Assistant NEVER called verificar_conexao tool, always responded "não consegui consultar"
+  - Root cause: Instructions required "cliente confirmar que já reiniciou modem" as pre-requisite
+  - Real case: Marcio Zebende reported "internet lenta" but assistant never diagnosed - just asked for modem reboot
+  - Impact: Zero PPPoE verifications in logs - tool was configured but never executed
+  - Solution: Changed instructions from "Apenas após reiniciar modem" → "Use SEMPRE que cliente reportar problemas"
+  - New workflow: Verify connection FIRST, THEN suggest reboot if connection is offline
+  - Location: `INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md` (lines 26-31, 147-151)
+  - Benefit: Proactive diagnosis instead of guessing - assistant can see real connection status before suggesting fixes
+
 **Added: Flexible CPF/CNPJ Detection System**
 - ✅ **CRITICAL UX FIX**: Enhanced regex to accept partial formatting and spaces
   - Problem: Clients typing CPF with partial formatting (032.98128740) or spaces (032.981.2 8740) were not detected
