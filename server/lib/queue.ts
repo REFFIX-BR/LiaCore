@@ -9,6 +9,7 @@ export const QUEUE_NAMES = {
   NPS_SURVEY: 'nps-survey',
   LEARNING_TASKS: 'learning-tasks',
   INACTIVITY_FOLLOWUP: 'inactivity-followup',
+  AUTO_CLOSURE: 'auto-closure',
 } as const;
 
 // Queue configurations with different priorities and retry strategies
@@ -103,6 +104,21 @@ export const QUEUE_CONFIGS = {
       },
     },
   },
+  [QUEUE_NAMES.AUTO_CLOSURE]: {
+    defaultJobOptions: {
+      attempts: 2,
+      backoff: {
+        type: 'exponential' as const,
+        delay: 5000,
+      },
+      removeOnComplete: {
+        count: 100,
+      },
+      removeOnFail: {
+        count: 50,
+      },
+    },
+  },
 };
 
 // Create queues
@@ -151,6 +167,14 @@ export const inactivityFollowupQueue = new Queue(
   {
     connection: redisConnection,
     ...QUEUE_CONFIGS[QUEUE_NAMES.INACTIVITY_FOLLOWUP],
+  }
+);
+
+export const autoClosureQueue = new Queue(
+  QUEUE_NAMES.AUTO_CLOSURE,
+  {
+    connection: redisConnection,
+    ...QUEUE_CONFIGS[QUEUE_NAMES.AUTO_CLOSURE],
   }
 );
 
@@ -219,6 +243,16 @@ export interface InactivityFollowupJob {
   lastClientMessageTime: number;
 }
 
+export interface AutoClosureJob {
+  conversationId: string;
+  chatId: string;
+  clientId: string;
+  clientName: string;
+  evolutionInstance?: string;
+  scheduledAt: number;
+  followupSentAt: number;
+}
+
 // Helper functions to add jobs
 export async function addMessageToQueue(data: MessageProcessingJob, priority?: number) {
   return await messageQueue.add('process-message', data, {
@@ -278,6 +312,34 @@ export async function cancelInactivityFollowup(conversationId: string) {
   }
 }
 
+export async function addAutoClosureToQueue(data: AutoClosureJob) {
+  const TWENTY_MINUTES = 20 * 60 * 1000; // 20 minutos em milissegundos
+  
+  return await autoClosureQueue.add('auto-close-conversation', data, {
+    delay: TWENTY_MINUTES,
+    jobId: `auto-closure-${data.conversationId}`, // ID único para poder cancelar depois
+    priority: 5,
+  });
+}
+
+export async function cancelAutoClosure(conversationId: string) {
+  try {
+    const jobId = `auto-closure-${conversationId}`;
+    const job = await autoClosureQueue.getJob(jobId);
+    
+    if (job) {
+      await job.remove();
+      console.log(`✅ [Auto-Closure] Encerramento automático cancelado para conversa ${conversationId}`);
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error(`❌ [Auto-Closure] Erro ao cancelar encerramento automático:`, error);
+    return false;
+  }
+}
+
 // Graceful shutdown
 export async function closeQueues() {
   console.log('🔴 Closing queues...');
@@ -287,6 +349,7 @@ export async function closeQueues() {
   await npsSurveyQueue.close();
   await learningTasksQueue.close();
   await inactivityFollowupQueue.close();
+  await autoClosureQueue.close();
   await redisConnection.quit();
   console.log('✅ Queues closed successfully');
 }
