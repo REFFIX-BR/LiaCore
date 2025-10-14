@@ -39,6 +39,15 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed 
   - Assistant instructions updated in `INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md`
   - Location: Financeiro assistant now sends formatted boletos with link, código de barras, and PIX
 
+**Added: Flexible CPF/CNPJ Detection System**
+- ✅ **CRITICAL UX FIX**: Enhanced regex to accept partial formatting and spaces
+  - Problem: Clients typing CPF with partial formatting (032.98128740) or spaces (032.981.2 8740) were not detected
+  - Real case: Customer "Sérgio Santos Lourenço" tried 3 times, AI kept asking for CPF again
+  - Solution: Improved detectClientDocument() with multi-strategy approach
+  - Now accepts: `03298128740`, `032.98128740`, `032.981.287-40`, `032.981.2 8740`, etc.
+  - Location: `server/lib/conversation-intelligence.ts` (line ~293)
+  - Impact: Reduces customer frustration and AI re-asking for already provided data
+
 **Added: Support Assistant Deep Review**
 - ✅ **CRITICAL FIX**: Replaced MOCK data with real API calls in verificar_conexao
   - Problem: Support assistant was returning fake connection status instead of real data

@@ -290,33 +290,89 @@ export async function getPersistedDocument(conversationId: string): Promise<stri
 export function detectClientDocument(message: string): string | null {
   if (!message) return null;
 
-  // Remove espaços e caracteres especiais para facilitar a busca
-  const cleanMessage = message.replace(/\s+/g, ' ');
+  // ESTRATÉGIA 1: Buscar CPF/CNPJ com regex flexível (aceita formatação parcial e espaços)
+  // Primeiro, tentar detectar na mensagem original (com espaços) para capturar "CPF 032.981.287-40"
+  const cpfRegexOriginal = /(\d{3}[\.\s]?\d{3}[\.\s]?\d{3}[\-\s]?\d{2})/g;
+  const cpfMatchesOriginal = message.match(cpfRegexOriginal);
 
-  // Regex para CPF: 000.000.000-00 ou 00000000000
-  const cpfRegex = /\b(\d{3}\.?\d{3}\.?\d{3}-?\d{2})\b/g;
-  const cpfMatch = cleanMessage.match(cpfRegex);
-
-  if (cpfMatch) {
-    // Limpar formatação (manter apenas números)
-    const cpfLimpo = cpfMatch[0].replace(/\D/g, '');
-    if (cpfLimpo.length === 11) {
-      console.log(`📋 [Document Detection] CPF detectado (mascarado: ***.***.*Fragment-**)`);
-      return cpfLimpo;
+  if (cpfMatchesOriginal) {
+    for (const match of cpfMatchesOriginal) {
+      // Limpar formatação (manter apenas números)
+      const cpfLimpo = match.replace(/\D/g, '');
+      if (cpfLimpo.length === 11) {
+        console.log(`📋 [Document Detection] CPF detectado (mascarado: ***.***.*${cpfLimpo.slice(-2)})`);
+        return cpfLimpo;
+      }
     }
   }
 
-  // Regex para CNPJ: 00.000.000/0000-00 ou 00000000000000
-  const cnpjRegex = /\b(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})\b/g;
-  const cnpjMatch = cleanMessage.match(cnpjRegex);
+  // Remover espaços DENTRO de possíveis CPF/CNPJ antes de validar
+  const cleanMessage = message.replace(/\s+/g, '');
 
-  if (cnpjMatch) {
-    // Limpar formatação (manter apenas números)
-    const cnpjLimpo = cnpjMatch[0].replace(/\D/g, '');
-    if (cnpjLimpo.length === 14) {
-      console.log(`📋 [Document Detection] CNPJ detectado (mascarado: **.***.***/****-**)`);
-      return cnpjLimpo;
+  // Regex FLEXÍVEL para CPF: aceita qualquer combinação de pontos e hífens
+  // Exemplos aceitos: 03298128740, 032.98128740, 032.981.287-40, 032.981.28740, etc.
+  const cpfRegex = /(\d{3}[\.]?\d{3}[\.]?\d{3}[\-]?\d{2})/g;
+  const cpfMatches = cleanMessage.match(cpfRegex);
+
+  if (cpfMatches) {
+    for (const match of cpfMatches) {
+      // Limpar formatação (manter apenas números)
+      const cpfLimpo = match.replace(/\D/g, '');
+      if (cpfLimpo.length === 11) {
+        console.log(`📋 [Document Detection] CPF detectado (mascarado: ***.***.*${cpfLimpo.slice(-2)})`);
+        return cpfLimpo;
+      }
     }
+  }
+
+  // ESTRATÉGIA 2: Buscar apenas 11 dígitos seguidos (sem formatação)
+  const cpfPlainRegex = /\b(\d{11})\b/g;
+  const cpfPlainMatch = cleanMessage.match(cpfPlainRegex);
+  
+  if (cpfPlainMatch) {
+    const cpfLimpo = cpfPlainMatch[0];
+    console.log(`📋 [Document Detection] CPF sem formatação detectado (mascarado: ***.***.*${cpfLimpo.slice(-2)})`);
+    return cpfLimpo;
+  }
+
+  // Regex FLEXÍVEL para CNPJ: aceita qualquer combinação de pontos, barras e hífens
+  // Primeiro tentar na mensagem original
+  const cnpjRegexOriginal = /(\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/\s]?\d{4}[\-\s]?\d{2})/g;
+  const cnpjMatchesOriginal = message.match(cnpjRegexOriginal);
+
+  if (cnpjMatchesOriginal) {
+    for (const match of cnpjMatchesOriginal) {
+      const cnpjLimpo = match.replace(/\D/g, '');
+      if (cnpjLimpo.length === 14) {
+        console.log(`📋 [Document Detection] CNPJ detectado (mascarado: **.***.***/****-${cnpjLimpo.slice(-2)})`);
+        return cnpjLimpo;
+      }
+    }
+  }
+
+  // Depois tentar na mensagem sem espaços
+  const cnpjRegex = /(\d{2}[\.]?\d{3}[\.]?\d{3}[\/]?\d{4}[\-]?\d{2})/g;
+  const cnpjMatches = cleanMessage.match(cnpjRegex);
+
+  if (cnpjMatches) {
+    for (const match of cnpjMatches) {
+      // Limpar formatação (manter apenas números)
+      const cnpjLimpo = match.replace(/\D/g, '');
+      if (cnpjLimpo.length === 14) {
+        console.log(`📋 [Document Detection] CNPJ detectado (mascarado: **.***.***/****-${cnpjLimpo.slice(-2)})`);
+        return cnpjLimpo;
+      }
+    }
+  }
+
+  // ESTRATÉGIA 3: Buscar apenas 14 dígitos seguidos (CNPJ sem formatação)
+  const cnpjPlainRegex = /\b(\d{14})\b/g;
+  const cnpjPlainMatch = cleanMessage.match(cnpjPlainRegex);
+  
+  if (cnpjPlainMatch) {
+    const cnpjLimpo = cnpjPlainMatch[0];
+    console.log(`📋 [Document Detection] CNPJ sem formatação detectado (mascarado: **.***.***/****-${cnpjLimpo.slice(-2)})`);
+    return cnpjLimpo;
   }
 
   return null;
