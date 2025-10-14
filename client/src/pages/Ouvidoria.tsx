@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, Clock, CheckCircle, XCircle, Filter, User } from "lucide-react";
+import { AlertTriangle, Clock, CheckCircle, XCircle, Filter, User, Eye } from "lucide-react";
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -18,6 +18,13 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { Complaint } from "@shared/schema";
 
 type ComplaintStatus = "novo" | "em_investigacao" | "resolvido" | "fechado";
@@ -29,6 +36,8 @@ export default function Ouvidoria() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterSeverity, setFilterSeverity] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
+  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   // Defense in depth: verify user role
   if (!user || (user.role !== "ADMIN" && user.role !== "SUPERVISOR")) {
@@ -327,21 +336,35 @@ export default function Ouvidoria() {
                       </p>
                     </TableCell>
                     <TableCell>
-                      <Select
-                        value={complaint.status}
-                        onValueChange={(value) => handleStatusChange(complaint.id, value as ComplaintStatus)}
-                        disabled={updateComplaintMutation.isPending}
-                      >
-                        <SelectTrigger className="w-[160px]" data-testid={`select-status-${complaint.id}`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="novo">Novo</SelectItem>
-                          <SelectItem value="em_investigacao">Em Investigação</SelectItem>
-                          <SelectItem value="resolvido">Resolvido</SelectItem>
-                          <SelectItem value="fechado">Fechado</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedComplaint(complaint);
+                            setDetailsOpen(true);
+                          }}
+                          data-testid={`button-view-${complaint.id}`}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Ver
+                        </Button>
+                        <Select
+                          value={complaint.status}
+                          onValueChange={(value) => handleStatusChange(complaint.id, value as ComplaintStatus)}
+                          disabled={updateComplaintMutation.isPending}
+                        >
+                          <SelectTrigger className="w-[140px]" data-testid={`select-status-${complaint.id}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="novo">Novo</SelectItem>
+                            <SelectItem value="em_investigacao">Em Investigação</SelectItem>
+                            <SelectItem value="resolvido">Resolvido</SelectItem>
+                            <SelectItem value="fechado">Fechado</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -350,6 +373,77 @@ export default function Ouvidoria() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Modal de Detalhes */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" data-testid="dialog-complaint-details">
+          <DialogHeader>
+            <DialogTitle>Detalhes da Reclamação</DialogTitle>
+            <DialogDescription>
+              Protocolo: {selectedComplaint?.id}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedComplaint && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Data</label>
+                  <p className="text-sm mt-1" data-testid="text-details-date">
+                    {format(new Date(selectedComplaint.createdAt!), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Status</label>
+                  <div className="mt-1">
+                    {getStatusBadge(selectedComplaint.status as ComplaintStatus)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Tipo</label>
+                  <div className="mt-1">
+                    {getTypeBadge(selectedComplaint.complaintType)}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Gravidade</label>
+                  <div className="mt-1">
+                    {getSeverityBadge(selectedComplaint.severity as ComplaintSeverity)}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Descrição Completa</label>
+                <div className="mt-2 p-4 bg-muted rounded-md" data-testid="text-details-description">
+                  <p className="text-sm whitespace-pre-wrap">{selectedComplaint.description}</p>
+                </div>
+              </div>
+
+              {selectedComplaint.resolution && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Resolução</label>
+                  <div className="mt-2 p-4 bg-muted rounded-md">
+                    <p className="text-sm whitespace-pre-wrap">{selectedComplaint.resolution}</p>
+                  </div>
+                </div>
+              )}
+
+              {selectedComplaint.resolutionNotes && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Notas da Resolução</label>
+                  <div className="mt-2 p-4 bg-muted rounded-md">
+                    <p className="text-sm whitespace-pre-wrap">{selectedComplaint.resolutionNotes}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
