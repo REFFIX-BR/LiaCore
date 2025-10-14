@@ -54,14 +54,15 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed 
 
 **Added: Fixed verificar_conexao Blocking Issue**
 - ✅ **CRITICAL FIX**: Assistant now verifies PPPoE status WITHOUT requiring modem reboot first
-  - Problem: Assistant NEVER called verificar_conexao tool, always responded "não consegui consultar"
-  - Root cause: Instructions required "cliente confirmar que já reiniciou modem" as pre-requisite
-  - Real case: Marcio Zebende reported "internet lenta" but assistant never diagnosed - just asked for modem reboot
-  - Impact: Zero PPPoE verifications in logs - tool was configured but never executed
-  - Solution: Changed instructions from "Apenas após reiniciar modem" → "Use SEMPRE que cliente reportar problemas"
-  - New workflow: Verify connection FIRST, THEN suggest reboot if connection is offline
-  - Location: `INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md` (lines 26-31, 147-151)
-  - Benefit: Proactive diagnosis instead of guessing - assistant can see real connection status before suggesting fixes
+  - Problem 1: Instructions required "cliente confirmar que já reiniciou modem" as pre-requisite
+  - Problem 2: Function name mismatch - OpenAI calls `consultar_pppoe_status` but code only had `verificar_conexao`
+  - Real case: Marcio Zebende (Chat whatsapp_5522997074180) - tool was called but fell through to default case
+  - Impact: Assistant responded "sistema instável" instead of querying real API
+  - Solution 1: Changed instructions from "Apenas após reiniciar modem" → "Use SEMPRE que cliente reportar problemas"
+  - Solution 2: Added `consultar_pppoe_status` case handler that redirects to same logic as `verificar_conexao`
+  - New workflow: Verify connection FIRST (using either function name), THEN suggest reboot if offline
+  - Location: `server/lib/openai.ts` (line ~665), `INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md` (lines 26-31, 147-151)
+  - Benefit: Works with both function names + auto-fetches CPF from database + proactive diagnosis
 
 **Added: Flexible CPF/CNPJ Detection System**
 - ✅ **CRITICAL UX FIX**: Enhanced regex to accept partial formatting and spaces

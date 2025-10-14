@@ -659,6 +659,95 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
           });
         }
 
+      case "consultar_pppoe_status":
+        // REDIRECIONAR para verificar_conexao (mesmo handler)
+        console.log("🔄 [AI Tool] consultar_pppoe_status → Redirecionando para verificar_conexao");
+        
+        if (!conversationId) {
+          console.error("❌ [AI Tool] consultar_pppoe_status chamada sem conversationId");
+          return JSON.stringify({
+            error: "Contexto de conversa não disponível"
+          });
+        }
+        
+        const { consultaStatusConexao: consultaPPPoE } = await import("../ai-tools");
+        const { storage: storagePPPoE } = await import("../storage");
+        
+        try {
+          console.log(`🔍 [AI Tool Handler] Iniciando consulta PPPoE para conversação ${conversationId}`);
+          
+          // ESTRATÉGIA 1: Tentar usar documento fornecido como parâmetro (cpf ou documento)
+          let documentoPPPoE = args.cpf || args.documento;
+          
+          // ESTRATÉGIA 2: Se não houver documento fornecido, buscar do banco
+          if (!documentoPPPoE) {
+            console.log(`🔍 [AI Tool Handler] Documento não fornecido como parâmetro, buscando no banco...`);
+            
+            const conversationPPPoE = await storagePPPoE.getConversation(conversationId);
+            
+            if (!conversationPPPoE) {
+              console.error("❌ [AI Tool] Conversa não encontrada:", conversationId);
+              return JSON.stringify({
+                error: "Conversa não encontrada"
+              });
+            }
+            
+            console.log(`🔍 [AI Tool Handler] Conversa encontrada. clientDocument: ${conversationPPPoE.clientDocument ? 'SIM' : 'NÃO'}`);
+            
+            if (!conversationPPPoE.clientDocument) {
+              console.warn("⚠️ [AI Tool] Cliente ainda não forneceu CPF/CNPJ");
+              return JSON.stringify({
+                error: "Para verificar sua conexão, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
+              });
+            }
+            
+            documentoPPPoE = conversationPPPoE.clientDocument;
+            console.log(`✅ [AI Tool Handler] CPF encontrado no banco! Usando CPF persistido.`);
+          } else {
+            console.log(`✅ [AI Tool Handler] Usando documento fornecido como parâmetro: ***.***.***-${documentoPPPoE.slice(-2)}`);
+          }
+          
+          console.log(`🔍 [AI Tool Handler] Chamando consultaStatusConexao com documento...`);
+          
+          // Chamar diretamente a API real
+          const conexoesPPPoE = await consultaPPPoE(
+            documentoPPPoE,
+            { conversationId },
+            storagePPPoE
+          );
+          
+          console.log(`✅ [AI Tool Handler] Status de conexão consultado com sucesso: ${conexoesPPPoE?.length || 0} conexão(ões)`);
+          
+          // Formatar resposta
+          if (!conexoesPPPoE || conexoesPPPoE.length === 0) {
+            return JSON.stringify({
+              mensagem: "Não encontrei conexões ativas para este CPF/CNPJ."
+            });
+          }
+          
+          // Mapear conexões para formato simplificado
+          const conexoesFormatadasPPPoE = conexoesPPPoE.map(conexao => ({
+            nome_cliente: conexao.nomeCliente,
+            plano: conexao.plano,
+            velocidade: conexao.velocidadeContratada,
+            login: conexao.LOGIN,
+            status_ip: conexao.statusIP,
+            status_pppoe: conexao.statusPPPoE,
+            conectado_desde: conexao.conectadoDesde,
+            minutos_conectado: conexao.minutosConectado
+          }));
+          
+          return JSON.stringify(conexoesFormatadasPPPoE);
+        } catch (error) {
+          console.error("❌ [AI Tool Handler] Erro ao consultar status PPPoE:", error);
+          if (error instanceof Error) {
+            console.error("❌ [AI Tool Handler] Stack trace:", error.stack);
+          }
+          return JSON.stringify({
+            error: error instanceof Error ? error.message : "Erro ao consultar status de conexão"
+          });
+        }
+
       case "consultar_fatura":
         // REDIRECIONAR para consulta_boleto_cliente (API real)
         if (!conversationId) {
