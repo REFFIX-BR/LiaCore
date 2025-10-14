@@ -5,6 +5,15 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Te
 
 ## Recent Changes (2025-10-14)
 
+**✅ IMPLEMENTED: Admin Reprocess Stuck Messages UI**
+- Feature: Admin dashboard now has buttons to manually reprocess stuck messages
+- UI: Two action buttons in "Ações Administrativas" card
+  - "Reprocessar Mensagens Travadas (Apresentação)" - Filters by assistant type, 120min wait time
+  - "Reprocessar Todas (Recentes)" - Processes all stuck messages under 60min
+- Functionality: Calls `/api/admin/reprocess-stuck-messages` endpoint, shows loading state, toast feedback
+- Use case: Fixes webhook delivery failures from Evolution API instances (especially "Leads" instance)
+- Location: `client/src/components/dashboards/AdminDashboard.tsx`
+
 **✅ IMPLEMENTED: Image Download Feature for Supervisors**
 - Feature: Supervisors can now download WhatsApp images directly from chat interface
 - UI: Replaced inline image display with "Baixar Imagem" button in message bubbles

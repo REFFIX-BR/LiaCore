@@ -1,5 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Activity, 
   DollarSign, 
@@ -15,7 +17,9 @@ import {
   Server,
   BarChart3,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  RefreshCw,
+  Zap
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
@@ -55,9 +59,38 @@ interface AdminMetrics {
 }
 
 export function AdminDashboard() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
   const { data: metrics, isLoading } = useQuery<AdminMetrics>({
     queryKey: ["/api/dashboard/admin"],
     refetchInterval: 30000, // 30 seconds
+  });
+
+  const reprocessMutation = useMutation({
+    mutationFn: async (params: { assistantType?: string; maxMinutesWaiting?: number }) => {
+      const response = await fetch('/api/admin/reprocess-stuck-messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+      if (!response.ok) throw new Error('Erro ao reprocessar mensagens');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Mensagens Reprocessadas",
+        description: `${data.enqueued} mensagem(ns) enfileirada(s) para processamento`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao Reprocessar",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   if (isLoading) {
@@ -269,6 +302,64 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Admin Actions */}
+      <Card className="border-primary/20" data-testid="card-admin-actions">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-primary" />
+            Ações Administrativas
+          </CardTitle>
+          <CardDescription>
+            Ferramentas para manutenção e correção do sistema
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button
+              onClick={() => reprocessMutation.mutate({ assistantType: 'apresentacao', maxMinutesWaiting: 120 })}
+              disabled={reprocessMutation.isPending}
+              variant="outline"
+              className="flex items-center gap-2"
+              data-testid="button-reprocess-messages"
+            >
+              {reprocessMutation.isPending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Reprocessando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4" />
+                  Reprocessar Mensagens Travadas (Apresentação)
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={() => reprocessMutation.mutate({ maxMinutesWaiting: 60 })}
+              disabled={reprocessMutation.isPending}
+              variant="outline"
+              className="flex items-center gap-2"
+              data-testid="button-reprocess-all"
+            >
+              {reprocessMutation.isPending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Reprocessando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4" />
+                  Reprocessar Todas (Recentes)
+                </>
+              )}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            Use quando mensagens não foram processadas via webhook. O sistema reenfileira mensagens pendentes automaticamente.
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Analytics Row - Costs & Users */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
