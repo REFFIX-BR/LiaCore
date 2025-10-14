@@ -781,8 +781,8 @@ Fonte: ${fonte}`;
           error: "Consulta de planos deve ser feita através do site ou com atendimento humano. Por favor, solicite transferência para o comercial."
         });
 
-      case "consulta_boleto_cliente":
-        console.log(`🚨 [DEBUG] ENTRANDO NO CASE consulta_boleto_cliente - conversationId: ${conversationId || 'UNDEFINED'}`);
+      case "consultar_boleto_cliente":
+        console.log(`🚨 [DEBUG] ENTRANDO NO CASE consultar_boleto_cliente - conversationId: ${conversationId || 'UNDEFINED'}`);
         if (!conversationId) {
           console.error("❌ [AI Tool] consulta_boleto_cliente chamada sem conversationId");
           return JSON.stringify({
