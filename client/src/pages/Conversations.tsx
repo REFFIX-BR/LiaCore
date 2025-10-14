@@ -6,6 +6,21 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-context";
+import { Circle } from "lucide-react";
+
+// Função para calcular cor do indicador baseado no tempo de espera
+function getWaitTimeIndicator(lastMessageTime: Date): { color: string; label: string } {
+  const now = new Date();
+  const minutesWaiting = Math.floor((now.getTime() - lastMessageTime.getTime()) / (1000 * 60));
+  
+  if (minutesWaiting < 10) {
+    return { color: "text-green-500", label: "Recente" };
+  } else if (minutesWaiting < 20) {
+    return { color: "text-yellow-500", label: "Aguardando" };
+  } else {
+    return { color: "text-red-500", label: "Crítico" };
+  }
+}
 
 interface Conversation {
   id: string;
@@ -72,20 +87,11 @@ export default function Conversations() {
   const activeConversation1 = activeConversations.find(c => c.id === activeIds[0]);
   const activeConversation2 = activeConversations.find(c => c.id === activeIds[1]);
 
-  // Verificar se conversas ainda estão ativas
-  useEffect(() => {
-    const stillActive = activeIds.filter(id => 
-      activeConversations.some(conv => conv.id === id)
-    );
-    if (stillActive.length !== activeIds.length) {
-      setActiveIds(stillActive);
-    }
-  }, [activeConversations, activeIds]);
-
   if (conversationsLoading) {
     return <div className="flex items-center justify-center h-full">Carregando...</div>;
   }
 
+  // Ordenar e filtrar conversas transferidas
   const transferredActiveConversations = transferredConversations
     .filter(conv => 
       conv.status === 'active' || 
@@ -99,6 +105,7 @@ export default function Conversations() {
       return timeB - timeA;
     });
   
+  // Ordenar e filtrar conversas atribuídas
   const assignedActiveConversations = assignedConversations
     .filter(conv => 
       conv.status === 'active' || 
@@ -111,6 +118,16 @@ export default function Conversations() {
       const timeB = new Date(b.lastMessageTime).getTime();
       return timeB - timeA;
     });
+
+  // Verificar se conversas ainda estão ativas
+  useEffect(() => {
+    const stillActive = activeIds.filter(id => 
+      activeConversations.some(conv => conv.id === id)
+    );
+    if (stillActive.length !== activeIds.length) {
+      setActiveIds(stillActive);
+    }
+  }, [activeConversations, activeIds]);
 
   return (
     <div className="h-[calc(100vh-8rem)] flex gap-4">
@@ -150,18 +167,23 @@ export default function Conversations() {
             ) : (
               <ScrollArea className="h-full">
                 <div className="p-2 space-y-2">
-                  {transferredActiveConversations.map((conv) => (
-                    <div
-                      key={conv.id}
-                      onClick={() => handleSelectConversation(conv.id)}
-                      className={`p-3 rounded-md cursor-pointer transition-colors hover-elevate ${
-                        activeIds.includes(conv.id) ? "bg-accent" : ""
-                      }`}
-                      data-testid={`conversation-item-${conv.id}`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">{conv.clientName}</div>
+                  {transferredActiveConversations.map((conv) => {
+                    const waitTimeIndicator = getWaitTimeIndicator(new Date(conv.lastMessageTime));
+                    return (
+                      <div
+                        key={conv.id}
+                        onClick={() => handleSelectConversation(conv.id)}
+                        className={`p-3 rounded-md cursor-pointer transition-colors hover-elevate ${
+                          activeIds.includes(conv.id) ? "bg-accent" : ""
+                        }`}
+                        data-testid={`conversation-item-${conv.id}`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <Circle className={`h-3 w-3 fill-current flex-shrink-0 ${waitTimeIndicator.color}`} data-testid="wait-indicator" />
+                              <div className="font-medium truncate">{conv.clientName}</div>
+                            </div>
                           {conv.transferReason && (
                             <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
                               {conv.transferReason}
@@ -181,7 +203,8 @@ export default function Conversations() {
                         {new Date(conv.transferredAt || conv.lastMessageTime).toLocaleString("pt-BR")}
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </ScrollArea>
             )}
@@ -199,18 +222,23 @@ export default function Conversations() {
             ) : (
               <ScrollArea className="h-full">
                 <div className="p-2 space-y-2">
-                  {assignedActiveConversations.map((conv) => (
-                    <div
-                      key={conv.id}
-                      onClick={() => handleSelectConversation(conv.id)}
-                      className={`p-3 rounded-md cursor-pointer transition-colors hover-elevate ${
-                        activeIds.includes(conv.id) ? "bg-accent" : ""
-                      }`}
-                      data-testid={`conversation-item-${conv.id}`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">{conv.clientName}</div>
+                  {assignedActiveConversations.map((conv) => {
+                    const waitTimeIndicator = getWaitTimeIndicator(new Date(conv.lastMessageTime));
+                    return (
+                      <div
+                        key={conv.id}
+                        onClick={() => handleSelectConversation(conv.id)}
+                        className={`p-3 rounded-md cursor-pointer transition-colors hover-elevate ${
+                          activeIds.includes(conv.id) ? "bg-accent" : ""
+                        }`}
+                        data-testid={`conversation-item-${conv.id}`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <Circle className={`h-3 w-3 fill-current flex-shrink-0 ${waitTimeIndicator.color}`} data-testid="wait-indicator" />
+                              <div className="font-medium truncate">{conv.clientName}</div>
+                            </div>
                           {conv.transferReason && (
                             <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
                               {conv.transferReason}
@@ -230,7 +258,8 @@ export default function Conversations() {
                         {new Date(conv.transferredAt || conv.lastMessageTime).toLocaleString("pt-BR")}
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </ScrollArea>
             )}

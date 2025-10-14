@@ -5,6 +5,18 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Te
 
 ## Recent Changes (2025-10-14)
 
+**✅ IMPLEMENTED: Visual Priority Indicator & Conversation Sorting**
+- Feature: Color-coded wait time indicators for conversation prioritization
+- Visual indicator: Colored circle (bolinha) next to conversation name
+  - 🟢 Green: Recent message (< 10 minutes)
+  - 🟡 Yellow: Waiting (10-20 minutes)
+  - 🔴 Red: Critical (> 20 minutes)
+- Sorting: Conversations automatically sorted by timestamp (newest first)
+- Implementation: `getWaitTimeIndicator()` function calculates color based on `lastMessageTime`
+- UI components updated: ConversationCard (Monitor), Conversations page (Transferred/Assigned tabs)
+- Benefits: Supervisors can quickly identify urgent conversations, improved response time prioritization
+- Location: `client/src/components/ConversationCard.tsx`, `client/src/pages/Conversations.tsx`, `client/src/pages/Monitor.tsx`
+
 **✅ IMPLEMENTED: Admin Reprocess Stuck Messages UI**
 - Feature: Admin dashboard now has buttons to manually reprocess stuck messages
 - UI: Two action buttons in "Ações Administrativas" card
