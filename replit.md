@@ -5,6 +5,14 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Te
 
 ## Recent Changes (2025-10-14)
 
+**✅ FIXED: Image Analysis with Vision - Fallback to Base64**
+- Problem: Images received and saved but not analyzed with Vision (no mediaUrl from Evolution API)
+- Root cause: Worker required `imageUrl` but Evolution webhook doesn't always provide `mediaUrl`
+- Solution: Worker now fetches `imageBase64` from database when URL is unavailable
+- New flow: Check imageUrl → if missing, fetch from DB → analyze with Vision
+- Result: ✅ All images now analyzed successfully (boletos, documents, receipts)
+- Location: `server/workers.ts` (lines 328-363)
+
 **✅ OTIMIZADO: Worker Concurrency - Performance 4x Maior**
 - Problem: Workers sobrecarregados - mensagens demorando para processar (5 workers, 10 msg/s)
 - Solution: Implementada configuração balanceada (Opção 1 - Moderado)

@@ -323,19 +323,39 @@ if (redisConnection) {
       let enhancedMessage = message;
 
       // 4. If message has image, process it first
-      if (hasImage && imageUrl) {
+      if (hasImage) {
         console.log(`🖼️ [Worker] Image detected, analyzing...`);
         
-        const promptWithContext = message 
-          ? `${message}\n\nPor favor, analise a imagem considerando a mensagem do cliente acima.`
-          : 'Analise esta imagem em detalhes e extraia todas as informações relevantes. Se for um boleto, extraia identificador, vencimento, valor. Se for um documento, extraia CPF/CNPJ.';
+        // Se não tiver URL, buscar base64 do banco de dados
+        let imageSource = imageUrl;
         
-        const visionResult = await analyzeImageWithVision(imageUrl, promptWithContext);
+        if (!imageSource) {
+          console.log(`📥 [Worker] No imageUrl, fetching from database...`);
+          const messages = await storage.getConversationMessages(conversationId);
+          const lastMessage = messages[0]; // Mensagem mais recente
+          
+          if (lastMessage?.imageBase64) {
+            imageSource = `data:image/jpeg;base64,${lastMessage.imageBase64}`;
+            console.log(`✅ [Worker] Image base64 retrieved from database (${lastMessage.imageBase64.length} chars)`);
+          } else {
+            console.warn(`⚠️ [Worker] No image found in database for conversation ${conversationId}`);
+          }
+        }
+        
+        if (imageSource) {
+          const promptWithContext = message 
+            ? `${message}\n\nPor favor, analise a imagem considerando a mensagem do cliente acima.`
+            : 'Analise esta imagem em detalhes e extraia todas as informações relevantes. Se for um boleto, extraia identificador, vencimento, valor. Se for um documento, extraia CPF/CNPJ.';
+          
+          const visionResult = await analyzeImageWithVision(imageSource, promptWithContext);
 
-        if (visionResult) {
-          enhancedMessage = message 
-            ? `${message}\n\n[Análise da imagem: ${visionResult}]`
-            : `[Imagem enviada - ${visionResult}]`;
+          if (visionResult) {
+            enhancedMessage = message 
+              ? `${message}\n\n[Análise da imagem: ${visionResult}]`
+              : `[Imagem enviada - ${visionResult}]`;
+              
+            console.log(`✅ [Worker] Vision analysis completed successfully`);
+          }
         }
       }
 
