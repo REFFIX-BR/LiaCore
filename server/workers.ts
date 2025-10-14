@@ -539,9 +539,9 @@ if (redisConnection) {
   },
   {
     connection: redisConnection,
-    concurrency: 5,
+    concurrency: 15, // Aumentado de 5 para 15 - processa 15 mensagens simultaneamente
     limiter: {
-      max: 10,
+      max: 30, // Aumentado de 10 para 30 - permite 30 jobs/segundo
       duration: 1000,
     },
   }
@@ -591,7 +591,7 @@ if (redisConnection) {
   },
   {
     connection: redisConnection,
-    concurrency: 2,
+    concurrency: 5, // Aumentado de 2 para 5 - análise de imagens mais rápida
   }
 );
 
@@ -649,7 +649,7 @@ Responda apenas com o número (0 a 10).
   },
   {
     connection: redisConnection,
-    concurrency: 3,
+    concurrency: 5, // Aumentado de 3 para 5 - envio de NPS mais rápido
   }
   );
 
@@ -910,10 +910,10 @@ Responda apenas com o número (0 a 10).
 
   console.log('✅ [Workers] Sistema de workers inicializado');
   console.log('👷 [Workers] Workers ativos: 5');
-  console.log('⚡ [Workers] Concurrency:');
-  console.log('  - Message Processing: 5');
-  console.log('  - Image Analysis: 2');
-  console.log('  - NPS Survey: 3');
+  console.log('⚡ [Workers] Concurrency (OTIMIZADO):');
+  console.log('  - Message Processing: 15 (jobs/s: 30)');
+  console.log('  - Image Analysis: 5');
+  console.log('  - NPS Survey: 5');
   console.log('  - Inactivity Follow-up: 2');
   console.log('  - Auto-Closure: 2');
 } else {
