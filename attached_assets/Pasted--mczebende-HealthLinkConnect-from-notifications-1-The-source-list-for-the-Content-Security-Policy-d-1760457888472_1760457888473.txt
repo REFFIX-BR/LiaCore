@@ -1,0 +1,990 @@
+/@mczebende/HealthLinkConnect?from=notifications:1 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.Entenda o erro
+/@mczebende/HealthLinkConnect?from=notifications:1 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?Entenda o erro
+/@mczebende/HealthLinkConnect?from=notifications:1 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.Entenda o erro
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.Entenda o erro
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?Entenda o erro
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.Entenda o erro
+HealthLinkConnect?from=notifications:1 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.Entenda o erro
+HealthLinkConnect?from=notifications:1 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?Entenda o erro
+HealthLinkConnect?from=notifications:1 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.Entenda o erro
+_app-a360c359dff260b0.js:28 
+      /////////////////////
+   ///////////////////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////        Curious and driven?
+  ///////////////@@@@@@@///////        Work with us!
+  ///////////////@@@@@@@///////
+  ///////////////@@@@@@@///////        https://join.replit.com/hack.with.us
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@#//////////////
+   ///////////////////////////
+      /////////////////////
+      
+framework-d84a519f452c58f0.js:1 [Violation] 'message' handler took 151ms
+js?id=AW-11411994397:138 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+Oc @ js?id=AW-11411994397:138
+k.Hq @ js?id=AW-11411994397:549
+(anônimo) @ js?id=AW-11411994397:548
+n @ _app-a360c359dff260b0.js:28
+setTimeout
+(anônimo) @ _app-a360c359dff260b0.js:28
+Tc @ js?id=AW-11411994397:139
+dy @ js?id=AW-11411994397:548
+fy @ js?id=AW-11411994397:553
+YI @ js?id=AW-11411994397:702
+ZI @ js?id=AW-11411994397:702
+iK @ js?id=AW-11411994397:728
+f @ js?id=AW-11411994397:729
+(anônimo) @ js?id=AW-11411994397:731
+Bl @ js?id=AW-11411994397:293
+Sn @ js?id=AW-11411994397:312
+kK @ js?id=AW-11411994397:731
+u @ js?id=AW-11411994397:363
+Kl @ js?id=AW-11411994397:295
+Up @ js?id=AW-11411994397:363
+(anônimo) @ js?id=AW-11411994397:367
+Tp.push @ js?id=AW-11411994397:365
+config @ js?id=AW-11411994397:613
+pB @ js?id=AW-11411994397:622
+b.push @ js?id=AW-11411994397:628
+(anônimo) @ index.js:49
+(anônimo) @ index.js:86
+(anônimo) @ protos.js:262
+(anônimo) @ index.js:27
+n @ _app-a360c359dff260b0.js:28
+script
+(anônimo) @ index.js:44
+(anônimo) @ protos.js:261
+(anônimo) @ index.js:59
+(anônimo) @ protos.js:322
+(anônimo) @ index.ts:171
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+(anônimo) @ ajs-destination.bundle.8e6b895db75187c55313.js:1
+(anônimo) @ event-queue.js:50
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+(anônimo) @ event-queue.js:30
+(anônimo) @ index.ts:410
+(anônimo) @ index.ts:408
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+(anônimo) @ index.ts:404
+(anônimo) @ index.ts:200
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+ne @ index.ts:116
+(anônimo) @ index.ts:304
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+re @ index.ts:239
+(anônimo) @ index.ts:338
+Promise.then
+(anônimo) @ index.ts:339
+t @ index.ts:307
+n @ index.ts:337
+(anônimo) @ index.ts:389
+(anônimo) @ index.ts:393
+(anônimo) @ standalone-analytics.ts:53
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+se @ standalone-analytics.ts:49
+(anônimo) @ standalone.ts:69
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+de @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1Entenda o erro
+js?id=AW-11411994397:138 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+Oc @ js?id=AW-11411994397:138
+k.Hq @ js?id=AW-11411994397:549
+(anônimo) @ js?id=AW-11411994397:548
+n @ _app-a360c359dff260b0.js:28
+setTimeout
+(anônimo) @ _app-a360c359dff260b0.js:28
+Tc @ js?id=AW-11411994397:139
+dy @ js?id=AW-11411994397:548
+fy @ js?id=AW-11411994397:553
+YI @ js?id=AW-11411994397:702
+ZI @ js?id=AW-11411994397:702
+iK @ js?id=AW-11411994397:728
+f @ js?id=AW-11411994397:729
+(anônimo) @ js?id=AW-11411994397:731
+Bl @ js?id=AW-11411994397:293
+Sn @ js?id=AW-11411994397:312
+kK @ js?id=AW-11411994397:731
+u @ js?id=AW-11411994397:363
+Kl @ js?id=AW-11411994397:295
+Up @ js?id=AW-11411994397:363
+(anônimo) @ js?id=AW-11411994397:367
+Tp.push @ js?id=AW-11411994397:365
+config @ js?id=AW-11411994397:613
+pB @ js?id=AW-11411994397:622
+b.push @ js?id=AW-11411994397:628
+(anônimo) @ index.js:49
+(anônimo) @ index.js:86
+(anônimo) @ protos.js:262
+(anônimo) @ index.js:27
+n @ _app-a360c359dff260b0.js:28
+script
+(anônimo) @ index.js:44
+(anônimo) @ protos.js:261
+(anônimo) @ index.js:59
+(anônimo) @ protos.js:322
+(anônimo) @ index.ts:171
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+(anônimo) @ ajs-destination.bundle.8e6b895db75187c55313.js:1
+(anônimo) @ event-queue.js:50
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+(anônimo) @ event-queue.js:30
+(anônimo) @ index.ts:410
+(anônimo) @ index.ts:408
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+(anônimo) @ index.ts:404
+(anônimo) @ index.ts:200
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+ne @ index.ts:116
+(anônimo) @ index.ts:304
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+re @ index.ts:239
+(anônimo) @ index.ts:338
+Promise.then
+(anônimo) @ index.ts:339
+t @ index.ts:307
+n @ index.ts:337
+(anônimo) @ index.ts:389
+(anônimo) @ index.ts:393
+(anônimo) @ standalone-analytics.ts:53
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+se @ standalone-analytics.ts:49
+(anônimo) @ standalone.ts:69
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+de @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1Entenda o erro
+js?id=AW-11411994397:138 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+Oc @ js?id=AW-11411994397:138
+k.Hq @ js?id=AW-11411994397:549
+(anônimo) @ js?id=AW-11411994397:548
+n @ _app-a360c359dff260b0.js:28
+setTimeout
+(anônimo) @ _app-a360c359dff260b0.js:28
+Tc @ js?id=AW-11411994397:139
+dy @ js?id=AW-11411994397:548
+fy @ js?id=AW-11411994397:553
+YI @ js?id=AW-11411994397:702
+ZI @ js?id=AW-11411994397:702
+iK @ js?id=AW-11411994397:728
+f @ js?id=AW-11411994397:729
+(anônimo) @ js?id=AW-11411994397:731
+Bl @ js?id=AW-11411994397:293
+Sn @ js?id=AW-11411994397:312
+kK @ js?id=AW-11411994397:731
+u @ js?id=AW-11411994397:363
+Kl @ js?id=AW-11411994397:295
+Up @ js?id=AW-11411994397:363
+(anônimo) @ js?id=AW-11411994397:367
+Tp.push @ js?id=AW-11411994397:365
+config @ js?id=AW-11411994397:613
+pB @ js?id=AW-11411994397:622
+b.push @ js?id=AW-11411994397:628
+(anônimo) @ index.js:49
+(anônimo) @ index.js:86
+(anônimo) @ protos.js:262
+(anônimo) @ index.js:27
+n @ _app-a360c359dff260b0.js:28
+script
+(anônimo) @ index.js:44
+(anônimo) @ protos.js:261
+(anônimo) @ index.js:59
+(anônimo) @ protos.js:322
+(anônimo) @ index.ts:171
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+(anônimo) @ ajs-destination.bundle.8e6b895db75187c55313.js:1
+(anônimo) @ event-queue.js:50
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+(anônimo) @ event-queue.js:30
+(anônimo) @ index.ts:410
+(anônimo) @ index.ts:408
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+(anônimo) @ index.ts:404
+(anônimo) @ index.ts:200
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+ne @ index.ts:116
+(anônimo) @ index.ts:304
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+re @ index.ts:239
+(anônimo) @ index.ts:338
+Promise.then
+(anônimo) @ index.ts:339
+t @ index.ts:307
+n @ index.ts:337
+(anônimo) @ index.ts:389
+(anônimo) @ index.ts:393
+(anônimo) @ standalone-analytics.ts:53
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+se @ standalone-analytics.ts:49
+(anônimo) @ standalone.ts:69
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+de @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1Entenda o erro
+js?id=AW-11411994397:138 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+Oc @ js?id=AW-11411994397:138
+k.Hq @ js?id=AW-11411994397:549
+(anônimo) @ js?id=AW-11411994397:548
+n @ _app-a360c359dff260b0.js:28
+setTimeout
+(anônimo) @ _app-a360c359dff260b0.js:28
+Tc @ js?id=AW-11411994397:139
+dy @ js?id=AW-11411994397:548
+fy @ js?id=AW-11411994397:553
+YI @ js?id=AW-11411994397:702
+ZI @ js?id=AW-11411994397:702
+iK @ js?id=AW-11411994397:728
+f @ js?id=AW-11411994397:729
+(anônimo) @ js?id=AW-11411994397:731
+Bl @ js?id=AW-11411994397:293
+Sn @ js?id=AW-11411994397:312
+kK @ js?id=AW-11411994397:731
+u @ js?id=AW-11411994397:363
+Kl @ js?id=AW-11411994397:295
+Up @ js?id=AW-11411994397:363
+(anônimo) @ js?id=AW-11411994397:367
+Tp.push @ js?id=AW-11411994397:365
+config @ js?id=AW-11411994397:613
+pB @ js?id=AW-11411994397:622
+b.push @ js?id=AW-11411994397:628
+(anônimo) @ index.js:49
+(anônimo) @ index.js:86
+(anônimo) @ protos.js:262
+(anônimo) @ index.js:27
+n @ _app-a360c359dff260b0.js:28
+script
+(anônimo) @ index.js:44
+(anônimo) @ protos.js:261
+(anônimo) @ index.js:59
+(anônimo) @ protos.js:322
+(anônimo) @ index.ts:171
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+(anônimo) @ ajs-destination.bundle.8e6b895db75187c55313.js:1
+(anônimo) @ event-queue.js:50
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+(anônimo) @ event-queue.js:30
+(anônimo) @ index.ts:410
+(anônimo) @ index.ts:408
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+(anônimo) @ index.ts:404
+(anônimo) @ index.ts:200
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+ne @ index.ts:116
+(anônimo) @ index.ts:304
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+re @ index.ts:239
+(anônimo) @ index.ts:338
+Promise.then
+(anônimo) @ index.ts:339
+t @ index.ts:307
+n @ index.ts:337
+(anônimo) @ index.ts:389
+(anônimo) @ index.ts:393
+(anônimo) @ standalone-analytics.ts:53
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+se @ standalone-analytics.ts:49
+(anônimo) @ standalone.ts:69
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+de @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1Entenda o erro
+js?id=AW-11411994397:138 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+Oc @ js?id=AW-11411994397:138
+k.Hq @ js?id=AW-11411994397:549
+(anônimo) @ js?id=AW-11411994397:548
+n @ _app-a360c359dff260b0.js:28
+setTimeout
+(anônimo) @ _app-a360c359dff260b0.js:28
+Tc @ js?id=AW-11411994397:139
+dy @ js?id=AW-11411994397:548
+fy @ js?id=AW-11411994397:553
+YI @ js?id=AW-11411994397:702
+ZI @ js?id=AW-11411994397:702
+iK @ js?id=AW-11411994397:728
+f @ js?id=AW-11411994397:729
+(anônimo) @ js?id=AW-11411994397:731
+Bl @ js?id=AW-11411994397:293
+Sn @ js?id=AW-11411994397:312
+kK @ js?id=AW-11411994397:731
+u @ js?id=AW-11411994397:363
+Kl @ js?id=AW-11411994397:295
+Up @ js?id=AW-11411994397:363
+(anônimo) @ js?id=AW-11411994397:367
+Tp.push @ js?id=AW-11411994397:365
+config @ js?id=AW-11411994397:613
+pB @ js?id=AW-11411994397:622
+b.push @ js?id=AW-11411994397:628
+(anônimo) @ index.js:49
+(anônimo) @ index.js:86
+(anônimo) @ protos.js:262
+(anônimo) @ index.js:27
+n @ _app-a360c359dff260b0.js:28
+script
+(anônimo) @ index.js:44
+(anônimo) @ protos.js:261
+(anônimo) @ index.js:59
+(anônimo) @ protos.js:322
+(anônimo) @ index.ts:171
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+(anônimo) @ ajs-destination.bundle.8e6b895db75187c55313.js:1
+(anônimo) @ event-queue.js:50
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+(anônimo) @ event-queue.js:30
+(anônimo) @ index.ts:410
+(anônimo) @ index.ts:408
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+(anônimo) @ index.ts:404
+(anônimo) @ index.ts:200
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+ne @ index.ts:116
+(anônimo) @ index.ts:304
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+re @ index.ts:239
+(anônimo) @ index.ts:338
+Promise.then
+(anônimo) @ index.ts:339
+t @ index.ts:307
+n @ index.ts:337
+(anônimo) @ index.ts:389
+(anônimo) @ index.ts:393
+(anônimo) @ standalone-analytics.ts:53
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+se @ standalone-analytics.ts:49
+(anônimo) @ standalone.ts:69
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+de @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1Entenda o erro
+js?id=AW-11411994397:138 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+Oc @ js?id=AW-11411994397:138
+k.Hq @ js?id=AW-11411994397:549
+(anônimo) @ js?id=AW-11411994397:548
+n @ _app-a360c359dff260b0.js:28
+setTimeout
+(anônimo) @ _app-a360c359dff260b0.js:28
+Tc @ js?id=AW-11411994397:139
+dy @ js?id=AW-11411994397:548
+fy @ js?id=AW-11411994397:553
+YI @ js?id=AW-11411994397:702
+ZI @ js?id=AW-11411994397:702
+iK @ js?id=AW-11411994397:728
+f @ js?id=AW-11411994397:729
+(anônimo) @ js?id=AW-11411994397:731
+Bl @ js?id=AW-11411994397:293
+Sn @ js?id=AW-11411994397:312
+kK @ js?id=AW-11411994397:731
+u @ js?id=AW-11411994397:363
+Kl @ js?id=AW-11411994397:295
+Up @ js?id=AW-11411994397:363
+(anônimo) @ js?id=AW-11411994397:367
+Tp.push @ js?id=AW-11411994397:365
+config @ js?id=AW-11411994397:613
+pB @ js?id=AW-11411994397:622
+b.push @ js?id=AW-11411994397:628
+(anônimo) @ index.js:49
+(anônimo) @ index.js:86
+(anônimo) @ protos.js:262
+(anônimo) @ index.js:27
+n @ _app-a360c359dff260b0.js:28
+script
+(anônimo) @ index.js:44
+(anônimo) @ protos.js:261
+(anônimo) @ index.js:59
+(anônimo) @ protos.js:322
+(anônimo) @ index.ts:171
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+(anônimo) @ ajs-destination.bundle.8e6b895db75187c55313.js:1
+(anônimo) @ event-queue.js:50
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+(anônimo) @ event-queue.js:30
+(anônimo) @ index.ts:410
+(anônimo) @ index.ts:408
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+(anônimo) @ index.ts:404
+(anônimo) @ index.ts:200
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+ne @ index.ts:116
+(anônimo) @ index.ts:304
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+re @ index.ts:239
+(anônimo) @ index.ts:338
+Promise.then
+(anônimo) @ index.ts:339
+t @ index.ts:307
+n @ index.ts:337
+(anônimo) @ index.ts:389
+(anônimo) @ index.ts:393
+(anônimo) @ standalone-analytics.ts:53
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+se @ standalone-analytics.ts:49
+(anônimo) @ standalone.ts:69
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+de @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1Entenda o erro
+js?id=AW-11411994397:549 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+q @ js?id=AW-11411994397:549
+k.Hq @ js?id=AW-11411994397:550
+(anônimo) @ js?id=AW-11411994397:548
+n @ _app-a360c359dff260b0.js:28
+setTimeout
+(anônimo) @ _app-a360c359dff260b0.js:28
+Tc @ js?id=AW-11411994397:139
+dy @ js?id=AW-11411994397:548
+fy @ js?id=AW-11411994397:553
+YI @ js?id=AW-11411994397:702
+ZI @ js?id=AW-11411994397:702
+iK @ js?id=AW-11411994397:728
+f @ js?id=AW-11411994397:729
+(anônimo) @ js?id=AW-11411994397:731
+Bl @ js?id=AW-11411994397:293
+Sn @ js?id=AW-11411994397:312
+kK @ js?id=AW-11411994397:731
+u @ js?id=AW-11411994397:363
+Kl @ js?id=AW-11411994397:295
+Up @ js?id=AW-11411994397:363
+(anônimo) @ js?id=AW-11411994397:367
+Tp.push @ js?id=AW-11411994397:365
+config @ js?id=AW-11411994397:613
+pB @ js?id=AW-11411994397:622
+b.push @ js?id=AW-11411994397:628
+(anônimo) @ index.js:49
+(anônimo) @ index.js:86
+(anônimo) @ protos.js:262
+(anônimo) @ index.js:27
+n @ _app-a360c359dff260b0.js:28
+script
+(anônimo) @ index.js:44
+(anônimo) @ protos.js:261
+(anônimo) @ index.js:59
+(anônimo) @ protos.js:322
+(anônimo) @ index.ts:171
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+(anônimo) @ ajs-destination.bundle.8e6b895db75187c55313.js:1
+(anônimo) @ event-queue.js:50
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+(anônimo) @ event-queue.js:30
+(anônimo) @ index.ts:410
+(anônimo) @ index.ts:408
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+(anônimo) @ index.ts:404
+(anônimo) @ index.ts:200
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+ne @ index.ts:116
+(anônimo) @ index.ts:304
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+re @ index.ts:239
+(anônimo) @ index.ts:338
+Promise.then
+(anônimo) @ index.ts:339
+t @ index.ts:307
+n @ index.ts:337
+(anônimo) @ index.ts:389
+(anônimo) @ index.ts:393
+(anônimo) @ standalone-analytics.ts:53
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+se @ standalone-analytics.ts:49
+(anônimo) @ standalone.ts:69
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+de @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1Entenda o erro
+js?id=AW-11411994397:549 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+q @ js?id=AW-11411994397:549
+k.Hq @ js?id=AW-11411994397:550
+(anônimo) @ js?id=AW-11411994397:548
+n @ _app-a360c359dff260b0.js:28
+setTimeout
+(anônimo) @ _app-a360c359dff260b0.js:28
+Tc @ js?id=AW-11411994397:139
+dy @ js?id=AW-11411994397:548
+fy @ js?id=AW-11411994397:553
+YI @ js?id=AW-11411994397:702
+ZI @ js?id=AW-11411994397:702
+iK @ js?id=AW-11411994397:728
+f @ js?id=AW-11411994397:729
+(anônimo) @ js?id=AW-11411994397:731
+Bl @ js?id=AW-11411994397:293
+Sn @ js?id=AW-11411994397:312
+kK @ js?id=AW-11411994397:731
+u @ js?id=AW-11411994397:363
+Kl @ js?id=AW-11411994397:295
+Up @ js?id=AW-11411994397:363
+(anônimo) @ js?id=AW-11411994397:367
+Tp.push @ js?id=AW-11411994397:365
+config @ js?id=AW-11411994397:613
+pB @ js?id=AW-11411994397:622
+b.push @ js?id=AW-11411994397:628
+(anônimo) @ index.js:49
+(anônimo) @ index.js:86
+(anônimo) @ protos.js:262
+(anônimo) @ index.js:27
+n @ _app-a360c359dff260b0.js:28
+script
+(anônimo) @ index.js:44
+(anônimo) @ protos.js:261
+(anônimo) @ index.js:59
+(anônimo) @ protos.js:322
+(anônimo) @ index.ts:171
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+(anônimo) @ ajs-destination.bundle.8e6b895db75187c55313.js:1
+(anônimo) @ event-queue.js:50
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+(anônimo) @ event-queue.js:30
+(anônimo) @ index.ts:410
+(anônimo) @ index.ts:408
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+(anônimo) @ index.ts:404
+(anônimo) @ index.ts:200
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+ne @ index.ts:116
+(anônimo) @ index.ts:304
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+re @ index.ts:239
+(anônimo) @ index.ts:338
+Promise.then
+(anônimo) @ index.ts:339
+t @ index.ts:307
+n @ index.ts:337
+(anônimo) @ index.ts:389
+(anônimo) @ index.ts:393
+(anônimo) @ standalone-analytics.ts:53
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+se @ standalone-analytics.ts:49
+(anônimo) @ standalone.ts:69
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+de @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1Entenda o erro
+js?id=AW-11411994397:549 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+q @ js?id=AW-11411994397:549
+k.Hq @ js?id=AW-11411994397:550
+(anônimo) @ js?id=AW-11411994397:548
+n @ _app-a360c359dff260b0.js:28
+setTimeout
+(anônimo) @ _app-a360c359dff260b0.js:28
+Tc @ js?id=AW-11411994397:139
+dy @ js?id=AW-11411994397:548
+fy @ js?id=AW-11411994397:553
+YI @ js?id=AW-11411994397:702
+ZI @ js?id=AW-11411994397:702
+iK @ js?id=AW-11411994397:728
+f @ js?id=AW-11411994397:729
+(anônimo) @ js?id=AW-11411994397:731
+Bl @ js?id=AW-11411994397:293
+Sn @ js?id=AW-11411994397:312
+kK @ js?id=AW-11411994397:731
+u @ js?id=AW-11411994397:363
+Kl @ js?id=AW-11411994397:295
+Up @ js?id=AW-11411994397:363
+(anônimo) @ js?id=AW-11411994397:367
+Tp.push @ js?id=AW-11411994397:365
+config @ js?id=AW-11411994397:613
+pB @ js?id=AW-11411994397:622
+b.push @ js?id=AW-11411994397:628
+(anônimo) @ index.js:49
+(anônimo) @ index.js:86
+(anônimo) @ protos.js:262
+(anônimo) @ index.js:27
+n @ _app-a360c359dff260b0.js:28
+script
+(anônimo) @ index.js:44
+(anônimo) @ protos.js:261
+(anônimo) @ index.js:59
+(anônimo) @ protos.js:322
+(anônimo) @ index.ts:171
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+(anônimo) @ ajs-destination.bundle.8e6b895db75187c55313.js:1
+(anônimo) @ event-queue.js:50
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+(anônimo) @ event-queue.js:30
+(anônimo) @ index.ts:410
+(anônimo) @ index.ts:408
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+(anônimo) @ index.ts:404
+(anônimo) @ index.ts:200
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+ne @ index.ts:116
+(anônimo) @ index.ts:304
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+s @ tslib.es6.js:73
+Promise.then
+a @ tslib.es6.js:76
+(anônimo) @ tslib.es6.js:76
+u @ tslib.es6.js:72
+re @ index.ts:239
+(anônimo) @ index.ts:338
+Promise.then
+(anônimo) @ index.ts:339
+t @ index.ts:307
+n @ index.ts:337
+(anônimo) @ index.ts:389
+(anônimo) @ index.ts:393
+(anônimo) @ standalone-analytics.ts:53
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+se @ standalone-analytics.ts:49
+(anônimo) @ standalone.ts:69
+(anônimo) @ tslib.es6.js:103
+(anônimo) @ tslib.es6.js:108
+(anônimo) @ tslib.es6.js:80
+u @ tslib.es6.js:72
+de @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1
+(anônimo) @ sdk.min.js:1Entenda o erro
+_app-a360c359dff260b0.js:28 [LaunchDarkly] LaunchDarkly client initialized
+_app-a360c359dff260b0.js:28 [Violation] 'setTimeout' handler took 136ms
