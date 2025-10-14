@@ -22,14 +22,13 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Te
 - ⚠️ **ACTION REQUIRED**: Enable `registrar_reclamacao_ouvidoria` in OpenAI Dashboard for Ouvidoria assistant
 - Location: `INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md` (lines 752-756, 674-678, 718-720)
 
-**✅ FIXED: Multi-Instance Evolution API Key Management**
-- Problem: Supervisor/agent messages saved to database but never sent to WhatsApp
-- Root cause: Code used default API key (testecortex1 instance) for all instances
-- Discovery: testecortex1 doesn't exist (404); active instances are Leads (125 conv), Cobranca (103 conv)
-- Solution: Created `getEvolutionApiKey()` to fetch instance-specific API keys from environment
-- Updated all Evolution functions: sendWhatsAppMessage, sendWhatsAppImage, sendWhatsAppDocument, deleteWhatsAppMessage
-- Test result: ✅ Message sent successfully to 5524988239995 via Leads (ID: 3EB06B50...)
-- Location: `server/routes.ts` (lines 31-44)
+**✅ FIXED: Multi-Instance Evolution API Key Management - Case Sensitivity Bug**
+- Problem: All WhatsApp messages failing with "Unauthorized" despite correct API keys configured
+- Root cause: Environment variables are uppercase (EVOLUTION_API_KEY_COBRANCA, EVOLUTION_API_KEY_LEADS) but code was searching for mixed case (EVOLUTION_API_KEY_Cobranca, EVOLUTION_API_KEY_Leads)
+- Solution: Added `.toUpperCase()` conversion when building environment variable names
+- Updated functions: `getEvolutionApiKey()` in `server/routes.ts` and `sendWhatsAppMessage()` in `server/workers.ts`
+- Test result: ✅ Messages now sent successfully to all instances (Cobranca, Leads)
+- Location: `server/routes.ts` (line 37), `server/workers.ts` (lines 58, 62)
 
 **✅ IMPLEMENTED: Two-Stage Automatic Conversation Closure System**
 - Feature: Automated conversation closure for inactive AI conversations to improve resource management

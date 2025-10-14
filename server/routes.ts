@@ -30,8 +30,8 @@ function getEvolutionApiKey(instanceName?: string): string | undefined {
     return EVOLUTION_CONFIG.apiKey;
   }
   
-  // Try to get instance-specific key from environment
-  const instanceKey = process.env[`EVOLUTION_API_KEY_${instanceName}`];
+  // Try to get instance-specific key from environment (convert to uppercase)
+  const instanceKey = process.env[`EVOLUTION_API_KEY_${instanceName.toUpperCase()}`];
   if (instanceKey) {
     return instanceKey;
   }
