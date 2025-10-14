@@ -190,7 +190,7 @@ export async function consultaBoletoCliente(
 
     const boletos = await fetchWithRetry<ConsultaBoletoResult[]>(
       "https://webhook.trtelecom.net/webhook/consulta_boleto",
-      { documento },
+      { documento: documentoNormalizado },
       { operationName: "consulta de boletos" }
     );
     
@@ -242,7 +242,7 @@ export async function consultaStatusConexao(
 
     const conexoes = await fetchWithRetry<StatusConexaoResult[]>(
       "https://webhook.trtelecom.net/webhook/check_pppoe_status",
-      { documento },
+      { documento: documentoNormalizado },
       { operationName: "consulta de status PPPoE" }
     );
     
@@ -301,7 +301,7 @@ export async function solicitarDesbloqueio(
 
     const resultado = await fetchWithRetry<DesbloqueioResult[]>(
       "https://webhook.trtelecom.net/webhook/consulta_desbloqueio",
-      { documento },
+      { documento: documentoNormalizado },
       { operationName: "solicitação de desbloqueio" }
     );
     
