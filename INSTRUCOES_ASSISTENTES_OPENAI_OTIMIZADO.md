@@ -445,6 +445,9 @@ Revise histórico → Se CPF ausente: "Para prosseguir, preciso do seu CPF ou CN
 1. Consultar boleto (vencimento mais próximo)
 2. Consulte base: "regras de envio de faturas" para formato exato
 3. Envie com TODAS as informações (nunca omita dados)
+4. **SEMPRE inclua o link_pagamento do boleto** para facilitar o pagamento
+   - Exemplo: "Link para pagamento: [link_pagamento]"
+   - O link permite pagar direto pelo celular sem digitar código de barras
 
 **Redução de Conexão:**
 Consulte base: "política de redução e desbloqueio"

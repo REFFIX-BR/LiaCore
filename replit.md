@@ -20,6 +20,12 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed 
   - Solution: Standardized all function names to `consultar_*` pattern (with 'r')
   - Affected: `consultar_boleto_cliente`, normalized in `server/ai-tools.ts`
   - Result: Financeiro assistant now successfully queries real boletos from TR Telecom API
+- ✅ **FEATURE ENHANCEMENT**: Boleto responses now include payment link
+  - Enhancement: Added `link_pagamento` field to boleto responses
+  - Benefit: Clients can now pay directly via link without typing código de barras
+  - Implementation: Response formatting in `server/lib/openai.ts` (line ~841)
+  - Assistant instructions updated in `INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md`
+  - Location: Financeiro assistant now sends formatted boletos with link, código de barras, and PIX
 
 **Previous Changes (2025-10-13)**
 - ✅ Automatic CPF/CNPJ detection from client messages

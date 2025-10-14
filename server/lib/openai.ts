@@ -826,7 +826,25 @@ Fonte: ${fonte}`;
           );
           
           console.log(`✅ [AI Tool Handler] Boletos consultados com sucesso: ${boletos?.length || 0} boleto(s)`);
-          return JSON.stringify(boletos);
+          
+          // Formatar resposta com link incluído
+          if (!boletos || boletos.length === 0) {
+            return JSON.stringify({
+              mensagem: "Não encontrei boletos em aberto ou vencidos para este CPF/CNPJ."
+            });
+          }
+          
+          // Mapear boletos para incluir link na descrição formatada
+          const boletosFormatados = boletos.map(boleto => ({
+            vencimento: boleto.DATA_VENCIMENTO,
+            valor: boleto.VALOR_TOTAL,
+            codigo_barras: boleto.CODIGO_BARRA_TRANSACAO,
+            link_pagamento: boleto.link_carne_completo,
+            pix: boleto.PIX_TXT,
+            status: boleto.STATUS
+          }));
+          
+          return JSON.stringify(boletosFormatados);
         } catch (error) {
           console.error("❌ [AI Tool Handler] Erro ao consultar boletos:", error);
           if (error instanceof Error) {
