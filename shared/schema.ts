@@ -97,6 +97,8 @@ export const messages = pgTable("messages", {
   remoteJid: text("remote_jid"), // JID do chat WhatsApp (necessário para deletar)
   isPrivate: boolean("is_private").default(false), // Mensagens privadas (notas internas, não enviadas ao cliente)
   sendBy: text("send_by"), // Identificador de quem enviou (supervisor, agent, ai, client)
+  deletedAt: timestamp("deleted_at"), // Quando a mensagem foi deletada (soft delete)
+  deletedBy: text("deleted_by"), // Quem deletou a mensagem
 }, (table) => ({
   // Índices para queries rápidas de mensagens e paginação
   conversationIdIdx: index("messages_conversation_id_idx").on(table.conversationId),
