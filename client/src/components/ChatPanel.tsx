@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, ChevronDown, X, Image as ImageIcon, Mic, Users, FileText } from "lucide-react";
+import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, ChevronDown, X, Image as ImageIcon, Mic, Users, FileText, Bold } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -70,6 +70,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
   const { user, isAgent, isAdmin, isSupervisor } = useAuth();
   const isAdminOrSupervisor = isAdmin || isSupervisor;
@@ -502,6 +503,37 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
     }
   };
 
+  // Função para formatar texto em negrito
+  const handleBoldText = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = messageContent.substring(start, end);
+
+    if (selectedText) {
+      // Se há texto selecionado, envolve com asteriscos
+      const newText = messageContent.substring(0, start) + `*${selectedText}*` + messageContent.substring(end);
+      setMessageContent(newText);
+      
+      // Reposiciona o cursor após os asteriscos
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + selectedText.length + 2, start + selectedText.length + 2);
+      }, 0);
+    } else {
+      // Se não há seleção, insere asteriscos e posiciona cursor no meio
+      const newText = messageContent.substring(0, start) + '**' + messageContent.substring(end);
+      setMessageContent(newText);
+      
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + 1, start + 1);
+      }, 0);
+    }
+  };
+
   // Filtrar agentes disponíveis (excluindo o agente atual da conversa)
   const availableAgents = agentsData?.users.filter(agent => 
     agent.id !== conversation.assignedTo && 
@@ -745,6 +777,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         <div className="space-y-2">
           <div className="flex gap-2">
             <Textarea
+              ref={textareaRef}
               value={messageContent}
               onChange={(e) => setMessageContent(e.target.value)}
               onKeyDown={(e) => {
@@ -807,6 +840,16 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               className="hidden"
               data-testid="input-pdf"
             />
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={handleBoldText}
+              disabled={sendMutation.isPending}
+              data-testid="button-format-bold"
+              title="Negrito"
+            >
+              <Bold className="h-4 w-4" />
+            </Button>
             <Button
               size="icon"
               variant="outline"

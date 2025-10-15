@@ -8,11 +8,16 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (2025-10-15)
 
-**✅ IMPLEMENTED: WhatsApp Chat ID Display + Layout Reorganization**
+**✅ IMPLEMENTED: Chat Layout Optimization + Bold Text Formatting**
+- Feature: Layout reorganizado para maximizar área de digitação - textarea ocupa largura total com botão enviar à direita
+- Attachment buttons: Ícones de anexo (negrito, imagem, áudio, PDF) movidos para linha horizontal abaixo do textarea
+- Bold formatting: Botão de formatação em negrito usando sintaxe WhatsApp (`*texto*`) com suporte a seleção de texto no textarea
+- User experience: Mais espaço para conversas e ferramentas de formatação integradas
+- Location: `client/src/components/ChatPanel.tsx` (handleBoldText function, layout structure)
+
+**✅ IMPLEMENTED: WhatsApp Chat ID Display + Copy Functionality**
 - Feature: Cabeçalho do chat exibe o ID completo do WhatsApp ao lado do nome (ex: whatsapp_5524993054210)
 - Copy functionality: Botão para copiar ID completo para área de transferência
-- Layout: Botões de anexo (imagem, áudio, documento) reorganizados em coluna vertical à direita
-- UI: Botão enviar mantido como ícone quadrado (size="icon") para consistência visual
 - Location: `client/src/components/ChatHeader.tsx`, `client/src/components/ChatPanel.tsx`
 
 **✅ IMPLEMENTED: Assigned User Name Display (Optimized)**
