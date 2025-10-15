@@ -8,10 +8,11 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (2025-10-15)
 
-**✅ IMPLEMENTED: Client Phone Number Display in Chat Header**
-- Feature: Cabeçalho do chat agora exibe o telefone do cliente formatado ao lado do nome
-- Format: Número exibido como "55 64 99131-7201" (código país + DDD + número)
-- Functionality: Botão para copiar telefone para área de transferência com feedback visual
+**✅ IMPLEMENTED: WhatsApp Chat ID Display + Layout Reorganization**
+- Feature: Cabeçalho do chat exibe o ID completo do WhatsApp ao lado do nome (ex: whatsapp_5524993054210)
+- Copy functionality: Botão para copiar ID completo para área de transferência
+- Layout: Botões de anexo (imagem, áudio, documento) reorganizados em coluna vertical à direita
+- UI: Botão enviar mantido como ícone quadrado (size="icon") para consistência visual
 - Location: `client/src/components/ChatHeader.tsx`, `client/src/components/ChatPanel.tsx`
 
 **✅ IMPLEMENTED: Assigned User Name Display (Optimized)**

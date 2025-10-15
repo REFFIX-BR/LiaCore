@@ -65,22 +65,22 @@ export function ChatHeader({ clientName, clientDocument, assistantType, status, 
     }
   };
 
-  const handleCopyPhone = async () => {
-    const phoneNumber = extractPhoneNumber(chatId);
-    if (!phoneNumber) return;
+  const handleCopyId = async () => {
+    const chatIdFormatted = formatChatId(chatId);
+    if (!chatIdFormatted) return;
     
     try {
-      await navigator.clipboard.writeText(phoneNumber);
+      await navigator.clipboard.writeText(chatIdFormatted);
       setCopiedPhone(true);
       toast({
-        title: "Telefone copiado!",
-        description: "Telefone copiado para a área de transferência",
+        title: "ID copiado!",
+        description: "ID do WhatsApp copiado para a área de transferência",
       });
       setTimeout(() => setCopiedPhone(false), 2000);
     } catch (error) {
       toast({
         title: "Erro ao copiar",
-        description: "Não foi possível copiar o telefone",
+        description: "Não foi possível copiar o ID",
         variant: "destructive",
       });
     }
@@ -102,17 +102,9 @@ export function ChatHeader({ clientName, clientDocument, assistantType, status, 
     return match ? match[1] : chatId;
   };
 
-  const formatPhoneNumber = (chatId: string): string => {
-    const phone = extractPhoneNumber(chatId);
-    // Formatar: 55 64 99131-7201 ou similar
-    if (phone.length >= 12) {
-      // Formato internacional com DDD e 9 dígitos: 55 64 99131-7201
-      return phone.replace(/^(\d{2})(\d{2})(\d{5})(\d{4})/, "$1 $2 $3-$4");
-    } else if (phone.length >= 11) {
-      // Formato nacional: 64 99131-7201
-      return phone.replace(/^(\d{2})(\d{5})(\d{4})/, "$1 $2-$3");
-    }
-    return phone;
+  const formatChatId = (chatId: string): string => {
+    // Remover apenas o sufixo @s.whatsapp.net, mantendo o formato whatsapp_
+    return chatId.replace(/@.*$/, '');
   };
 
   return (
@@ -123,16 +115,16 @@ export function ChatHeader({ clientName, clientDocument, assistantType, status, 
             <h3 className="font-semibold text-sm truncate" data-testid="chat-client-name">
               {clientName}
             </h3>
-            <span className="text-xs text-muted-foreground" data-testid="chat-client-phone">
-              ({formatPhoneNumber(chatId)})
+            <span className="text-xs text-muted-foreground" data-testid="chat-client-id">
+              ({formatChatId(chatId)})
             </span>
             <Button
               size="sm"
               variant="ghost"
-              onClick={handleCopyPhone}
+              onClick={handleCopyId}
               className="h-5 px-1.5"
-              data-testid="button-copy-phone"
-              title="Copiar telefone"
+              data-testid="button-copy-id"
+              title="Copiar ID"
             >
               {copiedPhone ? (
                 <Check className="h-3 w-3 text-chart-2" />

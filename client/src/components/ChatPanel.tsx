@@ -823,6 +823,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               <FileText className="h-4 w-4" />
             </Button>
             <Button
+              size="icon"
               onClick={isEditingAI ? handleEditAndSend : handleManualSend}
               disabled={(!messageContent.trim() && !selectedImage && !selectedAudio && !selectedPdf) || sendMutation.isPending}
               data-testid="button-send"
