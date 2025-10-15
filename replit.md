@@ -6,6 +6,23 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes (2025-10-15)
+
+**✅ IMPLEMENTED: Last Client Message Display + Real-time Sorting**
+- Feature: Conversas Transferidas/Atribuídas agora exibem a última mensagem do cliente (ao invés de "Transferência manual: .")
+- Backend enhancement: Endpoints `/api/conversations/transferred` e `/api/conversations/assigned` enriquecem resposta com última mensagem do usuário
+- Real-time sorting: Conversas com mensagens novas aparecem automaticamente no topo (atualização a cada 5 segundos)
+- Implementation: Busca últimas 20 mensagens, filtra por role='user', ordena por timestamp DESC
+- Location: `server/routes.ts` (lines 4648-4662, 4699-4712)
+
+**✅ IMPLEMENTED: Admin Mass-Close Abandoned Conversations + NPS (Enhanced)**
+- Feature: Endpoint POST `/api/admin/close-abandoned-conversations` fecha conversas de TODOS os status (active, waiting, assigned, etc.)
+- Enhanced: Anteriormente fechava apenas status "active", agora fecha qualquer status exceto "resolved" e transferidas para humano
+- UI: Botão "Fechar Conversas Abandonadas (+30min) + Enviar NPS" no Admin Dashboard
+- Use case: Permite fechar conversas travadas de ouvidoria e outros status intermediários que não conseguem ser finalizadas normalmente
+- Metadata: Usa SQL JSONB merge (|| operator) para preservar campos existentes e adicionar npsSent, npsScheduledAt
+- Location: `server/routes.ts` (lines 3044-3145), `client/src/components/dashboards/AdminDashboard.tsx`
+
 ## System Architecture
 
 ### UI/UX Decisions

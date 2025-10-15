@@ -4641,7 +4641,27 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
       const role = req.user?.role;
       
       const conversations = await storage.getTransferredConversations(userId, role);
-      return res.json(conversations);
+      
+      // Enriquecer com última mensagem do cliente
+      const enriched = await Promise.all(
+        conversations.map(async (conv) => {
+          const messages = await storage.getRecentMessagesByConversationId(conv.id, 20);
+          const lastClientMessage = messages
+            .filter(m => m.role === 'user')
+            .sort((a, b) => {
+              const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+              const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+              return timeB - timeA;
+            })[0];
+          
+          return {
+            ...conv,
+            lastMessage: lastClientMessage?.content || conv.lastMessage || 'Sem mensagens',
+          };
+        })
+      );
+      
+      return res.json(enriched);
     } catch (error) {
       console.error("Get transferred conversations error:", error);
       return res.status(500).json({ error: "Internal server error" });
@@ -4677,8 +4697,27 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
         }
       });
       
+      // Enriquecer com última mensagem do cliente
+      const enriched = await Promise.all(
+        assignedConversations.map(async (conv) => {
+          const messages = await storage.getRecentMessagesByConversationId(conv.id, 20);
+          const lastClientMessage = messages
+            .filter(m => m.role === 'user')
+            .sort((a, b) => {
+              const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+              const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+              return timeB - timeA;
+            })[0];
+          
+          return {
+            ...conv,
+            lastMessage: lastClientMessage?.content || conv.lastMessage || 'Sem mensagens',
+          };
+        })
+      );
+      
       // Ordenar por última mensagem (mais recente primeiro)
-      const sorted = assignedConversations.sort((a, b) => {
+      const sorted = enriched.sort((a, b) => {
         const timeA = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
         const timeB = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
         return timeB - timeA;
@@ -4971,9 +5010,10 @@ A resposta deve:
             
             // Coletar todas as mensagens desde o início da sessão
             const messages = await storage.getMessagesByConversationId(id);
-            const sessionMessages = messages.filter(m => 
-              m.timestamp && new Date(m.timestamp) >= new Date(session.startedAt)
-            );
+            const sessionMessages = messages.filter(m => {
+              if (!m.timestamp || !session.startedAt) return false;
+              return new Date(m.timestamp) >= new Date(session.startedAt);
+            });
             
             // Formatar conteúdo do treinamento
             const trainingContent = sessionMessages
