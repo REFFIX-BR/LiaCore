@@ -3037,6 +3037,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ADMIN: Fechar conversas abandonadas e enviar NPS
+  app.post("/api/admin/close-abandoned-conversations", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const { minMinutesInactive = 30 } = req.body;
+
+      // Buscar conversas ativas há mais de X minutos inativas
+      const allConversations = await storage.getAllActiveConversations();
+      
+      const abandonedConversations = allConversations.filter(conv => {
+        if (conv.status !== 'active') return false;
+        if (conv.transferredToHuman) return false; // Não fechar se foi transferida
+        
+        const minutesInactive = conv.lastMessageTime 
+          ? (Date.now() - conv.lastMessageTime.getTime()) / (1000 * 60)
+          : 0;
+        
+        return minutesInactive > minMinutesInactive;
+      });
+
+      if (abandonedConversations.length === 0) {
+        return res.json({
+          success: true,
+          message: "Nenhuma conversa abandonada encontrada",
+          closed: 0,
+          conversations: []
+        });
+      }
+
+      // Importar funções de fila
+      const { addNPSSurveyToQueue } = await import("./lib/queue");
+
+      // Fechar cada conversa e enviar NPS
+      const results = await Promise.all(
+        abandonedConversations.map(async (conv) => {
+          try {
+            const minutesInactive = Math.round((Date.now() - conv.lastMessageTime.getTime()) / (1000 * 60));
+
+            // 1. Marcar conversa como resolvida (fechada)
+            await storage.updateConversation(conv.id, {
+              status: 'resolved',
+              metadata: {
+                ...conv.metadata,
+                autoClosed: true,
+                autoClosedReason: 'admin_abandoned_cleanup',
+                autoClosedAt: new Date().toISOString(),
+                minutesInactiveWhenClosed: minutesInactive,
+              },
+            });
+
+            // 2. Enviar mensagem de encerramento (opcional - descomente se quiser)
+            // const closureMessage = `A conversa foi encerrada por inatividade. Se precisar de ajuda, é só chamar novamente! 😊`;
+            // await sendWhatsAppMessage(conv.chatId, closureMessage, conv.evolutionInstance);
+
+            // 3. Agendar envio de NPS (delay de 5 segundos para dar tempo de processar)
+            await addNPSSurveyToQueue({
+              conversationId: conv.id,
+              chatId: conv.chatId,
+              customerName: conv.clientName || 'Cliente',
+              wasResolved: false, // Consideramos não resolvida pois foi abandonada
+            }, 5000);
+
+            console.log(`✅ [ADMIN] Conversa fechada: ${conv.clientName} (${minutesInactive}min inativa)`);
+
+            return {
+              id: conv.id,
+              chatId: conv.chatId,
+              clientName: conv.clientName,
+              assistantType: conv.assistantType,
+              minutesInactive,
+              npsSent: true,
+            };
+          } catch (error) {
+            console.error(`❌ [ADMIN] Erro ao fechar conversa ${conv.id}:`, error);
+            return null;
+          }
+        })
+      );
+
+      const successfullyClosed = results.filter((item): item is NonNullable<typeof item> => item !== null);
+
+      return res.json({
+        success: true,
+        message: `${successfullyClosed.length} conversa(s) fechada(s) e NPS agendado`,
+        closed: successfullyClosed.length,
+        total: abandonedConversations.length,
+        conversations: successfullyClosed,
+      });
+    } catch (error) {
+      console.error("❌ [ADMIN] Erro ao fechar conversas abandonadas:", error);
+      return res.status(500).json({ 
+        error: "Erro ao fechar conversas abandonadas", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+
   // Get all active conversations for monitoring (includes resolved from last 24h)
   app.get("/api/monitor/conversations", authenticateWithTracking, async (req, res) => {
     try {

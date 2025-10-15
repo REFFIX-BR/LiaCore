@@ -93,6 +93,33 @@ export function AdminDashboard() {
     },
   });
 
+  const closeAbandonedMutation = useMutation({
+    mutationFn: async (params: { minMinutesInactive?: number }) => {
+      const response = await fetch('/api/admin/close-abandoned-conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+      if (!response.ok) throw new Error('Erro ao fechar conversas abandonadas');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Conversas Fechadas com Sucesso",
+        description: `${data.closed} conversa(s) fechada(s) e NPS agendado para envio`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/admin"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao Fechar Conversas",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -315,48 +342,71 @@ export function AdminDashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button
-              onClick={() => reprocessMutation.mutate({ assistantType: 'apresentacao', maxMinutesWaiting: 120 })}
-              disabled={reprocessMutation.isPending}
-              variant="outline"
-              className="flex items-center gap-2"
-              data-testid="button-reprocess-messages"
-            >
-              {reprocessMutation.isPending ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  Reprocessando...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4" />
-                  Reprocessar Mensagens Travadas (Apresentação)
-                </>
-              )}
-            </Button>
-            <Button
-              onClick={() => reprocessMutation.mutate({ maxMinutesWaiting: 60 })}
-              disabled={reprocessMutation.isPending}
-              variant="outline"
-              className="flex items-center gap-2"
-              data-testid="button-reprocess-all"
-            >
-              {reprocessMutation.isPending ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  Reprocessando...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4" />
-                  Reprocessar Todas (Recentes)
-                </>
-              )}
-            </Button>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                onClick={() => reprocessMutation.mutate({ assistantType: 'apresentacao', maxMinutesWaiting: 120 })}
+                disabled={reprocessMutation.isPending}
+                variant="outline"
+                className="flex items-center gap-2"
+                data-testid="button-reprocess-messages"
+              >
+                {reprocessMutation.isPending ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Reprocessando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4" />
+                    Reprocessar Mensagens Travadas (Apresentação)
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={() => reprocessMutation.mutate({ maxMinutesWaiting: 60 })}
+                disabled={reprocessMutation.isPending}
+                variant="outline"
+                className="flex items-center gap-2"
+                data-testid="button-reprocess-all"
+              >
+                {reprocessMutation.isPending ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Reprocessando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4" />
+                    Reprocessar Todas (Recentes)
+                  </>
+                )}
+              </Button>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                onClick={() => closeAbandonedMutation.mutate({ minMinutesInactive: 30 })}
+                disabled={closeAbandonedMutation.isPending}
+                variant="destructive"
+                className="flex items-center gap-2"
+                data-testid="button-close-abandoned"
+              >
+                {closeAbandonedMutation.isPending ? (
+                  <>
+                    <Clock className="h-4 w-4 animate-spin" />
+                    Fechando...
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-4 w-4" />
+                    Fechar Conversas Abandonadas (+30min) + Enviar NPS
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
           <p className="text-xs text-muted-foreground mt-3">
-            Use quando mensagens não foram processadas via webhook. O sistema reenfileira mensagens pendentes automaticamente.
+            <strong>Reprocessar:</strong> Reenfileira mensagens sem resposta da IA. <strong>Fechar Abandonadas:</strong> Finaliza conversas inativas (&gt;30min) e envia NPS automaticamente.
           </p>
         </CardContent>
       </Card>
