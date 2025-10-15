@@ -1975,6 +1975,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           audioUrl: audioUrl,
         });
 
+        // ⏱️ IMPORTANTE: Atualizar lastMessageTime quando CLIENTE envia mensagem
+        // Isso garante que a conversa vai ao topo da lista quando o cliente responde
+        await storage.updateConversation(conversation.id, {
+          lastMessage: messageText,
+          lastMessageTime: new Date(),
+        });
+
         // If conversation is transferred to human, don't auto-respond
         if (conversation.transferredToHuman) {
           webhookLogger.warning('TRANSFER_ACTIVE', 'Conversa transferida - resposta manual necessária', {
