@@ -742,8 +742,8 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
           </div>
         )}
 
-        <div className="flex gap-2">
-          <div className="flex flex-col gap-2 flex-1">
+        <div className="space-y-2">
+          <div className="flex gap-2">
             <Textarea
               value={messageContent}
               onChange={(e) => setMessageContent(e.target.value)}
@@ -764,13 +764,25 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
                   ? "Edite a sugestão da IA..."
                   : "Digite sua resposta ou peça uma sugestão da IA..."
               }
-              className="resize-none"
+              className="resize-none flex-1"
               rows={3}
               disabled={sendMutation.isPending}
               data-testid="input-message"
             />
+            <Button
+              size="icon"
+              onClick={isEditingAI ? handleEditAndSend : handleManualSend}
+              disabled={(!messageContent.trim() && !selectedImage && !selectedAudio && !selectedPdf) || sendMutation.isPending}
+              data-testid="button-send"
+            >
+              {sendMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
             <input
               ref={fileInputRef}
               type="file"
@@ -821,18 +833,6 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               data-testid="button-upload-pdf"
             >
               <FileText className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              onClick={isEditingAI ? handleEditAndSend : handleManualSend}
-              disabled={(!messageContent.trim() && !selectedImage && !selectedAudio && !selectedPdf) || sendMutation.isPending}
-              data-testid="button-send"
-            >
-              {sendMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
             </Button>
           </div>
         </div>
