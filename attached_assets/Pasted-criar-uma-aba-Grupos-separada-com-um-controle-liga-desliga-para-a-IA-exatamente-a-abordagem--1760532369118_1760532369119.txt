@@ -1,0 +1,56 @@
+criar uma aba "Grupos" separada com um controle "liga/desliga" para a IA — é exatamente a abordagem correta e profissional para gerenciar essa complexidade.
+Vamos projetar como essa funcionalidade seria implementada na sua plataforma, desde a interface até a lógica do backend.
+1. O Problema: Por que Grupos são um Desafio?
+Contexto Múltiplo: Várias pessoas falam ao mesmo tempo sobre assuntos diferentes. A IA pode se confundir sobre a quem responder ou qual o tópico principal.
+Trigger Involuntário: A IA pode ser "acionada" por mensagens que não são para ela, poluindo a conversa.
+Privacidade e Permissão: A IA não deveria "ouvir" ou processar conversas privadas de um grupo sem uma permissão explícita.
+Custo: Processar cada mensagem de um grupo ativo pode gerar um custo de API muito alto e desnecessário.
+2. A Solução: Gerenciamento Explícito de Grupos
+Vamos integrar a gestão de grupos na sua interface, aproveitando o layout existente.
+Modificação da Interface (Baseado na sua imagem)
+A ideia é adicionar uma nova aba ao lado de "Contatos" para que o gerenciamento seja intuitivo.
+Nova Aba na Navegação Principal:
+Contatos (Já existe)
+Grupos (Nova)
+Design da Nova Página de "Grupos"
+A página será muito similar à de "Contatos", mas com um elemento crucial: o interruptor (toggle) de ativação da IA.
+code
+Code
++----------------------------------------------------------------------------------------------------------------------+
+| [ PAINEL ESQUERDO: LISTA DE GRUPOS ]                         [ PAINEL DIREITO: DETALHES E CONFIGURAÇÕES DO GRUPO ]     |
+|----------------------------------------------------------------------------------------------------------------------|
+|                                                              |                                                      |
+|  Grupos                                                      |  TR Telecom - Clientes VIP                           |
+|  Todos os grupos de WhatsApp conectados                      |  Histórico completo de interações no grupo           |
+|                                                              |                                                      |
+|  [ Q Buscar por nome do grupo... ]                           |  ID do Grupo: 1234567890@g.us                         |
+|                                                              |  Total de Mensagens: 1284                            |
+|  [ Todos ] [ IA Ativa ] [ IA Inativa ]                       |                                                      |
+|                                                              |------------------------------------------------------|
+|  +-------------------------------------+                     |                                                      |
+|  | 🖼️ TR Telecom - Clientes VIP       |                     |  **Controle da IA**                                  |
+|  |   Última msg: 1 minuto atrás       |                     |  Permitir que a LIA responda neste grupo             |
+|  |   Status da IA: 🟢 Ativa           |                     |                                                      |
+|  +-------------------------------------+                     |  [ Interruptor LIGADO/DESLIGADO ] (Toggle)           |
+|                                                              |                                                      |
+|  +-------------------------------------+                     |                                                      |
+|  | 🖼️ Equipe Interna - Suporte        |                     |  Histórico de Mensagens do Grupo                     |
+|  |   Última msg: 5 minutos atrás       |                     |                                                      |
+|  |   Status da IA: 🔴 Inativa         |                     |  [ ...aqui viria a transcrição do chat do grupo... ] |
+|  +-------------------------------------+                     |                                                      |
+|                                                              |                                                      |
++----------------------------------------------------------------------------------------------------------------------+
+Detalhes dos Componentes:
+Importação Automática:
+Sempre que a plataforma receber uma mensagem de um groupId que ainda não existe no banco de dados, ela deve criar um novo registro para aquele grupo automaticamente na tabela Groups.
+O nome e a imagem do grupo podem ser obtidos via API do WhatsApp.
+Lista de Grupos (Painel Esquerdo):
+Funciona como a lista de contatos.
+Cada item mostra o nome do grupo, uma prévia da última mensagem e, o mais importante, um indicador de status da IA (ex: um círculo verde para "Ativa" e vermelho para "Inativa").
+Filtros para "IA Ativa" e "IA Inativa" permitem que o supervisor veja rapidamente onde a IA está operando.
+Painel de Detalhes do Grupo (Painel Direito):
+Interruptor (Toggle) "Controle da IA":
+Este é o coração da funcionalidade. Um simples interruptor visual que o supervisor ou admin pode ligar e desligar.
+Quando ligado, a IA está autorizada a processar e responder às mensagens naquele grupo.
+Quando desligado (o padrão para novos grupos), a plataforma pode até registrar as mensagens para fins de histórico, mas o webhook NÃO deve encaminhar essas mensagens para o LIA CORTEX para processamento pela IA.
+Histórico de Mensagens: A transcrição completa do chat do grupo, visível para o supervisor independentemente de a IA estar ativa ou não.

@@ -247,6 +247,19 @@ export interface IStorage {
     hasRecurringIssues?: boolean;
   }): Promise<Contact>;
   deleteContact(id: string): Promise<void>;
+  
+  // Groups
+  createGroup(group: InsertGroup): Promise<Group>;
+  getGroup(id: string): Promise<Group | undefined>;
+  getGroupByGroupId(groupId: string): Promise<Group | undefined>;
+  getAllGroups(): Promise<Group[]>;
+  getGroupsWithFilters(params: {
+    search?: string;
+    aiEnabled?: boolean;
+  }): Promise<Group[]>;
+  updateGroup(id: string, updates: UpdateGroup): Promise<Group | undefined>;
+  toggleGroupAi(id: string, aiEnabled: boolean): Promise<Group | undefined>;
+  deleteGroup(id: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -265,6 +278,7 @@ export class MemStorage implements IStorage {
   private complaints: Map<string, Complaint>;
   private trainingSessions: Map<string, TrainingSession>;
   private contacts: Map<string, Contact>;
+  private groups: Map<string, Group>;
 
   constructor() {
     this.users = new Map();
@@ -279,6 +293,7 @@ export class MemStorage implements IStorage {
     this.suggestedResponses = new Map();
     this.registrationRequests = new Map();
     this.contacts = new Map();
+    this.groups = new Map();
     this.activityLogs = new Map();
     this.complaints = new Map();
     this.trainingSessions = new Map();
@@ -1238,6 +1253,94 @@ export class MemStorage implements IStorage {
 
   async deleteContact(id: string): Promise<void> {
     this.contacts.delete(id);
+  }
+
+  // Groups
+  async createGroup(insertGroup: InsertGroup): Promise<Group> {
+    const id = randomUUID();
+    const now = new Date();
+    const group: Group = {
+      id,
+      ...insertGroup,
+      groupId: insertGroup.groupId,
+      name: insertGroup.name,
+      avatar: insertGroup.avatar || null,
+      aiEnabled: insertGroup.aiEnabled ?? false,
+      lastMessageTime: insertGroup.lastMessageTime || null,
+      lastMessage: insertGroup.lastMessage || null,
+      participantsCount: insertGroup.participantsCount || 0,
+      metadata: insertGroup.metadata || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.groups.set(id, group);
+    return group;
+  }
+
+  async getGroup(id: string): Promise<Group | undefined> {
+    return this.groups.get(id);
+  }
+
+  async getGroupByGroupId(groupId: string): Promise<Group | undefined> {
+    return Array.from(this.groups.values()).find(
+      (group) => group.groupId === groupId
+    );
+  }
+
+  async getAllGroups(): Promise<Group[]> {
+    return Array.from(this.groups.values())
+      .sort((a, b) => (b.lastMessageTime?.getTime() || 0) - (a.lastMessageTime?.getTime() || 0));
+  }
+
+  async getGroupsWithFilters(params: {
+    search?: string;
+    aiEnabled?: boolean;
+  }): Promise<Group[]> {
+    let groups = Array.from(this.groups.values());
+
+    if (params.search) {
+      const searchLower = params.search.toLowerCase();
+      groups = groups.filter((g) =>
+        g.name?.toLowerCase().includes(searchLower) ||
+        g.groupId?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    if (params.aiEnabled !== undefined) {
+      groups = groups.filter((g) => g.aiEnabled === params.aiEnabled);
+    }
+
+    return groups.sort((a, b) => (b.lastMessageTime?.getTime() || 0) - (a.lastMessageTime?.getTime() || 0));
+  }
+
+  async updateGroup(id: string, updates: UpdateGroup): Promise<Group | undefined> {
+    const group = this.groups.get(id);
+    if (!group) return undefined;
+
+    const updated = {
+      ...group,
+      ...updates,
+      updatedAt: new Date(),
+    };
+    this.groups.set(id, updated);
+    return updated;
+  }
+
+  async toggleGroupAi(id: string, aiEnabled: boolean): Promise<Group | undefined> {
+    const group = this.groups.get(id);
+    if (!group) return undefined;
+
+    const updated = {
+      ...group,
+      aiEnabled,
+      updatedAt: new Date(),
+    };
+    this.groups.set(id, updated);
+    return updated;
+  }
+
+  async deleteGroup(id: string): Promise<void> {
+    this.groups.delete(id);
   }
 }
 
@@ -2605,6 +2708,89 @@ export class DbStorage implements IStorage {
 
   async deleteContact(id: string): Promise<void> {
     await db.delete(schema.contacts).where(eq(schema.contacts.id, id));
+  }
+
+  // Groups
+  async createGroup(insertGroup: InsertGroup): Promise<Group> {
+    const [group] = await db.insert(schema.groups)
+      .values(insertGroup)
+      .returning();
+    return group;
+  }
+
+  async getGroup(id: string): Promise<Group | undefined> {
+    const [group] = await db.select()
+      .from(schema.groups)
+      .where(eq(schema.groups.id, id));
+    return group;
+  }
+
+  async getGroupByGroupId(groupId: string): Promise<Group | undefined> {
+    const [group] = await db.select()
+      .from(schema.groups)
+      .where(eq(schema.groups.groupId, groupId));
+    return group;
+  }
+
+  async getAllGroups(): Promise<Group[]> {
+    return await db.select()
+      .from(schema.groups)
+      .orderBy(desc(schema.groups.lastMessageTime));
+  }
+
+  async getGroupsWithFilters(params: {
+    search?: string;
+    aiEnabled?: boolean;
+  }): Promise<Group[]> {
+    const conditions = [];
+
+    if (params.aiEnabled !== undefined) {
+      conditions.push(eq(schema.groups.aiEnabled, params.aiEnabled));
+    }
+
+    if (params.search) {
+      const searchPattern = `%${params.search}%`;
+      conditions.push(
+        or(
+          sql`${schema.groups.name} ILIKE ${searchPattern}`,
+          sql`${schema.groups.groupId} ILIKE ${searchPattern}`
+        )
+      );
+    }
+
+    const query = conditions.length > 0
+      ? db.select().from(schema.groups).where(and(...conditions))
+      : db.select().from(schema.groups);
+
+    return await query.orderBy(desc(schema.groups.lastMessageTime));
+  }
+
+  async updateGroup(id: string, updates: UpdateGroup): Promise<Group | undefined> {
+    const autoUpdates: Partial<Group> = {
+      ...updates,
+      updatedAt: new Date(),
+    };
+
+    const [updated] = await db.update(schema.groups)
+      .set(autoUpdates)
+      .where(eq(schema.groups.id, id))
+      .returning();
+    return updated;
+  }
+
+  async toggleGroupAi(id: string, aiEnabled: boolean): Promise<Group | undefined> {
+    const [updated] = await db.update(schema.groups)
+      .set({
+        aiEnabled,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.groups.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteGroup(id: string): Promise<void> {
+    await db.delete(schema.groups).where(eq(schema.groups.id, id));
   }
 }
 

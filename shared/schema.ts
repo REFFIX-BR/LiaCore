@@ -501,3 +501,34 @@ export const updateContactSchema = insertContactSchema.partial();
 export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = z.infer<typeof insertContactSchema>;
 export type UpdateContact = z.infer<typeof updateContactSchema>;
+
+// Groups Table - WhatsApp Groups Management
+export const groups = pgTable("groups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupId: text("group_id").notNull().unique(), // WhatsApp Group ID (ex: 1234567890@g.us)
+  name: text("name").notNull(), // Group name
+  avatar: text("avatar"), // Group avatar/photo URL
+  aiEnabled: boolean("ai_enabled").notNull().default(false), // IA ativa/inativa no grupo
+  lastMessageTime: timestamp("last_message_time"), // Última mensagem recebida
+  lastMessage: text("last_message"), // Última mensagem recebida (preview)
+  participantsCount: integer("participants_count").default(0), // Número de participantes
+  metadata: jsonb("metadata"), // Informações extras (descrição, admin, etc)
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  groupIdIdx: index("groups_group_id_idx").on(table.groupId),
+  aiEnabledIdx: index("groups_ai_enabled_idx").on(table.aiEnabled),
+  lastMessageTimeIdx: index("groups_last_message_time_idx").on(table.lastMessageTime),
+}));
+
+export const insertGroupSchema = createInsertSchema(groups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateGroupSchema = insertGroupSchema.partial();
+
+export type Group = typeof groups.$inferSelect;
+export type InsertGroup = z.infer<typeof insertGroupSchema>;
+export type UpdateGroup = z.infer<typeof updateGroupSchema>;
