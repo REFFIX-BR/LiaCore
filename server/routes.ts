@@ -3628,7 +3628,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   });
 
   // Add knowledge chunks
-  app.post("/api/knowledge/add", authenticate, requireAdmin, async (req, res) => {
+  app.post("/api/knowledge/add", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
       const { chunks } = req.body;
 
@@ -3758,7 +3758,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   });
 
   // Delete single knowledge chunk
-  app.delete("/api/knowledge/:id", authenticate, requireAdmin, async (req, res) => {
+  app.delete("/api/knowledge/:id", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
       const { id } = req.params;
       const { deleteKnowledgeChunk } = await import("./lib/upstash");
