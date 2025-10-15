@@ -5,8 +5,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth-context";
-import { Circle, CheckCircle2 } from "lucide-react";
+import { Circle, CheckCircle2, Search, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 // Função para calcular cor do indicador baseado no tempo de espera
 function getWaitTimeIndicator(lastMessageTime: Date): { color: string; label: string } {
@@ -43,6 +45,7 @@ interface Conversation {
 export default function Conversations() {
   const [activeIds, setActiveIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<"transferred" | "assigned">("transferred");
+  const [searchQuery, setSearchQuery] = useState("");
   const { user, isAgent } = useAuth();
 
   // Query conversas transferidas
@@ -90,6 +93,19 @@ export default function Conversations() {
   const activeConversation1 = activeConversations.find(c => c.id === activeIds[0]);
   const activeConversation2 = activeConversations.find(c => c.id === activeIds[1]);
 
+  // Função para filtrar por busca
+  const filterBySearch = (conv: Conversation) => {
+    if (!searchQuery.trim()) return true;
+    
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      conv.clientName?.toLowerCase().includes(searchLower) ||
+      conv.chatId?.toLowerCase().includes(searchLower) ||
+      conv.lastMessage?.toLowerCase().includes(searchLower) ||
+      conv.clientDocument?.toLowerCase().includes(searchLower)
+    );
+  };
+
   // Ordenar e filtrar conversas transferidas
   const transferredActiveConversations = transferredConversations
     .filter(conv => 
@@ -97,6 +113,7 @@ export default function Conversations() {
       conv.status === 'queued' ||
       conv.status === 'resolved'
     )
+    .filter(filterBySearch)
     .sort((a, b) => {
       // Ordenar por timestamp - mensagens mais recentes primeiro
       const timeA = new Date(a.lastMessageTime).getTime();
@@ -111,6 +128,7 @@ export default function Conversations() {
       conv.status === 'queued' ||
       conv.status === 'resolved'
     )
+    .filter(filterBySearch)
     .sort((a, b) => {
       // Ordenar por timestamp - mensagens mais recentes primeiro
       const timeA = new Date(a.lastMessageTime).getTime();
@@ -158,12 +176,40 @@ export default function Conversations() {
             </TabsList>
           </div>
 
+          {/* Campo de Busca */}
+          <div className="px-4 pt-3 pb-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar por nome, telefone, CPF..."
+                className="pl-9 pr-9 h-9"
+                data-testid="input-search-conversations"
+              />
+              {searchQuery && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                  onClick={() => setSearchQuery("")}
+                  data-testid="button-clear-search"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+          </div>
+
           <TabsContent value="transferred" className="flex-1 mt-0 h-full">
             {transferredActiveConversations.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center space-y-2 p-4">
                   <p className="text-sm text-muted-foreground">
-                    Nenhuma conversa transferida disponível
+                    {searchQuery 
+                      ? `Nenhuma conversa encontrada para "${searchQuery}"`
+                      : "Nenhuma conversa transferida disponível"}
                   </p>
                 </div>
               </div>
@@ -221,7 +267,9 @@ export default function Conversations() {
               <div className="flex items-center justify-center h-full">
                 <div className="text-center space-y-2 p-4">
                   <p className="text-sm text-muted-foreground">
-                    Nenhuma conversa atribuída
+                    {searchQuery 
+                      ? `Nenhuma conversa encontrada para "${searchQuery}"`
+                      : "Nenhuma conversa atribuída"}
                   </p>
                 </div>
               </div>
