@@ -479,14 +479,18 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
       );
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast({
         title: "Mensagem excluída!",
         description: data.whatsappDeleted 
           ? "Mensagem deletada do banco e do WhatsApp" 
           : "Mensagem deletada do banco",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations", conversation.id] });
+      // Forçar refetch imediato das mensagens
+      await queryClient.refetchQueries({ 
+        queryKey: ["/api/monitor/conversations", conversation.id],
+        type: 'active'
+      });
     },
     onError: () => {
       toast({
