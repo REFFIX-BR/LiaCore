@@ -5369,6 +5369,47 @@ A resposta deve:
     }
   });
 
+  // Private Notes Routes
+  // Get private notes for a conversation
+  app.get("/api/conversations/:conversationId/private-notes", authenticate, async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      
+      const notes = await storage.getPrivateNotesByConversationId(conversationId);
+      return res.json(notes);
+    } catch (error) {
+      console.error("Get private notes error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Create a private note for a conversation
+  app.post("/api/conversations/:conversationId/private-notes", authenticate, async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      const { content } = req.body;
+      const currentUser = req.user!;
+
+      if (!content || !content.trim()) {
+        return res.status(400).json({ error: "Conteúdo da nota é obrigatório" });
+      }
+
+      const note = await storage.createPrivateNote({
+        conversationId,
+        content: content.trim(),
+        createdBy: currentUser.userId,
+        createdByName: currentUser.fullName,
+      });
+
+      console.log(`📝 [Private Note] Nota criada por ${currentUser.fullName} na conversa ${conversationId}`);
+
+      return res.json(note);
+    } catch (error) {
+      console.error("Create private note error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Helper function to get first name only
   const getFirstName = (fullName: string): string => {
     return fullName.split(' ')[0];

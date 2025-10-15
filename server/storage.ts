@@ -40,7 +40,9 @@ import {
   type UpdateContact,
   type Group,
   type InsertGroup,
-  type UpdateGroup
+  type UpdateGroup,
+  type PrivateNote,
+  type InsertPrivateNote
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -263,6 +265,10 @@ export interface IStorage {
   updateGroup(id: string, updates: UpdateGroup): Promise<Group | undefined>;
   toggleGroupAi(id: string, aiEnabled: boolean): Promise<Group | undefined>;
   deleteGroup(id: string): Promise<void>;
+
+  // Private Notes
+  createPrivateNote(note: InsertPrivateNote): Promise<PrivateNote>;
+  getPrivateNotesByConversationId(conversationId: string): Promise<PrivateNote[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -2794,6 +2800,19 @@ export class DbStorage implements IStorage {
 
   async deleteGroup(id: string): Promise<void> {
     await db.delete(schema.groups).where(eq(schema.groups.id, id));
+  }
+
+  // Private Notes
+  async createPrivateNote(insertNote: InsertPrivateNote): Promise<PrivateNote> {
+    const [note] = await db.insert(schema.privateNotes).values(insertNote).returning();
+    return note;
+  }
+
+  async getPrivateNotesByConversationId(conversationId: string): Promise<PrivateNote[]> {
+    return await db.select()
+      .from(schema.privateNotes)
+      .where(eq(schema.privateNotes.conversationId, conversationId))
+      .orderBy(desc(schema.privateNotes.createdAt));
   }
 }
 
