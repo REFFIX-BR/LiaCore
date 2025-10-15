@@ -846,6 +846,26 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
           </div>
         )}
 
+        {/* Editing Indicator */}
+        {editingMessageId && (
+          <div className="p-2 bg-chart-3/10 rounded-md border border-chart-3/30 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Edit3 className="h-4 w-4 text-chart-3" />
+              <span className="text-sm font-medium text-chart-3">Editando mensagem</span>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleCancelEdit}
+              className="h-6 px-2"
+              data-testid="button-cancel-edit"
+            >
+              <X className="h-3 w-3" />
+              Cancelar
+            </Button>
+          </div>
+        )}
+
         <div className="space-y-2">
           <div className="flex gap-2">
             <Textarea
@@ -865,7 +885,9 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
                 }
               }}
               placeholder={
-                isEditingAI
+                editingMessageId
+                  ? "Edite a mensagem..."
+                  : isEditingAI
                   ? "Edite a sugestão da IA..."
                   : "Digite sua resposta ou peça uma sugestão da IA..."
               }
