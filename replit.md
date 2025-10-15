@@ -43,18 +43,20 @@ Preferred communication style: Simple, everyday language.
 - Metadata: Usa SQL JSONB merge (|| operator) para preservar campos existentes e adicionar npsSent, npsScheduledAt
 - Location: `server/routes.ts` (lines 3044-3145), `client/src/components/dashboards/AdminDashboard.tsx`
 
-**✅ IMPLEMENTED: Message Deletion System**
+**✅ IMPLEMENTED: Message Deletion System (Soft Delete with Visual Indicator)**
 - **Delete Feature**: Supervisores e admins podem excluir mensagens do assistente através de botão de exclusão (ícone de lixeira)
-  - Backend: Endpoint DELETE `/api/messages/:id` deleta mensagem do banco e do WhatsApp (quando possível)
-  - User Flow: Click delete → confirmação → mensagem removida do sistema e do WhatsApp
+  - Backend: Endpoint DELETE `/api/messages/:id` implementa soft delete - marca mensagem com `deletedAt` e `deletedBy` ao invés de remover do banco
+  - WhatsApp Integration: Deleta mensagem do WhatsApp do cliente quando possível (via Evolution API)
+  - User Flow: Click delete → mensagem deletada do WhatsApp → badge "🗑️ Mensagem excluída" aparece no sistema
+  - Visual Indicator: Mensagens deletadas exibem badge vermelha "Mensagem excluída" mas mantêm conteúdo visível para auditoria
   - Permissions: Apenas ADMIN, SUPERVISOR ou agente atribuído à conversa pode deletar mensagens
-  - Compatibility: Deletar funciona tanto no banco de dados quanto no WhatsApp do cliente (via Evolution API)
+  - Schema: Campos `deletedAt` (timestamp) e `deletedBy` (text) adicionados à tabela messages
 - **Edit Feature Removed**: Sistema de edição de mensagens foi removido
   - Reason: Evolution API não suporta edição nativa - edição funcionava apenas no banco de dados, não atualizava WhatsApp do cliente
   - Decision: Funcionalidade removida por incompatibilidade com WhatsApp (mensagem editada só aparecia no sistema, não no WhatsApp)
   - Alternative: Agentes podem deletar mensagem incorreta e enviar nova mensagem correta
 - **AI Suggestion Editing Preserved**: Edição de sugestões da IA antes de enviar continua funcional (diferente de editar mensagens já enviadas)
-- Location: `server/routes.ts` (DELETE /api/messages/:id), `client/src/components/ChatPanel.tsx`, `client/src/components/ChatMessage.tsx`
+- Location: `shared/schema.ts` (deletedAt/deletedBy fields), `server/routes.ts` (DELETE /api/messages/:id), `client/src/components/ChatMessage.tsx` (deletion badge)
 
 ## System Architecture
 
