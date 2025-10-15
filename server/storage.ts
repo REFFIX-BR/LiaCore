@@ -45,6 +45,7 @@ export interface IStorage {
   // Users
   getUser(id: string): Promise<User | undefined>;
   getUserById(id: string): Promise<User | undefined>;
+  getUsersByIds(ids: string[]): Promise<User[]>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
@@ -289,6 +290,10 @@ export class MemStorage implements IStorage {
 
   async getUserById(id: string): Promise<User | undefined> {
     return this.users.get(id);
+  }
+
+  async getUsersByIds(ids: string[]): Promise<User[]> {
+    return ids.map(id => this.users.get(id)).filter(Boolean) as User[];
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
@@ -1237,7 +1242,7 @@ export class MemStorage implements IStorage {
 }
 
 import { db } from "./db";
-import { eq, desc, and, or, gte, lte, lt, isNotNull, isNull, sql } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, lt, isNotNull, isNull, sql, inArray } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { trainingSessions } from "@shared/schema";
 
@@ -1251,6 +1256,12 @@ export class DbStorage implements IStorage {
   async getUserById(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(schema.users).where(eq(schema.users.id, id));
     return user;
+  }
+
+  async getUsersByIds(ids: string[]): Promise<User[]> {
+    if (ids.length === 0) return [];
+    const users = await db.select().from(schema.users).where(inArray(schema.users.id, ids));
+    return users;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {

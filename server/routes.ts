@@ -4697,7 +4697,23 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
         }
       });
       
-      // Enriquecer com última mensagem do cliente
+      // Buscar nomes de usuários atribuídos (busca em lote para evitar N+1 query)
+      const uniqueAssignedIds = Array.from(new Set(assignedConversations.map(c => c.assignedTo).filter(Boolean) as string[]));
+      const assignedUsersMap = new Map<string, string>();
+      
+      if (uniqueAssignedIds.length > 0) {
+        const users = await storage.getUsersByIds(uniqueAssignedIds);
+        
+        users.forEach((user) => {
+          if (user && user.fullName) {
+            // Pegar apenas o primeiro nome
+            const firstName = user.fullName.split(' ')[0];
+            assignedUsersMap.set(user.id, firstName);
+          }
+        });
+      }
+      
+      // Enriquecer com última mensagem do cliente e nome do usuário atribuído
       const enriched = await Promise.all(
         assignedConversations.map(async (conv) => {
           const messages = await storage.getRecentMessagesByConversationId(conv.id, 20);
@@ -4709,9 +4725,13 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
               return timeB - timeA;
             })[0];
           
+          // Buscar nome do usuário atribuído do mapa
+          const assignedToName = conv.assignedTo ? assignedUsersMap.get(conv.assignedTo) || null : null;
+          
           return {
             ...conv,
             lastMessage: lastClientMessage?.content || conv.lastMessage || 'Sem mensagens',
+            assignedToName,
           };
         })
       );

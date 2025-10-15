@@ -35,6 +35,7 @@ interface Conversation {
   transferredAt: Date | null;
   status: string;
   assignedTo: string | null;
+  assignedToName?: string | null;
 }
 
 export default function Conversations() {
@@ -251,7 +252,7 @@ export default function Conversations() {
                           )}
                         </div>
                         <Badge variant="outline" className="shrink-0 text-xs">
-                          {conv.assignedTo ? "Atribuído" : conv.assistantType}
+                          {conv.assignedTo && conv.assignedToName ? `Atribuído por ${conv.assignedToName}` : conv.assignedTo ? "Atribuído" : conv.assistantType}
                         </Badge>
                       </div>
                       <div className="text-xs text-muted-foreground mt-2">

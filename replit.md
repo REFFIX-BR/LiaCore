@@ -8,6 +8,14 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (2025-10-15)
 
+**✅ IMPLEMENTED: Assigned User Name Display (Optimized)**
+- Feature: Badge "Atribuído" agora exibe "Atribuído por [Nome]" para identificação fácil do agente responsável
+- Backend: Endpoint `/api/conversations/assigned` enriquecido com campo `assignedToName` contendo primeiro nome do usuário
+- Performance: Implementado método `getUsersByIds` para busca em lote (elimina N+1 query pattern)
+- Frontend: Badge exibe "Atribuído por João" ao invés de apenas "Atribuído" para facilitar verificação visual
+- Fallback: Se nome não disponível, exibe apenas "Atribuído"
+- Location: `server/routes.ts` (lines 4703-4717), `server/storage.ts` (getUsersByIds method), `client/src/pages/Conversations.tsx` (line 258)
+
 **✅ IMPLEMENTED: Last Client Message Display + Real-time Sorting**
 - Feature: Conversas Transferidas/Atribuídas agora exibem a última mensagem do cliente (ao invés de "Transferência manual: .")
 - Backend enhancement: Endpoints `/api/conversations/transferred` e `/api/conversations/assigned` enriquecem resposta com última mensagem do usuário
