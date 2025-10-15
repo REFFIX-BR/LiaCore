@@ -6278,5 +6278,64 @@ A resposta deve:
     }
   });
 
+  // ==== GROUPS ENDPOINTS ====
+
+  // Get all groups with filters
+  app.get("/api/groups", authenticate, async (req, res) => {
+    try {
+      const { search, aiEnabled } = req.query;
+
+      const groups = await storage.getGroupsWithFilters({
+        search: search as string | undefined,
+        aiEnabled: aiEnabled === 'true' ? true : aiEnabled === 'false' ? false : undefined,
+      });
+
+      console.log(`✅ [Groups] Retrieved ${groups.length} groups`);
+      return res.json(groups);
+    } catch (error) {
+      console.error("❌ [Groups] Error fetching groups:", error);
+      return res.status(500).json({ error: "Error fetching groups" });
+    }
+  });
+
+  // Get group by ID
+  app.get("/api/groups/:id", authenticate, async (req, res) => {
+    try {
+      const group = await storage.getGroup(req.params.id);
+
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      return res.json(group);
+    } catch (error) {
+      console.error("❌ [Groups] Error fetching group:", error);
+      return res.status(500).json({ error: "Error fetching group" });
+    }
+  });
+
+  // Toggle AI for a group
+  app.put("/api/groups/:id/toggle-ai", authenticate, async (req, res) => {
+    try {
+      const { aiEnabled } = req.body;
+
+      if (typeof aiEnabled !== 'boolean') {
+        return res.status(400).json({ error: "aiEnabled must be a boolean" });
+      }
+
+      const group = await storage.toggleGroupAi(req.params.id, aiEnabled);
+
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      console.log(`✅ [Groups] Toggled AI for group ${group.name}: ${aiEnabled ? 'ON' : 'OFF'}`);
+      return res.json(group);
+    } catch (error) {
+      console.error("❌ [Groups] Error toggling AI:", error);
+      return res.status(500).json({ error: "Error toggling AI" });
+    }
+  });
+
   return httpServer;
 }

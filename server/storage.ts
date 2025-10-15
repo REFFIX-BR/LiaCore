@@ -37,7 +37,10 @@ import {
   type InsertRagAnalytics,
   type Contact,
   type InsertContact,
-  type UpdateContact
+  type UpdateContact,
+  type Group,
+  type InsertGroup,
+  type UpdateGroup
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
