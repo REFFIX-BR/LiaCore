@@ -66,7 +66,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
   const [transferNotes, setTransferNotes] = useState("");
   const [privateNoteContent, setPrivateNoteContent] = useState("");
-  const [showPrivateNotes, setShowPrivateNotes] = useState(false);
+  const [showPrivateNotesDialog, setShowPrivateNotesDialog] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -967,6 +967,25 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
             >
               <FileText className="h-4 w-4" />
             </Button>
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={() => setShowPrivateNotesDialog(true)}
+              disabled={sendMutation.isPending}
+              data-testid="button-open-private-notes"
+              title="Notas Privadas"
+              className="relative"
+            >
+              <StickyNote className="h-4 w-4" />
+              {privateNotes.length > 0 && (
+                <Badge 
+                  variant="secondary" 
+                  className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]"
+                >
+                  {privateNotes.length}
+                </Badge>
+              )}
+            </Button>
           </div>
         </div>
 
@@ -975,94 +994,6 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
             ✨ Editando sugestão da IA - suas alterações serão usadas para aprendizado
           </p>
         )}
-
-        {/* Notas Privadas */}
-        <div className="border-t pt-3 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <StickyNote className="h-4 w-4 text-muted-foreground" />
-              <h4 className="text-sm font-medium">Notas Privadas</h4>
-              {privateNotes.length > 0 && (
-                <Badge variant="secondary" className="text-xs">
-                  {privateNotes.length}
-                </Badge>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowPrivateNotes(!showPrivateNotes)}
-              data-testid="button-toggle-private-notes"
-            >
-              {showPrivateNotes ? "Ocultar" : "Mostrar"}
-            </Button>
-          </div>
-
-          {showPrivateNotes && (
-            <div className="space-y-3">
-              {/* Formulário para adicionar nota */}
-              <div className="space-y-2">
-                <TextareaComponent
-                  value={privateNoteContent}
-                  onChange={(e) => setPrivateNoteContent(e.target.value)}
-                  placeholder="Digite uma nota privada para outros atendentes..."
-                  className="resize-none"
-                  rows={2}
-                  data-testid="input-private-note"
-                />
-                <Button
-                  onClick={() => {
-                    if (privateNoteContent.trim()) {
-                      createPrivateNoteMutation.mutate(privateNoteContent.trim());
-                    }
-                  }}
-                  disabled={!privateNoteContent.trim() || createPrivateNoteMutation.isPending}
-                  size="sm"
-                  data-testid="button-add-private-note"
-                >
-                  {createPrivateNoteMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    <>
-                      <StickyNote className="h-3 w-3 mr-2" />
-                      Adicionar Nota
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {/* Lista de notas existentes */}
-              {privateNotes.length > 0 && (
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  <div className="text-xs font-medium text-muted-foreground">
-                    Notas anteriores:
-                  </div>
-                  {privateNotes.map((note) => (
-                    <div
-                      key={note.id}
-                      className="bg-muted/50 p-3 rounded-lg space-y-1"
-                      data-testid={`private-note-${note.id}`}
-                    >
-                      <div className="text-sm">{note.content}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {note.createdByName || 'Atendente'} - {new Date(note.createdAt).toLocaleString('pt-BR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Dialog de Transferência */}
@@ -1133,6 +1064,105 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Notas Privadas */}
+      <Dialog open={showPrivateNotesDialog} onOpenChange={setShowPrivateNotesDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh]" data-testid="dialog-private-notes">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <StickyNote className="h-5 w-5" />
+              Notas Privadas
+              {privateNotes.length > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {privateNotes.length}
+                </Badge>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              Deixe anotações internas sobre esta conversa para outros atendentes.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Formulário para criar nova nota */}
+            <div className="space-y-3 pb-4 border-b">
+              <Label htmlFor="note-content">Nova Nota</Label>
+              <TextareaComponent
+                id="note-content"
+                value={privateNoteContent}
+                onChange={(e) => setPrivateNoteContent(e.target.value)}
+                placeholder="Digite uma nota privada para outros atendentes..."
+                className="resize-none"
+                rows={3}
+                data-testid="input-private-note"
+              />
+              <Button
+                onClick={() => {
+                  if (privateNoteContent.trim()) {
+                    createPrivateNoteMutation.mutate(privateNoteContent.trim());
+                  }
+                }}
+                disabled={!privateNoteContent.trim() || createPrivateNoteMutation.isPending}
+                className="w-full"
+                data-testid="button-add-private-note"
+              >
+                {createPrivateNoteMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <StickyNote className="h-4 w-4 mr-2" />
+                    Adicionar Nota
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Lista de notas existentes */}
+            {privateNotes.length > 0 ? (
+              <div className="space-y-3">
+                <Label>Notas Anteriores ({privateNotes.length})</Label>
+                <ScrollArea className="h-[300px] pr-4">
+                  <div className="space-y-3">
+                    {privateNotes.map((note) => (
+                      <div
+                        key={note.id}
+                        className="bg-muted/50 p-4 rounded-lg space-y-2"
+                        data-testid={`private-note-${note.id}`}
+                      >
+                        <div className="text-sm leading-relaxed">{note.content}</div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Badge variant="outline" className="text-xs">
+                            {note.createdByName || 'Atendente'}
+                          </Badge>
+                          <span>•</span>
+                          <span>
+                            {new Date(note.createdAt).toLocaleString('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <StickyNote className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">Nenhuma nota criada ainda</p>
+                <p className="text-xs mt-1">Adicione a primeira nota acima</p>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </Card>

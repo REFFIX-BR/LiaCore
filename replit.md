@@ -46,6 +46,8 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 
 **Redis Optimization System**: Implements intelligent caching, batching, and hash storage to reduce Redis requests and costs.
 
+**Private Notes System**: Internal collaboration feature allowing agents to leave private notes on conversations for team visibility. Notes are conversation-specific, timestamped, and show author information. Accessible via dialog interface with button in chat controls.
+
 ### System Design Choices
 - **Conversation Prioritization**: Color-coded wait time indicators and sorting by timestamp.
 - **Admin Tools**: Features for mass-closing abandoned conversations, reprocessing stuck messages, and managing system configurations.
@@ -53,6 +55,7 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 - **Worker Concurrency**: Optimized worker configuration (20 message workers, 8 image workers, 8 NPS workers).
 - **Ouvidoria Details Modal**: Enhanced UI for viewing complete complaint descriptions.
 - **API Key Management**: Robust handling of multi-instance Evolution API keys.
+- **Private Notes UI**: Dialog-based interface with StickyNote icon button in chat controls. Shows badge count when notes exist. Dialog displays creation form and scrollable list of existing notes with author and timestamp.
 
 ## External Dependencies
 
