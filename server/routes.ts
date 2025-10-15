@@ -5583,70 +5583,20 @@ A resposta deve:
         });
       }
 
-      let whatsappEdited = false;
+      // NOTA: Evolution API não suporta edição nativa de mensagens no WhatsApp
+      // A edição será feita apenas no banco de dados do LIA CORTEX
+      // A mensagem original permanecerá inalterada no WhatsApp do cliente
+      
+      // Atualizar mensagem no banco de dados
+      await storage.updateMessage(id, {
+        content: content.trim()
+      });
 
-      // Editar no WhatsApp se tiver whatsappMessageId
-      if (message.whatsappMessageId && message.remoteJid) {
-        try {
-          // Primeiro deletar a mensagem antiga do WhatsApp
-          const deleted = await deleteWhatsAppMessage(
-            message.whatsappMessageId,
-            message.remoteJid,
-            conversation.evolutionInstance || undefined
-          );
-
-          // Enviar nova mensagem editada
-          if (deleted) {
-            const instance = conversation.evolutionInstance || EVOLUTION_CONFIG.instance;
-            const apiKey = getEvolutionApiKey(instance);
-            const sendUrl = `${EVOLUTION_CONFIG.apiUrl}/message/sendText/${instance}`;
-
-            const phoneNumber = conversation.chatId.replace('whatsapp_', '').replace('@s.whatsapp.net', '');
-
-            const response = await fetch(sendUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'apikey': apiKey || ''
-              },
-              body: JSON.stringify({
-                number: phoneNumber,
-                text: content.trim()
-              })
-            });
-
-            const data = await response.json();
-
-            if (data?.key?.id) {
-              // Atualizar whatsappMessageId com o novo ID
-              await storage.updateMessage(id, {
-                content: content.trim(),
-                whatsappMessageId: data.key.id
-              });
-              whatsappEdited = true;
-              console.log(`✅ [Edit] Mensagem editada no WhatsApp: ${data.key.id}`);
-            }
-          }
-        } catch (error) {
-          console.error("❌ [Edit] Erro ao editar mensagem no WhatsApp:", error);
-        }
-      }
-
-      // Atualizar no banco de dados (se não foi atualizado ao enviar para WhatsApp)
-      if (!whatsappEdited) {
-        await storage.updateMessage(id, {
-          content: content.trim()
-        });
-      }
-
-      console.log(`✏️ [Edit] Mensagem ${id} editada por ${currentUser.fullName}`);
+      console.log(`✏️ [Edit] Mensagem ${id} editada por ${currentUser.fullName} (apenas no banco de dados)`);
 
       return res.json({ 
-        success: true, 
-        whatsappEdited,
-        message: whatsappEdited 
-          ? "Mensagem editada no banco e reenviada no WhatsApp" 
-          : "Mensagem editada no banco (não foi possível reenviar no WhatsApp)"
+        success: true,
+        message: "Mensagem editada com sucesso no sistema"
       });
     } catch (error) {
       console.error("Edit message error:", error);
