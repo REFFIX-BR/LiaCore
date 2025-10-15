@@ -1660,18 +1660,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.json({ success: true, processed: false, reason: "no_text" });
         }
 
-        // Clean phone number (remove @s.whatsapp.net)
-        const phoneNumber = remoteJid.replace('@s.whatsapp.net', '');
-        const chatId = `whatsapp_${phoneNumber}`;
-        const clientName = pushName || `Cliente ${phoneNumber.slice(-4)}`;
+        // Detect if this is a group message
+        const isGroup = remoteJid.endsWith('@g.us');
+        
+        let phoneNumber: string;
+        let chatId: string;
+        let clientName: string;
+        
+        if (isGroup) {
+          const groupId = remoteJid; // Keep full group ID (e.g., 120363123456789@g.us)
+          
+          console.log(`👥 [Groups] Mensagem de grupo detectada: ${groupId}`);
+          
+          // Get or create group
+          let group = await storage.getGroupByGroupId(groupId);
+          
+          if (!group) {
+            // Import new group automatically
+            const groupName = pushName || `Grupo ${groupId.slice(0, 8)}`;
+            
+            console.log(`➕ [Groups] Importando novo grupo: ${groupName}`);
+            
+            group = await storage.createGroup({
+              groupId,
+              name: groupName,
+              evolutionInstance: instance,
+              aiEnabled: false, // New groups start with AI disabled by default
+              lastMessageTime: new Date(),
+              lastMessage: messageText.substring(0, 100),
+            });
+            
+            console.log(`✅ [Groups] Grupo importado com sucesso: ${group.name} (ID: ${group.id})`);
+          } else {
+            // Update last message info
+            await storage.updateGroup(group.id, {
+              lastMessageTime: new Date(),
+              lastMessage: messageText.substring(0, 100),
+            });
+          }
+          
+          // Check if AI is enabled for this group
+          if (!group.aiEnabled) {
+            console.log(`🔇 [Groups] IA desativada para grupo ${group.name} - ignorando mensagem`);
+            return res.json({ 
+              success: true, 
+              processed: false, 
+              reason: "group_ai_disabled",
+              groupId: group.id,
+              groupName: group.name
+            });
+          }
+          
+          console.log(`✅ [Groups] IA ativada para grupo ${group.name} - processando mensagem`);
+          
+          // For groups, we'll process like a regular conversation
+          // Use groupId as the "phone number" for conversation purposes
+          phoneNumber = groupId;
+          chatId = `whatsapp_${groupId}`;
+          clientName = group.name;
+          
+          webhookLogger.success('MESSAGE_RECEIVED', `Mensagem de grupo: ${clientName}`, {
+            groupId,
+            messagePreview: messageText.substring(0, 50),
+            chatId,
+          });
 
-        webhookLogger.success('MESSAGE_RECEIVED', `Mensagem de ${clientName}`, {
-          phoneNumber,
-          messagePreview: messageText.substring(0, 50),
-          chatId,
-        });
+          console.log(`💬 [Evolution] Mensagem de grupo ${clientName}: ${messageText}`);
+        } else {
+          // Individual conversation
+          phoneNumber = remoteJid.replace('@s.whatsapp.net', '');
+          chatId = `whatsapp_${phoneNumber}`;
+          clientName = pushName || `Cliente ${phoneNumber.slice(-4)}`;
 
-        console.log(`💬 [Evolution] Mensagem recebida de ${clientName} (${phoneNumber}): ${messageText}`);
+          webhookLogger.success('MESSAGE_RECEIVED', `Mensagem de ${clientName}`, {
+            phoneNumber,
+            messagePreview: messageText.substring(0, 50),
+            chatId,
+          });
+
+          console.log(`💬 [Evolution] Mensagem recebida de ${clientName} (${phoneNumber}): ${messageText}`);
+        }
 
         // Get or create conversation
         let conversation = await storage.getConversationByChatId(chatId);

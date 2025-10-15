@@ -509,6 +509,7 @@ export const groups = pgTable("groups", {
   name: text("name").notNull(), // Group name
   avatar: text("avatar"), // Group avatar/photo URL
   aiEnabled: boolean("ai_enabled").notNull().default(false), // IA ativa/inativa no grupo
+  evolutionInstance: text("evolution_instance"), // Evolution API instance name
   lastMessageTime: timestamp("last_message_time"), // Última mensagem recebida
   lastMessage: text("last_message"), // Última mensagem recebida (preview)
   participantsCount: integer("participants_count").default(0), // Número de participantes

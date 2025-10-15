@@ -144,6 +144,12 @@ const menuCategories: MenuCategory[] = [
         icon: Contact,
         roles: ["ADMIN", "SUPERVISOR", "AGENT"],
       },
+      {
+        title: "Grupos WhatsApp",
+        url: "/groups",
+        icon: UsersIcon,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
     ],
   },
   {

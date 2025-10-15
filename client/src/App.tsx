@@ -30,6 +30,7 @@ import RegistrationRequests from "@/pages/RegistrationRequests";
 import ActivityLogs from "@/pages/ActivityLogs";
 import Ouvidoria from "@/pages/Ouvidoria";
 import Contacts from "@/pages/Contacts";
+import Groups from "@/pages/Groups";
 import LiveLogs from "@/pages/LiveLogs";
 import AgentLogs from "@/pages/AgentLogs";
 import { useEffect } from "react";
@@ -152,6 +153,9 @@ function Router() {
       </Route>
       <Route path="/contacts">
         {() => <ProtectedRoute component={Contacts} />}
+      </Route>
+      <Route path="/groups">
+        {() => <ProtectedRoute component={Groups} />}
       </Route>
       <Route component={NotFound} />
     </Switch>
