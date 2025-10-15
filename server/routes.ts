@@ -3075,18 +3075,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const minutesInactive = Math.round((Date.now() - conv.lastMessageTime.getTime()) / (1000 * 60));
 
             // 1. Marcar conversa como resolvida (fechada)
-            await storage.updateConversation(conv.id, {
-              status: 'resolved',
-              metadata: {
-                ...conv.metadata,
-                autoClosed: true,
-                autoClosedReason: 'admin_abandoned_cleanup',
-                autoClosedAt: new Date().toISOString(),
-                minutesInactiveWhenClosed: minutesInactive,
-                npsSent: true, // Flag para indicar que NPS foi agendado
-                npsScheduledAt: new Date().toISOString(),
-              },
-            });
+            // Usar SQL direto para mesclar metadata corretamente no PostgreSQL
+            const { db } = await import("./db");
+            const { sql } = await import("drizzle-orm");
+            const { conversations } = await import("@shared/schema");
+            const { eq } = await import("drizzle-orm");
+
+            const newMetadata = {
+              autoClosed: true,
+              autoClosedReason: 'admin_abandoned_cleanup',
+              autoClosedAt: new Date().toISOString(),
+              minutesInactiveWhenClosed: minutesInactive,
+              npsSent: true,
+              npsScheduledAt: new Date().toISOString(),
+            };
+
+            await db.update(conversations)
+              .set({
+                status: 'resolved',
+                metadata: sql`COALESCE(metadata, '{}'::jsonb) || ${JSON.stringify(newMetadata)}::jsonb`,
+              })
+              .where(eq(conversations.id, conv.id));
 
             // 2. Enviar mensagem de encerramento (opcional - descomente se quiser)
             // const closureMessage = `A conversa foi encerrada por inatividade. Se precisar de ajuda, é só chamar novamente! 😊`;
