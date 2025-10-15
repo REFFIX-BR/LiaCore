@@ -3042,13 +3042,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { minMinutesInactive = 30 } = req.body;
 
-      // Buscar conversas ativas há mais de X minutos inativas
+      // Buscar TODAS conversas não-finalizadas (todos status exceto 'resolved')
       const allConversations = await storage.getAllActiveConversations();
       
       const abandonedConversations = allConversations.filter(conv => {
-        if (conv.status !== 'active') return false;
-        if (conv.transferredToHuman) return false; // Não fechar se foi transferida
+        // Não fechar se já está finalizada
+        if (conv.status === 'resolved') return false;
         
+        // Não fechar se foi transferida para humano
+        if (conv.transferredToHuman) return false;
+        
+        // Verificar tempo de inatividade
         const minutesInactive = conv.lastMessageTime 
           ? (Date.now() - conv.lastMessageTime.getTime()) / (1000 * 60)
           : 0;
@@ -3072,7 +3076,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const results = await Promise.all(
         abandonedConversations.map(async (conv) => {
           try {
-            const minutesInactive = Math.round((Date.now() - conv.lastMessageTime.getTime()) / (1000 * 60));
+            const minutesInactive = conv.lastMessageTime 
+              ? Math.round((Date.now() - conv.lastMessageTime.getTime()) / (1000 * 60))
+              : 9999; // Se não tem lastMessageTime, considerar muito tempo inativo
 
             // 1. Marcar conversa como resolvida (fechada)
             // Usar SQL direto para mesclar metadata corretamente no PostgreSQL
