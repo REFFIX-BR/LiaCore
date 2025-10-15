@@ -5543,6 +5543,117 @@ A resposta deve:
     }
   });
 
+  // Edit message (DB + WhatsApp)
+  app.put("/api/messages/:id", authenticate, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { content } = req.body;
+      const currentUser = req.user!;
+
+      if (!content || typeof content !== 'string' || !content.trim()) {
+        return res.status(400).json({ error: "Conteúdo da mensagem é obrigatório" });
+      }
+
+      // Buscar mensagem
+      const message = await storage.getMessage(id);
+      if (!message) {
+        return res.status(404).json({ error: "Mensagem não encontrada" });
+      }
+
+      // Buscar conversa para verificar permissões
+      const conversation = await storage.getConversation(message.conversationId);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversa não encontrada" });
+      }
+
+      // Verificar permissões
+      const isAdminOrSupervisor = currentUser.role === 'ADMIN' || currentUser.role === 'SUPERVISOR';
+      const isAssignedAgent = conversation.assignedTo === currentUser.userId;
+
+      if (!isAdminOrSupervisor && !isAssignedAgent) {
+        return res.status(403).json({ 
+          error: "Você não tem permissão para editar esta mensagem" 
+        });
+      }
+
+      // Verificar se mensagem é do assistente (não permitir editar mensagens do usuário)
+      if (message.role !== 'assistant') {
+        return res.status(400).json({ 
+          error: "Não é possível editar mensagens do cliente" 
+        });
+      }
+
+      let whatsappEdited = false;
+
+      // Editar no WhatsApp se tiver whatsappMessageId
+      if (message.whatsappMessageId && message.remoteJid) {
+        try {
+          // Primeiro deletar a mensagem antiga do WhatsApp
+          const deleted = await deleteWhatsAppMessage(
+            message.whatsappMessageId,
+            message.remoteJid,
+            conversation.evolutionInstance || undefined
+          );
+
+          // Enviar nova mensagem editada
+          if (deleted) {
+            const instance = conversation.evolutionInstance || EVOLUTION_CONFIG.instance;
+            const apiKey = getEvolutionApiKey(instance);
+            const sendUrl = `${EVOLUTION_CONFIG.apiUrl}/message/sendText/${instance}`;
+
+            const phoneNumber = conversation.chatId.replace('whatsapp_', '').replace('@s.whatsapp.net', '');
+
+            const response = await fetch(sendUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': apiKey || ''
+              },
+              body: JSON.stringify({
+                number: phoneNumber,
+                text: content.trim()
+              })
+            });
+
+            const data = await response.json();
+
+            if (data?.key?.id) {
+              // Atualizar whatsappMessageId com o novo ID
+              await storage.updateMessage(id, {
+                content: content.trim(),
+                whatsappMessageId: data.key.id
+              });
+              whatsappEdited = true;
+              console.log(`✅ [Edit] Mensagem editada no WhatsApp: ${data.key.id}`);
+            }
+          }
+        } catch (error) {
+          console.error("❌ [Edit] Erro ao editar mensagem no WhatsApp:", error);
+        }
+      }
+
+      // Atualizar no banco de dados (se não foi atualizado ao enviar para WhatsApp)
+      if (!whatsappEdited) {
+        await storage.updateMessage(id, {
+          content: content.trim()
+        });
+      }
+
+      console.log(`✏️ [Edit] Mensagem ${id} editada por ${currentUser.fullName}`);
+
+      return res.json({ 
+        success: true, 
+        whatsappEdited,
+        message: whatsappEdited 
+          ? "Mensagem editada no banco e reenviada no WhatsApp" 
+          : "Mensagem editada no banco (não foi possível reenviar no WhatsApp)"
+      });
+    } catch (error) {
+      console.error("Edit message error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Delete message (DB + WhatsApp)
   app.delete("/api/messages/:id", authenticate, async (req, res) => {
     try {
