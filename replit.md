@@ -8,6 +8,12 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (2025-10-15)
 
+**✅ IMPLEMENTED: Client Phone Number Display in Chat Header**
+- Feature: Cabeçalho do chat agora exibe o telefone do cliente formatado ao lado do nome
+- Format: Número exibido como "55 64 99131-7201" (código país + DDD + número)
+- Functionality: Botão para copiar telefone para área de transferência com feedback visual
+- Location: `client/src/components/ChatHeader.tsx`, `client/src/components/ChatPanel.tsx`
+
 **✅ IMPLEMENTED: Assigned User Name Display (Optimized)**
 - Feature: Badge "Atribuído" agora exibe "Atribuído por [Nome]" para identificação fácil do agente responsável
 - Backend: Endpoint `/api/conversations/assigned` enriquecido com campo `assignedToName` contendo primeiro nome do usuário

@@ -9,6 +9,7 @@ interface ChatHeaderProps {
   clientDocument: string | null;
   assistantType: string;
   status: string;
+  chatId: string;
 }
 
 const assistantColors = {
@@ -39,8 +40,9 @@ const statusLabels = {
   resolved: "Resolvido",
 };
 
-export function ChatHeader({ clientName, clientDocument, assistantType, status }: ChatHeaderProps) {
+export function ChatHeader({ clientName, clientDocument, assistantType, status, chatId }: ChatHeaderProps) {
   const [copied, setCopied] = useState(false);
+  const [copiedPhone, setCopiedPhone] = useState(false);
   const { toast } = useToast();
 
   const handleCopy = async () => {
@@ -63,6 +65,27 @@ export function ChatHeader({ clientName, clientDocument, assistantType, status }
     }
   };
 
+  const handleCopyPhone = async () => {
+    const phoneNumber = extractPhoneNumber(chatId);
+    if (!phoneNumber) return;
+    
+    try {
+      await navigator.clipboard.writeText(phoneNumber);
+      setCopiedPhone(true);
+      toast({
+        title: "Telefone copiado!",
+        description: "Telefone copiado para a área de transferência",
+      });
+      setTimeout(() => setCopiedPhone(false), 2000);
+    } catch (error) {
+      toast({
+        title: "Erro ao copiar",
+        description: "Não foi possível copiar o telefone",
+        variant: "destructive",
+      });
+    }
+  };
+
   const formatDocument = (doc: string) => {
     // Formatar CPF: 000.000.000-00 ou CNPJ: 00.000.000/0000-00
     if (doc.length === 11) {
@@ -73,6 +96,25 @@ export function ChatHeader({ clientName, clientDocument, assistantType, status }
     return doc;
   };
 
+  const extractPhoneNumber = (chatId: string): string => {
+    // Extrair número do chatId (formato: 5564991317201@s.whatsapp.net)
+    const match = chatId.match(/^(\d+)@/);
+    return match ? match[1] : chatId;
+  };
+
+  const formatPhoneNumber = (chatId: string): string => {
+    const phone = extractPhoneNumber(chatId);
+    // Formatar: 55 64 99131-7201 ou similar
+    if (phone.length >= 12) {
+      // Formato internacional com DDD e 9 dígitos: 55 64 99131-7201
+      return phone.replace(/^(\d{2})(\d{2})(\d{5})(\d{4})/, "$1 $2 $3-$4");
+    } else if (phone.length >= 11) {
+      // Formato nacional: 64 99131-7201
+      return phone.replace(/^(\d{2})(\d{5})(\d{4})/, "$1 $2-$3");
+    }
+    return phone;
+  };
+
   return (
     <div className="flex items-center justify-between p-3 border-b">
       <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -81,11 +123,23 @@ export function ChatHeader({ clientName, clientDocument, assistantType, status }
             <h3 className="font-semibold text-sm truncate" data-testid="chat-client-name">
               {clientName}
             </h3>
-            {clientDocument && (
-              <span className="text-xs text-muted-foreground">
-                (CPF do Cliente)
-              </span>
-            )}
+            <span className="text-xs text-muted-foreground" data-testid="chat-client-phone">
+              ({formatPhoneNumber(chatId)})
+            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleCopyPhone}
+              className="h-5 px-1.5"
+              data-testid="button-copy-phone"
+              title="Copiar telefone"
+            >
+              {copiedPhone ? (
+                <Check className="h-3 w-3 text-chart-2" />
+              ) : (
+                <Copy className="h-3 w-3" />
+              )}
+            </Button>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Badge 

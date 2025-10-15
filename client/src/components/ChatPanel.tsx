@@ -518,6 +518,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
             clientDocument={conversation.clientDocument}
             assistantType={conversation.assistantType}
             status={conversation.status}
+            chatId={conversation.chatId}
           />
         </div>
         <div className="flex items-center gap-2 px-3">
