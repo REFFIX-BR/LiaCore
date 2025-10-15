@@ -474,9 +474,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get recent activity logs (admin/supervisor only)
   app.get("/api/activity-logs", authenticate, requireAnyRole("ADMIN", "SUPERVISOR"), async (req, res) => {
     try {
-      const limit = parseInt(req.query.limit as string) || 100;
+      const limit = parseInt(req.query.limit as string) || 200;
       const logs = await storage.getRecentActivityLogs(limit);
-      res.json({ logs });
+      
+      // Enriquecer logs com informações adicionais
+      const enrichedLogs = await Promise.all(logs.map(async (log) => {
+        const enriched: any = { ...log };
+        
+        // Adicionar informações da conversa (se aplicável)
+        if (log.conversationId) {
+          const conversation = await storage.getConversation(log.conversationId);
+          if (conversation) {
+            enriched.conversation = {
+              id: conversation.id,
+              clientName: conversation.clientName,
+              chatId: conversation.chatId,
+            };
+          }
+        }
+        
+        // Adicionar informações do usuário alvo (se aplicável)
+        if (log.targetUserId) {
+          const targetUser = await storage.getUserById(log.targetUserId);
+          if (targetUser) {
+            enriched.targetUser = {
+              id: targetUser.id,
+              fullName: targetUser.fullName,
+              username: targetUser.username,
+            };
+          }
+        }
+        
+        return enriched;
+      }));
+      
+      res.json({ logs: enrichedLogs });
     } catch (error) {
       console.error("❌ [Activity Logs] Error getting logs:", error);
       res.status(500).json({ error: "Erro ao buscar logs de atividade" });
@@ -5545,6 +5577,20 @@ A resposta deve:
         createdBy: req.user!.fullName || req.user!.username,
       });
 
+      // Criar log de atividade
+      const isSelfAssign = targetAgentId === currentUser.userId;
+      await storage.createActivityLog({
+        userId: currentUser.userId,
+        action: isSelfAssign ? "self_assign" : "assign_conversation",
+        conversationId: id,
+        targetUserId: isSelfAssign ? undefined : targetAgentId,
+        details: {
+          agentName: agent.fullName,
+          clientName: conversation.clientName,
+          isSelfAssign,
+        },
+      });
+
       console.log(`👤 [Assignment] Conversa ${id} atribuída a ${agent.fullName}`);
 
       return res.json({
@@ -5694,6 +5740,20 @@ A resposta deve:
         createdBy: currentUser.fullName || currentUser.username,
       });
 
+      // Criar log de atividade
+      await storage.createActivityLog({
+        userId: currentUser.userId,
+        action: "transfer_conversation",
+        conversationId: id,
+        targetUserId: agentId,
+        details: {
+          fromAgent: fromAgentFullName,
+          toAgent: targetAgent.fullName,
+          notes: notes,
+          clientName: conversation.clientName,
+        },
+      });
+
       console.log(`🔄 [Transfer] Conversa ${id} transferida de ${fromAgentFullName} para ${targetAgent.fullName}`);
 
       return res.json({
@@ -5821,6 +5881,17 @@ A resposta deve:
         action: "mark_resolved",
         notes: `Conversa finalizada por ${currentUser.fullName || currentUser.username}`,
         createdBy: currentUser.fullName || currentUser.username,
+      });
+
+      // Criar log de atividade
+      await storage.createActivityLog({
+        userId: currentUser.userId,
+        action: "resolve_conversation",
+        conversationId: id,
+        details: {
+          clientName: conversation.clientName,
+          assistantType: conversation.assistantType,
+        },
       });
 
       // Preparar metadata para aguardar NPS se for WhatsApp
@@ -5977,6 +6048,16 @@ A resposta deve:
         action: "verify_conversation",
         notes: `Conversa verificada por ${currentUser.fullName || currentUser.username}`,
         createdBy: currentUser.fullName || currentUser.username,
+      });
+
+      // Criar log de atividade
+      await storage.createActivityLog({
+        userId: currentUser.userId,
+        action: "verify_conversation",
+        conversationId: id,
+        details: {
+          clientName: conversation.clientName,
+        },
       });
 
       console.log(`✅ [Verify] Conversa ${id} verificada por ${currentUser.fullName}`);

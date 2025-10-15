@@ -208,10 +208,13 @@ export const messageTemplates = pgTable("message_templates", {
 export const activityLogs = pgTable("activity_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
-  action: text("action").notNull(), // 'login', 'logout'
+  action: text("action").notNull(), // 'login', 'logout', 'transfer_conversation', 'resolve_conversation', 'assign_conversation', 'verify_conversation', 'self_assign'
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   sessionDuration: integer("session_duration"), // Duração da sessão em segundos (apenas para logout)
+  conversationId: varchar("conversation_id"), // ID da conversa relacionada (quando aplicável)
+  targetUserId: varchar("target_user_id"), // ID do usuário alvo (ex: para quem transferiu)
+  details: jsonb("details"), // Detalhes adicionais da ação (motivo de transferência, etc)
   createdAt: timestamp("created_at").defaultNow(),
 });
 
