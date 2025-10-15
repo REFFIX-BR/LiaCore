@@ -48,6 +48,8 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 
 **Private Notes System**: Internal collaboration feature allowing agents to leave private notes on conversations for team visibility. Notes are conversation-specific, timestamped, and show author information. Accessible via dialog interface with button in chat controls.
 
+**Conversation Verification System**: Supervisor workflow tracking system to prevent duplicate conversation reviews across shifts. Supervisors can mark conversations as verified (with timestamp and supervisor ID stored). Visual indicators (green CheckCircle2) appear on verified conversations in all views. Verification automatically resets when client sends new message, ensuring supervisors re-review conversations after new customer input. Verification button available only for admins/supervisors in ChatPanel.
+
 ### System Design Choices
 - **Conversation Prioritization**: Color-coded wait time indicators and sorting by timestamp.
 - **Admin Tools**: Features for mass-closing abandoned conversations, reprocessing stuck messages, and managing system configurations.
@@ -57,6 +59,7 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 - **API Key Management**: Robust handling of multi-instance Evolution API keys.
 - **Private Notes UI**: Dialog-based interface with StickyNote icon button in chat controls. Shows badge count when notes exist. Dialog displays creation form and scrollable list of existing notes with author and timestamp.
 - **New Contact Creation**: Button in Contacts page allows creating new contacts with phone number, name, CPF/CNPJ, initial message, and optional agent assignment. Automatically creates conversation and sends WhatsApp message.
+- **Conversation Verification UI**: Visual indicators (green CheckCircle2 icon) show verified conversations in ConversationCard and Conversations page. Verify button in ChatPanel (supervisor/admin only) disabled when already verified, with automatic cache invalidation across all conversation views.
 
 ## External Dependencies
 
