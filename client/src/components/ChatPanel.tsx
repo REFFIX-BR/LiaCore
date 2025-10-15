@@ -55,7 +55,6 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
   const [suggestionId, setSuggestionId] = useState<string | null>(null);
   const [isEditingAI, setIsEditingAI] = useState(false);
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [allMessages, setAllMessages] = useState<Message[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -91,7 +90,6 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
     setAiSuggestion(null);
     setSuggestionId(null);
     setIsEditingAI(false);
-    setEditingMessageId(null);
     setMessageContent("");
     setSelectedImage(null);
     setSelectedAudio(null);
@@ -441,35 +439,6 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
     },
   });
 
-  // Editar mensagem
-  const editMessageMutation = useMutation({
-    mutationFn: async ({ messageId, content }: { messageId: string; content: string }) => {
-      const response = await apiRequest(
-        `/api/messages/${messageId}`, 
-        "PUT",
-        { content }
-      );
-      return response.json();
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Mensagem editada!",
-        description: data.whatsappEdited 
-          ? "Mensagem atualizada no banco e reenviada no WhatsApp" 
-          : "Mensagem atualizada no banco",
-      });
-      setEditingMessageId(null);
-      setMessageContent("");
-      queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations", conversation.id] });
-    },
-    onError: () => {
-      toast({
-        title: "Erro ao editar mensagem",
-        variant: "destructive",
-      });
-    },
-  });
-
   // Deletar mensagem
   const deleteMessageMutation = useMutation({
     mutationFn: async (messageId: string) => {
@@ -537,13 +506,6 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   };
 
   const handleManualSend = () => {
-    // Se está editando mensagem, salvar edição
-    if (editingMessageId) {
-      handleSaveEditedMessage();
-      return;
-    }
-
-    // Caso contrário, enviar mensagem normal
     if (messageContent.trim() || selectedImage || selectedAudio || selectedPdf) {
       sendMutation.mutate({ 
         content: messageContent || '', 
@@ -602,42 +564,14 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
     }
   };
 
-  // Carregar mensagem para edição
-  const handleLoadMessageForEdit = (message: Message) => {
-    setEditingMessageId(message.id);
-    setMessageContent(message.content);
-    setIsEditingAI(false);
-    setAiSuggestion(null);
-    setSuggestionId(null);
-    // Focar no textarea
-    setTimeout(() => {
-      textareaRef.current?.focus();
-    }, 100);
-  };
-
-  // Salvar mensagem editada
-  const handleSaveEditedMessage = () => {
-    if (editingMessageId && messageContent.trim()) {
-      editMessageMutation.mutate({
-        messageId: editingMessageId,
-        content: messageContent.trim()
-      });
-    }
-  };
-
-  // Cancelar edição
+  // Cancelar edição da sugestão AI
   const handleCancelEdit = () => {
-    setEditingMessageId(null);
     setMessageContent("");
   };
 
   // Deletar mensagem
   const handleDeleteMessage = (messageId: string) => {
     if (window.confirm("Tem certeza que deseja excluir esta mensagem?")) {
-      // Se a mensagem sendo deletada está em edição, cancelar a edição primeiro
-      if (editingMessageId === messageId) {
-        handleCancelEdit();
-      }
       deleteMessageMutation.mutate(messageId);
     }
   };
@@ -746,7 +680,6 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               key={msg.id} 
               message={msg} 
               canEdit={isAdminOrSupervisor || (isAgent && conversation.assignedTo === user?.id)}
-              onEdit={() => handleLoadMessageForEdit(msg)}
               onDelete={() => handleDeleteMessage(msg.id)}
             />
           ))}
@@ -888,26 +821,6 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
           </div>
         )}
 
-        {/* Editing Indicator */}
-        {editingMessageId && (
-          <div className="p-2 bg-chart-3/10 rounded-md border border-chart-3/30 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Edit3 className="h-4 w-4 text-chart-3" />
-              <span className="text-sm font-medium text-chart-3">Editando mensagem</span>
-            </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleCancelEdit}
-              className="h-6 px-2"
-              data-testid="button-cancel-edit"
-            >
-              <X className="h-3 w-3" />
-              Cancelar
-            </Button>
-          </div>
-        )}
-
         <div className="space-y-2">
           <div className="flex gap-2">
             <Textarea
@@ -927,9 +840,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
                 }
               }}
               placeholder={
-                editingMessageId
-                  ? "Edite a mensagem..."
-                  : isEditingAI
+                isEditingAI
                   ? "Edite a sugestão da IA..."
                   : "Digite sua resposta ou peça uma sugestão da IA..."
               }
