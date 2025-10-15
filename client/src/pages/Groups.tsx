@@ -56,10 +56,20 @@ export default function Groups() {
   // Mutation to toggle AI
   const toggleAiMutation = useMutation({
     mutationFn: async (data: { groupId: string; aiEnabled: boolean }) => {
-      return await apiRequest(`/api/groups/${data.groupId}/toggle-ai`, {
+      const response = await fetch(`/api/groups/${data.groupId}/toggle-ai`, {
         method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ aiEnabled: data.aiEnabled }),
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to toggle AI");
+      }
+
+      return response.json();
     },
     onSuccess: (data: Group) => {
       toast({
