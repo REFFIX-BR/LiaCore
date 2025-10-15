@@ -5609,17 +5609,20 @@ A resposta deve:
         }
       }
 
-      // Deletar do banco de dados
-      await storage.deleteMessage(id);
+      // Marcar como deletada (soft delete) ao invés de remover do banco
+      await storage.updateMessage(id, {
+        deletedAt: new Date(),
+        deletedBy: currentUser.fullName || currentUser.username,
+      });
 
-      console.log(`🗑️ [Delete] Mensagem ${id} deletada do banco por ${currentUser.fullName}`);
+      console.log(`🗑️ [Delete] Mensagem ${id} marcada como deletada por ${currentUser.fullName}`);
 
       return res.json({ 
         success: true, 
         whatsappDeleted,
         message: whatsappDeleted 
-          ? "Mensagem deletada do banco e do WhatsApp" 
-          : "Mensagem deletada do banco (não foi possível deletar do WhatsApp)"
+          ? "Mensagem deletada do WhatsApp e marcada como excluída no sistema" 
+          : "Mensagem marcada como excluída no sistema (não foi possível deletar do WhatsApp)"
       });
     } catch (error) {
       console.error("Delete message error:", error);
