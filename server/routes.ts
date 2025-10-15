@@ -1679,6 +1679,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Import new group automatically - fetch group info from Evolution API
             let groupName = `Grupo ${groupId.slice(0, 8)}`; // Fallback name
             
+            let groupAvatar: string | null = null;
+            
             try {
               // Fetch group info from Evolution API
               const apiKey = await getEvolutionApiKey(instance);
@@ -1689,26 +1691,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 
                 console.log(`🔍 [Groups] Buscando informações do grupo via API: ${groupId}`);
                 
+                // GET request with groupJid as query parameter
                 const groupInfoResponse = await fetch(
-                  `${evolutionUrl}/group/findGroupInfos/${instance}`,
+                  `${evolutionUrl}/group/findGroupInfos/${instance}?groupJid=${encodeURIComponent(groupId)}`,
                   {
-                    method: 'POST',
+                    method: 'GET',
                     headers: {
-                      'Content-Type': 'application/json',
                       'apikey': apiKey,
-                    },
-                    body: JSON.stringify({
-                      groupJid: groupId
-                    })
+                    }
                   }
                 );
                 
                 if (groupInfoResponse.ok) {
                   const groupInfo = await groupInfoResponse.json();
-                  groupName = groupInfo.subject || groupInfo.name || groupName;
+                  groupName = groupInfo.subject || groupName;
+                  groupAvatar = groupInfo.pictureUrl || null;
+                  
                   console.log(`✅ [Groups] Nome do grupo obtido: ${groupName}`);
+                  if (groupAvatar) {
+                    console.log(`✅ [Groups] Avatar do grupo obtido: ${groupAvatar}`);
+                  }
                 } else {
-                  console.log(`⚠️ [Groups] Falha ao buscar info do grupo - usando nome fallback`);
+                  const errorText = await groupInfoResponse.text();
+                  console.log(`⚠️ [Groups] Falha ao buscar info do grupo (${groupInfoResponse.status}): ${errorText} - usando nome fallback`);
                 }
               } else {
                 console.log(`⚠️ [Groups] API key não encontrada - usando nome fallback`);
@@ -1722,6 +1727,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             group = await storage.createGroup({
               groupId,
               name: groupName,
+              avatar: groupAvatar,
               evolutionInstance: instance,
               aiEnabled: false, // New groups start with AI disabled by default
               lastMessageTime: new Date(),
