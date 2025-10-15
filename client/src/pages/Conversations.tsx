@@ -87,10 +87,6 @@ export default function Conversations() {
   const activeConversation1 = activeConversations.find(c => c.id === activeIds[0]);
   const activeConversation2 = activeConversations.find(c => c.id === activeIds[1]);
 
-  if (conversationsLoading) {
-    return <div className="flex items-center justify-center h-full">Carregando...</div>;
-  }
-
   // Ordenar e filtrar conversas transferidas
   const transferredActiveConversations = transferredConversations
     .filter(conv => 
@@ -128,6 +124,10 @@ export default function Conversations() {
       setActiveIds(stillActive);
     }
   }, [activeConversations, activeIds]);
+
+  if (conversationsLoading) {
+    return <div className="flex items-center justify-center h-full">Carregando...</div>;
+  }
 
   return (
     <div className="h-[calc(100vh-8rem)] flex gap-4">
