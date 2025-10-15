@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Search, Phone, User, FileText, AlertCircle, MessageSquare, Clock } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Phone, User, FileText, AlertCircle, MessageSquare, Clock, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
@@ -41,12 +42,27 @@ interface ContactWithHistory extends Contact {
   conversations: Conversation[];
 }
 
+interface User {
+  id: string;
+  fullName: string;
+  role: string;
+  status: string;
+}
+
 export default function Contacts() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedContact, setSelectedContact] = useState<ContactWithHistory | null>(null);
   const [isReopenDialogOpen, setIsReopenDialogOpen] = useState(false);
   const [reopenMessage, setReopenMessage] = useState("");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [newContactData, setNewContactData] = useState({
+    phoneNumber: "",
+    name: "",
+    document: "",
+    message: "",
+    assignedTo: "",
+  });
   const { toast } = useToast();
 
   // Query all contacts
@@ -83,13 +99,45 @@ export default function Contacts() {
     },
   });
 
+  // Query available agents for assignment
+  const { data: availableAgents } = useQuery<{ users: User[] }>({
+    queryKey: ["/api/users/available-agents"],
+  });
+
+  // Mutation to create new contact
+  const createMutation = useMutation({
+    mutationFn: async (data: typeof newContactData) => {
+      return await apiRequest("/api/contacts/create", "POST", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Contato criado",
+        description: "Contato criado com sucesso e conversa iniciada",
+      });
+      setIsCreateDialogOpen(false);
+      setNewContactData({
+        phoneNumber: "",
+        name: "",
+        document: "",
+        message: "",
+        assignedTo: "",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao criar contato",
+        description: error.message || "Ocorreu um erro ao criar o contato",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Mutation to reopen conversation
   const reopenMutation = useMutation({
     mutationFn: async (data: { contactId: string; message?: string }) => {
-      return await apiRequest(`/api/contacts/reopen`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest("/api/contacts/reopen", "POST", data);
     },
     onSuccess: () => {
       toast({
@@ -109,6 +157,19 @@ export default function Contacts() {
       });
     },
   });
+
+  const handleCreateContact = () => {
+    if (!newContactData.phoneNumber) {
+      toast({
+        title: "Telefone obrigatório",
+        description: "Por favor, informe o número de telefone",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createMutation.mutate(newContactData);
+  };
 
   const handleReopenConversation = () => {
     if (!selectedContact) return;
@@ -132,8 +193,20 @@ export default function Contacts() {
       {/* Lista de Contatos */}
       <Card className="w-96 flex flex-col">
         <CardHeader className="pb-3">
-          <CardTitle>Contatos</CardTitle>
-          <CardDescription>Todos os clientes que já interagiram</CardDescription>
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div>
+              <CardTitle>Contatos</CardTitle>
+              <CardDescription>Todos os clientes que já interagiram</CardDescription>
+            </div>
+            <Button
+              onClick={() => setIsCreateDialogOpen(true)}
+              size="sm"
+              data-testid="button-new-contact"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Novo
+            </Button>
+          </div>
           
           {/* Busca */}
           <div className="relative mt-2">
@@ -167,7 +240,7 @@ export default function Contacts() {
               filteredContacts.map((contact) => (
                 <button
                   key={contact.id}
-                  onClick={() => setSelectedContact(contact)}
+                  onClick={() => setSelectedContact(contact as ContactWithHistory)}
                   className={`w-full text-left p-3 rounded-md border transition-colors hover-elevate ${
                     selectedContact?.id === contact.id ? "bg-accent" : ""
                   }`}
@@ -310,6 +383,111 @@ export default function Contacts() {
           </CardContent>
         </Card>
       )}
+
+      {/* Dialog de Criação de Contato */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Novo Contato</DialogTitle>
+            <DialogDescription>
+              Criar um novo contato e iniciar uma conversa via WhatsApp
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="phoneNumber">Telefone (WhatsApp) *</Label>
+              <Input
+                id="phoneNumber"
+                value={newContactData.phoneNumber}
+                onChange={(e) => setNewContactData({ ...newContactData, phoneNumber: e.target.value })}
+                placeholder="5511999999999"
+                data-testid="input-phone-number"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Apenas números (com DDD)
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="name">Nome</Label>
+              <Input
+                id="name"
+                value={newContactData.name}
+                onChange={(e) => setNewContactData({ ...newContactData, name: e.target.value })}
+                placeholder="Nome do cliente"
+                data-testid="input-contact-name"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="document">CPF/CNPJ</Label>
+              <Input
+                id="document"
+                value={newContactData.document}
+                onChange={(e) => setNewContactData({ ...newContactData, document: e.target.value })}
+                placeholder="000.000.000-00"
+                data-testid="input-document"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="message">Mensagem Inicial</Label>
+              <Textarea
+                id="message"
+                value={newContactData.message}
+                onChange={(e) => setNewContactData({ ...newContactData, message: e.target.value })}
+                placeholder="Olá! Entramos em contato para iniciar seu atendimento."
+                rows={3}
+                data-testid="input-initial-message"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Mensagem que será enviada via WhatsApp
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="assignedTo">Atribuir a Atendente</Label>
+              <Select
+                value={newContactData.assignedTo}
+                onValueChange={(value) => setNewContactData({ ...newContactData, assignedTo: value })}
+              >
+                <SelectTrigger data-testid="select-assigned-agent">
+                  <SelectValue placeholder="Selecione um atendente (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Não atribuir (IA responderá)</SelectItem>
+                  {availableAgents?.users?.map((agent: User) => (
+                    <SelectItem key={agent.id} value={agent.id}>
+                      {agent.fullName} ({agent.role})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Se não atribuir, a IA responderá automaticamente
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsCreateDialogOpen(false)}
+              data-testid="button-cancel-create"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleCreateContact}
+              disabled={createMutation.isPending}
+              data-testid="button-confirm-create"
+            >
+              {createMutation.isPending ? "Criando..." : "Criar e Enviar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog de Reabertura */}
       <Dialog open={isReopenDialogOpen} onOpenChange={setIsReopenDialogOpen}>

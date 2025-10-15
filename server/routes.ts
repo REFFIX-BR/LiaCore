@@ -6348,6 +6348,118 @@ A resposta deve:
     }
   });
 
+  // Create new contact with conversation and assignment
+  app.post("/api/contacts/create", authenticate, async (req, res) => {
+    try {
+      // Validate request body
+      const createContactSchema = z.object({
+        phoneNumber: z.string().min(10, "Phone number must have at least 10 digits"),
+        name: z.string().optional(),
+        document: z.string().optional(),
+        message: z.string().optional(),
+        assignedTo: z.string().optional(),
+      });
+
+      const validation = createContactSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid request data",
+          details: validation.error.errors 
+        });
+      }
+
+      const { phoneNumber, name, document, message, assignedTo } = validation.data;
+
+      // Validate and format phone number (remove special characters)
+      const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+      
+      if (cleanPhoneNumber.length < 10) {
+        return res.status(400).json({ error: "Invalid phone number" });
+      }
+
+      // Check if contact already exists
+      const existingContact = await storage.getContactByPhoneNumber(cleanPhoneNumber);
+      
+      if (existingContact) {
+        return res.status(400).json({ error: "Contact with this phone number already exists" });
+      }
+
+      // Create contact
+      const contact = await storage.createContact({
+        phoneNumber: cleanPhoneNumber,
+        name: name || null,
+        document: document || null,
+        status: 'active',
+        totalConversations: 0,
+        hasRecurringIssues: false,
+      });
+
+      // Send initial message via Evolution API using shared helper
+      const chatId = `whatsapp_${cleanPhoneNumber}`;
+      const messageToSend = message || "Olá! Entramos em contato para iniciar seu atendimento.";
+      const sendResult = await sendWhatsAppMessage(cleanPhoneNumber, messageToSend);
+
+      if (!sendResult.success) {
+        // Rollback: delete the contact if message failed
+        try {
+          await storage.deleteContact(contact.id);
+        } catch (deleteError) {
+          console.error("❌ [Contacts] Failed to rollback contact creation:", deleteError);
+        }
+        
+        console.error("❌ [Contacts] Failed to send WhatsApp message - aborting contact creation");
+        return res.status(502).json({ 
+          error: "Failed to send WhatsApp message. Please check Evolution API configuration." 
+        });
+      }
+
+      console.log(`✅ [Contacts] Initial message sent to ${cleanPhoneNumber}`);
+
+      // Create conversation
+      const conversation = await storage.createConversation({
+        chatId,
+        clientName: name || cleanPhoneNumber,
+        clientId: cleanPhoneNumber,
+        clientDocument: document || undefined,
+        assistantType: 'apresentacao', // Start with receptionist
+        status: assignedTo ? 'transferred' : 'active',
+        assignedTo: assignedTo || undefined,
+        transferredToHuman: !!assignedTo,
+        transferredAt: assignedTo ? new Date() : undefined,
+        metadata: { 
+          createdFromContact: true, 
+          createdBy: req.user?.userId,
+          createdByName: req.user?.fullName,
+          createdAt: new Date() 
+        },
+      });
+
+      // Update contact with conversation info
+      await storage.updateContact(contact.id, {
+        lastConversationId: conversation.id,
+        lastConversationDate: new Date(),
+        totalConversations: 1,
+      });
+
+      console.log(`✅ [Contacts] Created new contact ${cleanPhoneNumber} with conversation ${conversation.id}`);
+      
+      if (assignedTo) {
+        console.log(`✅ [Contacts] Conversation assigned to agent ${assignedTo}`);
+      }
+
+      return res.json({ 
+        success: true, 
+        message: "Contact and conversation created successfully",
+        contact,
+        conversation,
+      });
+    } catch (error) {
+      console.error("❌ [Contacts] Error creating contact:", error);
+      return res.status(500).json({ error: "Error creating contact" });
+    }
+  });
+
   // Reopen conversation with a contact
   app.post("/api/contacts/reopen", authenticate, async (req, res) => {
     try {
@@ -6369,7 +6481,7 @@ A resposta deve:
 
       const evolutionUrl = process.env.EVOLUTION_API_URL;
       const evolutionApiKey = process.env.EVOLUTION_API_KEY;
-      const evolutionInstance = process.env.EVOLUTION_INSTANCE_NAME;
+      const evolutionInstance = process.env.EVOLUTION_API_INSTANCE;
 
       if (!evolutionUrl || !evolutionApiKey || !evolutionInstance) {
         return res.status(500).json({ error: "Evolution API not configured" });

@@ -40,7 +40,7 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 
 **Role-Based Access Control (RBAC)**: A 3-tier system (ADMIN, SUPERVISOR, AGENT) with granular permissions.
 
-**Contact Management System**: Centralized client database for conversation history and proactive service, with automatic WhatsApp contact synchronization.
+**Contact Management System**: Centralized client database for conversation history and proactive service, with automatic WhatsApp contact synchronization. Includes a "New Contact" feature allowing supervisors to manually create contacts, initiate WhatsApp conversations, and assign them directly to specific agents.
 
 **Message Deletion System**: Allows supervisors and admins to soft-delete assistant messages, with visual indicators and WhatsApp integration for deletion.
 
@@ -56,6 +56,7 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 - **Ouvidoria Details Modal**: Enhanced UI for viewing complete complaint descriptions.
 - **API Key Management**: Robust handling of multi-instance Evolution API keys.
 - **Private Notes UI**: Dialog-based interface with StickyNote icon button in chat controls. Shows badge count when notes exist. Dialog displays creation form and scrollable list of existing notes with author and timestamp.
+- **New Contact Creation**: Button in Contacts page allows creating new contacts with phone number, name, CPF/CNPJ, initial message, and optional agent assignment. Automatically creates conversation and sends WhatsApp message.
 
 ## External Dependencies
 
