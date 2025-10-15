@@ -64,6 +64,8 @@ interface ConversationDetailsProps {
   onMarkResolved: () => void;
   onDeleteMessage?: (messageId: string) => void;
   onResetThread?: () => void;
+  onVerify?: () => void;
+  isVerified?: boolean;
 }
 
 const functionIcons: Record<string, string> = {
@@ -85,6 +87,8 @@ export function ConversationDetails({
   onMarkResolved,
   onDeleteMessage,
   onResetThread,
+  onVerify,
+  isVerified,
 }: ConversationDetailsProps) {
   const [transferDept, setTransferDept] = useState("");
   const [transferNotes, setTransferNotes] = useState("");
@@ -306,6 +310,18 @@ export function ConversationDetails({
               <Button variant="outline" onClick={onMarkResolved} data-testid="button-mark-resolved">
                 ✅ Marcar como Resolvido
               </Button>
+              
+              {onVerify && (
+                <Button 
+                  variant={isVerified ? "default" : "outline"}
+                  onClick={onVerify}
+                  disabled={isVerified}
+                  data-testid="button-verify"
+                  className={isVerified ? "text-green-600" : ""}
+                >
+                  {isVerified ? "✓ Verificada" : "Verificar Conversa"}
+                </Button>
+              )}
             </div>
 
             {onResetThread && (

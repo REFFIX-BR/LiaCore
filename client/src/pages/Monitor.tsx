@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { monitorAPI } from "@/lib/api";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/lib/auth-context";
 
 export default function Monitor() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -20,6 +21,7 @@ export default function Monitor() {
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: conversations = [], isLoading: conversationsLoading } = useQuery({
     queryKey: ["/api/monitor/conversations"],
@@ -128,6 +130,35 @@ export default function Monitor() {
         title: "Erro ao Resetar", 
         description: error.message,
         variant: "destructive"
+      });
+    },
+  });
+
+  const verifyMutation = useMutation({
+    mutationFn: async () => {
+      if (!activeConvId) throw new Error("Nenhuma conversa selecionada");
+      const response = await apiRequest(
+        `/api/conversations/${activeConvId}/verify`,
+        "POST",
+        {}
+      );
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/monitor/conversations"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations", activeConvId] });
+      await queryClient.refetchQueries({ queryKey: ["/api/monitor/conversations", activeConvId] });
+      toast({
+        title: "Conversa Verificada!",
+        description: "Conversa marcada como verificada pelo supervisor",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao verificar",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
@@ -244,6 +275,8 @@ export default function Monitor() {
       hasAlert: alerts.some(a => a.conversationId === conv.id),
       transferSuggested: false,
       lastMessageTime: new Date(conv.lastMessageTime),
+      verifiedAt: (conv as any).verifiedAt ? new Date((conv as any).verifiedAt) : null,
+      verifiedBy: (conv as any).verifiedBy || null,
     }));
 
   const activeConversation = conversations.find(c => c.id === activeConvId);
@@ -406,6 +439,8 @@ export default function Monitor() {
                 onMarkResolved={handleMarkResolved}
                 onDeleteMessage={(messageId) => deleteMessageMutation.mutate(messageId)}
                 onResetThread={() => resetThreadMutation.mutate(activeConversation.id)}
+                onVerify={(user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') ? () => verifyMutation.mutate() : undefined}
+                isVerified={!!activeConversation.verifiedAt}
               />
             )}
           </div>
