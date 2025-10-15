@@ -6400,6 +6400,7 @@ A resposta deve:
         document: z.string().optional(),
         message: z.string().optional(),
         assignedTo: z.string().optional(),
+        evolutionInstance: z.string().optional(),
       });
 
       const validation = createContactSchema.safeParse(req.body);
@@ -6411,7 +6412,7 @@ A resposta deve:
         });
       }
 
-      const { phoneNumber, name, document, message, assignedTo } = validation.data;
+      const { phoneNumber, name, document, message, assignedTo, evolutionInstance } = validation.data;
 
       // Validate and format phone number (remove special characters)
       const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
@@ -6440,7 +6441,9 @@ A resposta deve:
       // Send initial message via Evolution API using shared helper
       const chatId = `whatsapp_${cleanPhoneNumber}`;
       const messageToSend = message || "Olá! Entramos em contato para iniciar seu atendimento.";
-      const sendResult = await sendWhatsAppMessage(cleanPhoneNumber, messageToSend);
+      const instanceToUse = evolutionInstance || "Principal";
+      console.log(`📤 [Contacts] Sending message via instance: ${instanceToUse}`);
+      const sendResult = await sendWhatsAppMessage(cleanPhoneNumber, messageToSend, instanceToUse);
 
       if (!sendResult.success) {
         // Rollback: delete the contact if message failed

@@ -62,6 +62,7 @@ export default function Contacts() {
     document: "",
     message: "",
     assignedTo: "",
+    evolutionInstance: "Principal",
   });
   const { toast } = useToast();
 
@@ -121,6 +122,7 @@ export default function Contacts() {
         document: "",
         message: "",
         assignedTo: "",
+        evolutionInstance: "Principal",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
@@ -443,6 +445,26 @@ export default function Contacts() {
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Mensagem que será enviada via WhatsApp
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="evolutionInstance">Instância WhatsApp</Label>
+              <Select
+                value={newContactData.evolutionInstance}
+                onValueChange={(value) => setNewContactData({ ...newContactData, evolutionInstance: value })}
+              >
+                <SelectTrigger data-testid="select-evolution-instance">
+                  <SelectValue placeholder="Selecione a instância" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Principal">Principal</SelectItem>
+                  <SelectItem value="Cobranca">Cobrança</SelectItem>
+                  <SelectItem value="Leads">Leads</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Instância do Evolution API para enviar a mensagem
               </p>
             </div>
 
