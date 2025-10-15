@@ -43,18 +43,18 @@ Preferred communication style: Simple, everyday language.
 - Metadata: Usa SQL JSONB merge (|| operator) para preservar campos existentes e adicionar npsSent, npsScheduledAt
 - Location: `server/routes.ts` (lines 3044-3145), `client/src/components/dashboards/AdminDashboard.tsx`
 
-**✅ IMPLEMENTED: Message Editing & Deletion System**
-- **Edit Feature**: Supervisores e admins podem editar mensagens do assistente através de botão de edição (ícone de lápis)
-  - Backend: Endpoint PUT `/api/messages/:id` permite editar conteúdo de mensagens do assistente (role='assistant')
-  - Important: Edição é feita APENAS no banco de dados LIA CORTEX - mensagem original permanece inalterada no WhatsApp do cliente
-  - Reason: Evolution API não suporta edição nativa de mensagens
-  - User Flow: Click edit → conteúdo carregado no textarea → modificar texto → salvar → mensagem atualizada no sistema
+**✅ IMPLEMENTED: Message Deletion System**
 - **Delete Feature**: Supervisores e admins podem excluir mensagens do assistente através de botão de exclusão (ícone de lixeira)
   - Backend: Endpoint DELETE `/api/messages/:id` deleta mensagem do banco e do WhatsApp (quando possível)
   - User Flow: Click delete → confirmação → mensagem removida do sistema e do WhatsApp
-- **Permissions**: Apenas ADMIN, SUPERVISOR ou agente atribuído à conversa pode editar/deletar mensagens
-- **UI Components**: Botões de edição e exclusão visíveis em ChatMessage, indicador visual "Editando mensagem" no ChatPanel, botão cancelar edição
-- Location: `server/routes.ts` (PUT/DELETE /api/messages/:id), `client/src/components/ChatPanel.tsx`, `client/src/components/ChatMessage.tsx`
+  - Permissions: Apenas ADMIN, SUPERVISOR ou agente atribuído à conversa pode deletar mensagens
+  - Compatibility: Deletar funciona tanto no banco de dados quanto no WhatsApp do cliente (via Evolution API)
+- **Edit Feature Removed**: Sistema de edição de mensagens foi removido
+  - Reason: Evolution API não suporta edição nativa - edição funcionava apenas no banco de dados, não atualizava WhatsApp do cliente
+  - Decision: Funcionalidade removida por incompatibilidade com WhatsApp (mensagem editada só aparecia no sistema, não no WhatsApp)
+  - Alternative: Agentes podem deletar mensagem incorreta e enviar nova mensagem correta
+- **AI Suggestion Editing Preserved**: Edição de sugestões da IA antes de enviar continua funcional (diferente de editar mensagens já enviadas)
+- Location: `server/routes.ts` (DELETE /api/messages/:id), `client/src/components/ChatPanel.tsx`, `client/src/components/ChatMessage.tsx`
 
 ## System Architecture
 
