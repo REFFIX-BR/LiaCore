@@ -58,6 +58,18 @@ Preferred communication style: Simple, everyday language.
 - **AI Suggestion Editing Preserved**: Edição de sugestões da IA antes de enviar continua funcional (diferente de editar mensagens já enviadas)
 - Location: `shared/schema.ts` (deletedAt/deletedBy fields), `server/routes.ts` (DELETE /api/messages/:id), `client/src/components/ChatMessage.tsx` (deletion badge)
 
+**✅ FIXED: Conversation Sorting & Agent Name Display (2025-10-15)**
+- **Bug Fix 1 - Inverted Chat Update Logic**: Corrigido comportamento onde conversas iam ao topo quando ATENDENTE enviava mensagem
+  - Problem: lastMessageTime atualizava incorretamente fazendo conversas subir quando assistente respondia
+  - Solution: Atualização de lastMessageTime movida para webhook quando CLIENTE envia mensagem (fromMe=false)
+  - Impact: Conversas agora aparecem no topo apenas quando cliente responde, facilitando identificação de mensagens novas dos clientes
+  - Location: `server/routes.ts` (lines 1981-1986, webhook messages.upsert handler)
+- **Bug Fix 2 - Agent Name Display**: Badge "Atribuído por [Nome]" já estava implementado corretamente, problema era cache do navegador
+  - Backend: Endpoint `/api/conversations/assigned` já enriquecia resposta com assignedToName usando getUsersByIds em lote
+  - Frontend: Badge já exibia "Atribuído por [Nome]" corretamente (ex: "Atribuído por Marcio")
+  - Verified: Teste end-to-end confirmou 19 conversas com badges exibindo nomes corretos
+  - Location: `server/routes.ts` (lines 4720-4734), `client/src/pages/Conversations.tsx` (line 255)
+
 ## System Architecture
 
 ### UI/UX Decisions
