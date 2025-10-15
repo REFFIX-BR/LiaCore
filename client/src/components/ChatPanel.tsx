@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, ChevronDown, X, Image as ImageIcon, Mic, Users, FileText, Bold } from "lucide-react";
+import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, ChevronDown, X, Image as ImageIcon, Mic, Users, FileText, Bold, StickyNote } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -65,6 +65,8 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   const [showTransferDialog, setShowTransferDialog] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
   const [transferNotes, setTransferNotes] = useState("");
+  const [privateNoteContent, setPrivateNoteContent] = useState("");
+  const [showPrivateNotes, setShowPrivateNotes] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -406,6 +408,47 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   const { data: agentsData } = useQuery<{ users: Array<{ id: string; fullName: string; username: string; role: string }> }>({
     queryKey: ["/api/users/available-agents"],
     enabled: true, // Endpoint acessível por todos usuários autenticados
+  });
+
+  // Query para buscar notas privadas da conversa
+  const { data: privateNotesData } = useQuery<Array<{ 
+    id: string; 
+    content: string; 
+    createdBy: string; 
+    createdByName: string | null;
+    createdAt: Date;
+  }>>({
+    queryKey: [`/api/conversations/${conversation.id}/private-notes`],
+    enabled: !!conversation.id,
+  });
+
+  const privateNotes = privateNotesData || [];
+
+  // Mutation para criar nota privada
+  const createPrivateNoteMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const response = await apiRequest(
+        `/api/conversations/${conversation.id}/private-notes`,
+        "POST",
+        { content }
+      );
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Nota privada criada!",
+        description: "A nota foi salva e outros atendentes poderão vê-la",
+      });
+      setPrivateNoteContent("");
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations/${conversation.id}/private-notes`] });
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao criar nota",
+        description: "Não foi possível salvar a nota privada",
+        variant: "destructive",
+      });
+    },
   });
 
   // Transferir conversa para outro agente
@@ -932,6 +975,94 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
             ✨ Editando sugestão da IA - suas alterações serão usadas para aprendizado
           </p>
         )}
+
+        {/* Notas Privadas */}
+        <div className="border-t pt-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <StickyNote className="h-4 w-4 text-muted-foreground" />
+              <h4 className="text-sm font-medium">Notas Privadas</h4>
+              {privateNotes.length > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {privateNotes.length}
+                </Badge>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowPrivateNotes(!showPrivateNotes)}
+              data-testid="button-toggle-private-notes"
+            >
+              {showPrivateNotes ? "Ocultar" : "Mostrar"}
+            </Button>
+          </div>
+
+          {showPrivateNotes && (
+            <div className="space-y-3">
+              {/* Formulário para adicionar nota */}
+              <div className="space-y-2">
+                <TextareaComponent
+                  value={privateNoteContent}
+                  onChange={(e) => setPrivateNoteContent(e.target.value)}
+                  placeholder="Digite uma nota privada para outros atendentes..."
+                  className="resize-none"
+                  rows={2}
+                  data-testid="input-private-note"
+                />
+                <Button
+                  onClick={() => {
+                    if (privateNoteContent.trim()) {
+                      createPrivateNoteMutation.mutate(privateNoteContent.trim());
+                    }
+                  }}
+                  disabled={!privateNoteContent.trim() || createPrivateNoteMutation.isPending}
+                  size="sm"
+                  data-testid="button-add-private-note"
+                >
+                  {createPrivateNoteMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <StickyNote className="h-3 w-3 mr-2" />
+                      Adicionar Nota
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Lista de notas existentes */}
+              {privateNotes.length > 0 && (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <div className="text-xs font-medium text-muted-foreground">
+                    Notas anteriores:
+                  </div>
+                  {privateNotes.map((note) => (
+                    <div
+                      key={note.id}
+                      className="bg-muted/50 p-3 rounded-lg space-y-1"
+                      data-testid={`private-note-${note.id}`}
+                    >
+                      <div className="text-sm">{note.content}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {note.createdByName || 'Atendente'} - {new Date(note.createdAt).toLocaleString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Dialog de Transferência */}
