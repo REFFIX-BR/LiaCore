@@ -533,3 +533,24 @@ export const updateGroupSchema = insertGroupSchema.partial();
 export type Group = typeof groups.$inferSelect;
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
 export type UpdateGroup = z.infer<typeof updateGroupSchema>;
+
+// Private Notes Table - Internal notes for agents about conversations
+export const privateNotes = pgTable("private_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull(), // Conversation this note belongs to
+  content: text("content").notNull(), // Note content
+  createdBy: varchar("created_by").notNull(), // User ID who created the note
+  createdByName: text("created_by_name"), // User's full name (for display)
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  conversationIdIdx: index("private_notes_conversation_id_idx").on(table.conversationId),
+  createdAtIdx: index("private_notes_created_at_idx").on(table.createdAt),
+}));
+
+export const insertPrivateNoteSchema = createInsertSchema(privateNotes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type PrivateNote = typeof privateNotes.$inferSelect;
+export type InsertPrivateNote = z.infer<typeof insertPrivateNoteSchema>;
