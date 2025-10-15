@@ -73,14 +73,16 @@ Preferred communication style: Simple, everyday language.
 **✅ IMPLEMENTED: WhatsApp Groups Management System (2025-10-15)**
 - **Feature**: Sistema completo de gerenciamento de grupos WhatsApp com controle individual de IA por grupo
 - **Database Schema**: Tabela `groups` criada com campos: groupId (WhatsApp ID), name, avatar, aiEnabled, evolutionInstance, lastMessageTime, lastMessage, participantsCount, metadata
-- **Automatic Import**: Webhook detecta mensagens de grupos (`@g.us`), importa grupos automaticamente com IA desativada por padrão
+- **Automatic Import**: Webhook detecta mensagens de grupos (`@g.us`), busca nome real do grupo via Evolution API, importa automaticamente com IA desativada por padrão
+- **Group Name Resolution**: Sistema faz chamada à Evolution API `/group/findGroupInfos` para obter nome real do grupo (ao invés de usar pushName que seria o nome do usuário)
 - **AI Toggle Control**: Supervisores e admins podem ativar/desativar IA individualmente por grupo via interface web
 - **Webhook Integration**: Sistema verifica se `aiEnabled=true` antes de processar mensagens de grupo - grupos com IA desativada são ignorados
 - **Frontend UI**: Página `/groups` com lista de grupos, filtros (Todos/IA Ativa/IA Inativa), painel de detalhes e toggle switch para IA
 - **API Endpoints**: GET `/api/groups`, GET `/api/groups/:id`, PUT `/api/groups/:id/toggle-ai`
 - **Visual Indicators**: Badges verde (IA ON) e cinza (IA OFF) para identificação rápida do status
 - **Use Cases**: Permite ativar IA apenas em grupos específicos (ex: suporte, vendas) enquanto mantém outros grupos silenciosos (ex: grupos internos da empresa)
-- Location: `shared/schema.ts` (groups table), `server/routes.ts` (webhook lines 1666-1745, endpoints lines 6284-6341), `server/storage.ts` (Groups methods), `client/src/pages/Groups.tsx`, `client/src/components/app-sidebar.tsx`
+- **Bug Fix (2025-10-15)**: Corrigido bug onde nome do usuário (pushName) era salvo ao invés do nome do grupo - agora busca nome real via API
+- Location: `shared/schema.ts` (groups table), `server/routes.ts` (webhook lines 1673-1740, endpoints), `server/storage.ts` (Groups methods), `client/src/pages/Groups.tsx`, `client/src/components/app-sidebar.tsx`
 
 ## System Architecture
 

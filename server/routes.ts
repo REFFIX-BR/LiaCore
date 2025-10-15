@@ -1676,8 +1676,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let group = await storage.getGroupByGroupId(groupId);
           
           if (!group) {
-            // Import new group automatically
-            const groupName = pushName || `Grupo ${groupId.slice(0, 8)}`;
+            // Import new group automatically - fetch group info from Evolution API
+            let groupName = `Grupo ${groupId.slice(0, 8)}`; // Fallback name
+            
+            try {
+              // Fetch group info from Evolution API
+              const apiKey = await getEvolutionApiKey(instance);
+              
+              if (apiKey) {
+                const baseUrl = process.env.EVOLUTION_API_URL || 'https://evolutionapi.trtelecom.net';
+                const evolutionUrl = baseUrl.startsWith('http') ? baseUrl : `https://${baseUrl}`;
+                
+                console.log(`🔍 [Groups] Buscando informações do grupo via API: ${groupId}`);
+                
+                const groupInfoResponse = await fetch(
+                  `${evolutionUrl}/group/findGroupInfos/${instance}`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'apikey': apiKey,
+                    },
+                    body: JSON.stringify({
+                      groupJid: groupId
+                    })
+                  }
+                );
+                
+                if (groupInfoResponse.ok) {
+                  const groupInfo = await groupInfoResponse.json();
+                  groupName = groupInfo.subject || groupInfo.name || groupName;
+                  console.log(`✅ [Groups] Nome do grupo obtido: ${groupName}`);
+                } else {
+                  console.log(`⚠️ [Groups] Falha ao buscar info do grupo - usando nome fallback`);
+                }
+              } else {
+                console.log(`⚠️ [Groups] API key não encontrada - usando nome fallback`);
+              }
+            } catch (error) {
+              console.error(`❌ [Groups] Erro ao buscar info do grupo:`, error);
+            }
             
             console.log(`➕ [Groups] Importando novo grupo: ${groupName}`);
             
