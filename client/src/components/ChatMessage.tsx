@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Check, CheckCheck, FileText, Download, Edit3 } from "lucide-react";
+import { Check, CheckCheck, FileText, Download, Edit3, Trash2 } from "lucide-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
 
 export interface Message {
@@ -24,6 +24,7 @@ interface ChatMessageProps {
   message: Message;
   canEdit?: boolean;
   onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 const functionIcons: Record<string, string> = {
@@ -33,7 +34,7 @@ const functionIcons: Record<string, string> = {
   agendar_visita: "📅",
 };
 
-export function ChatMessage({ message, canEdit = false, onEdit }: ChatMessageProps) {
+export function ChatMessage({ message, canEdit = false, onEdit, onDelete }: ChatMessageProps) {
   if (message.role === "system") {
     return (
       <div className="flex justify-center py-2">
@@ -299,16 +300,33 @@ export function ChatMessage({ message, canEdit = false, onEdit }: ChatMessagePro
 
         {/* Timestamp e status */}
         <div className={`flex items-center gap-1 mt-1 px-2 ${isUser ? 'justify-start' : 'justify-end'}`}>
-          {isAssistant && canEdit && onEdit && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onEdit}
-              className="h-6 px-2"
-              data-testid="button-edit-message"
-            >
-              <Edit3 className="h-3 w-3" />
-            </Button>
+          {isAssistant && canEdit && (
+            <>
+              {onEdit && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onEdit}
+                  className="h-6 px-2"
+                  data-testid="button-edit-message"
+                  title="Editar mensagem"
+                >
+                  <Edit3 className="h-3 w-3" />
+                </Button>
+              )}
+              {onDelete && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onDelete}
+                  className="h-6 px-2"
+                  data-testid="button-delete-message"
+                  title="Excluir mensagem"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
+            </>
           )}
           <span className="text-xs text-muted-foreground">
             {format(message.timestamp, 'MMM dd, hh:mm a')}

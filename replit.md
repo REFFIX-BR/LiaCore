@@ -43,15 +43,18 @@ Preferred communication style: Simple, everyday language.
 - Metadata: Usa SQL JSONB merge (|| operator) para preservar campos existentes e adicionar npsSent, npsScheduledAt
 - Location: `server/routes.ts` (lines 3044-3145), `client/src/components/dashboards/AdminDashboard.tsx`
 
-**✅ IMPLEMENTED: Message Editing System (Database-Only)**
-- Feature: Supervisores e admins podem editar mensagens do assistente através de botão de edição (ícone de lápis) que aparece nas mensagens
-- Backend: Endpoint PUT `/api/messages/:id` permite editar conteúdo de mensagens do assistente (role='assistant')
-- Permissions: Apenas ADMIN, SUPERVISOR ou agente atribuído à conversa pode editar mensagens
-- UI Components: Botão de edição visível em ChatMessage, indicador visual "Editando mensagem" no ChatPanel, botão cancelar edição
-- Important: Edição é feita APENAS no banco de dados LIA CORTEX - a mensagem original permanece inalterada no WhatsApp do cliente
-- Reason: Evolution API não suporta edição nativa de mensagens (tentativa anterior causava bug: deletar+reenviar mostrava "mensagem apagada" no WhatsApp)
-- User Flow: Click edit → conteúdo carregado no textarea → modificar texto → salvar → mensagem atualizada no sistema
-- Location: `server/routes.ts` (PUT /api/messages/:id), `client/src/components/ChatPanel.tsx`, `client/src/components/ChatMessage.tsx`
+**✅ IMPLEMENTED: Message Editing & Deletion System**
+- **Edit Feature**: Supervisores e admins podem editar mensagens do assistente através de botão de edição (ícone de lápis)
+  - Backend: Endpoint PUT `/api/messages/:id` permite editar conteúdo de mensagens do assistente (role='assistant')
+  - Important: Edição é feita APENAS no banco de dados LIA CORTEX - mensagem original permanece inalterada no WhatsApp do cliente
+  - Reason: Evolution API não suporta edição nativa de mensagens
+  - User Flow: Click edit → conteúdo carregado no textarea → modificar texto → salvar → mensagem atualizada no sistema
+- **Delete Feature**: Supervisores e admins podem excluir mensagens do assistente através de botão de exclusão (ícone de lixeira)
+  - Backend: Endpoint DELETE `/api/messages/:id` deleta mensagem do banco e do WhatsApp (quando possível)
+  - User Flow: Click delete → confirmação → mensagem removida do sistema e do WhatsApp
+- **Permissions**: Apenas ADMIN, SUPERVISOR ou agente atribuído à conversa pode editar/deletar mensagens
+- **UI Components**: Botões de edição e exclusão visíveis em ChatMessage, indicador visual "Editando mensagem" no ChatPanel, botão cancelar edição
+- Location: `server/routes.ts` (PUT/DELETE /api/messages/:id), `client/src/components/ChatPanel.tsx`, `client/src/components/ChatMessage.tsx`
 
 ## System Architecture
 

@@ -470,6 +470,32 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
     },
   });
 
+  // Deletar mensagem
+  const deleteMessageMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      const response = await apiRequest(
+        `/api/messages/${messageId}`, 
+        "DELETE"
+      );
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Mensagem excluída!",
+        description: data.whatsappDeleted 
+          ? "Mensagem deletada do banco e do WhatsApp" 
+          : "Mensagem deletada do banco",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations", conversation.id] });
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao excluir mensagem",
+        variant: "destructive",
+      });
+    },
+  });
+
   const showAISuggestion = aiSuggestion && !isEditingAI;
 
   const handleRequestSuggestion = () => {
@@ -601,6 +627,17 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
     setMessageContent("");
   };
 
+  // Deletar mensagem
+  const handleDeleteMessage = (messageId: string) => {
+    if (window.confirm("Tem certeza que deseja excluir esta mensagem?")) {
+      // Se a mensagem sendo deletada está em edição, cancelar a edição primeiro
+      if (editingMessageId === messageId) {
+        handleCancelEdit();
+      }
+      deleteMessageMutation.mutate(messageId);
+    }
+  };
+
   // Filtrar agentes disponíveis (excluindo o agente atual da conversa)
   const availableAgents = agentsData?.users.filter(agent => 
     agent.id !== conversation.assignedTo && 
@@ -706,6 +743,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               message={msg} 
               canEdit={isAdminOrSupervisor || (isAgent && conversation.assignedTo === user?.id)}
               onEdit={() => handleLoadMessageForEdit(msg)}
+              onDelete={() => handleDeleteMessage(msg.id)}
             />
           ))}
           <div ref={messagesEndRef} />
