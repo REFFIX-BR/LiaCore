@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Clock, Circle } from "lucide-react";
+import { AlertTriangle, Clock, Circle, CheckCircle2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -31,6 +31,8 @@ interface ConversationCardData {
   hasAlert: boolean;
   transferSuggested: boolean;
   lastMessageTime: Date;
+  verifiedAt?: Date | null;
+  verifiedBy?: string | null;
 }
 
 interface ConversationCardProps {
@@ -86,6 +88,9 @@ export function ConversationCard({ conversation, isActive, onClick }: Conversati
             )}
             {conversation.transferSuggested && (
               <span className="text-base flex-shrink-0">↪️</span>
+            )}
+            {conversation.verifiedAt && (
+              <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" data-testid="verified-indicator" />
             )}
             <span className="text-sm font-medium truncate">
               Chat #{conversation.chatId}

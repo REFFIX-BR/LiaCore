@@ -2089,9 +2089,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // ⏱️ IMPORTANTE: Atualizar lastMessageTime quando CLIENTE envia mensagem
         // Isso garante que a conversa vai ao topo da lista quando o cliente responde
+        // 🔄 RESETAR VERIFICAÇÃO: Quando cliente envia nova mensagem, resetar verificação do supervisor
         await storage.updateConversation(conversation.id, {
           lastMessage: messageText,
           lastMessageTime: new Date(),
+          verifiedAt: null,
+          verifiedBy: null,
         });
 
         // If conversation is transferred to human, don't auto-respond
@@ -5947,6 +5950,45 @@ A resposta deve:
     } catch (error) {
       console.error("❌ [Reset Thread] Erro ao resetar contexto:", error);
       return res.status(500).json({ error: "Erro ao resetar contexto OpenAI" });
+    }
+  });
+
+  // Mark conversation as verified by supervisor
+  app.post("/api/conversations/:id/verify", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const currentUser = req.user!;
+
+      // Buscar conversa
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversa não encontrada" });
+      }
+
+      // Atualizar conversa com informações de verificação
+      await storage.updateConversation(id, {
+        verifiedAt: new Date(),
+        verifiedBy: currentUser.userId,
+      });
+
+      // Registrar ação de supervisor
+      await storage.createSupervisorAction({
+        conversationId: id,
+        action: "verify_conversation",
+        notes: `Conversa verificada por ${currentUser.fullName || currentUser.username}`,
+        createdBy: currentUser.fullName || currentUser.username,
+      });
+
+      console.log(`✅ [Verify] Conversa ${id} verificada por ${currentUser.fullName}`);
+
+      return res.json({ 
+        success: true,
+        verifiedAt: new Date(),
+        verifiedBy: currentUser.fullName,
+      });
+    } catch (error) {
+      console.error("❌ [Verify] Erro ao verificar conversa:", error);
+      return res.status(500).json({ error: "Erro ao verificar conversa" });
     }
   });
 

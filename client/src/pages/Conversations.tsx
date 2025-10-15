@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-context";
-import { Circle } from "lucide-react";
+import { Circle, CheckCircle2 } from "lucide-react";
 
 // Função para calcular cor do indicador baseado no tempo de espera
 function getWaitTimeIndicator(lastMessageTime: Date): { color: string; label: string } {
@@ -36,6 +36,8 @@ interface Conversation {
   status: string;
   assignedTo: string | null;
   assignedToName?: string | null;
+  verifiedAt: Date | null;
+  verifiedBy: string | null;
 }
 
 export default function Conversations() {
@@ -184,6 +186,9 @@ export default function Conversations() {
                             <div className="flex items-center gap-2">
                               <Circle className={`h-3 w-3 fill-current flex-shrink-0 ${waitTimeIndicator.color}`} data-testid="wait-indicator" />
                               <div className="font-medium truncate">{conv.clientName}</div>
+                              {conv.verifiedAt && (
+                                <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" data-testid="verified-indicator" />
+                              )}
                             </div>
                           {conv.transferReason && (
                             <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
@@ -239,6 +244,9 @@ export default function Conversations() {
                             <div className="flex items-center gap-2">
                               <Circle className={`h-3 w-3 fill-current flex-shrink-0 ${waitTimeIndicator.color}`} data-testid="wait-indicator" />
                               <div className="font-medium truncate">{conv.clientName}</div>
+                              {conv.verifiedAt && (
+                                <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" data-testid="verified-indicator" />
+                              )}
                             </div>
                           {conv.transferReason && (
                             <div className="text-xs text-muted-foreground mt-1 line-clamp-2">

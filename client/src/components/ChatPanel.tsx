@@ -42,6 +42,8 @@ interface Conversation {
   transferredAt: Date | null;
   status: string;
   assignedTo: string | null;
+  verifiedAt?: Date | null;
+  verifiedBy?: string | null;
 }
 
 interface ChatPanelProps {
@@ -512,6 +514,34 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
     },
   });
 
+  // Marcar conversa como verificada
+  const verifyMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest(
+        `/api/conversations/${conversation.id}/verify`, 
+        "POST",
+        {}
+      );
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Conversa verificada!",
+        description: "Conversa marcada como verificada pelo supervisor",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations/transferred"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations/assigned"] });
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao verificar",
+        description: "Não foi possível verificar a conversa",
+        variant: "destructive",
+      });
+    },
+  });
+
   const showAISuggestion = aiSuggestion && !isEditingAI;
 
   const handleRequestSuggestion = () => {
@@ -667,6 +697,22 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Users className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+          {isAdminOrSupervisor && (
+            <Button
+              onClick={() => verifyMutation.mutate()}
+              variant={conversation.verifiedAt ? "default" : "outline"}
+              size="sm"
+              disabled={verifyMutation.isPending || !!conversation.verifiedAt}
+              data-testid="button-verify"
+              title={conversation.verifiedAt ? "Conversa já verificada" : "Marcar como verificada"}
+            >
+              {verifyMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className={`h-4 w-4 ${conversation.verifiedAt ? 'text-green-600' : ''}`} />
               )}
             </Button>
           )}

@@ -72,6 +72,8 @@ export const conversations = pgTable("conversations", {
   autoClosed: boolean("auto_closed").default(false), // Se a conversa foi encerrada automaticamente por inatividade
   autoClosedReason: text("auto_closed_reason"), // Motivo do encerramento automático (ex: 'inactivity')
   autoClosedAt: timestamp("auto_closed_at"), // Quando a conversa foi encerrada automaticamente
+  verifiedAt: timestamp("verified_at"), // Quando a conversa foi verificada pelo supervisor
+  verifiedBy: varchar("verified_by"), // ID do supervisor que verificou
 }, (table) => ({
   // Índices para performance em queries de dashboard e monitor
   lastMessageTimeIdx: index("conversations_last_message_time_idx").on(table.lastMessageTime),
