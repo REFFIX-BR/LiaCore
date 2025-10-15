@@ -3083,6 +3083,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 autoClosedReason: 'admin_abandoned_cleanup',
                 autoClosedAt: new Date().toISOString(),
                 minutesInactiveWhenClosed: minutesInactive,
+                npsSent: true, // Flag para indicar que NPS foi agendado
+                npsScheduledAt: new Date().toISOString(),
               },
             });
 
