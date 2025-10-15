@@ -5548,67 +5548,6 @@ A resposta deve:
     }
   });
 
-  // Edit message (DB + WhatsApp)
-  app.put("/api/messages/:id", authenticate, async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { content } = req.body;
-      const currentUser = req.user!;
-
-      if (!content || typeof content !== 'string' || !content.trim()) {
-        return res.status(400).json({ error: "Conteúdo da mensagem é obrigatório" });
-      }
-
-      // Buscar mensagem
-      const message = await storage.getMessage(id);
-      if (!message) {
-        return res.status(404).json({ error: "Mensagem não encontrada" });
-      }
-
-      // Buscar conversa para verificar permissões
-      const conversation = await storage.getConversation(message.conversationId);
-      if (!conversation) {
-        return res.status(404).json({ error: "Conversa não encontrada" });
-      }
-
-      // Verificar permissões
-      const isAdminOrSupervisor = currentUser.role === 'ADMIN' || currentUser.role === 'SUPERVISOR';
-      const isAssignedAgent = conversation.assignedTo === currentUser.userId;
-
-      if (!isAdminOrSupervisor && !isAssignedAgent) {
-        return res.status(403).json({ 
-          error: "Você não tem permissão para editar esta mensagem" 
-        });
-      }
-
-      // Verificar se mensagem é do assistente (não permitir editar mensagens do usuário)
-      if (message.role !== 'assistant') {
-        return res.status(400).json({ 
-          error: "Não é possível editar mensagens do cliente" 
-        });
-      }
-
-      // NOTA: Evolution API não suporta edição nativa de mensagens no WhatsApp
-      // A edição será feita apenas no banco de dados do LIA CORTEX
-      // A mensagem original permanecerá inalterada no WhatsApp do cliente
-      
-      // Atualizar mensagem no banco de dados
-      await storage.updateMessage(id, {
-        content: content.trim()
-      });
-
-      console.log(`✏️ [Edit] Mensagem ${id} editada por ${currentUser.fullName} (apenas no banco de dados)`);
-
-      return res.json({ 
-        success: true,
-        message: "Mensagem editada com sucesso no sistema"
-      });
-    } catch (error) {
-      console.error("Edit message error:", error);
-      return res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
   // Delete message (DB + WhatsApp)
   app.delete("/api/messages/:id", authenticate, async (req, res) => {
     try {
