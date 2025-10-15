@@ -18,6 +18,8 @@ export interface Message {
   pdfBase64?: string | null;
   pdfName?: string | null;
   audioUrl?: string | null;
+  deletedAt?: Date | null;
+  deletedBy?: string | null;
 }
 
 interface ChatMessageProps {
@@ -251,6 +253,16 @@ export function ChatMessage({ message, canEdit = false, onDelete }: ChatMessageP
             <div className="mb-2">
               <AudioPlayer audioUrl={message.audioUrl} />
             </div>
+          )}
+
+          {/* Badge de mensagem excluída */}
+          {message.deletedAt && (
+            <Badge 
+              variant="outline" 
+              className="mb-2 text-xs bg-destructive/10 text-destructive border-destructive/30"
+            >
+              🗑️ Mensagem excluída
+            </Badge>
           )}
 
           {/* Conteúdo da mensagem */}
