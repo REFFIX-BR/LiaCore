@@ -4109,15 +4109,21 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   // Trigger analysis manually
   app.post("/api/learning/analyze", authenticate, requireAdmin, async (req, res) => {
     try {
-      // TODO: Implement cortex-analysis module
-      console.log("🧠 [Analysis] Triggered manual analysis");
+      console.log("🧠 [Analysis] Manual analysis triggered by admin");
+      
+      // Import and execute manual analysis
+      const { triggerManualAnalysis } = await import("./lib/learning-scheduler");
+      const suggestions = await triggerManualAnalysis();
+      
+      console.log(`✅ [Analysis] Manual analysis completed: ${suggestions.length} suggestions generated`);
+      
       return res.json({ 
         success: true, 
-        message: "Analysis triggered successfully",
-        suggestions: [] 
+        message: `Analysis completed successfully. ${suggestions.length} suggestions generated.`,
+        suggestions 
       });
     } catch (error) {
-      console.error("Analysis error:", error);
+      console.error("❌ [Analysis] Error during manual analysis:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });

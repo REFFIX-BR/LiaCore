@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Brain, CheckCircle2, XCircle, Edit3, TrendingUp, Activity, FileText, GraduationCap, Play, Square } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,7 @@ import {
 import type { PromptSuggestion, PromptUpdate, TrainingSession } from "@shared/schema";
 
 export default function AgentEvolution() {
+  const { toast } = useToast();
   const [selectedTab, setSelectedTab] = useState("suggestions");
   const [selectedSuggestion, setSelectedSuggestion] = useState<PromptSuggestion | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
@@ -58,8 +60,23 @@ export default function AgentEvolution() {
   // Trigger analysis mutation
   const analyzeMutation = useMutation({
     mutationFn: () => apiRequest('/api/learning/analyze', 'POST', {}),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/learning/suggestions'] });
+      const count = data.suggestions?.length || 0;
+      
+      toast({
+        title: count > 0 ? 'Sugestões Geradas' : 'Análise Concluída',
+        description: count > 0 
+          ? `${count} sugestão(ões) gerada(s) e pronta(s) para revisão.`
+          : 'Nenhuma sugestão gerada. Poucos eventos ou baixa confiança nos padrões.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro na Análise',
+        description: 'Não foi possível executar a análise. Tente novamente.',
+        variant: 'destructive',
+      });
     },
   });
 
