@@ -296,6 +296,11 @@ export default function Conversations() {
                                 <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" data-testid="verified-indicator" />
                               )}
                             </div>
+                          {conv.assignedToName && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Atribuído por {conv.assignedToName}
+                            </div>
+                          )}
                           {conv.transferReason && (
                             <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
                               {conv.transferReason}
