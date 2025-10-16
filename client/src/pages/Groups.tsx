@@ -400,7 +400,7 @@ export default function Groups() {
       </Card>
 
       {/* Detalhes do Grupo */}
-      <Card className="flex-1 flex flex-col">
+      <Card className="flex-1 flex flex-col overflow-hidden">
         <CardHeader>
           <CardTitle>Detalhes do Grupo</CardTitle>
           <CardDescription>
@@ -416,7 +416,7 @@ export default function Groups() {
             </div>
           </CardContent>
         ) : (
-          <Tabs defaultValue="chat" className="flex-1 flex flex-col">
+          <Tabs defaultValue="chat" className="flex-1 flex flex-col overflow-hidden">
             <div className="px-6">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="chat" data-testid="tab-chat">
@@ -431,8 +431,8 @@ export default function Groups() {
             </div>
 
             {/* Aba Chat */}
-            <TabsContent value="chat" className="flex-1 flex flex-col mt-0 overflow-hidden">
-              <ScrollArea className="flex-1 px-6" style={{ height: 'calc(100vh - 380px)' }} ref={scrollAreaRef}>
+            <TabsContent value="chat" className="flex-1 flex flex-col mt-0 overflow-hidden min-h-0">
+              <ScrollArea className="flex-1 px-6 min-h-0" ref={scrollAreaRef}>
                 <div className="space-y-3 py-4">
                   {!conversationData ? (
                     <div className="text-center text-muted-foreground py-8">
@@ -522,7 +522,7 @@ export default function Groups() {
               </ScrollArea>
 
               {/* Campo de Envio */}
-              <div className="border-t p-4 space-y-3">
+              <div className="border-t p-4 space-y-3 flex-shrink-0">
                 {/* Botão de Sugestão da IA */}
                 {!aiSuggestion && allMessages.length > 0 && (
                   <Button
