@@ -46,7 +46,7 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 
 **Redis Optimization System**: Implements intelligent caching, batching, and hash storage to reduce Redis requests and costs.
 
-**Message Batching System**: Debouncing system preventing multiple AI responses to sequential client messages. Uses Redis-based 3-second window to group consecutive text messages into a single AI request. Media messages (images/audio/PDF) bypass batching and process immediately to preserve all attachments. Legacy batches with media are detected and processed individually via safeguard mechanism. Implemented in `server/lib/message-batching.ts` with integration in webhook endpoint.
+**Message Batching System**: Atomic Redis-based debouncing system preventing multiple AI responses to sequential client messages. Uses 3-second window to group consecutive text messages into a single AI request with RPUSH/LRANGE atomic operations and Lua script for race-free batch processing. Timer verification prevents premature processing when new messages arrive. Media messages (images/audio/PDF) bypass batching and process immediately to preserve all attachments. Legacy batches with media are detected and processed individually via safeguard mechanism. Implemented in `server/lib/message-batching.ts` with webhook integration.
 
 **Private Notes System**: Internal collaboration feature allowing agents to leave private notes on conversations for team visibility. Notes are conversation-specific, timestamped, and show author information. Accessible via dialog interface with button in chat controls.
 
