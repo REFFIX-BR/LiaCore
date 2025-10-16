@@ -432,99 +432,99 @@ export default function Groups() {
             </div>
 
             {/* Aba Chat */}
-            <TabsContent value="chat" className="flex-1 flex flex-col overflow-hidden min-h-0 m-0">
-              <ScrollArea className="flex-1 px-6 min-h-0" ref={scrollAreaRef}>
-                <div className="space-y-3 py-4">
-                  {!conversationData ? (
-                    <div className="text-center text-muted-foreground py-8">
-                      <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50 animate-pulse" />
-                      <p className="text-sm">Carregando mensagens...</p>
-                    </div>
-                  ) : allMessages.length === 0 ? (
-                    <div className="text-center text-muted-foreground py-8">
-                      <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p>Nenhuma mensagem ainda</p>
-                      <p className="text-sm mt-1">Envie a primeira mensagem para o grupo</p>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Botão Carregar Mais */}
-                      {hasMore && (
-                        <div className="flex justify-center py-2">
-                          <Button
-                            onClick={loadMoreMessages}
-                            variant="ghost"
-                            size="sm"
-                            disabled={loadingMore}
-                            data-testid="button-load-more"
-                          >
-                            {loadingMore ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Carregando...
-                              </>
-                            ) : (
-                              "Carregar mensagens anteriores"
-                            )}
-                          </Button>
-                        </div>
-                      )}
-                      
-                      {allMessages.map((msg: Message) => (
-                        <div
-                          key={msg.id}
-                          className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}
-                          data-testid={`message-${msg.id}`}
-                        >
-                          <div
-                            className={`max-w-[80%] rounded-lg p-3 overflow-hidden ${
-                              msg.role === 'user'
-                                ? 'bg-muted'
-                                : 'bg-primary text-primary-foreground'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 mb-1">
-                              {msg.role === 'user' ? (
-                                <UserIcon className="h-3 w-3" />
+            <TabsContent value="chat" className="flex-1 flex flex-col m-0 data-[state=active]:flex">
+              {/* Área de mensagens com scroll */}
+              <div className="flex-1 overflow-hidden">
+                <ScrollArea className="h-full px-6" ref={scrollAreaRef}>
+                  <div className="space-y-3 py-4">
+                    {!conversationData ? (
+                      <div className="text-center text-muted-foreground py-8">
+                        <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50 animate-pulse" />
+                        <p className="text-sm">Carregando mensagens...</p>
+                      </div>
+                    ) : allMessages.length === 0 ? (
+                      <div className="text-center text-muted-foreground py-8">
+                        <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p>Nenhuma mensagem ainda</p>
+                        <p className="text-sm mt-1">Envie a primeira mensagem para o grupo</p>
+                      </div>
+                    ) : (
+                      <>
+                        {hasMore && (
+                          <div className="flex justify-center py-2">
+                            <Button
+                              onClick={loadMoreMessages}
+                              variant="ghost"
+                              size="sm"
+                              disabled={loadingMore}
+                              data-testid="button-load-more"
+                            >
+                              {loadingMore ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Carregando...
+                                </>
                               ) : (
-                                <Bot className="h-3 w-3" />
+                                "Carregar mensagens anteriores"
                               )}
-                              <span className="text-xs font-medium">
-                                {msg.role === 'user' ? 'Cliente' : msg.sendBy === 'supervisor' ? 'Você' : 'IA'}
-                              </span>
-                              <span className="text-xs opacity-70">
-                                {format(new Date(msg.timestamp), "HH:mm", { locale: ptBR })}
-                              </span>
-                            </div>
-                            <p className="text-sm whitespace-pre-wrap break-words overflow-wrap-anywhere">{msg.content}</p>
-                            
-                            {/* Function Call Badge */}
-                            {msg.functionCall && (
-                              <Badge 
-                                variant="outline" 
-                                className={`mt-2 text-xs ${
-                                  msg.functionCall.status === "completed" 
-                                    ? "bg-chart-2/10 text-chart-2" 
-                                    : msg.functionCall.status === "failed"
-                                    ? "bg-destructive/10 text-destructive"
-                                    : "bg-chart-3/10 text-chart-3"
-                                }`}
-                              >
-                                {functionIcons[msg.functionCall.name] || "⚙️"} {msg.functionCall.name}
-                              </Badge>
-                            )}
+                            </Button>
                           </div>
-                        </div>
-                      ))}
-                      <div ref={messagesEndRef} />
-                    </>
-                  )}
-                </div>
-              </ScrollArea>
+                        )}
+                        
+                        {allMessages.map((msg: Message) => (
+                          <div
+                            key={msg.id}
+                            className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}
+                            data-testid={`message-${msg.id}`}
+                          >
+                            <div
+                              className={`max-w-[80%] rounded-lg p-3 overflow-hidden ${
+                                msg.role === 'user'
+                                  ? 'bg-muted'
+                                  : 'bg-primary text-primary-foreground'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                {msg.role === 'user' ? (
+                                  <UserIcon className="h-3 w-3" />
+                                ) : (
+                                  <Bot className="h-3 w-3" />
+                                )}
+                                <span className="text-xs font-medium">
+                                  {msg.role === 'user' ? 'Cliente' : msg.sendBy === 'supervisor' ? 'Você' : 'IA'}
+                                </span>
+                                <span className="text-xs opacity-70">
+                                  {format(new Date(msg.timestamp), "HH:mm", { locale: ptBR })}
+                                </span>
+                              </div>
+                              <p className="text-sm whitespace-pre-wrap break-words overflow-wrap-anywhere">{msg.content}</p>
+                              
+                              {msg.functionCall && (
+                                <Badge 
+                                  variant="outline" 
+                                  className={`mt-2 text-xs ${
+                                    msg.functionCall.status === "completed" 
+                                      ? "bg-chart-2/10 text-chart-2" 
+                                      : msg.functionCall.status === "failed"
+                                      ? "bg-destructive/10 text-destructive"
+                                      : "bg-chart-3/10 text-chart-3"
+                                  }`}
+                                >
+                                  {functionIcons[msg.functionCall.name] || "⚙️"} {msg.functionCall.name}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        <div ref={messagesEndRef} />
+                      </>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
 
-              {/* Campo de Envio */}
-              <CardFooter className="border-t space-y-3 flex-col items-stretch mt-auto">
-                {/* Botão de Sugestão da IA */}
+              {/* Campo de envio fixo no rodapé */}
+              <div className="border-t p-4 space-y-3 flex-shrink-0">
                 {!aiSuggestion && allMessages.length > 0 && (
                   <Button
                     onClick={handleRequestSuggestion}
@@ -543,7 +543,6 @@ export default function Groups() {
                   </Button>
                 )}
 
-                {/* Campo de texto e botão enviar */}
                 <div className="flex gap-2">
                   <Textarea
                     placeholder="Escrever mensagem para o grupo..."
@@ -565,14 +564,13 @@ export default function Groups() {
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
-              </CardFooter>
+              </div>
             </TabsContent>
 
             {/* Aba Informações */}
-            <TabsContent value="info" className="flex-1 flex flex-col mt-0">
+            <TabsContent value="info" className="flex-1 data-[state=active]:flex m-0">
               <ScrollArea className="flex-1">
                 <div className="space-y-6 p-6">
-                  {/* Informações do Grupo */}
                   <div className="space-y-4">
                     <div>
                       <Label className="text-sm text-muted-foreground">Nome do Grupo</Label>
@@ -609,7 +607,6 @@ export default function Groups() {
                     )}
                   </div>
 
-                  {/* Controle de IA */}
                   <div className="border-t pt-6">
                     <div className="flex items-center justify-between">
                       <div className="space-y-1">
@@ -632,7 +629,6 @@ export default function Groups() {
                     </div>
                   </div>
 
-                  {/* Estatísticas */}
                   <div className="border-t pt-6">
                     <Label className="text-sm font-medium mb-3 block">Estatísticas</Label>
                     <div className="grid grid-cols-2 gap-4">
@@ -647,7 +643,6 @@ export default function Groups() {
                     </div>
                   </div>
 
-                  {/* Informações de Sistema */}
                   <div className="border-t pt-6">
                     <div className="text-xs text-muted-foreground space-y-1">
                       <p>Criado em: {format(new Date(selectedGroup.createdAt), "dd/MM/yyyy 'às' HH:mm")}</p>
