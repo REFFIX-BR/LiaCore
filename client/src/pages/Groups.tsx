@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -432,7 +432,7 @@ export default function Groups() {
             </div>
 
             {/* Aba Chat */}
-            <TabsContent value="chat" className="flex-1 flex flex-col overflow-hidden min-h-0">
+            <TabsContent value="chat" className="flex-1 flex flex-col overflow-hidden min-h-0 m-0">
               <ScrollArea className="flex-1 px-6 min-h-0" ref={scrollAreaRef}>
                 <div className="space-y-3 py-4">
                   {!conversationData ? (
@@ -523,7 +523,7 @@ export default function Groups() {
               </ScrollArea>
 
               {/* Campo de Envio */}
-              <div className="border-t p-4 space-y-3 flex-shrink-0 mt-auto">
+              <CardFooter className="border-t space-y-3 flex-col items-stretch mt-auto">
                 {/* Botão de Sugestão da IA */}
                 {!aiSuggestion && allMessages.length > 0 && (
                   <Button
@@ -565,7 +565,7 @@ export default function Groups() {
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
-              </div>
+              </CardFooter>
             </TabsContent>
 
             {/* Aba Informações */}
