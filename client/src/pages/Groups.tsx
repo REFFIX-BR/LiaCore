@@ -401,13 +401,6 @@ export default function Groups() {
 
       {/* Detalhes do Grupo */}
       <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <CardHeader className="flex-shrink-0">
-          <CardTitle>Detalhes do Grupo</CardTitle>
-          <CardDescription>
-            {selectedGroup ? `Gerenciar ${selectedGroup.name}` : "Selecione um grupo para ver os detalhes"}
-          </CardDescription>
-        </CardHeader>
-
         {!selectedGroup ? (
           <CardContent className="flex-1 flex items-center justify-center">
             <div className="text-center text-muted-foreground">
