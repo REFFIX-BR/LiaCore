@@ -544,7 +544,7 @@ export default function Groups() {
                 )}
 
                 {/* Campo de texto e botão enviar */}
-                <div className="flex gap-2">
+                <div className="flex gap-2 mt-1.5">
                   <Textarea
                     placeholder="Escrever mensagem para o grupo..."
                     value={messageText}
