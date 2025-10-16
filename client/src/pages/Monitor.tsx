@@ -163,6 +163,35 @@ export default function Monitor() {
     },
   });
 
+  const reopenMutation = useMutation({
+    mutationFn: async () => {
+      if (!activeConvId) throw new Error("Nenhuma conversa selecionada");
+      const response = await apiRequest(
+        `/api/conversations/${activeConvId}/reopen`,
+        "POST",
+        {}
+      );
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/monitor/conversations"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations", activeConvId] });
+      await queryClient.refetchQueries({ queryKey: ["/api/monitor/conversations", activeConvId] });
+      toast({
+        title: "Conversa Reaberta!",
+        description: "Conversa reativada com sucesso",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao reabrir",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const departments = [
     { id: "all", label: "Todos", value: "all" },
     { id: "apresentacao", label: "Apresentação", value: "apresentacao" },
@@ -332,6 +361,12 @@ export default function Monitor() {
     }
   };
 
+  const handleReopen = () => {
+    if (activeConvId) {
+      reopenMutation.mutate();
+    }
+  };
+
   if (conversationsLoading) {
     return <div className="flex items-center justify-center h-full">Carregando...</div>;
   }
@@ -440,7 +475,9 @@ export default function Monitor() {
                 onDeleteMessage={(messageId) => deleteMessageMutation.mutate(messageId)}
                 onResetThread={() => resetThreadMutation.mutate(activeConversation.id)}
                 onVerify={(user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') ? () => verifyMutation.mutate() : undefined}
-                isVerified={!!activeConversation.verifiedAt}
+                isVerified={!!(activeConversation as any).verifiedAt}
+                onReopen={(user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') ? handleReopen : undefined}
+                conversationStatus={activeConversation.status}
               />
             )}
           </div>

@@ -6122,6 +6122,62 @@ A resposta deve:
     }
   });
 
+  // Reopen conversation (reactivate closed/resolved conversation)
+  app.post("/api/conversations/:id/reopen", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const currentUser = req.user!;
+
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversa não encontrada" });
+      }
+
+      // Verificar se conversa já está ativa
+      if (conversation.status === 'active') {
+        return res.status(400).json({ error: "Conversa já está ativa" });
+      }
+
+      // Reativar conversa
+      await storage.updateConversation(id, {
+        status: 'active',
+        lastMessageTime: new Date(),
+        verifiedAt: null,
+        verifiedBy: null,
+      });
+
+      // Registrar ação de supervisor
+      await storage.createSupervisorAction({
+        conversationId: id,
+        action: "reopen_conversation",
+        notes: `Conversa reaberta por ${currentUser.fullName || currentUser.username}`,
+        createdBy: currentUser.fullName || currentUser.username,
+      });
+
+      // Criar log de atividade
+      await storage.createActivityLog({
+        userId: currentUser.userId,
+        action: "reopen_conversation",
+        conversationId: id,
+        details: {
+          clientName: conversation.clientName,
+          previousStatus: conversation.status,
+        },
+      });
+
+      console.log(`✅ [Reopen] Conversa ${id} reaberta por ${currentUser.fullName}`);
+
+      return res.json({ 
+        success: true,
+        message: "Conversa reaberta com sucesso",
+        reopenedBy: currentUser.fullName,
+      });
+    } catch (error) {
+      console.error("❌ [Reopen] Erro ao reabrir conversa:", error);
+      return res.status(500).json({ error: "Erro ao reabrir conversa" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // Setup unified WebSocket server for real-time logs (webhook + agent reasoning)
