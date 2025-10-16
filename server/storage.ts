@@ -45,6 +45,7 @@ import {
   type InsertPrivateNote
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { localCache } from "./lib/redis-cache";
 
 export interface IStorage {
   // Users
@@ -1893,7 +1894,7 @@ export class DbStorage implements IStorage {
   async getAdminMetrics() {
     // ✅ CACHE INTELIGENTE - Cacheia métricas por 60 segundos
     const cacheKey = 'admin:metrics:v1';
-    const cached = await RedisCache.get(cacheKey);
+    const cached = localCache.get<any>(cacheKey, 60 * 1000); // 60 segundos
     
     if (cached) {
       console.log('📦 [Cache] Admin metrics HIT - returning cached data');
@@ -1975,7 +1976,7 @@ export class DbStorage implements IStorage {
     };
 
     // ✅ Armazena no cache por 60 segundos
-    await RedisCache.set(cacheKey, metrics, 60);
+    localCache.set(cacheKey, metrics, 60 * 1000); // 60 segundos em ms
     console.log('💾 [Cache] Admin metrics cached for 60s');
 
     return metrics;
