@@ -523,7 +523,7 @@ export default function Groups() {
               </ScrollArea>
 
               {/* Campo de Envio */}
-              <div className="border-t p-4 space-y-3 flex-shrink-0">
+              <div className="border-t p-4 space-y-3 flex-shrink-0 mt-auto">
                 {/* Botão de Sugestão da IA */}
                 {!aiSuggestion && allMessages.length > 0 && (
                   <Button
@@ -544,7 +544,7 @@ export default function Groups() {
                 )}
 
                 {/* Campo de texto e botão enviar */}
-                <div className="flex gap-2 mt-14">
+                <div className="flex gap-2">
                   <Textarea
                     placeholder="Escrever mensagem para o grupo..."
                     value={messageText}
