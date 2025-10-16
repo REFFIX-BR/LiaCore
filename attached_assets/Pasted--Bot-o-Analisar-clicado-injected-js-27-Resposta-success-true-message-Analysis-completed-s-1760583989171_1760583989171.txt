@@ -1,0 +1,52 @@
+🔵 Botão Analisar clicado!
+injected.js:27 ✅ Resposta: {success: true, message: 'Analysis completed successfully. 0 suggestions generated.', suggestions: Array(0)}
+719-fc087fba217efe24.js:1 Uncaught (in promise) Error: Cannot notify while not connected
+    at t.stage (719-fc087fba217efe24.js:1:196190)
+    at e.<anonymous> (719-fc087fba217efe24.js:1:167055)
+    at Object.next (main-6862801664ce6661.js:1:192963)
+    at n (main-6862801664ce6661.js:1:59305)
+    at u (main-6862801664ce6661.js:1:59502)
+t.stage @ 719-fc087fba217efe24.js:1
+(anônimo) @ 719-fc087fba217efe24.js:1
+(anônimo) @ main-6862801664ce6661.js:1
+n @ main-6862801664ce6661.js:1
+u @ main-6862801664ce6661.js:1
+Promise.then
+n @ main-6862801664ce6661.js:1
+u @ main-6862801664ce6661.js:1
+(anônimo) @ main-6862801664ce6661.js:1
+(anônimo) @ main-6862801664ce6661.js:1
+(anônimo) @ 719-fc087fba217efe24.js:1
+(anônimo) @ 719-fc087fba217efe24.js:1
+(anônimo) @ main-6862801664ce6661.js:1
+n @ main-6862801664ce6661.js:1
+u @ main-6862801664ce6661.js:1
+Promise.then
+n @ main-6862801664ce6661.js:1
+u @ main-6862801664ce6661.js:1
+(anônimo) @ main-6862801664ce6661.js:1
+(anônimo) @ main-6862801664ce6661.js:1
+t.run @ 719-fc087fba217efe24.js:1
+t.appendEvent @ 719-fc087fba217efe24.js:1
+(anônimo) @ 866-5ac56d770312d9e3.js:1
+(anônimo) @ main-6862801664ce6661.js:1
+n @ main-6862801664ce6661.js:1
+u @ main-6862801664ce6661.js:1
+(anônimo) @ main-6862801664ce6661.js:1
+(anônimo) @ main-6862801664ce6661.js:1
+(anônimo) @ 866-5ac56d770312d9e3.js:1
+(anônimo) @ 866-5ac56d770312d9e3.js:1
+(anônimo) @ 866-5ac56d770312d9e3.js:1
+(anônimo) @ main-6862801664ce6661.js:1
+n @ main-6862801664ce6661.js:1
+u @ main-6862801664ce6661.js:1
+(anônimo) @ main-6862801664ce6661.js:1
+(anônimo) @ main-6862801664ce6661.js:1
+(anônimo) @ 866-5ac56d770312d9e3.js:1
+(anônimo) @ 866-5ac56d770312d9e3.js:1
+(anônimo) @ 866-5ac56d770312d9e3.js:1
+keydown @ 866-5ac56d770312d9e3.js:1
+(anônimo) @ 275e5802-3c78c7389a83b71a.js:1
+runHandlers @ 275e5802-3c78c7389a83b71a.js:1
+handleEvent @ 275e5802-3c78c7389a83b71a.js:1
+n @ _app-a7c11906caef17d3.js:28Entenda o erro

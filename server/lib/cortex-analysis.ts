@@ -61,13 +61,16 @@ export async function analyzeLearningEvents(): Promise<any[]> {
   try {
     console.log("🧠 [LIA Cortex Analysis] Iniciando análise de eventos de aprendizagem...");
 
-    // Buscar eventos recentes de aprendizagem
-    const recentEvents = await storage.getRecentLearningEvents(200);
+    // Buscar mais eventos para garantir correções explícitas suficientes
+    // (maioria dos eventos recentes são sucessos, não correções)
+    const recentEvents = await storage.getRecentLearningEvents(1000);
 
     if (recentEvents.length === 0) {
       console.log("📭 [LIA Cortex Analysis] Nenhum evento de aprendizagem encontrado");
       return [];
     }
+    
+    console.log(`📊 [LIA Cortex Analysis] ${recentEvents.length} eventos encontrados (buscando correções explícitas...)`);
 
     // Agrupar eventos por tipo de assistente e tipo de evento
     const eventsByAssistant = groupEventsByAssistant(recentEvents);
