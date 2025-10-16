@@ -23,6 +23,11 @@ export interface PendingMessage {
   clientName: string;
   hasImage: boolean;
   imageUrl?: string;
+  hasAudio?: boolean;
+  audioUrl?: string;
+  hasPdf?: boolean;
+  pdfBase64?: string;
+  pdfName?: string;
   receivedAt: number; // Quando foi recebida
 }
 
@@ -37,7 +42,19 @@ export async function addToBatch(
   const timerKey = `${TIMER_KEY_PREFIX}${chatId}`;
   
   try {
-    // Adiciona mensagem ao batch
+    // 🚫 NÃO fazer batching de mensagens com mídia (imagens/audio/PDF)
+    // Processar imediatamente para evitar perda de anexos múltiplos
+    const hasMedia = messageData.hasImage || messageData.hasAudio || messageData.hasPdf;
+    
+    if (hasMedia) {
+      console.log(`📸 [Batch] Mensagem com mídia detectada - processando imediatamente (sem batching)`);
+      return { 
+        shouldProcess: true, 
+        messages: [messageData] 
+      };
+    }
+    
+    // Adiciona mensagem de TEXTO PURO ao batch
     const batch = await getBatch(chatId);
     batch.push(messageData);
     
@@ -48,45 +65,26 @@ export async function addToBatch(
       JSON.stringify(batch)
     );
     
-    // Verifica se há timer ativo
-    const hasTimer = await redisConnection.exists(timerKey);
+    // Atualiza timer com timestamp atual
+    const now = Date.now();
+    await redisConnection.setex(
+      timerKey,
+      Math.ceil(DEBOUNCE_WINDOW_MS / 1000) + 1, // +1 segundo extra para segurança
+      now.toString()
+    );
     
-    if (hasTimer) {
-      // Já existe timer - apenas adiciona mensagem e reseta timer
-      console.log(`⏱️  [Batch] Timer ativo para ${chatId} - adicionando mensagem ${batch.length} ao batch`);
-      
-      // Reseta timer (renova TTL)
-      await redisConnection.setex(
-        timerKey,
-        Math.ceil(DEBOUNCE_WINDOW_MS / 1000),
-        Date.now().toString()
-      );
-      
-      return { 
-        shouldProcess: false, 
-        messages: [] 
-      };
-    } else {
-      // Primeiro mensagem ou timer expirado - cria novo timer
-      console.log(`🆕 [Batch] Criando novo timer para ${chatId} (${DEBOUNCE_WINDOW_MS}ms)`);
-      
-      // Cria timer
-      await redisConnection.setex(
-        timerKey,
-        Math.ceil(DEBOUNCE_WINDOW_MS / 1000),
-        Date.now().toString()
-      );
-      
-      // Agenda verificação após debounce window
-      setTimeout(async () => {
-        await processWhenReady(chatId);
-      }, DEBOUNCE_WINDOW_MS);
-      
-      return { 
-        shouldProcess: false, 
-        messages: [] 
-      };
-    }
+    console.log(`📦 [Batch] Mensagem de texto adicionada ao batch para ${chatId} (${batch.length} no total)`);
+    
+    // SEMPRE agenda verificação após debounce window
+    // A verificação vai checar se passaram 3s desde o último update
+    setTimeout(async () => {
+      await processWhenReady(chatId);
+    }, DEBOUNCE_WINDOW_MS);
+    
+    return { 
+      shouldProcess: false, 
+      messages: [] 
+    };
   } catch (error) {
     console.error(`❌ [Batch] Erro ao processar batch:`, error);
     // Em caso de erro, processar imediatamente (fallback seguro)
@@ -125,16 +123,22 @@ async function processWhenReady(chatId: string): Promise<void> {
   const timerKey = `${TIMER_KEY_PREFIX}${chatId}`;
   
   try {
-    // Verifica se ainda existe timer (pode ter sido resetado)
-    const timerExists = await redisConnection.exists(timerKey);
+    // Pega timestamp do timer
+    const timerValue = await redisConnection.get(timerKey);
     
-    if (timerExists) {
-      // Timer ainda ativo - não processar ainda
-      console.log(`⏸️  [Batch] Timer ainda ativo para ${chatId} - aguardando...`);
-      return;
+    if (timerValue) {
+      const lastUpdateTime = parseInt(timerValue);
+      const now = Date.now();
+      const elapsed = now - lastUpdateTime;
+      
+      // Se passaram menos de 3 segundos desde última atualização, aguardar
+      if (elapsed < DEBOUNCE_WINDOW_MS) {
+        console.log(`⏸️  [Batch] Timer ainda recente para ${chatId} (${elapsed}ms < ${DEBOUNCE_WINDOW_MS}ms) - aguardando...`);
+        return;
+      }
     }
     
-    // Timer expirou - processar batch
+    // Timer expirou ou não existe - processar batch
     const batch = await getBatch(chatId);
     
     if (batch.length === 0) {
@@ -142,35 +146,74 @@ async function processWhenReady(chatId: string): Promise<void> {
       return;
     }
     
-    console.log(`✅ [Batch] Timer expirado para ${chatId} - processando ${batch.length} mensagem(ns)`);
+    console.log(`✅ [Batch] Período de silêncio completo para ${chatId} - processando ${batch.length} mensagem(ns)`);
     
-    // Combina todas as mensagens em uma só
-    const combinedMessage = batch.map(m => m.message).join('\n');
+    // 🚫 GUARDA: Detectar se batch contém mídia (edge case de batches antigos)
+    // Se encontrar mídia, processar cada mensagem individualmente para preservar anexos
+    const hasMediaInBatch = batch.some(m => m.hasImage || m.hasAudio || m.hasPdf);
     
-    // Usa dados da primeira mensagem como base
-    const firstMessage = batch[0];
-    const lastMessage = batch[batch.length - 1];
-    
-    // Processa mensagem combinada
     const { addMessageToQueue } = await import("./queue");
     
-    await addMessageToQueue({
-      chatId: firstMessage.chatId,
-      conversationId: firstMessage.conversationId,
-      message: combinedMessage,
-      fromNumber: firstMessage.fromNumber,
-      messageId: lastMessage.messageId || `batch_${Date.now()}`, // ID da última mensagem ou gera um
-      timestamp: lastMessage.timestamp,
-      evolutionInstance: firstMessage.evolutionInstance || undefined,
-      clientName: firstMessage.clientName,
-      hasImage: batch.some(m => m.hasImage), // Se alguma tem imagem
-      imageUrl: batch.find(m => m.imageUrl)?.imageUrl, // Primeira imagem encontrada
-    }, 1);
+    if (hasMediaInBatch) {
+      console.warn(`⚠️ [Batch] Batch contém mídia - processando mensagens individualmente para preservar todos os anexos`);
+      
+      // Processar cada mensagem individualmente com TODOS os metadados de mídia
+      for (let i = 0; i < batch.length; i++) {
+        const msg = batch[i];
+        await addMessageToQueue({
+          chatId: msg.chatId,
+          conversationId: msg.conversationId,
+          message: msg.message,
+          fromNumber: msg.fromNumber,
+          messageId: msg.messageId || `batch_replay_${Date.now()}_${i}`, // ID único por mensagem
+          timestamp: msg.timestamp,
+          evolutionInstance: msg.evolutionInstance || undefined,
+          clientName: msg.clientName,
+          hasImage: msg.hasImage,
+          imageUrl: msg.imageUrl,
+        }, 1);
+        
+        // Log metadados preservados
+        if (msg.hasImage || msg.hasAudio || msg.hasPdf) {
+          console.log(`📸 [Batch Replay] Mídia preservada:`, {
+            hasImage: msg.hasImage,
+            hasAudio: msg.hasAudio,
+            hasPdf: msg.hasPdf,
+            imageUrl: msg.imageUrl?.substring(0, 50),
+            audioUrl: msg.audioUrl?.substring(0, 50),
+            pdfName: msg.pdfName
+          });
+        }
+      }
+      
+      console.log(`📬 [Batch] ${batch.length} mensagem(ns) com mídia processadas individualmente com todos os anexos preservados`);
+    } else {
+      // Batch de texto puro - combinar normalmente
+      const combinedMessage = batch.map(m => m.message).join('\n');
+      
+      // Usa dados da primeira mensagem como base
+      const firstMessage = batch[0];
+      const lastMessage = batch[batch.length - 1];
+      
+      await addMessageToQueue({
+        chatId: firstMessage.chatId,
+        conversationId: firstMessage.conversationId,
+        message: combinedMessage,
+        fromNumber: firstMessage.fromNumber,
+        messageId: lastMessage.messageId || `batch_${Date.now()}`,
+        timestamp: lastMessage.timestamp,
+        evolutionInstance: firstMessage.evolutionInstance || undefined,
+        clientName: firstMessage.clientName,
+        hasImage: false,
+        imageUrl: undefined,
+      }, 1);
+      
+      console.log(`📬 [Batch] ${batch.length} mensagem(ns) de texto combinadas e enfileiradas para ${chatId}`);
+    }
     
-    console.log(`📬 [Batch] ${batch.length} mensagem(ns) combinadas e enfileiradas para ${chatId}`);
-    
-    // Limpa batch
+    // Limpa batch e timer
     await redisConnection.del(batchKey);
+    await redisConnection.del(timerKey);
     
   } catch (error) {
     console.error(`❌ [Batch] Erro ao processar batch quando pronto:`, error);

@@ -2144,11 +2144,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Try to add message to processing queue (with fallback)
+        // 🔄 BATCHING SYSTEM: Grupo mensagens sequenciais em janela de 3 segundos
         try {
+          const { addToBatch } = await import("./lib/message-batching");
           const { addMessageToQueue } = await import("./lib/queue");
           
-          await addMessageToQueue({
+          // Prepara dados da mensagem
+          const messageData = {
             chatId,
             conversationId: conversation.id,
             message: messageText,
@@ -2157,22 +2159,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
             timestamp: messageTimestamp || Date.now(),
             evolutionInstance: instance,
             clientName,
-            hasImage: !!imageBase64, // Indicar se tem imagem
-            imageUrl: imageMediaUrl, // URL da imagem para análise pelo worker
-          }, 1); // Priority 1 (highest)
+            hasImage: !!imageBase64,
+            imageUrl: imageMediaUrl,
+            hasAudio: !!audioUrl,
+            audioUrl: audioUrl,
+            hasPdf: !!pdfBase64,
+            pdfBase64: pdfBase64,
+            pdfName: pdfName,
+            receivedAt: Date.now(),
+          };
+          
+          // Adiciona ao batch - retorna se deve processar imediatamente (fallback)
+          const result = await addToBatch(chatId, messageData);
 
-          prodLogger.info('conversation', 'Mensagem enfileirada para processamento', {
+          if (result.shouldProcess) {
+            // Fallback: processar imediatamente se batching falhou
+            console.log(`⚠️  [Evolution] Batching fallback - processando imediatamente`);
+            
+            await addMessageToQueue({
+              chatId,
+              conversationId: conversation.id,
+              message: messageText,
+              fromNumber: phoneNumber,
+              messageId,
+              timestamp: messageTimestamp || Date.now(),
+              evolutionInstance: instance,
+              clientName,
+              hasImage: !!imageBase64,
+              imageUrl: imageMediaUrl,
+            }, 1);
+
+            prodLogger.info('conversation', 'Mensagem processada imediatamente (fallback)', {
+              conversationId: conversation.id,
+              phoneNumber,
+              messagePreview: messageText.substring(0, 50),
+            });
+
+            return res.json({ 
+              success: true, 
+              processed: true,
+              fallback: true,
+              conversationId: conversation.id,
+              chatId 
+            });
+          }
+
+          prodLogger.info('conversation', 'Mensagem adicionada ao batch para processamento', {
             conversationId: conversation.id,
             phoneNumber,
             messagePreview: messageText.substring(0, 50),
           });
 
-          console.log(`📬 [Evolution] Message queued for processing: ${conversation.id}`);
+          console.log(`📦 [Evolution] Message added to batch: ${conversation.id}`);
 
           return res.json({ 
             success: true, 
             processed: true,
-            queued: true,
+            batched: true,
             conversationId: conversation.id,
             chatId 
           });
