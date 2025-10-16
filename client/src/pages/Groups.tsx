@@ -400,8 +400,8 @@ export default function Groups() {
       </Card>
 
       {/* Detalhes do Grupo */}
-      <Card className="flex-1 flex flex-col overflow-hidden">
-        <CardHeader>
+      <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <CardHeader className="flex-shrink-0">
           <CardTitle>Detalhes do Grupo</CardTitle>
           <CardDescription>
             {selectedGroup ? `Gerenciar ${selectedGroup.name}` : "Selecione um grupo para ver os detalhes"}
@@ -416,8 +416,8 @@ export default function Groups() {
             </div>
           </CardContent>
         ) : (
-          <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
-            <Tabs defaultValue="chat" className="flex-1 flex flex-col">
+          <CardContent className="flex-1 flex flex-col p-0 min-h-0 overflow-hidden">
+            <Tabs defaultValue="chat" className="flex-1 flex flex-col min-h-0">
               <div className="px-6 pt-6">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="chat" data-testid="tab-chat">
