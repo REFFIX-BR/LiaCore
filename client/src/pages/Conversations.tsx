@@ -223,13 +223,13 @@ export default function Conversations() {
                       <div
                         key={conv.id}
                         onClick={() => handleSelectConversation(conv.id)}
-                        className={`p-3 rounded-md cursor-pointer transition-colors hover-elevate ${
+                        className={`p-3 rounded-md cursor-pointer transition-colors overflow-hidden hover:bg-accent/50 ${
                           activeIds.includes(conv.id) ? "bg-accent" : ""
                         }`}
                         data-testid={`conversation-item-${conv.id}`}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 w-full">
+                          <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="flex items-center gap-2">
                               <Circle className={`h-3 w-3 fill-current flex-shrink-0 ${waitTimeIndicator.color}`} data-testid="wait-indicator" />
                               <div className="font-medium truncate">{conv.clientName}</div>
@@ -283,13 +283,13 @@ export default function Conversations() {
                       <div
                         key={conv.id}
                         onClick={() => handleSelectConversation(conv.id)}
-                        className={`p-3 rounded-md cursor-pointer transition-colors hover-elevate ${
+                        className={`p-3 rounded-md cursor-pointer transition-colors overflow-hidden hover:bg-accent/50 ${
                           activeIds.includes(conv.id) ? "bg-accent" : ""
                         }`}
                         data-testid={`conversation-item-${conv.id}`}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 w-full">
+                          <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="flex items-center gap-2">
                               <Circle className={`h-3 w-3 fill-current flex-shrink-0 ${waitTimeIndicator.color}`} data-testid="wait-indicator" />
                               <div className="font-medium truncate">{conv.clientName}</div>
