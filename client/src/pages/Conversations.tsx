@@ -154,7 +154,7 @@ export default function Conversations() {
   return (
     <div className="h-full flex gap-4">
       {/* Lista de conversas */}
-      <Card className="w-80 flex flex-col">
+      <Card className="w-80 flex flex-col overflow-hidden">
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "transferred" | "assigned")} className="flex flex-col h-full">
           <div className="p-4 pb-0 border-b">
             <TabsList className="grid w-full grid-cols-2" data-testid="tabs-conversations">
