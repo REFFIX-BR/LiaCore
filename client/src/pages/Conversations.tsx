@@ -102,7 +102,8 @@ export default function Conversations() {
       conv.clientName?.toLowerCase().includes(searchLower) ||
       conv.chatId?.toLowerCase().includes(searchLower) ||
       conv.lastMessage?.toLowerCase().includes(searchLower) ||
-      conv.clientDocument?.toLowerCase().includes(searchLower)
+      conv.clientDocument?.toLowerCase().includes(searchLower) ||
+      conv.assignedToName?.toLowerCase().includes(searchLower)
     );
   };
 
