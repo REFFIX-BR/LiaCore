@@ -230,9 +230,9 @@ export default function Conversations() {
                       >
                         <div className="flex items-start justify-between gap-2 w-full">
                           <div className="flex-1 min-w-0 overflow-hidden">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
                               <Circle className={`h-3 w-3 fill-current flex-shrink-0 ${waitTimeIndicator.color}`} data-testid="wait-indicator" />
-                              <div className="font-medium truncate">{conv.clientName}</div>
+                              <div className="font-medium truncate min-w-0">{conv.clientName}</div>
                               {conv.verifiedAt && (
                                 <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" data-testid="verified-indicator" />
                               )}
@@ -248,7 +248,7 @@ export default function Conversations() {
                               </div>
                             )}
                           </div>
-                          <Badge variant="outline" className="shrink-0 text-xs">
+                          <Badge variant="outline" className="max-w-[110px] truncate text-xs">
                             {conv.assistantType}
                           </Badge>
                         </div>
@@ -290,15 +290,15 @@ export default function Conversations() {
                       >
                         <div className="flex items-start justify-between gap-2 w-full">
                           <div className="flex-1 min-w-0 overflow-hidden">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
                               <Circle className={`h-3 w-3 fill-current flex-shrink-0 ${waitTimeIndicator.color}`} data-testid="wait-indicator" />
-                              <div className="font-medium truncate">{conv.clientName}</div>
+                              <div className="font-medium truncate min-w-0">{conv.clientName}</div>
                               {conv.verifiedAt && (
                                 <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" data-testid="verified-indicator" />
                               )}
                             </div>
                             {conv.assignedToName && (
-                              <div className="text-xs text-muted-foreground mt-1">
+                              <div className="text-xs text-muted-foreground mt-1 truncate">
                                 Atribuído por {conv.assignedToName}
                               </div>
                             )}
@@ -313,8 +313,8 @@ export default function Conversations() {
                               </div>
                             )}
                           </div>
-                          <Badge variant="outline" className="shrink-0 text-xs">
-                            {conv.assignedTo && conv.assignedToName ? `Atribuído por ${conv.assignedToName}` : conv.assignedTo ? "Atribuído" : conv.assistantType}
+                          <Badge variant="outline" className="max-w-[110px] truncate text-xs">
+                            {conv.assistantType}
                           </Badge>
                         </div>
                       <div className="text-xs text-muted-foreground mt-2">
