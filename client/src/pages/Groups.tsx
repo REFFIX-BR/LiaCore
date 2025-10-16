@@ -341,74 +341,72 @@ export default function Groups() {
 
             {/* Aba Chat */}
             <TabsContent value="chat" className="flex-1 flex flex-col mt-0">
-              <div className="flex-1 overflow-hidden">
-                <ScrollArea className="h-full">
-                  <CardContent className="space-y-3 py-4">
-                    {messagesLoading ? (
-                      <div className="text-center text-muted-foreground py-8">
-                        <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50 animate-pulse" />
-                        <p className="text-sm">Carregando mensagens...</p>
-                      </div>
-                    ) : messages.length === 0 ? (
-                      <div className="text-center text-muted-foreground py-8">
-                        <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                        <p>Nenhuma mensagem ainda</p>
-                        <p className="text-sm mt-1">Envie a primeira mensagem para o grupo</p>
-                      </div>
-                    ) : (
-                      <>
-                        {messages.map((msg) => (
+              <ScrollArea className="flex-1 px-6">
+                <div className="space-y-3 py-4 min-h-[400px]">
+                  {messagesLoading ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50 animate-pulse" />
+                      <p className="text-sm">Carregando mensagens...</p>
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>Nenhuma mensagem ainda</p>
+                      <p className="text-sm mt-1">Envie a primeira mensagem para o grupo</p>
+                    </div>
+                  ) : (
+                    <>
+                      {messages.map((msg) => (
+                        <div
+                          key={msg.id}
+                          className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}
+                          data-testid={`message-${msg.id}`}
+                        >
                           <div
-                            key={msg.id}
-                            className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}
-                            data-testid={`message-${msg.id}`}
+                            className={`max-w-[80%] rounded-lg p-3 ${
+                              msg.role === 'user'
+                                ? 'bg-muted'
+                                : 'bg-primary text-primary-foreground'
+                            }`}
                           >
-                            <div
-                              className={`max-w-[80%] rounded-lg p-3 ${
-                                msg.role === 'user'
-                                  ? 'bg-muted'
-                                  : 'bg-primary text-primary-foreground'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 mb-1">
-                                {msg.role === 'user' ? (
-                                  <UserIcon className="h-3 w-3" />
-                                ) : (
-                                  <Bot className="h-3 w-3" />
-                                )}
-                                <span className="text-xs font-medium">
-                                  {msg.role === 'user' ? 'Cliente' : msg.sendBy === 'supervisor' ? 'Você' : 'IA'}
-                                </span>
-                                <span className="text-xs opacity-70">
-                                  {format(new Date(msg.timestamp), "HH:mm", { locale: ptBR })}
-                                </span>
-                              </div>
-                              <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                              
-                              {/* Function Call Badge */}
-                              {msg.functionCall && (
-                                <Badge 
-                                  variant="outline" 
-                                  className={`mt-2 text-xs ${
-                                    msg.functionCall.status === "completed" 
-                                      ? "bg-chart-2/10 text-chart-2" 
-                                      : msg.functionCall.status === "failed"
-                                      ? "bg-destructive/10 text-destructive"
-                                      : "bg-chart-3/10 text-chart-3"
-                                  }`}
-                                >
-                                  {functionIcons[msg.functionCall.name] || "⚙️"} {msg.functionCall.name}
-                                </Badge>
+                            <div className="flex items-center gap-2 mb-1">
+                              {msg.role === 'user' ? (
+                                <UserIcon className="h-3 w-3" />
+                              ) : (
+                                <Bot className="h-3 w-3" />
                               )}
+                              <span className="text-xs font-medium">
+                                {msg.role === 'user' ? 'Cliente' : msg.sendBy === 'supervisor' ? 'Você' : 'IA'}
+                              </span>
+                              <span className="text-xs opacity-70">
+                                {format(new Date(msg.timestamp), "HH:mm", { locale: ptBR })}
+                              </span>
                             </div>
+                            <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                            
+                            {/* Function Call Badge */}
+                            {msg.functionCall && (
+                              <Badge 
+                                variant="outline" 
+                                className={`mt-2 text-xs ${
+                                  msg.functionCall.status === "completed" 
+                                    ? "bg-chart-2/10 text-chart-2" 
+                                    : msg.functionCall.status === "failed"
+                                    ? "bg-destructive/10 text-destructive"
+                                    : "bg-chart-3/10 text-chart-3"
+                                }`}
+                              >
+                                {functionIcons[msg.functionCall.name] || "⚙️"} {msg.functionCall.name}
+                              </Badge>
+                            )}
                           </div>
-                        ))}
-                        <div ref={messagesEndRef} />
-                      </>
-                    )}
-                  </CardContent>
-                </ScrollArea>
-              </div>
+                        </div>
+                      ))}
+                      <div ref={messagesEndRef} />
+                    </>
+                  )}
+                </div>
+              </ScrollArea>
 
               {/* Campo de Envio */}
               <div className="border-t p-4 space-y-3">
