@@ -36,7 +36,7 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 
 **Hybrid Supervised Mode**: Manages "Transferred" and "Assigned" conversations with real-time counters, AI-assisted agent responses, and automatic conversation closure after extended inactivity.
 
-**WhatsApp Integration**: Native integration with Evolution API for real-time messaging, AI routing, and outbound messaging, supporting multi-instance operations with dynamic API key lookup. Includes a WhatsApp Groups Management System with individual AI control per group.
+**WhatsApp Integration**: Native integration with Evolution API for real-time messaging, AI routing, and outbound messaging, supporting multi-instance operations with dynamic API key lookup. Includes a WhatsApp Groups Management System with individual AI control per group and complete chat interface for group messaging.
 
 **Role-Based Access Control (RBAC)**: A 3-tier system (ADMIN, SUPERVISOR, AGENT) with granular permissions.
 
@@ -65,6 +65,7 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 - **New Contact Creation**: Button in Contacts page allows creating new contacts with phone number, name, CPF/CNPJ, initial message, and optional agent assignment. Automatically creates conversation and sends WhatsApp message.
 - **Conversation Verification UI**: Visual indicators (green CheckCircle2 icon) show verified conversations in ConversationCard and Conversations page. Verify button in ChatPanel (supervisor/admin only) disabled when already verified, with automatic cache invalidation across all conversation views.
 - **Activity Logs UI**: Dual-tab interface (Agentes/Supervisão) in Monitoramento menu showing comprehensive audit trail. Agents tab displays LOGIN/LOGOUT events with session duration, IP, and browser info. Supervision tab shows all supervisory actions (transfer, assign, resolve, verify) with enriched data including client names, target agents, and action details. Four KPI cards track daily logins, active sessions, supervision actions, and average session duration. Real-time updates every 10 seconds.
+- **WhatsApp Groups Chat Interface**: Dual-tab system (Chat/Informações) in Groups page. Chat tab displays message history with auto-refresh (5s), field for sending messages to group, auto-scroll to latest messages, and Enter-to-send shortcut. Informações tab shows group details, AI toggle, participant count, Evolution instance, and statistics. Messages stored in conversations table using chatId pattern `whatsapp_{groupId}`. Supervisors can respond to group messages directly through Evolution API.
 
 ## External Dependencies
 

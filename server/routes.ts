@@ -6862,5 +6862,161 @@ A resposta deve:
     }
   });
 
+  // Get group messages (chat history)
+  app.get("/api/groups/:id/messages", authenticate, async (req, res) => {
+    try {
+      const group = await storage.getGroup(req.params.id);
+
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      // Build chatId for the group
+      const chatId = `whatsapp_${group.groupId}`;
+
+      // Find conversation for this group
+      const conversation = await storage.getConversationByChatId(chatId);
+
+      if (!conversation) {
+        // No messages yet
+        return res.json([]);
+      }
+
+      // Get all messages for this conversation
+      const messages = await storage.getMessagesByConversationId(conversation.id);
+
+      console.log(`✅ [Groups] Retrieved ${messages.length} messages for group ${group.name}`);
+      return res.json(messages);
+    } catch (error) {
+      console.error("❌ [Groups] Error fetching group messages:", error);
+      return res.status(500).json({ error: "Error fetching group messages" });
+    }
+  });
+
+  // Send message to group
+  app.post("/api/groups/:id/send", authenticate, async (req, res) => {
+    try {
+      const { message } = req.body;
+
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      const group = await storage.getGroup(req.params.id);
+
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      // Get Evolution API configuration
+      const evolutionUrl = process.env.EVOLUTION_API_URL;
+      const instance = group.evolutionInstance || 'Principal';
+
+      if (!evolutionUrl) {
+        return res.status(500).json({ error: "Evolution API not configured" });
+      }
+
+      // Get API key for this instance
+      const apiKey = await getEvolutionApiKey(instance);
+
+      if (!apiKey) {
+        return res.status(500).json({ error: `API key not found for instance ${instance}` });
+      }
+
+      // Ensure URL has protocol
+      const finalUrl = evolutionUrl.startsWith('http') 
+        ? evolutionUrl 
+        : `https://${evolutionUrl}`;
+
+      // Send message via Evolution API
+      const sendUrl = `${finalUrl}/message/sendText/${instance}`;
+      
+      console.log(`📤 [Groups] Sending message to group ${group.name} via ${sendUrl}`);
+
+      const response = await fetch(sendUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': apiKey,
+        },
+        body: JSON.stringify({
+          number: group.groupId, // Group ID (ex: 120899938475839@g.us)
+          text: message,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ [Groups] Error sending message to Evolution API:`, errorText);
+        return res.status(500).json({ error: "Failed to send message to WhatsApp" });
+      }
+
+      const result = await response.json();
+
+      // Save message to database
+      const chatId = `whatsapp_${group.groupId}`;
+      let conversation = await storage.getConversationByChatId(chatId);
+
+      // Create conversation if it doesn't exist
+      if (!conversation) {
+        const { createThread } = await import("./lib/openai");
+        const { storeConversationThread } = await import("./lib/upstash");
+        const { ASSISTANT_IDS } = await import("./lib/openai");
+        
+        const threadId = await createThread();
+        await storeConversationThread(chatId, threadId);
+
+        conversation = await storage.createConversation({
+          chatId,
+          clientName: group.name,
+          clientId: group.groupId,
+          threadId,
+          assistantType: "apresentacao",
+          status: "active",
+          sentiment: "neutral",
+          urgency: "normal",
+          duration: 0,
+          lastMessage: message,
+          evolutionInstance: instance,
+          metadata: { 
+            source: 'supervisor_group_message',
+            groupId: group.id,
+          },
+        });
+      }
+
+      // Save the message
+      const messageRecord = await storage.createMessage({
+        conversationId: conversation.id,
+        role: 'assistant',
+        content: message,
+        sendBy: 'supervisor',
+        assistant: 'supervisor',
+      });
+
+      // Update conversation last message
+      await storage.updateConversation(conversation.id, {
+        lastMessage: message,
+        lastMessageTime: new Date(),
+      });
+
+      // Update group last message
+      await storage.updateGroup(group.id, {
+        lastMessage: message.substring(0, 100),
+        lastMessageTime: new Date(),
+      });
+
+      console.log(`✅ [Groups] Message sent successfully to group ${group.name}`);
+      return res.json({ 
+        success: true, 
+        message: messageRecord,
+        evolutionResponse: result 
+      });
+    } catch (error) {
+      console.error("❌ [Groups] Error sending message:", error);
+      return res.status(500).json({ error: "Error sending message to group" });
+    }
+  });
+
   return httpServer;
 }

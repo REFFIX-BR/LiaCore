@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Search, Users, ToggleLeft, ToggleRight, MessageSquare, Clock } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Search, Users, ToggleLeft, ToggleRight, MessageSquare, Clock, Send, Bot, User as UserIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Switch } from "@/components/ui/switch";
 
 interface Group {
@@ -27,10 +29,22 @@ interface Group {
   updatedAt: Date;
 }
 
+interface Message {
+  id: string;
+  conversationId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+  sendBy?: string;
+  assistant?: string;
+}
+
 export default function Groups() {
   const [search, setSearch] = useState("");
   const [aiFilter, setAiFilter] = useState<string>("all");
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+  const [messageText, setMessageText] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // Query all groups
@@ -88,11 +102,72 @@ export default function Groups() {
     },
   });
 
+  // Query group messages
+  const { data: messages = [], isLoading: messagesLoading } = useQuery<Message[]>({
+    queryKey: ["/api/groups", selectedGroup?.id, "messages"],
+    enabled: !!selectedGroup,
+    refetchInterval: 5000, // Refresh every 5 seconds
+    queryFn: async () => {
+      if (!selectedGroup) return [];
+      const response = await fetch(`/api/groups/${selectedGroup.id}/messages`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch messages");
+      }
+      return response.json();
+    },
+  });
+
+  // Mutation to send message
+  const sendMessageMutation = useMutation({
+    mutationFn: async (data: { groupId: string; message: string }) => {
+      return await apiRequest(`/api/groups/${data.groupId}/send`, "POST", { message: data.message });
+    },
+    onSuccess: () => {
+      setMessageText("");
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", selectedGroup?.id, "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      toast({
+        title: "Mensagem Enviada",
+        description: "Mensagem enviada com sucesso para o grupo",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao enviar mensagem",
+        description: error.message || "Ocorreu um erro ao enviar a mensagem",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
   const handleToggleAi = (group: Group) => {
     toggleAiMutation.mutate({
       groupId: group.id,
       aiEnabled: !group.aiEnabled,
     });
+  };
+
+  const handleSendMessage = () => {
+    if (!selectedGroup || !messageText.trim()) return;
+
+    sendMessageMutation.mutate({
+      groupId: selectedGroup.id,
+      message: messageText.trim(),
+    });
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
   };
 
   const filteredGroups = groups.filter(group => {
@@ -189,88 +264,198 @@ export default function Groups() {
           </CardDescription>
         </CardHeader>
 
-        <ScrollArea className="flex-1">
-          <CardContent className="space-y-6">
-            {!selectedGroup ? (
-              <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                <div className="text-center">
-                  <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Selecione um grupo para ver os detalhes</p>
+        {!selectedGroup ? (
+          <CardContent className="flex-1 flex items-center justify-center">
+            <div className="text-center text-muted-foreground">
+              <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p>Selecione um grupo para ver os detalhes</p>
+            </div>
+          </CardContent>
+        ) : (
+          <Tabs defaultValue="chat" className="flex-1 flex flex-col">
+            <div className="px-6">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="chat" data-testid="tab-chat">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Chat
+                </TabsTrigger>
+                <TabsTrigger value="info" data-testid="tab-info">
+                  <Users className="h-4 w-4 mr-2" />
+                  Informações
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            {/* Aba Chat */}
+            <TabsContent value="chat" className="flex-1 flex flex-col mt-0">
+              <ScrollArea className="flex-1">
+                <CardContent className="space-y-3 py-4">
+                  {messagesLoading ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50 animate-pulse" />
+                      <p className="text-sm">Carregando mensagens...</p>
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>Nenhuma mensagem ainda</p>
+                      <p className="text-sm mt-1">Envie a primeira mensagem para o grupo</p>
+                    </div>
+                  ) : (
+                    <>
+                      {messages.map((msg) => (
+                        <div
+                          key={msg.id}
+                          className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}
+                          data-testid={`message-${msg.id}`}
+                        >
+                          <div
+                            className={`max-w-[80%] rounded-lg p-3 ${
+                              msg.role === 'user'
+                                ? 'bg-muted'
+                                : 'bg-primary text-primary-foreground'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              {msg.role === 'user' ? (
+                                <UserIcon className="h-3 w-3" />
+                              ) : (
+                                <Bot className="h-3 w-3" />
+                              )}
+                              <span className="text-xs font-medium">
+                                {msg.role === 'user' ? 'Cliente' : msg.sendBy === 'supervisor' ? 'Você' : 'IA'}
+                              </span>
+                              <span className="text-xs opacity-70">
+                                {format(new Date(msg.timestamp), "HH:mm", { locale: ptBR })}
+                              </span>
+                            </div>
+                            <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                      <div ref={messagesEndRef} />
+                    </>
+                  )}
+                </CardContent>
+              </ScrollArea>
+
+              {/* Campo de Envio */}
+              <div className="border-t p-4">
+                <div className="flex gap-2">
+                  <Textarea
+                    placeholder="Escrever mensagem para o grupo..."
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    disabled={sendMessageMutation.isPending}
+                    className="resize-none"
+                    rows={2}
+                    data-testid="input-group-message"
+                  />
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={!messageText.trim() || sendMessageMutation.isPending}
+                    size="icon"
+                    className="flex-shrink-0"
+                    data-testid="button-send-message"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
-            ) : (
-              <>
-                {/* Informações do Grupo */}
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Nome do Grupo</Label>
-                    <p className="text-lg font-medium mt-1">{selectedGroup.name}</p>
-                  </div>
+            </TabsContent>
 
-                  <div>
-                    <Label className="text-sm text-muted-foreground">ID do WhatsApp</Label>
-                    <p className="text-sm font-mono mt-1 bg-muted p-2 rounded">{selectedGroup.groupId}</p>
-                  </div>
-
-                  {selectedGroup.evolutionInstance && (
+            {/* Aba Informações */}
+            <TabsContent value="info" className="flex-1 flex flex-col mt-0">
+              <ScrollArea className="flex-1">
+                <CardContent className="space-y-6">
+                  {/* Informações do Grupo */}
+                  <div className="space-y-4">
                     <div>
-                      <Label className="text-sm text-muted-foreground">Instância Evolution</Label>
-                      <p className="text-sm mt-1">{selectedGroup.evolutionInstance}</p>
+                      <Label className="text-sm text-muted-foreground">Nome do Grupo</Label>
+                      <p className="text-lg font-medium mt-1">{selectedGroup.name}</p>
                     </div>
-                  )}
 
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Participantes</Label>
-                    <p className="text-sm mt-1">{selectedGroup.participantsCount || 0} membros</p>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">ID do WhatsApp</Label>
+                      <p className="text-sm font-mono mt-1 bg-muted p-2 rounded">{selectedGroup.groupId}</p>
+                    </div>
+
+                    {selectedGroup.evolutionInstance && (
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Instância Evolution</Label>
+                        <p className="text-sm mt-1">{selectedGroup.evolutionInstance}</p>
+                      </div>
+                    )}
+
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Participantes</Label>
+                      <p className="text-sm mt-1">{selectedGroup.participantsCount || 0} membros</p>
+                    </div>
+
+                    {selectedGroup.lastMessage && (
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Última Mensagem</Label>
+                        <p className="text-sm mt-1 p-2 bg-muted rounded">{selectedGroup.lastMessage}</p>
+                        {selectedGroup.lastMessageTime && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {format(new Date(selectedGroup.lastMessageTime), "dd/MM/yyyy 'às' HH:mm")}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {selectedGroup.lastMessage && (
-                    <div>
-                      <Label className="text-sm text-muted-foreground">Última Mensagem</Label>
-                      <p className="text-sm mt-1 p-2 bg-muted rounded">{selectedGroup.lastMessage}</p>
-                      {selectedGroup.lastMessageTime && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {format(new Date(selectedGroup.lastMessageTime), "dd/MM/yyyy 'às' HH:mm")}
+                  {/* Controle de IA */}
+                  <div className="border-t pt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <Label htmlFor="ai-toggle" className="text-base font-medium">
+                          Inteligência Artificial
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedGroup.aiEnabled 
+                            ? "A IA está respondendo mensagens deste grupo" 
+                            : "A IA não responderá mensagens deste grupo"}
                         </p>
-                      )}
+                      </div>
+                      <Switch
+                        id="ai-toggle"
+                        checked={selectedGroup.aiEnabled}
+                        onCheckedChange={() => handleToggleAi(selectedGroup)}
+                        disabled={toggleAiMutation.isPending}
+                        data-testid={`switch-ai-${selectedGroup.id}`}
+                      />
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                {/* Controle de IA */}
-                <div className="border-t pt-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <Label htmlFor="ai-toggle" className="text-base font-medium">
-                        Inteligência Artificial
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedGroup.aiEnabled 
-                          ? "A IA está respondendo mensagens deste grupo" 
-                          : "A IA não responderá mensagens deste grupo"}
-                      </p>
+                  {/* Estatísticas */}
+                  <div className="border-t pt-6">
+                    <Label className="text-sm font-medium mb-3 block">Estatísticas</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Mensagens recebidas</p>
+                        <p className="text-2xl font-bold">-</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Mensagens hoje</p>
+                        <p className="text-2xl font-bold">-</p>
+                      </div>
                     </div>
-                    <Switch
-                      id="ai-toggle"
-                      checked={selectedGroup.aiEnabled}
-                      onCheckedChange={() => handleToggleAi(selectedGroup)}
-                      disabled={toggleAiMutation.isPending}
-                      data-testid={`switch-ai-${selectedGroup.id}`}
-                    />
                   </div>
-                </div>
 
-                {/* Informações de Sistema */}
-                <div className="border-t pt-6">
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <p>Criado em: {format(new Date(selectedGroup.createdAt), "dd/MM/yyyy 'às' HH:mm")}</p>
-                    <p>Última atualização: {format(new Date(selectedGroup.updatedAt), "dd/MM/yyyy 'às' HH:mm")}</p>
+                  {/* Informações de Sistema */}
+                  <div className="border-t pt-6">
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p>Criado em: {format(new Date(selectedGroup.createdAt), "dd/MM/yyyy 'às' HH:mm")}</p>
+                      <p>Última atualização: {format(new Date(selectedGroup.updatedAt), "dd/MM/yyyy 'às' HH:mm")}</p>
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </ScrollArea>
+                </CardContent>
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
+        )}
       </Card>
     </div>
   );
