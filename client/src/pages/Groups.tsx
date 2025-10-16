@@ -8,9 +8,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Users, ToggleLeft, ToggleRight, MessageSquare, Clock, Send, Bot, User as UserIcon } from "lucide-react";
+import { Search, Users, ToggleLeft, ToggleRight, MessageSquare, Clock, Send, Bot, User as UserIcon, Sparkles, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/lib/auth-context";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Switch } from "@/components/ui/switch";
@@ -37,15 +38,32 @@ interface Message {
   timestamp: Date;
   sendBy?: string;
   assistant?: string;
+  functionCall?: {
+    name: string;
+    status: 'pending' | 'completed' | 'failed';
+  };
 }
+
+const functionIcons: Record<string, string> = {
+  verificar_conexao: "🔌",
+  consultar_base_de_conhecimento: "📚",
+  consultar_fatura: "📄",
+  agendar_visita: "📅",
+  consultar_isencao_cpf: "🔍",
+  transferir_para_humano: "👤",
+  rotear_para_assistente: "🎭",
+};
 
 export default function Groups() {
   const [search, setSearch] = useState("");
   const [aiFilter, setAiFilter] = useState<string>("all");
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [messageText, setMessageText] = useState("");
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+  const [suggestionId, setSuggestionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Query all groups
   const { data: groups = [], isLoading } = useQuery<Group[]>({
@@ -119,6 +137,34 @@ export default function Groups() {
     },
   });
 
+  // Mutation to request AI suggestion
+  const suggestMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedGroup) throw new Error("No group selected");
+      const response = await apiRequest(
+        `/api/groups/${selectedGroup.id}/suggest-response`, 
+        "POST",
+        { supervisorName: user?.fullName }
+      );
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setAiSuggestion(data.suggestedResponse);
+      setSuggestionId(data.suggestionId);
+      setMessageText(data.suggestedResponse);
+      toast({
+        title: "Sugestão gerada!",
+        description: "Você pode editar ou enviar a sugestão",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao gerar sugestão",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Mutation to send message
   const sendMessageMutation = useMutation({
     mutationFn: async (data: { groupId: string; message: string }) => {
@@ -126,6 +172,8 @@ export default function Groups() {
     },
     onSuccess: () => {
       setMessageText("");
+      setAiSuggestion(null);
+      setSuggestionId(null);
       queryClient.invalidateQueries({ queryKey: ["/api/groups", selectedGroup?.id, "messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
       toast({
@@ -152,6 +200,11 @@ export default function Groups() {
       groupId: group.id,
       aiEnabled: !group.aiEnabled,
     });
+  };
+
+  const handleRequestSuggestion = () => {
+    if (!selectedGroup) return;
+    suggestMutation.mutate();
   };
 
   const handleSendMessage = () => {
@@ -331,6 +384,22 @@ export default function Groups() {
                                 </span>
                               </div>
                               <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                              
+                              {/* Function Call Badge */}
+                              {msg.functionCall && (
+                                <Badge 
+                                  variant="outline" 
+                                  className={`mt-2 text-xs ${
+                                    msg.functionCall.status === "completed" 
+                                      ? "bg-chart-2/10 text-chart-2" 
+                                      : msg.functionCall.status === "failed"
+                                      ? "bg-destructive/10 text-destructive"
+                                      : "bg-chart-3/10 text-chart-3"
+                                  }`}
+                                >
+                                  {functionIcons[msg.functionCall.name] || "⚙️"} {msg.functionCall.name}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -342,7 +411,27 @@ export default function Groups() {
               </div>
 
               {/* Campo de Envio */}
-              <div className="border-t p-4">
+              <div className="border-t p-4 space-y-3">
+                {/* Botão de Sugestão da IA */}
+                {!aiSuggestion && messages.length > 0 && (
+                  <Button
+                    onClick={handleRequestSuggestion}
+                    variant="outline"
+                    size="sm"
+                    disabled={suggestMutation.isPending}
+                    className="w-full"
+                    data-testid="button-request-suggestion"
+                  >
+                    {suggestMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Sparkles className="h-4 w-4 mr-2" />
+                    )}
+                    {suggestMutation.isPending ? "Gerando sugestão..." : "Pedir Sugestão da IA"}
+                  </Button>
+                )}
+
+                {/* Campo de texto e botão enviar */}
                 <div className="flex gap-2">
                   <Textarea
                     placeholder="Escrever mensagem para o grupo..."

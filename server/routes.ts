@@ -7021,5 +7021,89 @@ A resposta deve:
     }
   });
 
+  // AI suggest response for group based on context
+  app.post("/api/groups/:id/suggest-response", authenticate, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { supervisorName } = req.body;
+
+      const group = await storage.getGroup(id);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      // Build chatId for the group
+      const chatId = `whatsapp_${group.groupId}`;
+
+      // Find conversation for this group
+      const conversation = await storage.getConversationByChatId(chatId);
+
+      if (!conversation) {
+        return res.status(400).json({ error: "Não há mensagens neste grupo para gerar sugestão" });
+      }
+
+      const messages = await storage.getMessagesByConversationId(conversation.id);
+      
+      if (!messages || messages.length === 0) {
+        return res.status(400).json({ error: "Não há mensagens neste grupo para gerar sugestão" });
+      }
+
+      // Preparar contexto da conversa
+      const conversationHistory = messages.map(m => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      // Pegar a última mensagem (independente do role) como contexto principal
+      const lastMessage = messages[messages.length - 1];
+      const lastMessageContext = `${lastMessage.role === 'user' ? 'Cliente' : 'Assistente'}: ${lastMessage.content}`;
+
+      // Usar OpenAI para sugerir resposta baseada no contexto
+      const suggestionPrompt = `Você é um assistente experiente da TR Telecom. 
+      
+Analise o histórico da conversa do grupo WhatsApp abaixo e sugira a melhor resposta para dar continuidade ao atendimento.
+
+Histórico da conversa:
+${conversationHistory.map(m => `${m.role === 'user' ? 'Cliente' : 'Assistente'}: ${m.content}`).join('\n')}
+
+Baseado no contexto completo da conversa, sugira uma resposta profissional, empática e que ajude o cliente. 
+A resposta deve:
+- Ser direta e objetiva
+- Manter tom profissional e empático
+- Oferecer solução clara ou dar continuidade ao atendimento
+- Se necessário, pedir informações adicionais para melhor ajudar`;
+
+      const { openai } = await import("./lib/openai");
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: suggestionPrompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 500,
+      });
+
+      const suggestedResponse = completion.choices[0]?.message?.content || "Não foi possível gerar uma sugestão";
+      
+      // Gerar um ID único para esta sugestão (para tracking)
+      const suggestionId = `suggestion_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      console.log(`✅ [Groups] Generated AI suggestion for group ${group.name} by ${supervisorName || 'unknown'}`);
+
+      return res.json({
+        suggestedResponse,
+        suggestionId,
+        context: lastMessageContext,
+        supervisorName: supervisorName || req.user?.fullName,
+      });
+    } catch (error) {
+      console.error("❌ [Groups] Error generating AI suggestion:", error);
+      return res.status(500).json({ error: "Error generating AI suggestion" });
+    }
+  });
+
   return httpServer;
 }
