@@ -416,25 +416,25 @@ export default function Groups() {
             </div>
           </CardContent>
         ) : (
-          <CardContent className="flex-1 flex flex-col overflow-hidden min-h-0 p-0">
-            <Tabs defaultValue="chat" className="flex-1 flex flex-col overflow-hidden min-h-0">
-            <div className="px-6 flex-shrink-0">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="chat" data-testid="tab-chat">
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Chat
-                </TabsTrigger>
-                <TabsTrigger value="info" data-testid="tab-info">
-                  <Users className="h-4 w-4 mr-2" />
-                  Informações
-                </TabsTrigger>
-              </TabsList>
-            </div>
+          <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
+            <Tabs defaultValue="chat" className="flex-1 flex flex-col">
+              <div className="px-6 pt-6">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="chat" data-testid="tab-chat">
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Chat
+                  </TabsTrigger>
+                  <TabsTrigger value="info" data-testid="tab-info">
+                    <Users className="h-4 w-4 mr-2" />
+                    Informações
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
-            {/* Aba Chat */}
-            <TabsContent value="chat" className="flex-1 flex flex-col m-0 data-[state=active]:flex overflow-hidden min-h-0">
-              {/* Área de mensagens com scroll */}
-              <div className="flex-1 overflow-y-auto min-h-0 px-6" ref={scrollAreaRef}>
+              {/* Aba Chat */}
+              <TabsContent value="chat" className="flex-1 flex flex-col mt-0 overflow-hidden">
+                {/* Área de mensagens com scroll */}
+                <div className="flex-1 overflow-y-auto px-6" ref={scrollAreaRef}>
                   <div className="space-y-3 py-4">
                     {!conversationData ? (
                       <div className="text-center text-muted-foreground py-8">
@@ -521,8 +521,8 @@ export default function Groups() {
                   </div>
                 </div>
 
-              {/* Campo de envio fixo no rodapé */}
-              <div className="border-t p-4 space-y-3 flex-shrink-0">
+                {/* Campo de envio fixo no rodapé */}
+                <div className="border-t p-4 space-y-3">
                 {!aiSuggestion && allMessages.length > 0 && (
                   <Button
                     onClick={handleRequestSuggestion}
@@ -565,9 +565,9 @@ export default function Groups() {
               </div>
             </TabsContent>
 
-            {/* Aba Informações */}
-            <TabsContent value="info" className="flex-1 flex flex-col data-[state=active]:flex m-0 overflow-hidden min-h-0">
-              <ScrollArea className="flex-1 min-h-0">
+              {/* Aba Informações */}
+              <TabsContent value="info" className="flex-1 mt-0 overflow-hidden">
+                <ScrollArea className="h-full">
                 <div className="space-y-6 p-6">
                   <div className="space-y-4">
                     <div>
