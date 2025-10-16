@@ -434,7 +434,7 @@ export default function Groups() {
             {/* Aba Chat */}
             <TabsContent value="chat" className="flex-1 flex flex-col m-0 data-[state=active]:flex overflow-hidden min-h-0">
               {/* Área de mensagens com scroll */}
-              <div className="flex-1 overflow-y-auto px-6" ref={scrollAreaRef}>
+              <div className="flex-1 overflow-y-auto min-h-0 px-6" ref={scrollAreaRef}>
                   <div className="space-y-3 py-4">
                     {!conversationData ? (
                       <div className="text-center text-muted-foreground py-8">
