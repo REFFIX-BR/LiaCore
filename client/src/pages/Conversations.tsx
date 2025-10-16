@@ -237,21 +237,21 @@ export default function Conversations() {
                                 <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" data-testid="verified-indicator" />
                               )}
                             </div>
-                          {conv.transferReason && (
-                            <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                              {conv.transferReason}
-                            </div>
-                          )}
-                          {conv.lastMessage && (
-                            <div className="text-sm text-muted-foreground mt-1 truncate">
-                              {conv.lastMessage}
-                            </div>
-                          )}
+                            {conv.transferReason && (
+                              <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                {conv.transferReason}
+                              </div>
+                            )}
+                            {conv.lastMessage && (
+                              <div className="text-sm text-muted-foreground mt-1 truncate">
+                                {conv.lastMessage}
+                              </div>
+                            )}
+                          </div>
+                          <Badge variant="outline" className="shrink-0 text-xs">
+                            {conv.assistantType}
+                          </Badge>
                         </div>
-                        <Badge variant="outline" className="shrink-0 text-xs">
-                          {conv.assistantType}
-                        </Badge>
-                      </div>
                       <div className="text-xs text-muted-foreground mt-2">
                         {new Date(conv.transferredAt || conv.lastMessageTime).toLocaleString("pt-BR")}
                       </div>
@@ -297,26 +297,26 @@ export default function Conversations() {
                                 <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" data-testid="verified-indicator" />
                               )}
                             </div>
-                          {conv.assignedToName && (
-                            <div className="text-xs text-muted-foreground mt-1">
-                              Atribuído por {conv.assignedToName}
-                            </div>
-                          )}
-                          {conv.transferReason && (
-                            <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                              {conv.transferReason}
-                            </div>
-                          )}
-                          {conv.lastMessage && (
-                            <div className="text-sm text-muted-foreground mt-1 truncate">
-                              {conv.lastMessage}
-                            </div>
-                          )}
+                            {conv.assignedToName && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Atribuído por {conv.assignedToName}
+                              </div>
+                            )}
+                            {conv.transferReason && (
+                              <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                {conv.transferReason}
+                              </div>
+                            )}
+                            {conv.lastMessage && (
+                              <div className="text-sm text-muted-foreground mt-1 truncate">
+                                {conv.lastMessage}
+                              </div>
+                            )}
+                          </div>
+                          <Badge variant="outline" className="shrink-0 text-xs">
+                            {conv.assignedTo && conv.assignedToName ? `Atribuído por ${conv.assignedToName}` : conv.assignedTo ? "Atribuído" : conv.assistantType}
+                          </Badge>
                         </div>
-                        <Badge variant="outline" className="shrink-0 text-xs">
-                          {conv.assignedTo && conv.assignedToName ? `Atribuído por ${conv.assignedToName}` : conv.assignedTo ? "Atribuído" : conv.assistantType}
-                        </Badge>
-                      </div>
                       <div className="text-xs text-muted-foreground mt-2">
                         {new Date(conv.transferredAt || conv.lastMessageTime).toLocaleString("pt-BR")}
                       </div>
