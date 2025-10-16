@@ -1860,7 +1860,7 @@ export class DbStorage implements IStorage {
       const activeConvs = await db.select().from(schema.conversations)
         .where(and(
           eq(schema.conversations.assignedTo, agent.id),
-          eq(schema.conversations.status, 'active')
+          inArray(schema.conversations.status, ['active', 'queued'])
         ));
 
       const finishedToday = await db.select().from(schema.conversations)
