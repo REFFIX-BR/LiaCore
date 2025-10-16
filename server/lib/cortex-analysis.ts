@@ -90,9 +90,11 @@ export async function analyzeLearningEvents(): Promise<any[]> {
 
       // Preparar dados para análise
       const analysisData = prepareAnalysisData(correctionEvents);
+      console.log(`📋 [LIA Cortex Analysis] Dados preparados para ${assistantType}:`, analysisData.substring(0, 500) + '...');
 
       // Chamar GPT-4 para análise
       const suggestions = await callCortexAnalysis(assistantType, analysisData);
+      console.log(`📊 [LIA Cortex Analysis] GPT-4 retornou ${suggestions?.length || 0} sugestões para ${assistantType}`);
 
       if (suggestions && suggestions.length > 0) {
         // Salvar sugestões no banco (com deduplicação)
@@ -164,6 +166,8 @@ function prepareAnalysisData(events: LearningEvent[]): string {
 
 async function callCortexAnalysis(assistantType: string, analysisData: string): Promise<any[]> {
   try {
+    console.log(`🤖 [Cortex Analysis] Chamando GPT-4o para analisar ${assistantType}...`);
+    
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -185,9 +189,15 @@ Retorne APENAS o JSON com as sugestões, sem markdown ou explicações adicionai
     });
 
     const content = response.choices[0].message.content;
-    if (!content) return [];
+    console.log(`📥 [Cortex Analysis] Resposta da GPT-4o para ${assistantType}:`, content?.substring(0, 500));
+    
+    if (!content) {
+      console.log(`⚠️  [Cortex Analysis] GPT-4o retornou resposta vazia para ${assistantType}`);
+      return [];
+    }
 
     const result = JSON.parse(content);
+    console.log(`✅ [Cortex Analysis] JSON parseado com sucesso. Sugestões: ${result.suggestions?.length || 0}`);
     return result.suggestions || [];
 
   } catch (error) {
