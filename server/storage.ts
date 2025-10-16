@@ -1891,23 +1891,39 @@ export class DbStorage implements IStorage {
   }
 
   async getAdminMetrics() {
+    // ✅ CACHE INTELIGENTE - Cacheia métricas por 60 segundos
+    const cacheKey = 'admin:metrics:v1';
+    const cached = await RedisCache.get(cacheKey);
+    
+    if (cached) {
+      console.log('📦 [Cache] Admin metrics HIT - returning cached data');
+      return cached;
+    }
+    
+    console.log('🔄 [Cache] Admin metrics MISS - calculating fresh data');
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // System status (simplificado)
+    // ✅ DADOS REAIS - Status do sistema
+    const { checkWorkersHealth } = await import('./lib/workers-health');
+    const workersHealth = await checkWorkersHealth();
+    
     const systemStatus = {
-      api: true,
-      database: true,
-      workers: true
+      api: true, // API está respondendo se chegou aqui
+      database: true, // Database está conectado se chegou aqui
+      workers: workersHealth.allHealthy
     };
 
-    // ⚠️ MOCK DATA - Dashboard Admin Metrics Only
-    // TODO: Implementar integração real com APIs de custo (OpenAI, Upstash)
-    // Este mock NÃO afeta funcionalidades principais do sistema
+    // ✅ DADOS REAIS - Custos calculados com base no uso real de tokens
+    const { getUsageMetrics, getUpstashCost } = await import('./lib/openai-usage');
+    const usageMetrics = await getUsageMetrics();
+    const upstashCost = await getUpstashCost();
+    
     const estimatedCost = {
-      total: 123.45,
-      openai: 80.10,
-      upstash: 43.35
+      total: usageMetrics.total30Days.cost + upstashCost,
+      openai: usageMetrics.total30Days.cost,
+      upstash: upstashCost
     };
 
     // Usuários ativos
@@ -1923,18 +1939,20 @@ export class DbStorage implements IStorage {
       agents: activeToday.filter(u => u.role === 'AGENT').length
     };
 
-    // ⚠️ MOCK DATA - Dashboard Admin Metrics Only
-    // TODO: Implementar sistema real de rastreamento de eventos de segurança
-    // Este mock NÃO afeta funcionalidades principais do sistema
+    // ✅ DADOS REAIS - Eventos de segurança rastreados
+    const { getSecurityStats } = await import('./lib/security-events');
+    const securityStats = await getSecurityStats(30); // últimos 30 dias
+    
     const securityEvents = {
-      total: 0,
-      failedLogins: 0
+      total: securityStats.total,
+      failedLogins: securityStats.failedLogins
     };
 
-    // ⚠️ MOCK DATA - Dashboard Admin Metrics Only
-    // TODO: Implementar integração real com API da OpenAI para dados de token usage
-    // Este mock NÃO afeta funcionalidades principais do sistema
-    const tokenUsage = this.generateMockTokenUsage();
+    // ✅ DADOS REAIS - Token usage baseado em rastreamento real
+    const tokenUsage = usageMetrics.dailyUsage.map(day => ({
+      date: day.date,
+      tokens: day.tokens
+    }));
 
     // Atividade recente
     const recentActions = await db.select().from(schema.supervisorActions)
@@ -1947,7 +1965,7 @@ export class DbStorage implements IStorage {
       timestamp: action.createdAt
     }));
 
-    return {
+    const metrics = {
       systemStatus,
       estimatedCost,
       activeUsers,
@@ -1955,6 +1973,12 @@ export class DbStorage implements IStorage {
       tokenUsage,
       recentActivity
     };
+
+    // ✅ Armazena no cache por 60 segundos
+    await RedisCache.set(cacheKey, metrics, 60);
+    console.log('💾 [Cache] Admin metrics cached for 60s');
+
+    return metrics;
   }
 
   private calculateSentimentTrend(conversations: Conversation[]) {

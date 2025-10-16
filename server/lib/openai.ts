@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { assistantCache, redisConnection } from "./redis-config";
 import { agentLogger } from "./agent-logger";
+import { trackTokenUsage } from "./openai-usage";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -92,6 +93,16 @@ export async function generateEmbedding(text: string): Promise<number[]> {
       input: text,
     })
   );
+  
+  // Track token usage for embeddings
+  if (response.usage) {
+    await trackTokenUsage(
+      "text-embedding-3-small",
+      response.usage.prompt_tokens || 0,
+      0 // embeddings não têm completion tokens
+    );
+  }
+  
   return response.data[0].embedding;
 }
 
@@ -171,6 +182,15 @@ Responda apenas com o nome do assistente (suporte, comercial, financeiro, aprese
         messages: [{ role: "user", content: routingPrompt }],
       })
     );
+
+    // Track token usage for routing
+    if (response.usage) {
+      await trackTokenUsage(
+        "gpt-5",
+        response.usage.prompt_tokens || 0,
+        response.usage.completion_tokens || 0
+      );
+    }
 
     const assistantType = response.choices[0].message.content?.trim().toLowerCase() || "suporte";
     const validTypes = ["suporte", "comercial", "financeiro", "apresentacao", "ouvidoria", "cancelamento"];
@@ -473,6 +493,15 @@ export async function sendMessageAndGetResponse(
     }
 
     console.log("🔵 [OpenAI] Run completed:", { runId: run.id, status: run.status, threadId });
+
+    // Track token usage if available
+    if (run.usage) {
+      await trackTokenUsage(
+        "gpt-5", // Assistant model
+        run.usage.prompt_tokens || 0,
+        run.usage.completion_tokens || 0
+      );
+    }
 
     if (run.status === "failed" || run.status === "cancelled" || run.status === "expired") {
       throw new Error(`Run failed with status: ${run.status}`);

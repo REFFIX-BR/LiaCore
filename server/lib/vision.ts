@@ -1,5 +1,6 @@
 import axios from 'axios';
 import OpenAI from 'openai';
+import { trackTokenUsage } from './openai-usage';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -181,6 +182,15 @@ export async function analyzeImageWithVision(
     });
 
     const analysis = response.choices[0]?.message?.content;
+
+    // Track token usage for vision
+    if (response.usage) {
+      await trackTokenUsage(
+        "gpt-4o",
+        response.usage.prompt_tokens || 0,
+        response.usage.completion_tokens || 0
+      );
+    }
 
     if (analysis) {
       console.log(`✅ [Vision] Análise concluída: ${analysis.substring(0, 100)}...`);

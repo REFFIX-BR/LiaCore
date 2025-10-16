@@ -11,6 +11,7 @@ import { agentLogger } from "./lib/agent-logger";
 import { setupWebSockets } from "./lib/websocket-manager";
 import { authenticate, authenticateWithTracking, requireAdmin, requireAdminOrSupervisor, requireAnyRole } from "./middleware/auth";
 import { hashPassword, comparePasswords, generateToken, getUserFromUser } from "./lib/auth";
+import { trackSecurityEvent, SecurityEventType } from "./lib/security-events";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -300,16 +301,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.getUserByUsername(username);
       if (!user) {
+        // 🔐 Track failed login attempt
+        await trackSecurityEvent({
+          type: SecurityEventType.FAILED_LOGIN,
+          username,
+          ipAddress: req.ip || req.headers['x-forwarded-for'] as string || undefined,
+          userAgent: req.headers['user-agent'],
+          timestamp: Date.now(),
+          details: "Usuário não encontrado"
+        });
         return res.status(401).json({ error: "Usuário ou senha inválidos" });
       }
 
       const isValid = await comparePasswords(password, user.password);
       if (!isValid) {
+        // 🔐 Track failed login attempt
+        await trackSecurityEvent({
+          type: SecurityEventType.FAILED_LOGIN,
+          username,
+          ipAddress: req.ip || req.headers['x-forwarded-for'] as string || undefined,
+          userAgent: req.headers['user-agent'],
+          timestamp: Date.now(),
+          details: "Senha incorreta"
+        });
         return res.status(401).json({ error: "Usuário ou senha inválidos" });
       }
 
       // Update last login
       await storage.updateUserLastLogin(user.id);
+
+      // 🔐 Track successful login
+      await trackSecurityEvent({
+        type: SecurityEventType.SUCCESSFUL_LOGIN,
+        username,
+        ipAddress: req.ip || req.headers['x-forwarded-for'] as string || undefined,
+        userAgent: req.headers['user-agent'],
+        timestamp: Date.now(),
+        details: `Login bem-sucedido: ${user.fullName}`
+      });
 
       // 📊 Log login activity
       await storage.createActivityLog({

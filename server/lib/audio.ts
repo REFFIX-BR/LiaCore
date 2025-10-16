@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { webhookLogger } from "./webhook-logger";
+import { trackTokenUsage } from "./openai-usage";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -58,6 +59,16 @@ export async function transcribeAudio(
     }
 
     console.log(`✅ [Audio] Transcrição concluída: ${transcription.substring(0, 100)}...`);
+    
+    // Estima duração do áudio em minutos (aproximação: 1MB ≈ 60 segundos de áudio)
+    const audioSizeKB = audioBuffer.length / 1024;
+    const estimatedMinutes = Math.max(0.1, (audioSizeKB / 1024)); // KB/1024 = MB, e 1MB ≈ 1 minuto de áudio
+    
+    // Track usage (Whisper cobra $0.006 por minuto)
+    // Armazenamos como "tokens" para aproveitar infraestrutura existente
+    // 1 minuto = 1 "token" (será multiplicado pelo preço correto no cálculo)
+    const estimatedTokens = Math.ceil(estimatedMinutes);
+    await trackTokenUsage("whisper-1", estimatedTokens, 0);
     
     webhookLogger.success("AUDIO_TRANSCRIBED", "Áudio transcrito com sucesso", {
       audioSize: audioBuffer.length,
