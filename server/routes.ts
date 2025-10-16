@@ -6865,7 +6865,7 @@ A resposta deve:
     }
   });
 
-  // Get group messages (chat history)
+  // Get group messages (chat history) with pagination
   app.get("/api/groups/:id/messages", authenticate, async (req, res) => {
     try {
       const group = await storage.getGroup(req.params.id);
@@ -6882,14 +6882,21 @@ A resposta deve:
 
       if (!conversation) {
         // No messages yet
-        return res.json([]);
+        return res.json({ messages: [], hasMore: false });
       }
 
-      // Get all messages for this conversation
-      const messages = await storage.getMessagesByConversationId(conversation.id);
+      // Parse pagination parameters
+      const before = req.query.before as string | undefined;
+      const limit = parseInt(req.query.limit as string) || 15;
 
-      console.log(`✅ [Groups] Retrieved ${messages.length} messages for group ${group.name}`);
-      return res.json(messages);
+      // Get paginated messages
+      const result = await storage.getMessagesPaginated(conversation.id, { 
+        before, 
+        limit 
+      });
+
+      console.log(`✅ [Groups] Retrieved ${result.messages.length} messages for group ${group.name} (hasMore: ${result.hasMore})`);
+      return res.json(result);
     } catch (error) {
       console.error("❌ [Groups] Error fetching group messages:", error);
       return res.status(500).json({ error: "Error fetching group messages" });

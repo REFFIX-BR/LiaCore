@@ -61,6 +61,10 @@ export default function Groups() {
   const [messageText, setMessageText] = useState("");
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
   const [suggestionId, setSuggestionId] = useState<string | null>(null);
+  const [allMessages, setAllMessages] = useState<Message[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasLoadedOlder, setHasLoadedOlder] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -120,13 +124,13 @@ export default function Groups() {
     },
   });
 
-  // Query group messages
-  const { data: messages = [], isLoading: messagesLoading } = useQuery<Message[]>({
+  // Query group messages with pagination
+  const { data: conversationData } = useQuery<{ messages: Message[]; hasMore: boolean }>({
     queryKey: ["/api/groups", selectedGroup?.id, "messages"],
     enabled: !!selectedGroup,
     refetchInterval: 5000, // Refresh every 5 seconds
     queryFn: async () => {
-      if (!selectedGroup) return [];
+      if (!selectedGroup) return { messages: [], hasMore: false };
       const response = await fetch(`/api/groups/${selectedGroup.id}/messages`, {
         credentials: "include",
       });
@@ -136,6 +140,76 @@ export default function Groups() {
       return response.json();
     },
   });
+
+  // Resetar mensagens quando grupo muda
+  useEffect(() => {
+    setAllMessages([]);
+    setHasMore(false);
+    setHasLoadedOlder(false);
+    setAiSuggestion(null);
+    setSuggestionId(null);
+    setMessageText("");
+  }, [selectedGroup?.id]);
+
+  // Atualizar mensagens quando conversationData muda
+  useEffect(() => {
+    if (!conversationData) return;
+    
+    // Se não carregou mensagens antigas, substitui tudo
+    if (!hasLoadedOlder) {
+      setAllMessages(conversationData.messages);
+      setHasMore(conversationData.hasMore);
+      return;
+    }
+    
+    // Se carregou antigas, adiciona apenas as novas
+    const existingIds = new Set(allMessages.map(m => m.id));
+    const newMessages = conversationData.messages.filter(m => !existingIds.has(m.id));
+    
+    setAllMessages(prev => {
+      return [...prev, ...newMessages];
+    });
+    
+    if (!hasLoadedOlder) {
+      setHasMore(conversationData.hasMore);
+    }
+  }, [conversationData, hasLoadedOlder]);
+
+  // Carregar mensagens anteriores
+  const loadMoreMessages = async () => {
+    if (!hasMore || loadingMore || !selectedGroup) return;
+    
+    setLoadingMore(true);
+    setHasLoadedOlder(true);
+    
+    try {
+      const oldestMessageId = allMessages[0]?.id;
+      if (!oldestMessageId) {
+        setHasMore(false);
+        return;
+      }
+      
+      const response = await fetch(`/api/groups/${selectedGroup.id}/messages?before=${oldestMessageId}&limit=15`, {
+        credentials: "include",
+      });
+      const data = await response.json();
+      
+      setHasMore(data.hasMore);
+      
+      if (data.messages && data.messages.length > 0) {
+        setAllMessages(prev => [...data.messages, ...prev]);
+      }
+    } catch (error) {
+      console.error("Error loading more messages:", error);
+      toast({
+        title: "Erro ao carregar mensagens",
+        description: "Não foi possível carregar mensagens antigas",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   // Mutation to request AI suggestion
   const suggestMutation = useMutation({
@@ -190,10 +264,12 @@ export default function Groups() {
     },
   });
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom when messages change (only for new messages, not when loading older)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (!hasLoadedOlder) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [allMessages, hasLoadedOlder]);
 
   const handleToggleAi = (group: Group) => {
     toggleAiMutation.mutate({
@@ -343,12 +419,12 @@ export default function Groups() {
             <TabsContent value="chat" className="flex-1 flex flex-col mt-0 overflow-hidden">
               <ScrollArea className="flex-1 px-6" style={{ height: 'calc(100vh - 380px)' }}>
                 <div className="space-y-3 py-4">
-                  {messagesLoading ? (
+                  {!conversationData ? (
                     <div className="text-center text-muted-foreground py-8">
                       <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50 animate-pulse" />
                       <p className="text-sm">Carregando mensagens...</p>
                     </div>
-                  ) : messages.length === 0 ? (
+                  ) : allMessages.length === 0 ? (
                     <div className="text-center text-muted-foreground py-8">
                       <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p>Nenhuma mensagem ainda</p>
@@ -356,7 +432,29 @@ export default function Groups() {
                     </div>
                   ) : (
                     <>
-                      {messages.map((msg) => (
+                      {/* Botão Carregar Mais */}
+                      {hasMore && (
+                        <div className="flex justify-center py-2">
+                          <Button
+                            onClick={loadMoreMessages}
+                            variant="ghost"
+                            size="sm"
+                            disabled={loadingMore}
+                            data-testid="button-load-more"
+                          >
+                            {loadingMore ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Carregando...
+                              </>
+                            ) : (
+                              "Carregar mensagens anteriores"
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                      
+                      {allMessages.map((msg: Message) => (
                         <div
                           key={msg.id}
                           className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}
@@ -411,7 +509,7 @@ export default function Groups() {
               {/* Campo de Envio */}
               <div className="border-t p-4 space-y-3">
                 {/* Botão de Sugestão da IA */}
-                {!aiSuggestion && messages.length > 0 && (
+                {!aiSuggestion && allMessages.length > 0 && (
                   <Button
                     onClick={handleRequestSuggestion}
                     variant="outline"
