@@ -410,8 +410,8 @@ export default function Groups() {
           </CardContent>
         ) : (
           <CardContent className="flex-1 flex flex-col p-0 min-h-0 overflow-hidden">
-            <Tabs defaultValue="chat" className="flex-1 flex flex-col min-h-0">
-              <div className="px-6 pt-6">
+            <Tabs defaultValue="chat" className="flex-1 flex flex-col min-h-0 gap-0">
+              <div className="px-6 pt-6 pb-0">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="chat" data-testid="tab-chat">
                     <MessageSquare className="h-4 w-4 mr-2" />
@@ -425,7 +425,7 @@ export default function Groups() {
               </div>
 
               {/* Aba Chat */}
-              <TabsContent value="chat" className="flex-1 flex flex-col mt-0 min-h-0 overflow-hidden">
+              <TabsContent value="chat" className="flex-1 flex flex-col mt-0 min-h-0 overflow-hidden data-[state=inactive]:hidden data-[state=active]:flex">
                 {/* Área de mensagens com scroll */}
                 <ScrollArea className="flex-1 min-h-0" ref={scrollAreaRef}>
                   <div className="space-y-3 py-4 px-6">
@@ -559,9 +559,9 @@ export default function Groups() {
             </TabsContent>
 
               {/* Aba Informações */}
-              <TabsContent value="info" className="flex-1 flex flex-col mt-0 min-h-0 overflow-hidden">
-                <ScrollArea className="flex-1 min-h-0">
-                <div className="space-y-6 p-6">
+              <TabsContent value="info" className="flex-1 flex flex-col -mt-2 min-h-0 overflow-hidden data-[state=inactive]:hidden data-[state=active]:flex">
+                <ScrollArea className="flex-1 min-h-0 !pt-0">
+                <div className="space-y-6 py-4 px-6">
                   <div className="space-y-4">
                     <div>
                       <Label className="text-sm text-muted-foreground">Nome do Grupo</Label>
