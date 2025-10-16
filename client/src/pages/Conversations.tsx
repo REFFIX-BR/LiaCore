@@ -152,7 +152,7 @@ export default function Conversations() {
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex gap-4">
+    <div className="h-full flex gap-4">
       {/* Lista de conversas */}
       <Card className="w-80 flex flex-col">
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "transferred" | "assigned")} className="flex flex-col h-full">
