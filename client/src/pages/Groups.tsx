@@ -476,7 +476,7 @@ export default function Groups() {
                           data-testid={`message-${msg.id}`}
                         >
                           <div
-                            className={`max-w-[80%] rounded-lg p-3 ${
+                            className={`max-w-[80%] rounded-lg p-3 overflow-hidden ${
                               msg.role === 'user'
                                 ? 'bg-muted'
                                 : 'bg-primary text-primary-foreground'
@@ -495,7 +495,7 @@ export default function Groups() {
                                 {format(new Date(msg.timestamp), "HH:mm", { locale: ptBR })}
                               </span>
                             </div>
-                            <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                            <p className="text-sm whitespace-pre-wrap break-words overflow-wrap-anywhere">{msg.content}</p>
                             
                             {/* Function Call Badge */}
                             {msg.functionCall && (
