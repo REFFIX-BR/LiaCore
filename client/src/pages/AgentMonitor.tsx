@@ -63,6 +63,27 @@ export default function AgentMonitor() {
     }
   };
 
+  // Ordenar atendentes: Online → Ociosos → Offline
+  const getStatusPriority = (status: 'online' | 'idle' | 'offline') => {
+    switch (status) {
+      case 'online': return 1;
+      case 'idle': return 2;
+      case 'offline': return 3;
+    }
+  };
+
+  const sortedAgents = [...agents].sort((a, b) => {
+    const priorityA = getStatusPriority(a.status);
+    const priorityB = getStatusPriority(b.status);
+    
+    // Se mesma prioridade, ordenar por nome
+    if (priorityA === priorityB) {
+      return a.fullName.localeCompare(b.fullName);
+    }
+    
+    return priorityA - priorityB;
+  });
+
   const totalActive = agents.filter(a => a.status === 'online').length;
   const totalIdle = agents.filter(a => a.status === 'idle').length;
   const totalOffline = agents.filter(a => a.status === 'offline').length;
@@ -144,7 +165,7 @@ export default function AgentMonitor() {
       <div>
         <h2 className="text-lg font-semibold mb-4">Equipe de Atendimento</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {agents.map((agent) => (
+          {sortedAgents.map((agent) => (
             <Card 
               key={agent.id} 
               className="hover-elevate relative overflow-hidden"
