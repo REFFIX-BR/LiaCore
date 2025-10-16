@@ -416,8 +416,9 @@ export default function Groups() {
             </div>
           </CardContent>
         ) : (
-          <Tabs defaultValue="chat" className="flex-1 flex flex-col overflow-hidden">
-            <div className="px-6">
+          <CardContent className="flex-1 flex flex-col overflow-hidden min-h-0 p-0">
+            <Tabs defaultValue="chat" className="flex-1 flex flex-col overflow-hidden min-h-0">
+            <div className="px-6 flex-shrink-0">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="chat" data-testid="tab-chat">
                   <MessageSquare className="h-4 w-4 mr-2" />
@@ -431,7 +432,7 @@ export default function Groups() {
             </div>
 
             {/* Aba Chat */}
-            <TabsContent value="chat" className="flex-1 flex flex-col mt-0 overflow-hidden min-h-0">
+            <TabsContent value="chat" className="flex-1 flex flex-col overflow-hidden min-h-0">
               <ScrollArea className="flex-1 px-6 min-h-0" ref={scrollAreaRef}>
                 <div className="space-y-3 py-4">
                   {!conversationData ? (
@@ -570,7 +571,7 @@ export default function Groups() {
             {/* Aba Informações */}
             <TabsContent value="info" className="flex-1 flex flex-col mt-0">
               <ScrollArea className="flex-1">
-                <CardContent className="space-y-6">
+                <div className="space-y-6 p-6">
                   {/* Informações do Grupo */}
                   <div className="space-y-4">
                     <div>
@@ -653,10 +654,11 @@ export default function Groups() {
                       <p>Última atualização: {format(new Date(selectedGroup.updatedAt), "dd/MM/yyyy 'às' HH:mm")}</p>
                     </div>
                   </div>
-                </CardContent>
+                </div>
               </ScrollArea>
             </TabsContent>
           </Tabs>
+          </CardContent>
         )}
       </Card>
     </div>
