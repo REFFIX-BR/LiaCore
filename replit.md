@@ -19,7 +19,7 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 
 **AI & Knowledge Management**:
 - **AI Provider**: OpenAI Assistants API.
-- **Specialized Assistants**: Six roles (Support, Sales, Finance, Cancellation, Ombudsman, Presentation) operating with a "Receptionist-First" routing model.
+- **Specialized Assistants**: Six roles (Support, Sales, Finance, Cancellation, Ombudsman, Presentation) operating with a "Receptionist-First" routing model. Ouvidoria assistant has reinforced instructions to ALWAYS collect complete complaint details and register with protocol BEFORE transferring, even for technical issues.
 - **RAG Architecture**: Features a dual-layer prompt system separating System Prompts from RAG Prompts using Upstash Vector for semantic search. Includes a RAG system for equipment return information, automatically recommending the nearest return point based on client location.
 - **Function Calling**: Custom functions for verification, knowledge queries, invoice lookups, and scheduling, with secure internal-only tool execution.
 - **Automated Systems**: Includes automated document detection (CPF/CNPJ), "Boleto Consultation", "PPPoE Connection Status", and "Unlock/Unblock" systems with integrated security. An HTTP Resilience System centralizes retry logic for external API calls.
