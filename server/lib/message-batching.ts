@@ -54,16 +54,12 @@ export async function addToBatch(
       };
     }
     
-    // Adiciona mensagem de TEXTO PURO ao batch
-    const batch = await getBatch(chatId);
-    batch.push(messageData);
+    // Adiciona mensagem de TEXTO PURO ao batch usando operação ATÔMICA
+    // RPUSH adiciona ao final da lista de forma atômica (thread-safe)
+    await redisConnection.rpush(batchKey, JSON.stringify(messageData));
     
-    // Salva batch atualizado com TTL
-    await redisConnection.setex(
-      batchKey,
-      BATCH_TTL,
-      JSON.stringify(batch)
-    );
+    // Define TTL no batch (EXPIRE é atômico)
+    await redisConnection.expire(batchKey, BATCH_TTL);
     
     // Atualiza timer com timestamp atual
     const now = Date.now();
@@ -73,7 +69,9 @@ export async function addToBatch(
       now.toString()
     );
     
-    console.log(`📦 [Batch] Mensagem de texto adicionada ao batch para ${chatId} (${batch.length} no total)`);
+    // Conta mensagens no batch (LLEN é atômico)
+    const batchLength = await redisConnection.llen(batchKey);
+    console.log(`📦 [Batch] Mensagem de texto adicionada ao batch para ${chatId} (${batchLength} no total)`);
     
     // SEMPRE agenda verificação após debounce window
     // A verificação vai checar se passaram 3s desde o último update
@@ -96,19 +94,21 @@ export async function addToBatch(
 }
 
 /**
- * Obtém batch atual de mensagens
+ * Obtém batch atual de mensagens usando operação ATÔMICA
  */
 async function getBatch(chatId: string): Promise<PendingMessage[]> {
   const batchKey = `${BATCH_KEY_PREFIX}${chatId}`;
   
   try {
-    const batchData = await redisConnection.get(batchKey);
+    // LRANGE retorna todos os elementos da lista de forma atômica
+    const batchItems = await redisConnection.lrange(batchKey, 0, -1);
     
-    if (!batchData) {
+    if (!batchItems || batchItems.length === 0) {
       return [];
     }
     
-    return JSON.parse(batchData) as PendingMessage[];
+    // Parse cada item JSON
+    return batchItems.map(item => JSON.parse(item));
   } catch (error) {
     console.error(`❌ [Batch] Erro ao ler batch:`, error);
     return [];
@@ -138,13 +138,41 @@ async function processWhenReady(chatId: string): Promise<void> {
       }
     }
     
-    // Timer expirou ou não existe - processar batch
-    const batch = await getBatch(chatId);
+    // Timer expirou ou não existe - processar batch ATOMICAMENTE
+    // Lua script para ler e deletar batch SOMENTE se timer não mudou (previne race condition)
+    const luaScript = `
+      local expectedTimer = ARGV[1]
+      local currentTimer = redis.call('GET', KEYS[2])
+      
+      -- Se timer mudou, nova mensagem chegou - não processar
+      if currentTimer ~= nil and currentTimer ~= expectedTimer then
+        return {}
+      end
+      
+      -- Timer não mudou ou expirou - processar batch
+      local batch = redis.call('LRANGE', KEYS[1], 0, -1)
+      if #batch > 0 then
+        redis.call('DEL', KEYS[1])
+        redis.call('DEL', KEYS[2])
+      end
+      return batch
+    `;
     
-    if (batch.length === 0) {
+    const batchItems = await redisConnection.eval(
+      luaScript,
+      2,
+      batchKey,
+      timerKey,
+      timerValue || "" // Passa timestamp esperado como argumento
+    ) as string[];
+    
+    if (!batchItems || batchItems.length === 0) {
       console.log(`📭 [Batch] Batch vazio para ${chatId} - nada a processar`);
       return;
     }
+    
+    // Parse mensagens do batch
+    const batch = batchItems.map(item => JSON.parse(item));
     
     console.log(`✅ [Batch] Período de silêncio completo para ${chatId} - processando ${batch.length} mensagem(ns)`);
     
@@ -211,15 +239,17 @@ async function processWhenReady(chatId: string): Promise<void> {
       console.log(`📬 [Batch] ${batch.length} mensagem(ns) de texto combinadas e enfileiradas para ${chatId}`);
     }
     
-    // Limpa batch e timer
-    await redisConnection.del(batchKey);
-    await redisConnection.del(timerKey);
+    // Batch e timer já foram limpos atomicamente pelo Lua script
     
   } catch (error) {
     console.error(`❌ [Batch] Erro ao processar batch quando pronto:`, error);
     // Em caso de erro, limpar batch para não ficar travado
-    await redisConnection.del(batchKey);
-    await redisConnection.del(timerKey);
+    try {
+      await redisConnection.del(batchKey);
+      await redisConnection.del(timerKey);
+    } catch (cleanupError) {
+      console.error(`❌ [Batch] Erro ao limpar batch após falha:`, cleanupError);
+    }
   }
 }
 

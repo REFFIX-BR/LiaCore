@@ -46,6 +46,8 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 
 **Redis Optimization System**: Implements intelligent caching, batching, and hash storage to reduce Redis requests and costs.
 
+**Message Batching System**: Debouncing system preventing multiple AI responses to sequential client messages. Uses Redis-based 3-second window to group consecutive text messages into a single AI request. Media messages (images/audio/PDF) bypass batching and process immediately to preserve all attachments. Legacy batches with media are detected and processed individually via safeguard mechanism. Implemented in `server/lib/message-batching.ts` with integration in webhook endpoint.
+
 **Private Notes System**: Internal collaboration feature allowing agents to leave private notes on conversations for team visibility. Notes are conversation-specific, timestamped, and show author information. Accessible via dialog interface with button in chat controls.
 
 **Conversation Verification System**: Supervisor workflow tracking system to prevent duplicate conversation reviews across shifts. Supervisors can mark conversations as verified (with timestamp and supervisor ID stored). Visual indicators (green CheckCircle2) appear on verified conversations in all views. Verification automatically resets when client sends new message, ensuring supervisors re-review conversations after new customer input. Verification button available only for admins/supervisors in ChatPanel.
