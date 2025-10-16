@@ -1857,6 +1857,8 @@ export class DbStorage implements IStorage {
       .where(eq(schema.users.role, 'AGENT'));
 
     const teamStatus = await Promise.all(agents.map(async (agent) => {
+      // ✅ Conta conversas com status 'active' E 'queued' para manter consistência com a página de Conversas
+      // Ambos os status representam conversas em andamento atribuídas ao agente
       const activeConvs = await db.select().from(schema.conversations)
         .where(and(
           eq(schema.conversations.assignedTo, agent.id),
