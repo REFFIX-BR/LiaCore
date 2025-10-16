@@ -432,10 +432,9 @@ export default function Groups() {
             </div>
 
             {/* Aba Chat */}
-            <TabsContent value="chat" className="flex-1 flex flex-col m-0 data-[state=active]:flex">
+            <TabsContent value="chat" className="flex-1 flex flex-col m-0 data-[state=active]:flex overflow-hidden min-h-0">
               {/* Área de mensagens com scroll */}
-              <div className="flex-1 overflow-hidden">
-                <ScrollArea className="h-full px-6" ref={scrollAreaRef}>
+              <ScrollArea className="flex-1 min-h-0 px-6" ref={scrollAreaRef}>
                   <div className="space-y-3 py-4">
                     {!conversationData ? (
                       <div className="text-center text-muted-foreground py-8">
@@ -521,7 +520,6 @@ export default function Groups() {
                     )}
                   </div>
                 </ScrollArea>
-              </div>
 
               {/* Campo de envio fixo no rodapé */}
               <div className="border-t p-4 space-y-3 flex-shrink-0">
