@@ -194,6 +194,11 @@ export default function Feedbacks() {
                           <p className="text-sm font-medium" data-testid="text-client-name">
                             {feedback.clientName || "Cliente"}
                           </p>
+                          {feedback.conversation?.chatId && (
+                            <p className="text-xs text-muted-foreground" data-testid="text-contact">
+                              {feedback.conversation.chatId.replace('whatsapp_', '')}
+                            </p>
+                          )}
                           {feedback.comment && (
                             <p className="text-sm text-muted-foreground" data-testid="text-comment">
                               "{feedback.comment}"
