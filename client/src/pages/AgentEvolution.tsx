@@ -59,8 +59,14 @@ export default function AgentEvolution() {
 
   // Trigger analysis mutation
   const analyzeMutation = useMutation({
-    mutationFn: () => apiRequest('/api/learning/analyze', 'POST', {}),
+    mutationFn: async () => {
+      console.log("🟢 Executando mutationFn...");
+      const result = await apiRequest('/api/learning/analyze', 'POST', {});
+      console.log("✅ Resposta recebida:", result);
+      return result;
+    },
     onSuccess: (data: any) => {
+      console.log("✅ onSuccess chamado com:", data);
       queryClient.invalidateQueries({ queryKey: ['/api/learning/suggestions'] });
       const count = data.suggestions?.length || 0;
       
@@ -72,6 +78,7 @@ export default function AgentEvolution() {
       });
     },
     onError: (error: any) => {
+      console.error("❌ onError chamado com:", error);
       toast({
         title: 'Erro na Análise',
         description: 'Não foi possível executar a análise. Tente novamente.',
@@ -226,12 +233,39 @@ export default function AgentEvolution() {
             </div>
           </div>
           <Button
-            onClick={() => analyzeMutation.mutate()}
-            disabled={analyzeMutation.isPending}
+            onClick={async () => {
+              console.log("🔵 Botão Analisar clicado!");
+              try {
+                const response = await fetch('/api/learning/analyze', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                });
+                const data = await response.json();
+                console.log("✅ Resposta:", data);
+                
+                queryClient.invalidateQueries({ queryKey: ['/api/learning/suggestions'] });
+                
+                const count = data.suggestions?.length || 0;
+                toast({
+                  title: count > 0 ? 'Sugestões Geradas' : 'Análise Concluída',
+                  description: count > 0 
+                    ? `${count} sugestão(ões) gerada(s) e pronta(s) para revisão.`
+                    : 'Nenhuma sugestão gerada. Poucos eventos ou baixa confiança nos padrões.',
+                });
+              } catch (error) {
+                console.error("❌ Erro:", error);
+                toast({
+                  title: 'Erro na Análise',
+                  description: 'Não foi possível executar a análise. Tente novamente.',
+                  variant: 'destructive',
+                });
+              }
+            }}
             data-testid="button-analyze"
           >
             <Activity className="w-4 h-4 mr-2" />
-            {analyzeMutation.isPending ? "Analisando..." : "Analisar Eventos"}
+            Analisar Eventos
           </Button>
         </div>
       </div>
