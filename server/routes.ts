@@ -1804,20 +1804,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
           
-          // Check if AI is enabled for this group
-          if (!group.aiEnabled) {
-            console.log(`🔇 [Groups] IA desativada para grupo ${group.name} - ignorando mensagem`);
-            return res.json({ 
-              success: true, 
-              processed: false, 
-              reason: "group_ai_disabled",
-              groupId: group.id,
-              groupName: group.name
-            });
-          }
-          
-          console.log(`✅ [Groups] IA ativada para grupo ${group.name} - processando mensagem`);
-          
           // For groups, we'll process like a regular conversation
           // Use groupId as the "phone number" for conversation purposes
           phoneNumber = groupId;
@@ -2171,6 +2157,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             transferred: true,
             conversationId: conversation.id 
           });
+        }
+
+        // Check if this is a group message with AI disabled
+        const isGroupMessage = chatId.includes('@g.us');
+        if (isGroupMessage) {
+          const group = await storage.getGroupByGroupId(phoneNumber);
+          if (group && !group.aiEnabled) {
+            console.log(`🔇 [Groups] IA desativada para grupo ${group.name} - mensagem salva mas não processada`);
+            return res.json({ 
+              success: true, 
+              processed: false, 
+              reason: "group_ai_disabled",
+              conversationId: conversation.id,
+              groupId: group.id,
+              groupName: group.name
+            });
+          }
         }
 
         // 🔄 BATCHING SYSTEM: Grupo mensagens sequenciais em janela de 3 segundos
