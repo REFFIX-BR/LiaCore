@@ -352,7 +352,7 @@ export default function Groups() {
           </Tabs>
         </CardHeader>
 
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 min-h-0">
           <CardContent className="space-y-2">
             {isLoading ? (
               <div className="text-center text-muted-foreground py-4">Carregando...</div>
@@ -432,7 +432,7 @@ export default function Groups() {
               </div>
 
               {/* Aba Chat */}
-              <TabsContent value="chat" className="flex-1 flex flex-col mt-0 overflow-hidden">
+              <TabsContent value="chat" className="flex-1 flex flex-col mt-0 min-h-0 overflow-hidden">
                 {/* Área de mensagens com scroll */}
                 <div className="flex-1 overflow-y-scroll px-6" ref={scrollAreaRef}>
                   <div className="space-y-3 py-4">
@@ -566,8 +566,8 @@ export default function Groups() {
             </TabsContent>
 
               {/* Aba Informações */}
-              <TabsContent value="info" className="flex-1 mt-0 overflow-hidden">
-                <ScrollArea className="h-full">
+              <TabsContent value="info" className="flex-1 mt-0 min-h-0 overflow-hidden">
+                <ScrollArea className="h-full min-h-0">
                 <div className="space-y-6 p-6">
                   <div className="space-y-4">
                     <div>
