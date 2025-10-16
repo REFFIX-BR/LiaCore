@@ -323,9 +323,9 @@ export default function Groups() {
   });
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex gap-4 p-6">
+    <div className="h-full flex gap-4">
       {/* Lista de Grupos */}
-      <Card className="w-96 flex flex-col">
+      <Card className="w-80 flex flex-col overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle>Grupos WhatsApp</CardTitle>
           <CardDescription>Gerenciar IA em grupos</CardDescription>
