@@ -340,9 +340,9 @@ export default function Groups() {
             </div>
 
             {/* Aba Chat */}
-            <TabsContent value="chat" className="flex-1 flex flex-col mt-0">
-              <ScrollArea className="flex-1 px-6">
-                <div className="space-y-3 py-4 min-h-[400px]">
+            <TabsContent value="chat" className="flex-1 flex flex-col mt-0 overflow-hidden">
+              <ScrollArea className="flex-1 px-6" style={{ height: 'calc(100vh - 380px)' }}>
+                <div className="space-y-3 py-4">
                   {messagesLoading ? (
                     <div className="text-center text-muted-foreground py-8">
                       <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50 animate-pulse" />
