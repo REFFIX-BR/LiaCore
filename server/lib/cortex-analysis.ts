@@ -81,7 +81,8 @@ export async function analyzeLearningEvents(): Promise<any[]> {
     for (const [assistantType, events] of Object.entries(eventsByAssistant)) {
       // Apenas analisar se houver eventos de correção explícita
       const correctionEvents = events.filter(e => 
-        e.eventType === 'explicit_correction' && e.correctResponse
+        e.eventType === 'explicit_correction'
+        // Não filtrar por correctResponse - muitos eventos não têm esse campo preenchido
       );
 
       if (correctionEvents.length < 2) {
