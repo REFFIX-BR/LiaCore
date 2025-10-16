@@ -66,7 +66,8 @@ export default function Groups() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasLoadedOlder, setHasLoadedOlder] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { toast} = useToast();
   const { user } = useAuth();
 
   // Query all groups
@@ -182,6 +183,11 @@ export default function Groups() {
     setLoadingMore(true);
     setHasLoadedOlder(true);
     
+    // Salvar posição de scroll atual ANTES de carregar mais mensagens
+    const scrollContainer = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
+    const previousScrollHeight = scrollContainer?.scrollHeight || 0;
+    const previousScrollTop = scrollContainer?.scrollTop || 0;
+    
     try {
       const oldestMessageId = allMessages[0]?.id;
       if (!oldestMessageId) {
@@ -198,6 +204,15 @@ export default function Groups() {
       
       if (data.messages && data.messages.length > 0) {
         setAllMessages(prev => [...data.messages, ...prev]);
+        
+        // Restaurar posição de scroll após adicionar mensagens antigas
+        setTimeout(() => {
+          if (scrollContainer) {
+            const newScrollHeight = scrollContainer.scrollHeight;
+            const scrollDiff = newScrollHeight - previousScrollHeight;
+            scrollContainer.scrollTop = previousScrollTop + scrollDiff;
+          }
+        }, 0);
       }
     } catch (error) {
       console.error("Error loading more messages:", error);
@@ -417,7 +432,7 @@ export default function Groups() {
 
             {/* Aba Chat */}
             <TabsContent value="chat" className="flex-1 flex flex-col mt-0 overflow-hidden">
-              <ScrollArea className="flex-1 px-6" style={{ height: 'calc(100vh - 380px)' }}>
+              <ScrollArea className="flex-1 px-6" style={{ height: 'calc(100vh - 380px)' }} ref={scrollAreaRef}>
                 <div className="space-y-3 py-4">
                   {!conversationData ? (
                     <div className="text-center text-muted-foreground py-8">
