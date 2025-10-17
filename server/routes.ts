@@ -6738,32 +6738,70 @@ A resposta deve:
         return res.status(404).json({ error: "Contact not found" });
       }
 
+      // Get last conversation to determine Evolution instance
+      let evolutionInstance = process.env.EVOLUTION_API_INSTANCE;
+      
+      if (contact.lastConversationId) {
+        const lastConversation = await storage.getConversation(contact.lastConversationId);
+        if (lastConversation?.evolutionInstance) {
+          evolutionInstance = lastConversation.evolutionInstance;
+        }
+      }
+
       // Send message via Evolution API
       const chatId = `${contact.phoneNumber}@s.whatsapp.net`;
       const messageToSend = message || "Olá! Estamos entrando em contato para dar continuidade ao seu atendimento.";
 
-      const evolutionUrl = process.env.EVOLUTION_API_URL;
+      let evolutionUrl = process.env.EVOLUTION_API_URL;
       const evolutionApiKey = process.env.EVOLUTION_API_KEY;
-      const evolutionInstance = process.env.EVOLUTION_API_INSTANCE;
 
       if (!evolutionUrl || !evolutionApiKey || !evolutionInstance) {
         return res.status(500).json({ error: "Evolution API not configured" });
       }
 
-      const response = await fetch(`${evolutionUrl}/message/sendText/${evolutionInstance}`, {
+      // Garantir que a URL tem protocolo
+      if (!evolutionUrl.startsWith('http://') && !evolutionUrl.startsWith('https://')) {
+        evolutionUrl = `https://${evolutionUrl}`;
+      }
+
+      const payload = {
+        number: contact.phoneNumber,
+        text: messageToSend,
+      };
+
+      const url = `${evolutionUrl}/message/sendText/${evolutionInstance}`;
+      
+      console.log(`📤 [Contacts] Reopening conversation - URL: ${url}`);
+      console.log(`📤 [Contacts] Payload:`, JSON.stringify(payload, null, 2));
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'apikey': evolutionApiKey,
         },
-        body: JSON.stringify({
-          number: chatId,
-          text: messageToSend,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        throw new Error(`Evolution API error: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error(`❌ [Contacts] Evolution API error:`, {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText,
+          instance: evolutionInstance,
+          number: contact.phoneNumber,
+        });
+        
+        // Mensagem de erro mais clara para o usuário
+        if (response.status === 400) {
+          return res.status(400).json({ 
+            error: `A instância Evolution "${evolutionInstance}" não está configurada corretamente ou está inativa. Verifique a configuração no painel Evolution API.`,
+            details: errorText
+          });
+        }
+        
+        throw new Error(`Evolution API error: ${response.statusText} - ${errorText}`);
       }
 
       // Create or update conversation
