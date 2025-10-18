@@ -1963,15 +1963,25 @@ export class DbStorage implements IStorage {
 
       const totalConversations = allConversations.length;
 
-      // ✅ CORREÇÃO: Transferências = conversas que FORAM transferidas para humano (independente se já resolvidas ou não)
+      // ✅ Transferências = conversas que FORAM transferidas para humano (independente se já resolvidas ou não)
+      // Inclui tanto true quanto valores truthy para cobrir conversas antigas
       const transferredToHuman = allConversations.filter(c => 
         c.transferredToHuman === true
       ).length;
 
-      // ✅ CORREÇÃO: Resolvidas pela IA = conversas resolvidas que NUNCA foram transferidas
+      // ✅ Resolvidas pela IA = conversas resolvidas que NUNCA foram transferidas
+      // Considera false, null e undefined como "não transferida"
       const resolvedByAI = allConversations.filter(c => 
-        c.status === 'resolved' && c.transferredToHuman === false
+        c.status === 'resolved' && c.transferredToHuman !== true
       ).length;
+
+      // 🔍 DEBUG: Log para verificar cálculos
+      console.log(`📊 [AI Metrics] ${assistantType}:`, {
+        total: totalConversations,
+        transferred: transferredToHuman,
+        resolvedByAI,
+        pending: totalConversations - transferredToHuman - resolvedByAI
+      });
 
       // Taxa de sucesso da IA (conversas que resolveu sozinha SEM transferir)
       const successRate = totalConversations > 0 
@@ -1995,7 +2005,7 @@ export class DbStorage implements IStorage {
         .where(eq(schema.satisfactionFeedback.assistantType, assistantType));
       
       const avgNPS = feedbacks.length > 0
-        ? Math.round(feedbacks.reduce((sum, f) => sum + (f.score || 0), 0) / feedbacks.length)
+        ? Math.round(feedbacks.reduce((sum, f) => sum + (f.npsScore || 0), 0) / feedbacks.length)
         : 0;
 
       return {
