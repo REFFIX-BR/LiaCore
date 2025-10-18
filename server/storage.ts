@@ -2121,27 +2121,30 @@ export class DbStorage implements IStorage {
           )
         ));
 
-      // Resolved conversations today
+      // Resolved conversations today - usando resolved_by para dados reais
       const resolvedToday = await db.select().from(schema.conversations)
         .where(and(
-          eq(schema.conversations.assignedTo, agent.id),
+          eq(schema.conversations.resolvedBy, agent.id),
           eq(schema.conversations.status, 'resolved'),
           gte(schema.conversations.resolvedAt, today)
         ));
 
-      // Calculate success rate (resolved without escalation)
-      const totalAssigned = await db.select().from(schema.conversations)
-        .where(eq(schema.conversations.assignedTo, agent.id));
+      // Calculate success rate baseado em conversas efetivamente resolvidas pelo agente
+      const totalResolved = await db.select().from(schema.conversations)
+        .where(and(
+          eq(schema.conversations.resolvedBy, agent.id),
+          eq(schema.conversations.status, 'resolved')
+        ));
       
-      const successfullyResolved = totalAssigned.filter(c => 
-        c.status === 'resolved' && !c.transferredToHuman
+      const successfullyResolved = totalResolved.filter(c => 
+        c.sentiment === 'positive' || c.sentiment === 'neutral'
       );
-      const successRate = totalAssigned.length > 0 
-        ? Math.round((successfullyResolved.length / totalAssigned.length) * 100)
+      const successRate = totalResolved.length > 0 
+        ? Math.round((successfullyResolved.length / totalResolved.length) * 100)
         : 0;
 
-      // Calculate average sentiment
-      const conversationsWithSentiment = totalAssigned.filter(c => c.sentiment);
+      // Calculate average sentiment - baseado em conversas que o agente efetivamente resolveu
+      const conversationsWithSentiment = totalResolved.filter(c => c.sentiment);
       const sentimentScore = conversationsWithSentiment.reduce((sum, c) => {
         if (c.sentiment === 'positive') return sum + 1;
         if (c.sentiment === 'negative') return sum - 1;
