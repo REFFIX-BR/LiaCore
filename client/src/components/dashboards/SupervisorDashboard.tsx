@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageSquare, Users, Clock, TrendingUp, AlertTriangle } from "lucide-react";
+import { MessageSquare, Users, Clock, TrendingUp, AlertTriangle, Bot, CheckCircle2, UserX, Smile, Frown, Meh } from "lucide-react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -16,6 +16,11 @@ import {
 export function SupervisorDashboard() {
   const { data: metrics, isLoading } = useQuery({
     queryKey: ["/api/dashboard/supervisor"],
+    refetchInterval: 30000, // 30 seconds
+  });
+
+  const { data: aiMetrics, isLoading: isLoadingAI } = useQuery({
+    queryKey: ["/api/dashboard/ai-performance"],
     refetchInterval: 30000, // 30 seconds
   });
 
@@ -126,16 +131,194 @@ export function SupervisorDashboard() {
         </TabsContent>
 
         <TabsContent value="ai" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance dos Assistentes IA</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Métricas detalhadas de cada assistente estarão disponíveis em breve.
-              </p>
-            </CardContent>
-          </Card>
+          {isLoadingAI ? (
+            <div className="flex items-center justify-center h-96">Carregando métricas de IA...</div>
+          ) : !aiMetrics || aiMetrics.length === 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Performance dos Assistentes IA</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma métrica disponível ainda. Aguarde conversas serem processadas.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* Cards dos Assistentes */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {aiMetrics.map((assistant: any) => {
+                  const sentimentIcon = assistant.avgSentiment > 0.3 ? (
+                    <Smile className="h-4 w-4 text-green-600" />
+                  ) : assistant.avgSentiment < -0.3 ? (
+                    <Frown className="h-4 w-4 text-red-600" />
+                  ) : (
+                    <Meh className="h-4 w-4 text-yellow-600" />
+                  );
+
+                  return (
+                    <Card key={assistant.assistantType} className="hover-elevate" data-testid={`card-assistant-${assistant.assistantType}`}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Bot className="h-5 w-5 text-blue-600" />
+                          {assistant.assistantName}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {/* Total de conversas */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Total de conversas</span>
+                          <span className="font-semibold" data-testid={`text-total-${assistant.assistantType}`}>
+                            {assistant.totalConversations}
+                          </span>
+                        </div>
+
+                        {/* Resolvidas pela IA */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3 text-green-600" />
+                            Resolvidas pela IA
+                          </span>
+                          <span className="font-semibold text-green-600" data-testid={`text-resolved-${assistant.assistantType}`}>
+                            {assistant.resolvedByAI}
+                          </span>
+                        </div>
+
+                        {/* Transferidas */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground flex items-center gap-1">
+                            <UserX className="h-3 w-3 text-orange-600" />
+                            Transferidas
+                          </span>
+                          <span className="font-semibold text-orange-600" data-testid={`text-transferred-${assistant.assistantType}`}>
+                            {assistant.transferredToHuman}
+                          </span>
+                        </div>
+
+                        {/* Taxa de sucesso */}
+                        <div className="pt-2 border-t">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium">Taxa de Sucesso</span>
+                            <Badge 
+                              variant={assistant.successRate >= 70 ? 'default' : assistant.successRate >= 50 ? 'secondary' : 'destructive'}
+                              data-testid={`badge-success-${assistant.assistantType}`}
+                            >
+                              {assistant.successRate}%
+                            </Badge>
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full ${
+                                assistant.successRate >= 70 ? 'bg-green-600' :
+                                assistant.successRate >= 50 ? 'bg-yellow-600' :
+                                'bg-red-600'
+                              }`}
+                              style={{ width: `${assistant.successRate}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Sentimento e NPS */}
+                        <div className="flex items-center justify-between pt-2 border-t">
+                          <div className="flex items-center gap-1">
+                            {sentimentIcon}
+                            <span className="text-xs text-muted-foreground">Sentimento</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">NPS:</span>
+                            <Badge variant={assistant.avgNPS >= 8 ? 'default' : assistant.avgNPS >= 6 ? 'secondary' : 'destructive'}>
+                              {assistant.avgNPS || '--'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {/* Gráfico Comparativo */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Comparativo de Performance dos Assistentes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={aiMetrics}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis 
+                        dataKey="assistantName" 
+                        className="text-xs" 
+                        tick={{ fill: 'currentColor' }}
+                        angle={-15}
+                        textAnchor="end"
+                        height={80}
+                      />
+                      <YAxis className="text-xs" tick={{ fill: 'currentColor' }} />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
+                        }}
+                      />
+                      <Legend />
+                      <Bar dataKey="resolvedByAI" fill="#10b981" name="Resolvidas pela IA" />
+                      <Bar dataKey="transferredToHuman" fill="#f59e0b" name="Transferidas" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Tabela Detalhada */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Detalhamento Completo</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Assistente</TableHead>
+                        <TableHead className="text-center">Total</TableHead>
+                        <TableHead className="text-center">Resolvidas IA</TableHead>
+                        <TableHead className="text-center">Transferidas</TableHead>
+                        <TableHead className="text-center">Taxa Sucesso</TableHead>
+                        <TableHead className="text-center">NPS</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {aiMetrics.map((assistant: any) => (
+                        <TableRow key={assistant.assistantType}>
+                          <TableCell className="font-medium">{assistant.assistantName}</TableCell>
+                          <TableCell className="text-center">{assistant.totalConversations}</TableCell>
+                          <TableCell className="text-center text-green-600 font-semibold">
+                            {assistant.resolvedByAI}
+                          </TableCell>
+                          <TableCell className="text-center text-orange-600 font-semibold">
+                            {assistant.transferredToHuman}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge 
+                              variant={assistant.successRate >= 70 ? 'default' : assistant.successRate >= 50 ? 'secondary' : 'destructive'}
+                            >
+                              {assistant.successRate}%
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant={assistant.avgNPS >= 8 ? 'default' : assistant.avgNPS >= 6 ? 'secondary' : 'destructive'}>
+                              {assistant.avgNPS || '--'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="team" className="space-y-4">
