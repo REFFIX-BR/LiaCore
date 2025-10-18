@@ -172,6 +172,14 @@ export function ChatMessage({ message, canEdit = false, onDelete, showImageDescr
     }
   }
 
+  // Se tiver imagem do WhatsApp e não deve mostrar descrição, limpar o messageContent
+  if (hasWhatsAppImage && !showImageDescription) {
+    // Remover toda a descrição que vem após "[Imagem enviada - "
+    if (messageContent.includes('[Imagem enviada - ')) {
+      messageContent = '';
+    }
+  }
+
   if (hasAudioTranscription) {
     const parts = message.content.split(/🎤 Transcrição automática:/);
     if (parts.length > 1) {
