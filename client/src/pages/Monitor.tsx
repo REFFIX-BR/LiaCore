@@ -18,6 +18,7 @@ export default function Monitor() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [activeDepartment, setActiveDepartment] = useState("all");
+  const [resolvedSubFilter, setResolvedSubFilter] = useState("all"); // all, ai, agent, auto
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const { toast } = useToast();
@@ -214,6 +215,7 @@ export default function Monitor() {
     let passesStatusFilter = true;
     let passesDepartmentFilter = true;
     let passesSearchFilter = true;
+    let passesResolvedSubFilter = true;
 
     if (activeFilter === "alerts") {
       passesStatusFilter = alerts.some(alert => alert.conversationId === conv.id);
@@ -225,6 +227,19 @@ export default function Monitor() {
       passesStatusFilter = conv.assistantType === "ouvidoria";
     } else if (activeFilter === "resolved") {
       passesStatusFilter = conv.status === "resolved";
+      
+      // Apply sub-filter for resolved conversations
+      if (resolvedSubFilter === "ai") {
+        // Finalizadas pela IA (nunca transferidas para humano)
+        passesResolvedSubFilter = !conv.transferredToHuman && !(conv as any).autoClosed;
+      } else if (resolvedSubFilter === "agent") {
+        // Finalizadas por atendentes (transferidas para humano e não auto-fechadas)
+        passesResolvedSubFilter = conv.transferredToHuman === true && !(conv as any).autoClosed;
+      } else if (resolvedSubFilter === "auto") {
+        // Fechadas automaticamente por inatividade
+        passesResolvedSubFilter = (conv as any).autoClosed === true;
+      }
+      // resolvedSubFilter === "all" -> show all, passesResolvedSubFilter stays true
     }
 
     if (activeDepartment !== "all") {
@@ -238,7 +253,7 @@ export default function Monitor() {
         conv.clientName.toLowerCase().includes(searchLower);
     }
 
-    return passesStatusFilter && passesDepartmentFilter && passesSearchFilter;
+    return passesStatusFilter && passesDepartmentFilter && passesSearchFilter && passesResolvedSubFilter;
   });
 
   const getConversationCountByDepartment = (deptValue: string) => {
@@ -283,6 +298,24 @@ export default function Monitor() {
     return 0;
   };
 
+  const getResolvedCountByType = (type: string) => {
+    const resolvedConvs = conversations.filter(c => c.status === "resolved");
+    
+    if (type === "all") {
+      return resolvedConvs.length;
+    } else if (type === "ai") {
+      // Finalizadas pela IA (nunca transferidas)
+      return resolvedConvs.filter(c => !c.transferredToHuman && !(c as any).autoClosed).length;
+    } else if (type === "agent") {
+      // Finalizadas por atendentes
+      return resolvedConvs.filter(c => c.transferredToHuman === true && !(c as any).autoClosed).length;
+    } else if (type === "auto") {
+      // Fechadas automaticamente
+      return resolvedConvs.filter(c => (c as any).autoClosed === true).length;
+    }
+    return 0;
+  };
+
   const conversationCards = filteredConversations
     .sort((a, b) => {
       // Ordenar por timestamp - mensagens mais recentes primeiro
@@ -290,23 +323,38 @@ export default function Monitor() {
       const timeB = new Date(b.lastMessageTime).getTime();
       return timeB - timeA;
     })
-    .map(conv => ({
-      id: conv.id,
-      chatId: conv.chatId,
-      clientName: conv.clientName,
-      assistant: `LIA ${conv.assistantType.charAt(0).toUpperCase() + conv.assistantType.slice(1)}`,
-      duration: conv.duration,
-      lastMessage: conv.lastMessage || "",
-      lastClientMessage: (conv as any).lastClientMessage || "",
-      lastAIMessage: (conv as any).lastAIMessage || "",
-      sentiment: (conv.sentiment || "neutral") as "positive" | "neutral" | "negative",
-      urgency: (conv.urgency || "normal") as "normal" | "high" | "critical",
-      hasAlert: alerts.some(a => a.conversationId === conv.id),
-      transferSuggested: false,
-      lastMessageTime: new Date(conv.lastMessageTime),
-      verifiedAt: (conv as any).verifiedAt ? new Date((conv as any).verifiedAt) : null,
-      verifiedBy: (conv as any).verifiedBy || null,
-    }));
+    .map(conv => {
+      // Determine who resolved the conversation
+      let resolvedBy: "ai" | "agent" | "auto" | null = null;
+      if (conv.status === "resolved") {
+        if ((conv as any).autoClosed) {
+          resolvedBy = "auto";
+        } else if (conv.transferredToHuman) {
+          resolvedBy = "agent";
+        } else {
+          resolvedBy = "ai";
+        }
+      }
+
+      return {
+        id: conv.id,
+        chatId: conv.chatId,
+        clientName: conv.clientName,
+        assistant: `LIA ${conv.assistantType.charAt(0).toUpperCase() + conv.assistantType.slice(1)}`,
+        duration: conv.duration,
+        lastMessage: conv.lastMessage || "",
+        lastClientMessage: (conv as any).lastClientMessage || "",
+        lastAIMessage: (conv as any).lastAIMessage || "",
+        sentiment: (conv.sentiment || "neutral") as "positive" | "neutral" | "negative",
+        urgency: (conv.urgency || "normal") as "normal" | "high" | "critical",
+        hasAlert: alerts.some(a => a.conversationId === conv.id),
+        transferSuggested: false,
+        lastMessageTime: new Date(conv.lastMessageTime),
+        verifiedAt: (conv as any).verifiedAt ? new Date((conv as any).verifiedAt) : null,
+        verifiedBy: (conv as any).verifiedBy || null,
+        resolvedBy,
+      };
+    });
 
   const activeConversation = conversations.find(c => c.id === activeConvId);
   const activeMessages = conversationDetails?.messages.map(msg => ({
@@ -401,7 +449,12 @@ export default function Monitor() {
             key={filter.id}
             variant={activeFilter === filter.id ? "default" : "outline"}
             size="sm"
-            onClick={() => setActiveFilter(filter.id)}
+            onClick={() => {
+              setActiveFilter(filter.id);
+              if (filter.id === "resolved") {
+                setResolvedSubFilter("all"); // Reset sub-filter when entering resolved
+              }
+            }}
             data-testid={`filter-${filter.id}`}
             className="gap-2"
           >
@@ -412,6 +465,59 @@ export default function Monitor() {
           </Button>
         ))}
       </div>
+
+      {activeFilter === "resolved" && (
+        <div className="flex gap-2 p-3 border rounded-lg bg-muted/30">
+          <Button
+            variant={resolvedSubFilter === "all" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setResolvedSubFilter("all")}
+            data-testid="resolved-filter-all"
+            className="gap-2"
+          >
+            Todas
+            <Badge variant={resolvedSubFilter === "all" ? "secondary" : "outline"} className="ml-1">
+              {getResolvedCountByType("all")}
+            </Badge>
+          </Button>
+          <Button
+            variant={resolvedSubFilter === "ai" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setResolvedSubFilter("ai")}
+            data-testid="resolved-filter-ai"
+            className="gap-2"
+          >
+            🤖 Pela IA
+            <Badge variant={resolvedSubFilter === "ai" ? "secondary" : "outline"} className="ml-1">
+              {getResolvedCountByType("ai")}
+            </Badge>
+          </Button>
+          <Button
+            variant={resolvedSubFilter === "agent" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setResolvedSubFilter("agent")}
+            data-testid="resolved-filter-agent"
+            className="gap-2"
+          >
+            👤 Por Atendentes
+            <Badge variant={resolvedSubFilter === "agent" ? "secondary" : "outline"} className="ml-1">
+              {getResolvedCountByType("agent")}
+            </Badge>
+          </Button>
+          <Button
+            variant={resolvedSubFilter === "auto" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setResolvedSubFilter("auto")}
+            data-testid="resolved-filter-auto"
+            className="gap-2"
+          >
+            ⏰ Auto-fechadas
+            <Badge variant={resolvedSubFilter === "auto" ? "secondary" : "outline"} className="ml-1">
+              {getResolvedCountByType("auto")}
+            </Badge>
+          </Button>
+        </div>
+      )}
 
       <Tabs value={activeDepartment} onValueChange={setActiveDepartment} className="w-full">
         <TabsList className="w-full justify-start">

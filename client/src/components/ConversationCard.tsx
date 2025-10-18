@@ -33,6 +33,7 @@ interface ConversationCardData {
   lastMessageTime: Date;
   verifiedAt?: Date | null;
   verifiedBy?: string | null;
+  resolvedBy?: "ai" | "agent" | "auto" | null;
 }
 
 interface ConversationCardProps {
@@ -135,6 +136,26 @@ export function ConversationCard({ conversation, isActive, onClick }: Conversati
             Urgência: {urgencyLabels[conversation.urgency]}
           </Badge>
         </div>
+
+        {conversation.resolvedBy && (
+          <div className="flex gap-2">
+            {conversation.resolvedBy === "ai" && (
+              <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300" data-testid="badge-resolved-ai">
+                🤖 Finalizada pela IA
+              </Badge>
+            )}
+            {conversation.resolvedBy === "agent" && (
+              <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300" data-testid="badge-resolved-agent">
+                👤 Finalizada por Atendente
+              </Badge>
+            )}
+            {conversation.resolvedBy === "auto" && (
+              <Badge variant="secondary" className="bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300" data-testid="badge-resolved-auto">
+                ⏰ Auto-fechada
+              </Badge>
+            )}
+          </div>
+        )}
 
         <p className="text-xs text-muted-foreground">
           Última mensagem {formatDistanceToNow(conversation.lastMessageTime, { addSuffix: true, locale: ptBR })}
