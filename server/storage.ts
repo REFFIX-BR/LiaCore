@@ -140,6 +140,17 @@ export interface IStorage {
     teamStatus: Array<{ userId: string; userName: string; status: string; activeConversations: number; finishedToday: number; avgTime: number; nps: number }>;
   }>;
   
+  getAIPerformanceMetrics(): Promise<Array<{
+    assistantType: string;
+    assistantName: string;
+    totalConversations: number;
+    resolvedByAI: number;
+    transferredToHuman: number;
+    successRate: number;
+    avgSentiment: number;
+    avgNPS: number;
+  }>>;
+  
   getAdminMetrics(): Promise<{
     systemStatus: { api: boolean; database: boolean; workers: boolean };
     estimatedCost: { total: number; openai: number; upstash: number };
@@ -1926,6 +1937,80 @@ export class DbStorage implements IStorage {
       volumeVsSuccess,
       teamStatus
     };
+  }
+
+  async getAIPerformanceMetrics() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const assistantTypes = ['apresentacao', 'comercial', 'financeiro', 'suporte', 'ouvidoria', 'cancelamento'];
+    const assistantNames = {
+      'apresentacao': 'LIA Apresentação',
+      'comercial': 'LIA Comercial',
+      'financeiro': 'LIA Financeiro',
+      'suporte': 'LIA Suporte',
+      'ouvidoria': 'LIA Ouvidoria',
+      'cancelamento': 'LIA Cancelamento'
+    };
+
+    const metrics = await Promise.all(assistantTypes.map(async (assistantType) => {
+      // Total de conversas deste assistente hoje
+      const allConversations = await db.select().from(schema.conversations)
+        .where(and(
+          eq(schema.conversations.assistantType, assistantType),
+          gte(schema.conversations.createdAt, today)
+        ));
+
+      const totalConversations = allConversations.length;
+
+      // Conversas resolvidas pela IA (sem resolved_by = finalizadas pela IA autonomamente)
+      const resolvedByAI = allConversations.filter(c => 
+        c.status === 'resolved' && !c.resolvedBy
+      ).length;
+
+      // Conversas transferidas para humano (com resolved_by = finalizadas por atendente)
+      const transferredToHuman = allConversations.filter(c => 
+        c.status === 'resolved' && c.resolvedBy
+      ).length;
+
+      // Taxa de sucesso da IA (conversas que resolveu sozinha)
+      const successRate = totalConversations > 0 
+        ? Math.round((resolvedByAI / totalConversations) * 100)
+        : 0;
+
+      // Sentimento médio (apenas das resolvidas)
+      const resolvedConversations = allConversations.filter(c => c.status === 'resolved');
+      const conversationsWithSentiment = resolvedConversations.filter(c => c.sentiment);
+      const sentimentScore = conversationsWithSentiment.reduce((sum, c) => {
+        if (c.sentiment === 'positive') return sum + 1;
+        if (c.sentiment === 'negative') return sum - 1;
+        return sum;
+      }, 0);
+      const avgSentiment = conversationsWithSentiment.length > 0
+        ? sentimentScore / conversationsWithSentiment.length
+        : 0;
+
+      // NPS médio deste assistente
+      const feedbacks = await db.select().from(schema.satisfactionFeedback)
+        .where(eq(schema.satisfactionFeedback.assistantType, assistantType));
+      
+      const avgNPS = feedbacks.length > 0
+        ? Math.round(feedbacks.reduce((sum, f) => sum + (f.score || 0), 0) / feedbacks.length)
+        : 0;
+
+      return {
+        assistantType,
+        assistantName: assistantNames[assistantType as keyof typeof assistantNames],
+        totalConversations,
+        resolvedByAI,
+        transferredToHuman,
+        successRate,
+        avgSentiment,
+        avgNPS
+      };
+    }));
+
+    return metrics;
   }
 
   async getAdminMetrics() {

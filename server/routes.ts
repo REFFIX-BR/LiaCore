@@ -6486,6 +6486,17 @@ A resposta deve:
     }
   });
 
+  // AI Performance Metrics
+  app.get("/api/dashboard/ai-performance", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const metrics = await storage.getAIPerformanceMetrics();
+      return res.json(metrics);
+    } catch (error) {
+      console.error("❌ [Dashboard] Error getting AI performance metrics:", error);
+      return res.status(500).json({ error: "Error fetching AI performance metrics" });
+    }
+  });
+
   // Admin Dashboard Metrics
   app.get("/api/dashboard/admin", authenticate, requireAdmin, async (req, res) => {
     try {
