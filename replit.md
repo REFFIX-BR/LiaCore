@@ -20,8 +20,8 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 **AI & Knowledge Management**:
 - **AI Provider**: OpenAI Assistants API.
 - **Specialized Assistants**: Six roles (Support, Sales, Finance, Cancellation, Ombudsman, Presentation) operating with a "Receptionist-First" routing model. Ouvidoria assistant has reinforced instructions to ALWAYS collect complete complaint details and register with protocol BEFORE transferring, even for technical issues.
-- **RAG Architecture**: Features a dual-layer prompt system separating System Prompts from RAG Prompts using Upstash Vector for semantic search. Includes a RAG system for equipment return information, automatically recommending the nearest return point based on client location.
-- **Function Calling**: Custom functions for verification, knowledge queries, invoice lookups, and scheduling, with secure internal-only tool execution.
+- **RAG Architecture**: Features a dual-layer prompt system separating System Prompts from RAG Prompts using Upstash Vector for semantic search. Includes a RAG system for equipment return information, automatically recommending the nearest return point based on client location. **Sales RAG System** with 92 semantic chunks from 6 documentation files covering TR Telecom plans (internet, combos with Vivo/TIM portability, mobile plans), prices, benefits, and sales workflows.
+- **Function Calling**: Custom functions for verification, knowledge queries, invoice lookups, scheduling, and **sales operations** (consultar_planos, enviar_cadastro_venda) with secure internal-only tool execution.
 - **Automated Systems**: Includes automated document detection (CPF/CNPJ), "Boleto Consultation", "PPPoE Connection Status", and "Unlock/Unblock" systems with integrated security. An HTTP Resilience System centralizes retry logic for external API calls.
 - **Vision System**: GPT-4o Vision for automatic WhatsApp image analysis.
 - **PDF Text Extraction System**: Extracts text from PDF documents for AI analysis.
@@ -56,6 +56,14 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 **Conversation Verification System**: Supervisor workflow tracking system to prevent duplicate conversation reviews across shifts. Supervisors can mark conversations as verified (with timestamp and supervisor ID stored). Visual indicators (green CheckCircle2) appear on verified conversations in all views. Verification automatically resets when client sends new message, ensuring supervisors re-review conversations after new customer input. Verification button available only for admins/supervisors in ChatPanel.
 
 **Activity Logs & Audit System**: Comprehensive audit trail system tracking all user actions and supervisor operations. Automatically logs LOGIN/LOGOUT events with session duration, IP address, and browser information. Records all supervisory actions including conversation transfers, assignments, resolutions, and verifications with full context (client info, target agents, timestamps). Features dual-tab interface separating agent activity from supervision actions, with real-time KPI dashboard showing daily logins, active sessions, supervision actions, and average session duration. All logs enriched with user, conversation, and target user details for complete audit trail.
+
+**Conversational Sales System**: Autonomous AI-powered sales system enabling the commercial assistant to qualify leads, present plans, collect customer data, and process sales entirely through WhatsApp chat. System features:
+- **Database**: Plans table (10 TR Telecom products: 3 internet, 4 combos with dual operator Vivo/TIM, 3 mobile) and Sales table storing complete customer registration with validation.
+- **RAG Knowledge Base**: 92 semantic chunks in Upstash Vector covering all sales documentation (plans, prices, benefits, portability, promotions).
+- **AI Tools**: `consultar_planos` (queries active plans from database) and `enviar_cadastro_venda` (submits complete sales with validation - requires tipo_pessoa, nome_cliente, telefone_cliente, plano_id).
+- **API Endpoints**: GET /api/plans (returns formatted active plans) and POST /api/site-lead (receives sales with Zod validation, creates record with status "Aguardando Análise").
+- **Assistant Prompt**: Comprehensive conversational sales workflow in `server/prompts/comercial-assistant-prompt.md` guiding data collection, plan presentation, objection handling, and sale closure.
+- **Data Collection**: Full customer registration including CPF/CNPJ, contact info (phone, email), address (CEP, street, number, complement), mother's name, birth date, RG, payment preferences, and observations.
 
 ### System Design Choices
 - **Conversation Prioritization**: Color-coded wait time indicators and sorting by timestamp.
