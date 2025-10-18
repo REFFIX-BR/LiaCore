@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Phone, User, FileText, AlertCircle, MessageSquare, Clock, UserPlus } from "lucide-react";
@@ -54,7 +53,6 @@ export default function Contacts() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedContact, setSelectedContact] = useState<ContactWithHistory | null>(null);
   const [isReopenDialogOpen, setIsReopenDialogOpen] = useState(false);
-  const [reopenMessage, setReopenMessage] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newContactData, setNewContactData] = useState({
     phoneNumber: "",
@@ -144,12 +142,11 @@ export default function Contacts() {
     onSuccess: () => {
       toast({
         title: "Conversa reaberta",
-        description: "A conversa foi reaberta com sucesso via WhatsApp",
+        description: "A conversa foi movida para 'Transferidas'. Você pode enviar mensagens agora.",
       });
       setIsReopenDialogOpen(false);
-      setReopenMessage("");
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations/transferred"] });
     },
     onError: (error: any) => {
       toast({
@@ -178,7 +175,6 @@ export default function Contacts() {
 
     reopenMutation.mutate({
       contactId: selectedContact.id,
-      message: reopenMessage || undefined,
     });
   };
 
@@ -517,24 +513,27 @@ export default function Contacts() {
           <DialogHeader>
             <DialogTitle>Reabrir Conversa</DialogTitle>
             <DialogDescription>
-              Enviar mensagem via WhatsApp para {selectedContact?.name || selectedContact?.phoneNumber}
+              A conversa com {selectedContact?.name || selectedContact?.phoneNumber} será movida para "Transferidas"
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="message">Mensagem (opcional)</Label>
-              <Textarea
-                id="message"
-                value={reopenMessage}
-                onChange={(e) => setReopenMessage(e.target.value)}
-                placeholder="Olá! Estamos entrando em contato para dar continuidade ao seu atendimento."
-                rows={4}
-                data-testid="input-reopen-message"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Se deixar em branco, será enviada uma mensagem padrão
-              </p>
+            <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 p-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5">
+                  <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                    Nenhuma mensagem será enviada automaticamente
+                  </h4>
+                  <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                    A conversa aparecerá na aba "Transferidas". Você poderá escrever e enviar sua mensagem quando quiser.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -551,7 +550,7 @@ export default function Contacts() {
               disabled={reopenMutation.isPending}
               data-testid="button-confirm-reopen"
             >
-              {reopenMutation.isPending ? "Enviando..." : "Enviar e Reabrir"}
+              {reopenMutation.isPending ? "Reabrindo..." : "Reabrir Conversa"}
             </Button>
           </DialogFooter>
         </DialogContent>

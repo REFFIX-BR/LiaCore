@@ -6723,12 +6723,12 @@ A resposta deve:
     }
   });
 
-  // Reopen conversation with a contact
+  // Reopen conversation with a contact (just reactivate - no message sent)
   app.post("/api/contacts/reopen", authenticate, async (req, res) => {
     try {
       console.log(`🔵 [Contacts] Reopen conversation request received`);
       
-      const { contactId, message } = req.body;
+      const { contactId } = req.body;
 
       if (!contactId) {
         console.log(`❌ [Contacts] No contact ID provided`);
@@ -6742,129 +6742,16 @@ A resposta deve:
         return res.status(404).json({ error: "Contact not found" });
       }
 
-      // Get last conversation to determine Evolution instance
-      // Use "Principal" as default instance (WhatsApp Business - most stable)
-      const defaultInstance = "Principal";
-      let evolutionInstance = defaultInstance;
-      let instanceSource = "padrão";
-      
-      if (contact.lastConversationId) {
-        const lastConversation = await storage.getConversation(contact.lastConversationId);
-        if (lastConversation?.evolutionInstance) {
-          evolutionInstance = lastConversation.evolutionInstance;
-          instanceSource = "última conversa";
-        }
-      }
-
-      // Send message via Evolution API
+      // Create chat ID
       const chatId = `${contact.phoneNumber}@s.whatsapp.net`;
-      const messageToSend = message || "Olá! Estamos entrando em contato para dar continuidade ao seu atendimento.";
-
-      let evolutionUrl = process.env.EVOLUTION_API_URL;
-      const evolutionApiKey = process.env.EVOLUTION_API_KEY;
-
-      if (!evolutionUrl || !evolutionApiKey || !evolutionInstance) {
-        console.log(`❌ [Contacts] Evolution API not configured`);
-        return res.status(500).json({ error: "Evolution API not configured" });
-      }
-
-      console.log(`📞 [Contacts] Reopening conversation:`, {
-        contact: contact.name,
-        phone: contact.phoneNumber,
-        instance: evolutionInstance,
-        instanceSource,
-        defaultInstance,
-      });
-
-      // Garantir que a URL tem protocolo
-      if (!evolutionUrl.startsWith('http://') && !evolutionUrl.startsWith('https://')) {
-        evolutionUrl = `https://${evolutionUrl}`;
-      }
-
-      const payload = {
-        number: contact.phoneNumber,
-        text: messageToSend,
-      };
-
-      const url = `${evolutionUrl}/message/sendText/${evolutionInstance}`;
       
-      console.log(`📤 [Contacts] Reopening conversation - URL: ${url}`);
-      console.log(`📤 [Contacts] Payload:`, JSON.stringify(payload, null, 2));
+      console.log(`📞 [Contacts] Reopening conversation for ${contact.name} (${contact.phoneNumber})`);
 
-      let response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': evolutionApiKey,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ [Contacts] Evolution API error:`, {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText,
-          instance: evolutionInstance,
-          number: contact.phoneNumber,
-        });
-        
-        // Se a instância da última conversa não funcionar (404), tentar com a instância padrão
-        if (response.status === 404 && evolutionInstance !== defaultInstance && defaultInstance) {
-          console.log(`🔄 [Contacts] Tentando fallback para instância padrão: ${defaultInstance}`);
-          
-          evolutionInstance = defaultInstance;
-          evolutionUrl = process.env.EVOLUTION_API_URL || '';
-          if (!evolutionUrl.startsWith('http://') && !evolutionUrl.startsWith('https://')) {
-            evolutionUrl = `https://${evolutionUrl}`;
-          }
-          
-          response = await fetch(`${evolutionUrl}/message/sendText/${evolutionInstance}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "apikey": evolutionApiKey,
-            },
-            body: JSON.stringify(payload),
-          });
-          
-          if (!response.ok) {
-            const fallbackError = await response.text();
-            console.error(`❌ [Contacts] Fallback também falhou:`, fallbackError);
-            return res.status(400).json({ 
-              error: `Não foi possível enviar mensagem. A instância padrão "${defaultInstance}" também não está disponível.`,
-              details: fallbackError
-            });
-          }
-          
-          console.log(`✅ [Contacts] Fallback bem-sucedido com instância: ${defaultInstance}`);
-        } else if (response.status === 400) {
-          // Mensagem de erro mais clara para o usuário
-          return res.status(400).json({ 
-            error: `A instância Evolution "${evolutionInstance}" não está configurada corretamente ou está inativa. Verifique a configuração no painel Evolution API.`,
-            details: errorText
-          });
-        } else if (response.status === 404) {
-          // Instância não encontrada e não tem fallback (já está usando a padrão)
-          return res.status(400).json({
-            error: `A instância Evolution "${evolutionInstance}" não foi encontrada. Verifique a configuração no painel Evolution API.`,
-            details: errorText
-          });
-        } else {
-          // Outros erros
-          return res.status(500).json({
-            error: `Erro ao comunicar com Evolution API: ${response.statusText}`,
-            details: errorText
-          });
-        }
-      }
-
-      // Create or update conversation
+      // Create or reactivate conversation and transfer to human
       let conversation = await storage.getConversationByChatId(chatId);
 
       if (!conversation) {
-        // Create new conversation
+        // Create new conversation transferred to human (not assigned - goes to "Transferidas")
         conversation = await storage.createConversation({
           chatId,
           clientName: contact.name || contact.phoneNumber,
@@ -6872,12 +6759,26 @@ A resposta deve:
           clientDocument: contact.document || undefined,
           assistantType: 'cortex',
           status: 'active',
-          metadata: { reopened: true, reopenedBy: req.user?.userId, reopenedAt: new Date() },
+          transferredToHuman: true,
+          transferReason: 'Conversa reaberta pelo atendente via painel de Contatos',
+          transferredAt: new Date(),
+          assignedTo: null, // Not assigned - available for any agent in "Transferidas"
+          metadata: { 
+            reopened: true, 
+            reopenedBy: req.user?.userId, 
+            reopenedAt: new Date() 
+          },
         });
+
+        console.log(`✅ [Contacts] Created new conversation and moved to Transferidas: ${conversation.id}`);
       } else {
-        // Reactivate existing conversation
+        // Reactivate existing conversation and transfer to human (not assigned - goes to "Transferidas")
         await storage.updateConversation(conversation.id, {
           status: 'active',
+          transferredToHuman: true,
+          transferReason: 'Conversa reaberta pelo atendente via painel de Contatos',
+          transferredAt: new Date(),
+          assignedTo: null, // Not assigned - available for any agent in "Transferidas"
           lastMessageTime: new Date(),
           metadata: { 
             ...conversation.metadata as any, 
@@ -6886,12 +6787,21 @@ A resposta deve:
             reopenedAt: new Date() 
           },
         });
+
+        console.log(`✅ [Contacts] Reactivated existing conversation and moved to Transferidas: ${conversation.id}`);
       }
 
-      console.log(`✅ [Contacts] Reopened conversation with contact ${contact.phoneNumber}`);
+      // Update contact's last conversation
+      await storage.updateContact(contact.id, {
+        lastConversationId: conversation.id,
+        lastConversationDate: new Date(),
+      });
+
+      console.log(`✅ [Contacts] Conversation reopened and moved to Transferidas - Agent can now send messages`);
+      
       return res.json({ 
         success: true, 
-        message: "Conversation reopened successfully",
+        message: "Conversa reaberta e transferida para você. Escreva e envie sua mensagem quando quiser.",
         conversation,
       });
     } catch (error) {
