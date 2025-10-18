@@ -6736,6 +6736,20 @@ A resposta deve:
       let conversation = await storage.getConversationByChatId(chatId);
 
       if (!conversation) {
+        // Determine evolutionInstance: use last conversation's instance or default to 'Principal'
+        let evolutionInstance = 'Principal'; // Default
+        if (contact.lastConversationId) {
+          try {
+            const lastConversation = await storage.getConversation(contact.lastConversationId);
+            if (lastConversation?.evolutionInstance) {
+              evolutionInstance = lastConversation.evolutionInstance;
+              console.log(`📞 [Contacts] Reusing evolutionInstance from last conversation: ${evolutionInstance}`);
+            }
+          } catch (error) {
+            console.warn(`⚠️ [Contacts] Could not fetch last conversation, using default instance`);
+          }
+        }
+
         // Create new conversation transferred to human (not assigned - goes to "Transferidas")
         conversation = await storage.createConversation({
           chatId,
@@ -6748,6 +6762,7 @@ A resposta deve:
           transferReason: 'Conversa reaberta pelo atendente via painel de Contatos',
           transferredAt: new Date(),
           assignedTo: null, // Not assigned - available for any agent in "Transferidas"
+          evolutionInstance, // Preserve instance from last conversation or use default
           metadata: { 
             reopened: true, 
             reopenedBy: req.user?.userId, 
@@ -6755,9 +6770,10 @@ A resposta deve:
           },
         });
 
-        console.log(`✅ [Contacts] Created new conversation and moved to Transferidas: ${conversation.id}`);
+        console.log(`✅ [Contacts] Created new conversation with evolutionInstance=${evolutionInstance} and moved to Transferidas: ${conversation.id}`);
       } else {
         // Reactivate existing conversation and transfer to human (not assigned - goes to "Transferidas")
+        // IMPORTANT: Preserve evolutionInstance from original conversation
         await storage.updateConversation(conversation.id, {
           status: 'active',
           transferredToHuman: true,
@@ -6765,6 +6781,7 @@ A resposta deve:
           transferredAt: new Date(),
           assignedTo: null, // Not assigned - available for any agent in "Transferidas"
           lastMessageTime: new Date(),
+          // DO NOT update evolutionInstance - preserve original instance
           metadata: { 
             ...conversation.metadata as any, 
             reopened: true, 
@@ -6773,7 +6790,7 @@ A resposta deve:
           },
         });
 
-        console.log(`✅ [Contacts] Reactivated existing conversation and moved to Transferidas: ${conversation.id}`);
+        console.log(`✅ [Contacts] Reactivated existing conversation (preserving evolutionInstance=${conversation.evolutionInstance}) and moved to Transferidas: ${conversation.id}`);
       }
 
       // Update contact's last conversation
