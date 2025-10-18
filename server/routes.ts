@@ -4702,6 +4702,14 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
         ? (totalResolved / totalConversations) * 100 
         : 0;
 
+      // 📊 DEBUG: Log overview metrics
+      console.log('📊 [Assistants Metrics] Overview:', {
+        total: totalConversations,
+        transferred: totalTransferred,
+        resolvedByAI: totalResolved,
+        successRate: overallSuccessRate.toFixed(1) + '%'
+      });
+
       // Histórico de atualizações (últimas 10)
       const updates = allPromptUpdates
         .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0))
