@@ -7354,5 +7354,81 @@ A resposta deve:
     }
   });
 
+  // ==================== VENDAS/COMERCIAL ROUTES ====================
+  
+  // GET /api/plans - Retorna todos os planos ativos
+  app.get("/api/plans", async (req, res) => {
+    try {
+      const plans = await storage.getActivePlans();
+      
+      // Formatar planos para exibição
+      const plansFormatted = plans.map(plan => ({
+        id: plan.id,
+        name: plan.name,
+        type: plan.type,
+        speed: plan.speed,
+        price: plan.price / 100, // Converter centavos para reais
+        description: plan.description,
+        features: plan.features,
+        isActive: plan.isActive
+      }));
+      
+      return res.json(plansFormatted);
+    } catch (error) {
+      console.error("❌ [Plans] Error fetching plans:", error);
+      return res.status(500).json({ error: "Erro ao buscar planos" });
+    }
+  });
+
+  // POST /api/site-lead - Recebe cadastro de venda do site ou chat
+  app.post("/api/site-lead", async (req, res) => {
+    try {
+      // Validar dados com Zod
+      const saleData = schema.insertSaleSchema.parse({
+        type: req.body.type,
+        customerName: req.body.customerName,
+        cpfCnpj: req.body.cpfCnpj,
+        email: req.body.email,
+        phone: req.body.phone,
+        phone2: req.body.phone2,
+        motherName: req.body.motherName,
+        birthDate: req.body.birthDate,
+        rg: req.body.rg,
+        sex: req.body.sex,
+        address: req.body.address,
+        planId: req.body.planId,
+        billingDay: req.body.billingDay,
+        paymentMethod: req.body.paymentMethod,
+        observations: req.body.observations,
+        source: req.body.source || "site",
+        status: "Aguardando Análise",
+        conversationId: req.body.conversationId
+      });
+
+      // Salvar no banco
+      const sale = await storage.addSale(saleData);
+
+      console.log(`✅ [Sales] Nova venda registrada - ID: ${sale.id}, Cliente: ${saleData.customerName}`);
+
+      return res.status(201).json({
+        success: true,
+        saleId: sale.id,
+        message: "Cadastro registrado com sucesso! Nossa equipe entrará em contato em breve."
+      });
+    } catch (error) {
+      console.error("❌ [Sales] Error creating sale:", error);
+      
+      // Tratamento de erro do Zod
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          error: "Dados inválidos",
+          details: error.errors
+        });
+      }
+      
+      return res.status(500).json({ error: "Erro ao processar cadastro de venda" });
+    }
+  });
+
   return httpServer;
 }
