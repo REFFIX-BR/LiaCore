@@ -1525,6 +1525,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`🔍 [DEBUG Webhook] Estrutura completa da mensagem:`, {
           messageKeys: Object.keys(message || {}),
           hasImageMessage: !!message?.imageMessage,
+          hasVideoMessage: !!message?.videoMessage,
+          hasAudioMessage: !!message?.audioMessage,
+          hasDocumentMessage: !!message?.documentMessage,
           hasConversation: !!message?.conversation,
           hasExtendedText: !!message?.extendedTextMessage,
           fullMessage: JSON.stringify(message).substring(0, 500)
