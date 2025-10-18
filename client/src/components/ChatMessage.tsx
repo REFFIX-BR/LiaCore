@@ -1,8 +1,15 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Check, CheckCheck, FileText, Download, Trash2 } from "lucide-react";
+import { Check, CheckCheck, FileText, Download, Trash2, MoreVertical, Copy, Reply } from "lucide-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
 
 export interface Message {
   id: string;
@@ -29,6 +36,7 @@ interface ChatMessageProps {
   message: Message;
   canEdit?: boolean;
   onDelete?: () => void;
+  onReply?: (message: Message) => void; // Callback para responder/citar mensagem
   showImageDescription?: boolean; // Se true, mostra descrição da imagem. Se false (padrão), mostra só a imagem
 }
 
@@ -39,7 +47,9 @@ const functionIcons: Record<string, string> = {
   agendar_visita: "📅",
 };
 
-export function ChatMessage({ message, canEdit = false, onDelete, showImageDescription = false }: ChatMessageProps) {
+export function ChatMessage({ message, canEdit = false, onDelete, onReply, showImageDescription = false }: ChatMessageProps) {
+  const { toast } = useToast();
+  
   if (message.role === "system") {
     return (
       <div className="flex justify-center py-2">
@@ -52,6 +62,29 @@ export function ChatMessage({ message, canEdit = false, onDelete, showImageDescr
 
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
+
+  // Função para copiar texto da mensagem
+  const handleCopy = () => {
+    navigator.clipboard.writeText(message.content).then(() => {
+      toast({
+        title: "Copiado!",
+        description: "Texto copiado para a área de transferência",
+      });
+    }).catch(() => {
+      toast({
+        title: "Erro ao copiar",
+        description: "Não foi possível copiar o texto",
+        variant: "destructive",
+      });
+    });
+  };
+
+  // Função para responder/citar mensagem
+  const handleReply = () => {
+    if (onReply) {
+      onReply(message);
+    }
+  };
 
   // Função para fazer download do PDF
   const downloadPdf = () => {
@@ -370,20 +403,44 @@ export function ChatMessage({ message, canEdit = false, onDelete, showImageDescr
           )}
         </div>
 
-        {/* Timestamp e status */}
+        {/* Timestamp, status e menu de ações */}
         <div className={`flex items-center gap-1 mt-1 px-2 ${isUser ? 'justify-start' : 'justify-end'}`}>
-          {isAssistant && canEdit && onDelete && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onDelete}
-              className="h-6 px-2"
-              data-testid="button-delete-message"
-              title="Excluir mensagem"
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          )}
+          {/* Menu de três pontos */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                data-testid="button-message-menu"
+              >
+                <MoreVertical className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align={isUser ? "start" : "end"}>
+              <DropdownMenuItem onClick={handleCopy} data-testid="menu-item-copy">
+                <Copy className="h-4 w-4 mr-2" />
+                Copiar mensagem
+              </DropdownMenuItem>
+              {onReply && (
+                <DropdownMenuItem onClick={handleReply} data-testid="menu-item-reply">
+                  <Reply className="h-4 w-4 mr-2" />
+                  Responder
+                </DropdownMenuItem>
+              )}
+              {isAssistant && canEdit && onDelete && (
+                <DropdownMenuItem 
+                  onClick={onDelete} 
+                  className="text-destructive focus:text-destructive"
+                  data-testid="menu-item-delete"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir mensagem
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
           <span className="text-xs text-muted-foreground">
             {format(message.timestamp, 'MMM dd, hh:mm a')}
           </span>

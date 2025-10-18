@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, UserMinus, ChevronDown, X, Image as ImageIcon, Mic, Users, FileText, Bold, StickyNote } from "lucide-react";
+import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, UserMinus, ChevronDown, X, Image as ImageIcon, Mic, Users, FileText, Bold, StickyNote, Reply } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -64,6 +64,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   const [selectedImage, setSelectedImage] = useState<{ base64: string; preview: string } | null>(null);
   const [selectedAudio, setSelectedAudio] = useState<{ base64: string; name: string; mimeType: string } | null>(null);
   const [selectedPdf, setSelectedPdf] = useState<{ base64: string; name: string } | null>(null);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null); // Mensagem sendo respondida
   const [showTransferDialog, setShowTransferDialog] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
   const [transferNotes, setTransferNotes] = useState("");
@@ -587,8 +588,16 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
 
   const handleManualSend = () => {
     if (messageContent.trim() || selectedImage || selectedAudio || selectedPdf) {
+      // Formatar mensagem com citação se houver resposta
+      let finalContent = messageContent || '';
+      if (replyingTo) {
+        // Formato similar ao WhatsApp: "> Mensagem citada\n\nSua resposta"
+        const quotedContent = replyingTo.content.substring(0, 200); // Limitar citação a 200 chars
+        finalContent = `> ${quotedContent}${replyingTo.content.length > 200 ? '...' : ''}\n\n${finalContent}`;
+      }
+      
       sendMutation.mutate({ 
-        content: messageContent || '', 
+        content: finalContent, 
         suggestionId: null,
         imageBase64: selectedImage?.base64,
         audioBase64: selectedAudio?.base64,
@@ -596,6 +605,9 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         pdfBase64: selectedPdf?.base64,
         pdfName: selectedPdf?.name,
       });
+      
+      // Limpar estado de resposta
+      setReplyingTo(null);
     }
   };
 
@@ -611,6 +623,20 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
     if (selectedAgentId && selectedAgentId !== conversation.assignedTo) {
       transferMutation.mutate();
     }
+  };
+
+  // Responder/Citar mensagem
+  const handleReply = (message: Message) => {
+    setReplyingTo(message);
+    // Focar no textarea
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 100);
+  };
+
+  // Cancelar resposta
+  const handleCancelReply = () => {
+    setReplyingTo(null);
   };
 
   // Função para formatar texto em negrito
@@ -786,6 +812,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               message={msg} 
               canEdit={isAdminOrSupervisor || (isAgent && conversation.assignedTo === user?.id)}
               onDelete={() => handleDeleteMessage(msg.id)}
+              onReply={handleReply}
             />
           ))}
           <div ref={messagesEndRef} />
@@ -920,6 +947,32 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               className="h-6 w-6"
               onClick={() => setSelectedPdf(null)}
               data-testid="button-remove-pdf"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+
+        {/* Reply Preview */}
+        {replyingTo && (
+          <div className="relative p-3 bg-primary/10 rounded-md border border-primary/30 flex items-start justify-between">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <Reply className="h-4 w-4 text-primary" />
+                <span className="text-xs font-medium text-primary">
+                  Respondendo a {replyingTo.role === "user" ? "cliente" : "assistente"}
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground truncate">
+                {replyingTo.content.substring(0, 100)}{replyingTo.content.length > 100 ? '...' : ''}
+              </p>
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6"
+              onClick={handleCancelReply}
+              data-testid="button-cancel-reply"
             >
               <X className="h-3 w-3" />
             </Button>
