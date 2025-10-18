@@ -1963,17 +1963,17 @@ export class DbStorage implements IStorage {
 
       const totalConversations = allConversations.length;
 
-      // Conversas resolvidas pela IA (sem resolved_by = finalizadas pela IA autonomamente)
-      const resolvedByAI = allConversations.filter(c => 
-        c.status === 'resolved' && !c.resolvedBy
-      ).length;
-
-      // Conversas transferidas para humano (com resolved_by = finalizadas por atendente)
+      // ✅ CORREÇÃO: Transferências = conversas que FORAM transferidas para humano (independente se já resolvidas ou não)
       const transferredToHuman = allConversations.filter(c => 
-        c.status === 'resolved' && c.resolvedBy
+        c.transferredToHuman === true
       ).length;
 
-      // Taxa de sucesso da IA (conversas que resolveu sozinha)
+      // ✅ CORREÇÃO: Resolvidas pela IA = conversas resolvidas que NUNCA foram transferidas
+      const resolvedByAI = allConversations.filter(c => 
+        c.status === 'resolved' && c.transferredToHuman === false
+      ).length;
+
+      // Taxa de sucesso da IA (conversas que resolveu sozinha SEM transferir)
       const successRate = totalConversations > 0 
         ? Math.round((resolvedByAI / totalConversations) * 100)
         : 0;
