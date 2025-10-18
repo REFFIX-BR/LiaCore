@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Phone, User, FileText, AlertCircle, MessageSquare, Clock, UserPlus } from "lucide-react";
+import { Search, Phone, User, FileText, AlertCircle, MessageSquare, Clock, UserPlus, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
@@ -54,11 +54,16 @@ export default function Contacts() {
   const [selectedContact, setSelectedContact] = useState<ContactWithHistory | null>(null);
   const [isReopenDialogOpen, setIsReopenDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [newContactData, setNewContactData] = useState({
     phoneNumber: "",
     name: "",
     document: "",
     assignedTo: "",
+  });
+  const [editContactData, setEditContactData] = useState({
+    name: "",
+    document: "",
   });
   const { toast } = useToast();
 
@@ -157,6 +162,32 @@ export default function Contacts() {
     },
   });
 
+  // Mutation to update contact
+  const updateMutation = useMutation({
+    mutationFn: async (data: { id: string; updates: { name?: string; document?: string } }) => {
+      return await apiRequest(`/api/contacts/${data.id}`, "PATCH", data.updates);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Contato atualizado",
+        description: "As informações do contato foram atualizadas com sucesso.",
+      });
+      setIsEditDialogOpen(false);
+      // Invalidar tanto a lista quanto os detalhes do contato específico
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      if (selectedContact) {
+        queryClient.invalidateQueries({ queryKey: ["/api/contacts", selectedContact.id] });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao atualizar contato",
+        description: error.message || "Ocorreu um erro ao atualizar o contato",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateContact = () => {
     if (!newContactData.phoneNumber) {
       toast({
@@ -176,6 +207,28 @@ export default function Contacts() {
     reopenMutation.mutate({
       contactId: selectedContact.id,
     });
+  };
+
+  const handleEditContact = () => {
+    if (!selectedContact) return;
+
+    updateMutation.mutate({
+      id: selectedContact.id,
+      updates: {
+        name: editContactData.name || undefined,
+        document: editContactData.document || undefined,
+      },
+    });
+  };
+
+  const openEditDialog = () => {
+    if (!selectedContact) return;
+    
+    setEditContactData({
+      name: selectedContact.name || "",
+      document: selectedContact.document || "",
+    });
+    setIsEditDialogOpen(true);
   };
 
   const filteredContacts = contacts.filter(contact => {
@@ -299,14 +352,25 @@ export default function Contacts() {
                 <CardTitle>{(contactDetails || selectedContact).name || (contactDetails || selectedContact).phoneNumber}</CardTitle>
                 <CardDescription>Histórico completo de atendimentos</CardDescription>
               </div>
-              <Button
-                onClick={() => setIsReopenDialogOpen(true)}
-                size="sm"
-                data-testid="button-reopen-conversation"
-              >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Reabrir Conversa
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={openEditDialog}
+                  size="sm"
+                  variant="outline"
+                  data-testid="button-edit-contact"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar
+                </Button>
+                <Button
+                  onClick={() => setIsReopenDialogOpen(true)}
+                  size="sm"
+                  data-testid="button-reopen-conversation"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Reabrir Conversa
+                </Button>
+              </div>
             </div>
 
             {/* Informações do Contato */}
@@ -534,6 +598,69 @@ export default function Contacts() {
               data-testid="button-confirm-reopen"
             >
               {reopenMutation.isPending ? "Reabrindo..." : "Reabrir Conversa"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Edição de Contato */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Contato</DialogTitle>
+            <DialogDescription>
+              Atualizar informações de {selectedContact?.name || selectedContact?.phoneNumber}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="edit-name">Nome</Label>
+              <Input
+                id="edit-name"
+                value={editContactData.name}
+                onChange={(e) => setEditContactData({ ...editContactData, name: e.target.value })}
+                placeholder="Nome do cliente"
+                data-testid="input-edit-name"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit-document">CPF/CNPJ</Label>
+              <Input
+                id="edit-document"
+                value={editContactData.document}
+                onChange={(e) => setEditContactData({ ...editContactData, document: e.target.value })}
+                placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                data-testid="input-edit-document"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Apenas números, com ou sem formatação
+              </p>
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground">Telefone</Label>
+              <p className="text-sm font-medium text-muted-foreground">
+                {selectedContact?.phoneNumber} (não editável)
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+              data-testid="button-cancel-edit"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleEditContact}
+              disabled={updateMutation.isPending}
+              data-testid="button-confirm-edit"
+            >
+              {updateMutation.isPending ? "Salvando..." : "Salvar Alterações"}
             </Button>
           </DialogFooter>
         </DialogContent>

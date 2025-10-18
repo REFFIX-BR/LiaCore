@@ -6746,6 +6746,53 @@ A resposta deve:
     }
   });
 
+  // Update contact information (name, document/CPF/CNPJ, etc)
+  app.patch("/api/contacts/:id", authenticate, async (req, res) => {
+    try {
+      const contactId = req.params.id;
+      
+      // Validate request body using updateContactSchema
+      const updateSchema = z.object({
+        name: z.string().optional(),
+        document: z.string().optional(),
+        status: z.enum(['active', 'inactive']).optional(),
+        hasRecurringIssues: z.boolean().optional(),
+      });
+
+      const validation = updateSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid update data",
+          details: validation.error.errors 
+        });
+      }
+
+      // Check if contact exists
+      const existingContact = await storage.getContact(contactId);
+      
+      if (!existingContact) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+
+      // Update contact
+      const updatedContact = await storage.updateContact(contactId, validation.data);
+
+      if (!updatedContact) {
+        return res.status(500).json({ error: "Failed to update contact" });
+      }
+
+      console.log(`✅ [Contacts] Contact ${contactId} updated successfully`);
+      return res.json(updatedContact);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid update data", details: error.errors });
+      }
+      console.error("❌ [Contacts] Error updating contact:", error);
+      return res.status(500).json({ error: "Error updating contact" });
+    }
+  });
+
   // Create new contact with conversation and assignment
   app.post("/api/contacts/create", authenticate, async (req, res) => {
     try {
