@@ -1436,7 +1436,12 @@ export class DbStorage implements IStorage {
   async getMonitorConversations(): Promise<Conversation[]> {
     const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
     
-    return await db.select().from(schema.conversations)
+    const results = await db.select({
+      conversation: schema.conversations,
+      resolvedByUser: schema.users
+    })
+      .from(schema.conversations)
+      .leftJoin(schema.users, eq(schema.conversations.resolvedBy, schema.users.id))
       .where(
         or(
           eq(schema.conversations.status, 'active'),
@@ -1448,6 +1453,11 @@ export class DbStorage implements IStorage {
         )
       )
       .orderBy(desc(schema.conversations.lastMessageTime));
+    
+    return results.map(r => ({
+      ...r.conversation,
+      resolvedByName: r.resolvedByUser?.fullName || null
+    })) as any;
   }
 
   async getTransferredConversations(userId?: string, role?: string): Promise<Conversation[]> {
