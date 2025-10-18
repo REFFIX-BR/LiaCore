@@ -13,6 +13,8 @@ export interface ConversationData {
   lastMessageTime: Date;
   transferredToHuman?: boolean | null;
   assignedTo?: string | null;
+  resolvedBy?: string | null;
+  resolvedByName?: string | null;
   autoClosed?: boolean | null;
   autoClosedReason?: string | null;
   autoClosedAt?: Date | null;
