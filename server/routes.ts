@@ -4646,14 +4646,14 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
         const conversations = allConversations.filter((c: Conversation) => c.assistantType === type);
         const totalConversations = conversations.length;
         
-        // ✅ CORREÇÃO: Conversas transferidas para humanos (independente do status)
+        // ✅ CORREÇÃO: Conversas transferidas = tem data de transferência
         const transferredConversations = conversations.filter((c: Conversation) => 
-          c.transferredToHuman === true
+          c.transferredAt != null
         ).length;
         
         // ✅ CORREÇÃO: Conversas resolvidas PELA IA = resolvidas E NUNCA transferidas
         const resolvedConversations = conversations.filter((c: Conversation) => 
-          c.status === "resolved" && c.transferredToHuman !== true
+          c.status === "resolved" && c.transferredAt == null
         ).length;
         
         // Taxa de sucesso da IA (resolveu sozinha, sem transferir)
@@ -4688,14 +4688,14 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
       // Overview geral
       const totalConversations = allConversations.length;
       
-      // ✅ CORREÇÃO: Transferências = campo transferredToHuman
+      // ✅ CORREÇÃO: Transferências = tem data de transferência (dados históricos completos)
       const totalTransferred = allConversations.filter((c: Conversation) => 
-        c.transferredToHuman === true
+        c.transferredAt != null
       ).length;
       
       // ✅ CORREÇÃO: Resolvidas pela IA = resolvidas E NUNCA transferidas
       const totalResolved = allConversations.filter((c: Conversation) => 
-        c.status === "resolved" && c.transferredToHuman !== true
+        c.status === "resolved" && c.transferredAt == null
       ).length;
       
       const overallSuccessRate = totalConversations > 0 

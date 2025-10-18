@@ -1963,16 +1963,14 @@ export class DbStorage implements IStorage {
 
       const totalConversations = allConversations.length;
 
-      // ✅ Transferências = conversas que FORAM transferidas para humano (independente se já resolvidas ou não)
-      // Inclui tanto true quanto valores truthy para cobrir conversas antigas
+      // ✅ Transferências = conversas que têm data de transferência (dados históricos completos)
       const transferredToHuman = allConversations.filter(c => 
-        c.transferredToHuman === true
+        c.transferredAt != null
       ).length;
 
       // ✅ Resolvidas pela IA = conversas resolvidas que NUNCA foram transferidas
-      // Considera false, null e undefined como "não transferida"
       const resolvedByAI = allConversations.filter(c => 
-        c.status === 'resolved' && c.transferredToHuman !== true
+        c.status === 'resolved' && c.transferredAt == null
       ).length;
 
       // 🔍 DEBUG: Log para verificar cálculos
