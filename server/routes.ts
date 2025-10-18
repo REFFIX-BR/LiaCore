@@ -1537,6 +1537,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let pdfBase64: string | undefined = undefined;
         let pdfName: string | undefined = undefined;
         let audioUrl: string | undefined = undefined;
+        let videoUrl: string | undefined = undefined;
+        let videoName: string | undefined = undefined;
+        let videoMimetype: string | undefined = undefined;
         
         if (message?.conversation) {
           messageText = message.conversation;
@@ -1648,10 +1651,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
             isPdf
           });
         } else if (message?.videoMessage) {
-          // Handle videos with or without caption
+          // Process video - extract URL and metadata
+          const mediaUrl = data?.message?.mediaUrl;
+          videoUrl = mediaUrl; // Salvar URL do vídeo
+          
+          console.log(`🎬 [Evolution] Vídeo detectado:`, {
+            url: message.videoMessage.url,
+            caption: message.videoMessage.caption,
+            mimetype: message.videoMessage.mimetype,
+            seconds: message.videoMessage.seconds,
+            hasMediaUrl: !!mediaUrl,
+            mediaUrl: mediaUrl?.substring(0, 100) || 'não disponível'
+          });
+          
+          // Nome do vídeo (usar timestamp se não tiver)
+          videoName = `video_${Date.now()}.mp4`;
+          videoMimetype = message.videoMessage.mimetype || 'video/mp4';
+          
+          // Texto da mensagem com legenda se houver
           messageText = message.videoMessage.caption 
-            ? `[Vídeo] ${message.videoMessage.caption}` 
-            : `[Vídeo recebido]`;
+            ? `[Vídeo enviado]\n\n${message.videoMessage.caption}` 
+            : `[Vídeo enviado]`;
+          
+          console.log(`✅ [Evolution] Vídeo processado:`, {
+            messageText: messageText.substring(0, 100),
+            hasVideoUrl: !!videoUrl,
+            videoName,
+            videoMimetype
+          });
         } else if (message?.audioMessage) {
           // Extract mediaUrl if available (S3/MinIO)
           audioUrl = data?.message?.mediaUrl;
@@ -2120,6 +2147,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pdfName: pdfName || 'nenhum',
           hasAudio: !!audioUrl,
           audioUrl: audioUrl?.substring(0, 100) || 'nenhum',
+          hasVideo: !!videoUrl,
+          videoUrl: videoUrl?.substring(0, 100) || 'nenhum',
+          videoName: videoName || 'nenhum',
           messagePreview: messageText.substring(0, 100)
         });
         
@@ -2132,6 +2162,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pdfBase64: pdfBase64,
           pdfName: pdfName,
           audioUrl: audioUrl,
+          videoUrl: videoUrl,
+          videoName: videoName,
+          videoMimetype: videoMimetype,
         });
 
         // ⏱️ IMPORTANTE: Atualizar lastMessageTime quando CLIENTE envia mensagem

@@ -558,7 +558,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         audioBase64: selectedAudio?.base64,
         audioMimeType: selectedAudio?.mimeType,
         pdfBase64: selectedPdf?.base64,
-        pdfName: selectedPdf?.name
+        pdfName: selectedPdf?.name,
       });
     }
   };
@@ -573,7 +573,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         audioBase64: selectedAudio?.base64,
         audioMimeType: selectedAudio?.mimeType,
         pdfBase64: selectedPdf?.base64,
-        pdfName: selectedPdf?.name
+        pdfName: selectedPdf?.name,
       });
     }
   };
@@ -587,7 +587,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         audioBase64: selectedAudio?.base64,
         audioMimeType: selectedAudio?.mimeType,
         pdfBase64: selectedPdf?.base64,
-        pdfName: selectedPdf?.name
+        pdfName: selectedPdf?.name,
       });
     }
   };

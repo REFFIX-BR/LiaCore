@@ -18,6 +18,9 @@ export interface Message {
   pdfBase64?: string | null;
   pdfName?: string | null;
   audioUrl?: string | null;
+  videoUrl?: string | null;
+  videoName?: string | null;
+  videoMimetype?: string | null;
   deletedAt?: Date | null;
   deletedBy?: string | null;
 }
@@ -138,11 +141,15 @@ export function ChatMessage({ message, canEdit = false, onDelete }: ChatMessageP
   // Detectar se mensagem contém PDF enviado
   const hasPdfAttached = message.content.includes('[PDF enviado:');
 
+  // Detectar se mensagem contém vídeo enviado
+  const hasVideoAttached = message.content.includes('[Vídeo enviado]');
+
   // Separar conteúdo e análise/transcrição se houver
   let messageContent = message.content;
   let imageAnalysis = null;
   let audioTranscription = null;
   let pdfFileName = null;
+  let videoCaption = null;
 
   if (hasImageAnalysis) {
     // Para imagens do WhatsApp, extrair análise se houver
@@ -179,6 +186,17 @@ export function ChatMessage({ message, canEdit = false, onDelete }: ChatMessageP
       pdfFileName = pdfMatch[1];
       // Remover a tag do PDF do conteúdo da mensagem
       messageContent = message.content.replace(/\[PDF enviado: [^\]]+\]/, '').trim();
+    }
+  }
+
+  if (hasVideoAttached) {
+    // Extrair legenda do vídeo se houver
+    const parts = message.content.split('[Vídeo enviado]');
+    if (parts.length > 1) {
+      messageContent = '';
+      videoCaption = parts[1].trim();
+    } else {
+      messageContent = message.content.replace('[Vídeo enviado]', '').trim();
     }
   }
 
@@ -232,6 +250,11 @@ export function ChatMessage({ message, canEdit = false, onDelete }: ChatMessageP
               <span>{pdfFileName}</span>
             </Badge>
           )}
+          {hasVideoAttached && !message.videoUrl && (
+            <Badge variant="outline" className="mb-2 text-xs">
+              🎬 Vídeo enviado
+            </Badge>
+          )}
 
           {/* PDF com base64 salvo - mostrar botão de download */}
           {message.pdfBase64 && message.pdfName && (
@@ -252,6 +275,26 @@ export function ChatMessage({ message, canEdit = false, onDelete }: ChatMessageP
           {message.audioUrl && (
             <div className="mb-2">
               <AudioPlayer audioUrl={message.audioUrl} />
+            </div>
+          )}
+
+          {/* Vídeo do WhatsApp - player de vídeo */}
+          {message.videoUrl && (
+            <div className="mb-2">
+              <video 
+                controls 
+                className="max-w-full rounded-md border"
+                style={{ maxHeight: '400px' }}
+                data-testid="video-player"
+              >
+                <source src={message.videoUrl} type={message.videoMimetype || 'video/mp4'} />
+                Seu navegador não suporta reprodução de vídeos.
+              </video>
+              {videoCaption && (
+                <div className={`mt-2 rounded-md p-2 ${isUser ? 'bg-background/50' : 'bg-primary-foreground/10'}`}>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-all">{videoCaption}</p>
+                </div>
+              )}
             </div>
           )}
 
