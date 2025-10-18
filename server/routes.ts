@@ -6064,6 +6064,7 @@ A resposta deve:
       
       await storage.updateConversation(id, {
         status: "resolved",
+        resolvedBy: currentUser.userId, // Registrar quem finalizou a conversa
         resolvedAt: new Date(),
         assignedTo: null, // Desatribuir conversa ao finalizar
         transferredToHuman: false, // Limpar flag de transferência ao finalizar
