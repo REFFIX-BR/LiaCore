@@ -6743,7 +6743,8 @@ A resposta deve:
       }
 
       // Get last conversation to determine Evolution instance
-      const defaultInstance = process.env.EVOLUTION_API_INSTANCE;
+      // Force "Leads" as default instance (correct value from Replit Secrets)
+      const defaultInstance = "Leads";
       let evolutionInstance = defaultInstance;
       let instanceSource = "padrão";
       
