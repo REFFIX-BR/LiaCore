@@ -1939,9 +1939,13 @@ export class DbStorage implements IStorage {
     };
   }
 
-  async getAIPerformanceMetrics() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  async getAIPerformanceMetrics(startDate?: Date, endDate?: Date) {
+    // Se não fornecido, usa hoje como padrão
+    const defaultStart = new Date();
+    defaultStart.setHours(0, 0, 0, 0);
+    
+    const start = startDate || defaultStart;
+    const end = endDate || new Date();
 
     const assistantTypes = ['apresentacao', 'comercial', 'financeiro', 'suporte', 'ouvidoria', 'cancelamento'];
     const assistantNames = {
@@ -1954,11 +1958,12 @@ export class DbStorage implements IStorage {
     };
 
     const metrics = await Promise.all(assistantTypes.map(async (assistantType) => {
-      // Total de conversas deste assistente hoje
+      // Total de conversas deste assistente no período
       const allConversations = await db.select().from(schema.conversations)
         .where(and(
           eq(schema.conversations.assistantType, assistantType),
-          gte(schema.conversations.createdAt, today)
+          gte(schema.conversations.createdAt, start),
+          lte(schema.conversations.createdAt, end)
         ));
 
       const totalConversations = allConversations.length;

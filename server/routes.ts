@@ -4634,16 +4634,36 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
   // Get assistants metrics
   app.get("/api/assistants/metrics", authenticate, async (req, res) => {
     try {
+      const { startDate, endDate } = req.query;
+      
       const allConversations = await storage.getAllConversations();
       const allPromptUpdates = await storage.getAllPromptUpdates();
       const allSupervisorActions = await storage.getAllSupervisorActions();
+
+      // Filtrar conversas por período (se fornecido)
+      let filteredConversations = allConversations;
+      if (startDate || endDate) {
+        filteredConversations = allConversations.filter((c: Conversation) => {
+          const createdAt = c.createdAt ? new Date(c.createdAt) : null;
+          if (!createdAt) return false;
+          
+          if (startDate && endDate) {
+            return createdAt >= new Date(startDate as string) && createdAt <= new Date(endDate as string);
+          } else if (startDate) {
+            return createdAt >= new Date(startDate as string);
+          } else if (endDate) {
+            return createdAt <= new Date(endDate as string);
+          }
+          return true;
+        });
+      }
 
       // Tipos de assistentes
       const assistantTypes = ["suporte", "comercial", "financeiro", "apresentacao", "ouvidoria", "cancelamento"];
       
       // Calcular métricas por assistente
       const assistantMetrics = assistantTypes.map(type => {
-        const conversations = allConversations.filter((c: Conversation) => c.assistantType === type);
+        const conversations = filteredConversations.filter((c: Conversation) => c.assistantType === type);
         const totalConversations = conversations.length;
         
         // ✅ CORREÇÃO: Conversas transferidas = tem data de transferência
@@ -4685,16 +4705,16 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
         };
       });
 
-      // Overview geral
-      const totalConversations = allConversations.length;
+      // Overview geral (usando conversas filtradas por período)
+      const totalConversations = filteredConversations.length;
       
       // ✅ CORREÇÃO: Transferências = tem data de transferência (dados históricos completos)
-      const totalTransferred = allConversations.filter((c: Conversation) => 
+      const totalTransferred = filteredConversations.filter((c: Conversation) => 
         c.transferredAt != null
       ).length;
       
       // ✅ CORREÇÃO: Resolvidas pela IA = resolvidas E NUNCA transferidas
-      const totalResolved = allConversations.filter((c: Conversation) => 
+      const totalResolved = filteredConversations.filter((c: Conversation) => 
         c.status === "resolved" && c.transferredAt == null
       ).length;
       
@@ -6506,7 +6526,13 @@ A resposta deve:
   // AI Performance Metrics
   app.get("/api/dashboard/ai-performance", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
-      const metrics = await storage.getAIPerformanceMetrics();
+      const { startDate, endDate } = req.query;
+      
+      // Converter strings para Date se fornecidos
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+      
+      const metrics = await storage.getAIPerformanceMetrics(start, end);
       return res.json(metrics);
     } catch (error) {
       console.error("❌ [Dashboard] Error getting AI performance metrics:", error);

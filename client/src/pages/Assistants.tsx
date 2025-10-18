@@ -1,7 +1,11 @@
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Bot,
   TrendingUp,
@@ -12,10 +16,13 @@ import {
   XCircle,
   Activity,
   BarChart3,
-  History
+  History,
+  CalendarIcon,
+  Filter
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
+import { format } from "date-fns";
 
 interface AssistantMetrics {
   assistantType: string;
@@ -49,9 +56,64 @@ interface AssistantStats {
   }>;
 }
 
+type PeriodFilter = 'today' | 'week' | 'month' | 'all' | 'custom';
+
 export default function Assistants() {
-  const { data: stats, isLoading, error } = useQuery<AssistantStats>({
-    queryKey: ['/api/assistants/metrics'],
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>();
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>();
+
+  // Calcular datas com base no filtro
+  const getDateRange = () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (periodFilter) {
+      case 'today':
+        return {
+          startDate: today.toISOString(),
+          endDate: now.toISOString()
+        };
+      case 'week':
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        return {
+          startDate: weekAgo.toISOString(),
+          endDate: now.toISOString()
+        };
+      case 'month':
+        const monthAgo = new Date(today);
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        return {
+          startDate: monthAgo.toISOString(),
+          endDate: now.toISOString()
+        };
+      case 'custom':
+        if (customStartDate && customEndDate) {
+          return {
+            startDate: customStartDate.toISOString(),
+            endDate: customEndDate.toISOString()
+          };
+        }
+        return {};
+      default:
+        return {};
+    }
+  };
+
+  const dateRange = getDateRange();
+  const queryParams = new URLSearchParams();
+  if (dateRange.startDate) queryParams.set('startDate', dateRange.startDate);
+  if (dateRange.endDate) queryParams.set('endDate', dateRange.endDate);
+  const queryString = queryParams.toString();
+  
+  // Construir URL com parâmetros
+  const apiUrl = queryString 
+    ? `/api/assistants/metrics?${queryString}` 
+    : '/api/assistants/metrics';
+
+  const { data: stats, isLoading, error} = useQuery<AssistantStats>({
+    queryKey: [apiUrl],
     refetchInterval: 30000, // Atualiza a cada 30s
   });
 
@@ -102,7 +164,9 @@ export default function Assistants() {
               Não foi possível carregar as métricas dos assistentes. Tente novamente.
             </p>
             <button 
-              onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/assistants/metrics'] })} 
+              onClick={() => queryClient.invalidateQueries({ 
+                predicate: (query) => query.queryKey[0]?.toString().startsWith('/api/assistants/metrics') ?? false
+              })} 
               className="w-full bg-primary text-primary-foreground py-2 rounded-md hover-elevate"
               data-testid="button-retry-metrics"
             >
@@ -136,6 +200,96 @@ export default function Assistants() {
           Analytics e performance dos assistentes especializados da LIA CORTEX
         </p>
       </div>
+
+      {/* Filtro de Período */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Filtrar por período:</span>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant={periodFilter === 'today' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setPeriodFilter('today')}
+                data-testid="button-filter-today"
+              >
+                Hoje
+              </Button>
+              <Button
+                variant={periodFilter === 'week' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setPeriodFilter('week')}
+                data-testid="button-filter-week"
+              >
+                Semana
+              </Button>
+              <Button
+                variant={periodFilter === 'month' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setPeriodFilter('month')}
+                data-testid="button-filter-month"
+              >
+                Mês
+              </Button>
+              <Button
+                variant={periodFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setPeriodFilter('all')}
+                data-testid="button-filter-all"
+              >
+                Todos
+              </Button>
+
+              {/* Date Pickers para período personalizado */}
+              <div className="flex items-center gap-2 ml-2 pl-2 border-l">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2" data-testid="button-custom-start-date">
+                      <CalendarIcon className="w-4 h-4" />
+                      {customStartDate ? format(customStartDate, 'dd/MM/yyyy') : 'Data inicial'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={customStartDate}
+                      onSelect={(date) => {
+                        setCustomStartDate(date);
+                        setPeriodFilter('custom');
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <span className="text-muted-foreground">até</span>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2" data-testid="button-custom-end-date">
+                      <CalendarIcon className="w-4 h-4" />
+                      {customEndDate ? format(customEndDate, 'dd/MM/yyyy') : 'Data final'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={customEndDate}
+                      onSelect={(date) => {
+                        setCustomEndDate(date);
+                        setPeriodFilter('custom');
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
