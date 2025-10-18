@@ -231,13 +231,13 @@ export default function Monitor() {
       // Apply sub-filter for resolved conversations
       if (resolvedSubFilter === "ai") {
         // Finalizadas pela IA (nunca transferidas para humano)
-        passesResolvedSubFilter = !conv.transferredToHuman && !(conv as any).autoClosed;
+        passesResolvedSubFilter = !conv.transferredToHuman && !conv.autoClosed;
       } else if (resolvedSubFilter === "agent") {
         // Finalizadas por atendentes (transferidas para humano e não auto-fechadas)
-        passesResolvedSubFilter = conv.transferredToHuman === true && !(conv as any).autoClosed;
+        passesResolvedSubFilter = conv.transferredToHuman === true && !conv.autoClosed;
       } else if (resolvedSubFilter === "auto") {
         // Fechadas automaticamente por inatividade
-        passesResolvedSubFilter = (conv as any).autoClosed === true;
+        passesResolvedSubFilter = conv.autoClosed === true;
       }
       // resolvedSubFilter === "all" -> show all, passesResolvedSubFilter stays true
     }
@@ -305,13 +305,13 @@ export default function Monitor() {
       return resolvedConvs.length;
     } else if (type === "ai") {
       // Finalizadas pela IA (nunca transferidas)
-      return resolvedConvs.filter(c => !c.transferredToHuman && !(c as any).autoClosed).length;
+      return resolvedConvs.filter(c => !c.transferredToHuman && !c.autoClosed).length;
     } else if (type === "agent") {
       // Finalizadas por atendentes
-      return resolvedConvs.filter(c => c.transferredToHuman === true && !(c as any).autoClosed).length;
+      return resolvedConvs.filter(c => c.transferredToHuman === true && !c.autoClosed).length;
     } else if (type === "auto") {
       // Fechadas automaticamente
-      return resolvedConvs.filter(c => (c as any).autoClosed === true).length;
+      return resolvedConvs.filter(c => c.autoClosed === true).length;
     }
     return 0;
   };
@@ -327,7 +327,7 @@ export default function Monitor() {
       // Determine who resolved the conversation
       let resolvedBy: "ai" | "agent" | "auto" | null = null;
       if (conv.status === "resolved") {
-        if ((conv as any).autoClosed) {
+        if (conv.autoClosed) {
           resolvedBy = "auto";
         } else if (conv.transferredToHuman) {
           resolvedBy = "agent";

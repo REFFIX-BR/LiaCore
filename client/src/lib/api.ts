@@ -13,6 +13,9 @@ export interface ConversationData {
   lastMessageTime: Date;
   transferredToHuman?: boolean | null;
   assignedTo?: string | null;
+  autoClosed?: boolean | null;
+  autoClosedReason?: string | null;
+  autoClosedAt?: Date | null;
   metadata?: {
     transferred?: boolean;
     transferredTo?: string;
