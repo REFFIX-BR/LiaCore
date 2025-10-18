@@ -22,7 +22,7 @@ const openai = new OpenAI({
 const EVOLUTION_CONFIG = {
   apiUrl: process.env.EVOLUTION_API_URL,
   apiKey: process.env.EVOLUTION_API_KEY,
-  instance: process.env.EVOLUTION_API_INSTANCE,
+  instance: "Principal", // Force "Principal" instance (WhatsApp Business - most stable)
 };
 
 // Helper function to get API key for specific instance
@@ -6743,8 +6743,8 @@ A resposta deve:
       }
 
       // Get last conversation to determine Evolution instance
-      // Force "Leads" as default instance (correct value from Replit Secrets)
-      const defaultInstance = "Leads";
+      // Use "Principal" as default instance (WhatsApp Business - most stable)
+      const defaultInstance = "Principal";
       let evolutionInstance = defaultInstance;
       let instanceSource = "padrão";
       
