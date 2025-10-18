@@ -1523,6 +1523,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // DEBUG: Log complete message structure
         console.log(`🔍 [DEBUG Webhook] Estrutura completa da mensagem:`, {
+          messageType: data?.messageType, // Evolution API sends this field
           messageKeys: Object.keys(message || {}),
           hasImageMessage: !!message?.imageMessage,
           hasVideoMessage: !!message?.videoMessage,
@@ -1530,6 +1531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           hasDocumentMessage: !!message?.documentMessage,
           hasConversation: !!message?.conversation,
           hasExtendedText: !!message?.extendedTextMessage,
+          hasMediaUrl: !!data?.message?.mediaUrl,
           fullMessage: JSON.stringify(message).substring(0, 500)
         });
 
