@@ -36,7 +36,7 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 
 **Hybrid Supervised Mode**: Manages "Transferred" and "Assigned" conversations with real-time counters, AI-assisted agent responses, and automatic conversation closure after extended inactivity.
 
-**WhatsApp Integration**: Native integration with Evolution API for real-time messaging, AI routing, and outbound messaging, supporting multi-instance operations with dynamic API key lookup. Includes a WhatsApp Groups Management System with individual AI control per group and complete chat interface for group messaging.
+**WhatsApp Integration**: Native integration with Evolution API for real-time messaging, AI routing, and outbound messaging, supporting multi-instance operations with dynamic API key lookup. Implements triple-fallback message delivery system (instance → ENV → 'Principal') to prevent silent failures when `evolution_instance` is NULL. All outbound messages return `{success, whatsappMessageId, remoteJid}` for future deletion/reconciliation workflows. Includes a WhatsApp Groups Management System with individual AI control per group and complete chat interface for group messaging.
 
 **Role-Based Access Control (RBAC)**: A 3-tier system (ADMIN, SUPERVISOR, AGENT) with granular permissions.
 
