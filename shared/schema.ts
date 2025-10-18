@@ -66,6 +66,7 @@ export const conversations = pgTable("conversations", {
   transferReason: text("transfer_reason"),
   transferredAt: timestamp("transferred_at"),
   assignedTo: varchar("assigned_to"), // User ID of the agent assigned
+  resolvedBy: varchar("resolved_by"), // User ID of who resolved the conversation
   resolvedAt: timestamp("resolved_at"),
   resolutionTime: integer("resolution_time"), // Time in seconds from transfer to resolution
   evolutionInstance: text("evolution_instance"), // Nome da instância Evolution API (para multi-instância)
