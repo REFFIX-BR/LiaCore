@@ -9,6 +9,7 @@ import { User, Bot, Pause, Play, FileText, UserPlus, Trash2, RotateCcw, FolderOp
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState, useEffect, useRef } from "react";
+import { ChatMessage, type Message as ChatMessageType } from "@/components/ChatMessage";
 import {
   Dialog,
   DialogContent,
@@ -27,16 +28,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
-  functionCall?: {
-    name: string;
-    status: string;
-  };
-}
+// Usando o tipo Message do ChatMessage component
+type Message = ChatMessageType;
 
 interface Analysis {
   summary: string;
@@ -142,43 +135,13 @@ export function ConversationDetails({
           <ScrollArea className="h-[500px]">
             <div className="space-y-4 pt-4">
               {messages.map((msg) => (
-                <div key={msg.id} className="flex gap-3 group">
-                  <Avatar className="h-8 w-8 flex-shrink-0">
-                    <AvatarFallback>
-                      {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">
-                        {msg.role === "user" ? clientName : "LIA"}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(msg.timestamp, { addSuffix: true, locale: ptBR })}
-                      </span>
-                      {msg.role === "assistant" && onDeleteMessage && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => onDeleteMessage(msg.id)}
-                          data-testid={`button-delete-message-${msg.id}`}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                    <p className="text-sm bg-muted p-3 rounded-lg">
-                      {typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)}
-                    </p>
-                    {msg.functionCall && (
-                      <Badge variant="outline" className="text-xs">
-                        {functionIcons[msg.functionCall.name] || "⚙️"} {msg.functionCall.name}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
+                <ChatMessage 
+                  key={msg.id} 
+                  message={msg}
+                  showImageDescription={true}
+                  canEdit={!!onDeleteMessage}
+                  onDelete={onDeleteMessage ? () => onDeleteMessage(msg.id) : undefined}
+                />
               ))}
               <div ref={messagesEndRef} />
             </div>

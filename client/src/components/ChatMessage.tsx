@@ -29,6 +29,7 @@ interface ChatMessageProps {
   message: Message;
   canEdit?: boolean;
   onDelete?: () => void;
+  showImageDescription?: boolean; // Se true, mostra descrição da imagem. Se false (padrão), mostra só a imagem
 }
 
 const functionIcons: Record<string, string> = {
@@ -38,7 +39,7 @@ const functionIcons: Record<string, string> = {
   agendar_visita: "📅",
 };
 
-export function ChatMessage({ message, canEdit = false, onDelete }: ChatMessageProps) {
+export function ChatMessage({ message, canEdit = false, onDelete, showImageDescription = false }: ChatMessageProps) {
   if (message.role === "system") {
     return (
       <div className="flex justify-center py-2">
@@ -324,8 +325,8 @@ export function ChatMessage({ message, canEdit = false, onDelete }: ChatMessageP
             </p>
           )}
 
-          {/* Análise de imagem - não mostrar se tiver imagem base64 */}
-          {imageAnalysis && !hasWhatsAppImage && (
+          {/* Análise de imagem - mostrar se showImageDescription=true OU se não tiver imagem base64 */}
+          {imageAnalysis && (showImageDescription || !hasWhatsAppImage) && (
             <div className={`mt-2 rounded-md p-2 ${isUser ? 'bg-background/50' : 'bg-primary-foreground/10'}`}>
               <p className="text-xs font-medium mb-1 opacity-80">
                 📎 Análise automática da imagem
