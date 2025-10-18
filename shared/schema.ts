@@ -95,6 +95,9 @@ export const messages = pgTable("messages", {
   pdfBase64: text("pdf_base64"), // PDF em base64 (para download)
   pdfName: text("pdf_name"), // Nome do arquivo PDF
   audioUrl: text("audio_url"), // URL do áudio original (WhatsApp/Evolution API)
+  videoUrl: text("video_url"), // URL do vídeo original (WhatsApp/Evolution API)
+  videoName: text("video_name"), // Nome do arquivo de vídeo
+  videoMimetype: text("video_mimetype"), // Tipo MIME do vídeo (video/mp4, etc.)
   whatsappMessageId: text("whatsapp_message_id"), // ID da mensagem no WhatsApp (para deletar)
   remoteJid: text("remote_jid"), // JID do chat WhatsApp (necessário para deletar)
   isPrivate: boolean("is_private").default(false), // Mensagens privadas (notas internas, não enviadas ao cliente)
