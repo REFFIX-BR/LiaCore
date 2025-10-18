@@ -563,3 +563,125 @@ export const insertPrivateNoteSchema = createInsertSchema(privateNotes).omit({
 
 export type PrivateNote = typeof privateNotes.$inferSelect;
 export type InsertPrivateNote = z.infer<typeof insertPrivateNoteSchema>;
+
+// Plans Table - Internet/Combo Plans
+export const plans = pgTable("plans", {
+  id: varchar("id").primaryKey(), // IDs fixos: "17", "22", "23" (conforme HAG)
+  name: text("name").notNull(), // Ex: "50 Mega", "650 Mega", "1 Giga"
+  type: text("type").notNull(), // "internet" ou "combo"
+  speed: integer("speed").notNull(), // Velocidade em Mbps (50, 650, 1000)
+  price: integer("price").notNull(), // Preço em centavos (6990, 10990, 14990)
+  description: text("description"), // Descrição do plano
+  features: text("features").array().default(sql`'{}'::text[]`), // Benefícios/features do plano
+  isActive: boolean("is_active").notNull().default(true), // Se está disponível para venda
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  isActiveIdx: index("plans_is_active_idx").on(table.isActive),
+}));
+
+// Sales Table - Customer Sales/Leads
+export const sales = pgTable("sales", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: text("type").notNull(), // "PF" (Pessoa Física) ou "PJ" (Pessoa Jurídica)
+  
+  // Customer Data - Pessoa Física
+  customerName: text("customer_name"), // Nome completo (PF) ou Razão Social (PJ)
+  cpfCnpj: text("cpf_cnpj"), // CPF ou CNPJ
+  email: text("email"),
+  phone: text("phone").notNull(), // Telefone principal
+  phone2: text("phone2"), // Telefone secundário
+  
+  // Dados complementares PF
+  motherName: text("mother_name"), // Nome da mãe
+  birthDate: text("birth_date"), // Data de nascimento (YYYY-MM-DD)
+  rg: text("rg"), // RG
+  sex: text("sex"), // "M" ou "F"
+  civilStatus: text("civil_status"), // "S", "C", "V", "O"
+  
+  // Dados complementares PJ
+  companyName: text("company_name"), // Nome fantasia
+  stateRegistration: text("state_registration"), // Inscrição estadual
+  cityRegistration: text("city_registration"), // Inscrição municipal
+  
+  // Address
+  cep: text("cep"),
+  address: text("address"), // Logradouro
+  number: text("number"),
+  complement: text("complement"),
+  neighborhood: text("neighborhood"),
+  city: text("city"),
+  state: text("state"), // UF
+  reference: text("reference"), // Ponto de referência
+  
+  // Service
+  planId: varchar("plan_id").notNull(), // Referência ao plano
+  billingDay: integer("billing_day"), // Dia de vencimento (5, 10 ou 15)
+  preferredInstallDate: text("preferred_install_date"), // Data preferida instalação
+  availability: text("availability"), // "Manhã", "Tarde", "Comercial"
+  
+  // Lead/Sale Management
+  status: text("status").notNull().default("Aguardando Análise"), 
+  // "Prospecção", "Aguardando Análise", "Aprovado", "Agendado para Instalação", 
+  // "Instalado", "Cancelado", "Inadimplente"
+  source: text("source").notNull().default("chat"), // "chat", "site", "manual"
+  seller: text("seller").default("Site"), // Nome do vendedor ou "Site"
+  conversationId: varchar("conversation_id"), // Referência à conversa de origem
+  
+  // Tracking
+  pendingItems: text("pending_items").array().default(sql`'{}'::text[]`), // Itens pendentes
+  observations: text("observations"), // Observações especiais
+  
+  // UTM Parameters (para rastreamento de origem)
+  utmSource: text("utm_source"),
+  utmMedium: text("utm_medium"),
+  utmCampaign: text("utm_campaign"),
+  
+  // Metadata
+  metadata: jsonb("metadata"), // Dados adicionais flexíveis
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  statusIdx: index("sales_status_idx").on(table.status),
+  planIdIdx: index("sales_plan_id_idx").on(table.planId),
+  phoneIdx: index("sales_phone_idx").on(table.phone),
+  cpfCnpjIdx: index("sales_cpf_cnpj_idx").on(table.cpfCnpj),
+  conversationIdIdx: index("sales_conversation_id_idx").on(table.conversationId),
+  createdAtIdx: index("sales_created_at_idx").on(table.createdAt),
+}));
+
+export const insertPlanSchema = createInsertSchema(plans).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updatePlanSchema = insertPlanSchema.partial();
+
+export const insertSaleSchema = createInsertSchema(sales).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  type: z.enum(["PF", "PJ"]),
+  status: z.enum([
+    "Prospecção",
+    "Aguardando Análise",
+    "Aprovado",
+    "Agendado para Instalação",
+    "Instalado",
+    "Cancelado",
+    "Inadimplente"
+  ]).default("Aguardando Análise"),
+  source: z.enum(["chat", "site", "manual"]).default("chat"),
+});
+
+export const updateSaleSchema = insertSaleSchema.partial();
+
+export type Plan = typeof plans.$inferSelect;
+export type InsertPlan = z.infer<typeof insertPlanSchema>;
+export type UpdatePlan = z.infer<typeof updatePlanSchema>;
+export type Sale = typeof sales.$inferSelect;
+export type InsertSale = z.infer<typeof insertSaleSchema>;
+export type UpdateSale = z.infer<typeof updateSaleSchema>;
