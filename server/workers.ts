@@ -47,8 +47,13 @@ import { analyzeImageWithVision } from './lib/vision';
 import { storage } from './storage';
 
 // Helper function to send WhatsApp message
-async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?: string): Promise<boolean> {
-  const evolutionInstance = instance || process.env.EVOLUTION_API_INSTANCE;
+async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?: string): Promise<{success: boolean, whatsappMessageId?: string, remoteJid?: string}> {
+  // Fallback: instance → ENV → 'Principal' (para evitar falha silenciosa)
+  const evolutionInstance = instance || process.env.EVOLUTION_API_INSTANCE || 'Principal';
+  
+  if (!instance) {
+    console.log(`⚠️ [WhatsApp] Instância não fornecida, usando fallback: ${evolutionInstance}`);
+  }
   
   // Tenta API key e URL específicos da instância primeiro, senão usa global (converter para MAIÚSCULAS)
   const apiKey = evolutionInstance 
@@ -67,7 +72,7 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?:
       triedKey: `EVOLUTION_API_KEY_${evolutionInstance}`,
       triedUrl: `EVOLUTION_API_URL_${evolutionInstance}`
     });
-    return false;
+    return {success: false};
   }
 
   // Sanitize and validate URL
@@ -102,10 +107,17 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?:
       throw new Error(`Evolution API error: ${response.statusText}`);
     }
 
-    return true;
+    // Parse response to get WhatsApp message ID
+    const data = await response.json() as any;
+    
+    return {
+      success: true,
+      whatsappMessageId: data?.key?.id || undefined,
+      remoteJid: data?.key?.remoteJid || undefined,
+    };
   } catch (error) {
     console.error('❌ Error sending WhatsApp message:', error);
-    return false;
+    return {success: false};
   }
 }
 
@@ -553,7 +565,7 @@ if (redisConnection) {
       if (shouldSendPresentationMessage) {
         const messageSent = await sendWhatsAppMessage(fromNumber, result.response, evolutionInstance);
         
-        if (!messageSent) {
+        if (!messageSent.success) {
           throw new Error('Failed to send WhatsApp message - Evolution API error');
         }
 
@@ -704,7 +716,7 @@ Responda apenas com o número (0 a 10).
 
       const surveySent = await sendWhatsAppMessage(chatId, npsMessage);
       
-      if (!surveySent) {
+      if (!surveySent.success) {
         throw new Error('Failed to send NPS survey - Evolution API error');
       }
 
@@ -794,7 +806,7 @@ Responda apenas com o número (0 a 10).
         console.log(`📤 [Inactivity Worker] Enviando mensagem de follow-up para ${clientName}`);
         const messageSent = await sendWhatsAppMessage(clientId, followupMessage, evolutionInstance);
 
-        if (!messageSent) {
+        if (!messageSent.success) {
           throw new Error('Failed to send inactivity follow-up - Evolution API error');
         }
 
@@ -902,7 +914,7 @@ Responda apenas com o número (0 a 10).
         console.log(`📤 [Auto-Closure Worker] Enviando mensagem de encerramento para ${clientName}`);
         const messageSent = await sendWhatsAppMessage(clientId, closureMessage, evolutionInstance);
 
-        if (!messageSent) {
+        if (!messageSent.success) {
           throw new Error('Failed to send auto-closure message - Evolution API error');
         }
 
