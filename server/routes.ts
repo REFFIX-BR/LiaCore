@@ -4646,15 +4646,17 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
         const conversations = allConversations.filter((c: Conversation) => c.assistantType === type);
         const totalConversations = conversations.length;
         
-        // Conversas resolvidas (status = resolved)
-        const resolvedConversations = conversations.filter((c: Conversation) => c.status === "resolved").length;
-        
-        // Conversas transferidas para humanos
+        // ✅ CORREÇÃO: Conversas transferidas para humanos (independente do status)
         const transferredConversations = conversations.filter((c: Conversation) => 
           c.transferredToHuman === true
         ).length;
         
-        // Taxa de sucesso
+        // ✅ CORREÇÃO: Conversas resolvidas PELA IA = resolvidas E NUNCA transferidas
+        const resolvedConversations = conversations.filter((c: Conversation) => 
+          c.status === "resolved" && c.transferredToHuman !== true
+        ).length;
+        
+        // Taxa de sucesso da IA (resolveu sozinha, sem transferir)
         const successRate = totalConversations > 0 
           ? (resolvedConversations / totalConversations) * 100 
           : 0;
@@ -4685,10 +4687,17 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
 
       // Overview geral
       const totalConversations = allConversations.length;
-      const totalResolved = allConversations.filter((c: Conversation) => c.status === "resolved").length;
+      
+      // ✅ CORREÇÃO: Transferências = campo transferredToHuman
       const totalTransferred = allConversations.filter((c: Conversation) => 
-        (c.metadata as any)?.transferred === true
+        c.transferredToHuman === true
       ).length;
+      
+      // ✅ CORREÇÃO: Resolvidas pela IA = resolvidas E NUNCA transferidas
+      const totalResolved = allConversations.filter((c: Conversation) => 
+        c.status === "resolved" && c.transferredToHuman !== true
+      ).length;
+      
       const overallSuccessRate = totalConversations > 0 
         ? (totalResolved / totalConversations) * 100 
         : 0;
