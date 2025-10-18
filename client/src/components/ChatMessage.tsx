@@ -324,8 +324,8 @@ export function ChatMessage({ message, canEdit = false, onDelete }: ChatMessageP
             </p>
           )}
 
-          {/* Análise de imagem */}
-          {imageAnalysis && (
+          {/* Análise de imagem - não mostrar se tiver imagem base64 */}
+          {imageAnalysis && !hasWhatsAppImage && (
             <div className={`mt-2 rounded-md p-2 ${isUser ? 'bg-background/50' : 'bg-primary-foreground/10'}`}>
               <p className="text-xs font-medium mb-1 opacity-80">
                 📎 Análise automática da imagem
