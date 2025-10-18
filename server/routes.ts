@@ -5581,12 +5581,18 @@ A resposta deve:
     return fullName.split(' ')[0];
   };
 
-  // Assign conversation to agent (self-assignment or manual assignment)
+  // Assign conversation to agent (self-assignment or manual assignment) OR unassign (toggle)
   app.post("/api/conversations/:id/assign", authenticate, async (req, res) => {
     try {
       const { id } = req.params;
       const { agentId } = req.body;
       const currentUser = req.user!;
+
+      // Buscar conversa
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversa não encontrada" });
+      }
 
       // Determinar o tipo de atribuição
       let targetAgentId: string;
@@ -5604,13 +5610,40 @@ A resposta deve:
         targetAgentId = currentUser.userId;
       }
 
-      // Buscar conversa
-      const conversation = await storage.getConversation(id);
-      if (!conversation) {
-        return res.status(404).json({ error: "Conversa não encontrada" });
+      // TOGGLE: Se a conversa já está atribuída ao usuário atual, DESATRIBUIR
+      if (conversation.assignedTo === targetAgentId) {
+        await storage.updateConversation(id, {
+          assignedTo: null,
+        });
+
+        // Criar ação de supervisor para desatribuição
+        await storage.createSupervisorAction({
+          conversationId: id,
+          action: "unassign",
+          notes: `Conversa desatribuída de ${currentUser.fullName || currentUser.username}`,
+          createdBy: currentUser.fullName || currentUser.username,
+        });
+
+        // Criar log de atividade
+        await storage.createActivityLog({
+          userId: currentUser.userId,
+          action: "unassign_conversation",
+          conversationId: id,
+          details: {
+            clientName: conversation.clientName,
+          },
+        });
+
+        console.log(`👤 [Unassignment] Conversa ${id} desatribuída de ${currentUser.fullName}`);
+
+        return res.json({
+          success: true,
+          unassigned: true,
+          message: "Conversa desatribuída com sucesso",
+        });
       }
 
-      // Validação: Prevenir roubo de conversas atribuídas
+      // Validação: Prevenir roubo de conversas atribuídas a outros
       if (conversation.assignedTo) {
         const isAdminOrSupervisor = currentUser.role === 'ADMIN' || currentUser.role === 'SUPERVISOR';
         const isSameAgent = conversation.assignedTo === targetAgentId;

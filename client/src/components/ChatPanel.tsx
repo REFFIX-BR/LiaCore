@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, ChevronDown, X, Image as ImageIcon, Mic, Users, FileText, Bold, StickyNote } from "lucide-react";
+import { Sparkles, Send, CheckCircle2, Edit3, Loader2, UserPlus, UserMinus, ChevronDown, X, Image as ImageIcon, Mic, Users, FileText, Bold, StickyNote } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -387,7 +387,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
     },
   });
 
-  // Auto-atribuir
+  // Auto-atribuir ou desatribuir (toggle)
   const assignMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest(
@@ -397,10 +397,17 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
       );
       return response.json();
     },
-    onSuccess: () => {
-      toast({
-        title: "Conversa atribuída!",
-      });
+    onSuccess: (data) => {
+      if (data.unassigned) {
+        toast({
+          title: "Conversa desatribuída!",
+          description: "A conversa voltou para a fila de transferidas",
+        });
+      } else {
+        toast({
+          title: "Conversa atribuída!",
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/conversations/assigned"] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations/transferred"] });
     },
@@ -669,16 +676,25 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
           />
         </div>
         <div className="flex items-center gap-2 px-3">
-          {!conversation.assignedTo && isAgent && (
+          {isAgent && (
             <Button
               onClick={handleSelfAssign}
-              variant="outline"
+              variant={conversation.assignedTo === user?.id ? "default" : "outline"}
               size="sm"
-              disabled={assignMutation.isPending}
+              disabled={assignMutation.isPending || (conversation.assignedTo !== null && conversation.assignedTo !== user?.id)}
               data-testid="button-self-assign"
+              title={
+                conversation.assignedTo === user?.id 
+                  ? "Desatribuir conversa" 
+                  : conversation.assignedTo 
+                    ? "Conversa atribuída a outro atendente" 
+                    : "Atribuir para mim"
+              }
             >
               {assignMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
+              ) : conversation.assignedTo === user?.id ? (
+                <UserMinus className="h-4 w-4" />
               ) : (
                 <UserPlus className="h-4 w-4" />
               )}
