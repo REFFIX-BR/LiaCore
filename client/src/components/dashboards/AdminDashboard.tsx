@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Activity, 
   DollarSign, 
@@ -19,12 +20,25 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   RefreshCw,
-  Zap
+  Zap,
+  Bot,
+  UserX,
+  Smile,
+  Frown,
+  Meh
 } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface AdminMetrics {
   systemStatus: {
@@ -64,6 +78,11 @@ export function AdminDashboard() {
   
   const { data: metrics, isLoading } = useQuery<AdminMetrics>({
     queryKey: ["/api/dashboard/admin"],
+    refetchInterval: 30000, // 30 seconds
+  });
+
+  const { data: aiMetrics, isLoading: isLoadingAI } = useQuery({
+    queryKey: ["/api/dashboard/ai-performance"],
     refetchInterval: 30000, // 30 seconds
   });
 
@@ -176,6 +195,15 @@ export function AdminDashboard() {
           Atualização automática: 30s
         </Badge>
       </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue="system" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="system" data-testid="tab-system">Sistema</TabsTrigger>
+          <TabsTrigger value="ai" data-testid="tab-ai">Performance IA</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="system" className="space-y-6">{/* Conteúdo do sistema continua aqui */}
 
       {/* System Health - Grid 3 colunas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -643,6 +671,21 @@ export function AdminDashboard() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="ai" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Performance dos Assistentes IA</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                As métricas de IA estão disponíveis na página <strong>"Conhecimento & IA" → "Assistentes"</strong> no menu lateral.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
