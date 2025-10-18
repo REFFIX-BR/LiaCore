@@ -203,10 +203,9 @@ export function AdminDashboard() {
           <TabsTrigger value="ai" data-testid="tab-ai">Performance IA</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="system" className="space-y-6">{/* Conteúdo do sistema continua aqui */}
-
-      {/* System Health - Grid 3 colunas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <TabsContent value="system" className="space-y-6">
+          {/* System Health - Grid 3 colunas */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="hover-elevate" data-testid="card-api-status">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-medium">API Status</CardTitle>
