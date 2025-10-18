@@ -1525,13 +1525,38 @@ export class DbStorage implements IStorage {
   async getMessagesPaginated(conversationId: string, options: { limit?: number; before?: string }): Promise<{ messages: Message[]; hasMore: boolean }> {
     const limit = options.limit || 15;
     
-    let query = db.select().from(schema.messages)
+    // Selecionar EXPLICITAMENTE todos os campos, incluindo vídeo
+    let query = db.select({
+      id: schema.messages.id,
+      conversationId: schema.messages.conversationId,
+      role: schema.messages.role,
+      content: schema.messages.content,
+      timestamp: schema.messages.timestamp,
+      functionCall: schema.messages.functionCall,
+      assistant: schema.messages.assistant,
+      imageBase64: schema.messages.imageBase64,
+      pdfBase64: schema.messages.pdfBase64,
+      pdfName: schema.messages.pdfName,
+      audioUrl: schema.messages.audioUrl,
+      videoUrl: schema.messages.videoUrl,
+      videoName: schema.messages.videoName,
+      videoMimetype: schema.messages.videoMimetype,
+      whatsappMessageId: schema.messages.whatsappMessageId,
+      remoteJid: schema.messages.remoteJid,
+      isPrivate: schema.messages.isPrivate,
+      sendBy: schema.messages.sendBy,
+      deletedAt: schema.messages.deletedAt,
+      deletedBy: schema.messages.deletedBy,
+    }).from(schema.messages)
       .where(eq(schema.messages.conversationId, conversationId))
       .$dynamic();
     
     if (options.before) {
       // Buscar a mensagem "before" para pegar seu timestamp
-      const beforeMessage = await db.select().from(schema.messages)
+      const beforeMessage = await db.select({
+        id: schema.messages.id,
+        timestamp: schema.messages.timestamp,
+      }).from(schema.messages)
         .where(eq(schema.messages.id, options.before))
         .limit(1);
       
