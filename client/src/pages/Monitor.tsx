@@ -230,11 +230,11 @@ export default function Monitor() {
       
       // Apply sub-filter for resolved conversations
       if (resolvedSubFilter === "ai") {
-        // Finalizadas pela IA (nunca transferidas para humano)
-        passesResolvedSubFilter = !conv.transferredToHuman && !conv.autoClosed;
+        // Finalizadas pela IA (sem resolved_by)
+        passesResolvedSubFilter = !conv.resolvedByName && !conv.autoClosed;
       } else if (resolvedSubFilter === "agent") {
-        // Finalizadas por atendentes (transferidas para humano e não auto-fechadas)
-        passesResolvedSubFilter = conv.transferredToHuman === true && !conv.autoClosed;
+        // Finalizadas por atendentes (tem resolved_by)
+        passesResolvedSubFilter = !!conv.resolvedByName && !conv.autoClosed;
       } else if (resolvedSubFilter === "auto") {
         // Fechadas automaticamente por inatividade
         passesResolvedSubFilter = conv.autoClosed === true;
@@ -304,11 +304,11 @@ export default function Monitor() {
     if (type === "all") {
       return resolvedConvs.length;
     } else if (type === "ai") {
-      // Finalizadas pela IA (nunca transferidas)
-      return resolvedConvs.filter(c => !c.transferredToHuman && !c.autoClosed).length;
+      // Finalizadas pela IA (sem resolved_by e sem auto-close)
+      return resolvedConvs.filter(c => !c.resolvedByName && !c.autoClosed).length;
     } else if (type === "agent") {
-      // Finalizadas por atendentes
-      return resolvedConvs.filter(c => c.transferredToHuman === true && !c.autoClosed).length;
+      // Finalizadas por atendentes (tem resolved_by)
+      return resolvedConvs.filter(c => c.resolvedByName && !c.autoClosed).length;
     } else if (type === "auto") {
       // Fechadas automaticamente
       return resolvedConvs.filter(c => c.autoClosed === true).length;
@@ -329,7 +329,8 @@ export default function Monitor() {
       if (conv.status === "resolved") {
         if (conv.autoClosed) {
           resolvedBy = "auto";
-        } else if (conv.transferredToHuman) {
+        } else if (conv.resolvedByName) {
+          // Se tem resolved_by, foi finalizada por um atendente
           resolvedBy = "agent";
         } else {
           resolvedBy = "ai";
