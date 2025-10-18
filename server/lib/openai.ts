@@ -971,10 +971,90 @@ Fonte: ${fonte}`;
         });
 
       case "consultar_planos":
-        console.warn("⚠️ [AI Tool] consultar_planos chamada - função não implementada");
-        return JSON.stringify({
-          error: "Consulta de planos deve ser feita através do site ou com atendimento humano. Por favor, solicite transferência para o comercial."
-        });
+        console.log("📋 [AI Tool] consultar_planos chamada - buscando planos ativos");
+        try {
+          const { storage: storagePlans } = await import("../storage");
+          const plans = await storagePlans.getActivePlans();
+          
+          // Formatar planos para resposta humanizada
+          const plansFormatted = plans.map((plan: any) => ({
+            id: plan.id,
+            nome: plan.name,
+            tipo: plan.type,
+            velocidade: plan.speed > 0 ? `${plan.speed} Mbps` : null,
+            preco: `R$ ${(plan.price / 100).toFixed(2).replace('.', ',')}`,
+            descricao: plan.description,
+            beneficios: plan.features
+          }));
+          
+          return JSON.stringify({
+            success: true,
+            quantidade: plans.length,
+            planos: plansFormatted,
+            mensagem: `Encontrei ${plans.length} planos disponíveis.`
+          });
+        } catch (error) {
+          console.error("❌ [AI Tool] Erro ao consultar planos:", error);
+          return JSON.stringify({
+            error: "Erro ao buscar planos disponíveis. Tente novamente."
+          });
+        }
+
+      case "enviar_cadastro_venda":
+        console.log("💰 [AI Tool] enviar_cadastro_venda chamada - processando lead");
+        try {
+          // Validar dados obrigatórios
+          const requiredFields = ['tipo_pessoa', 'nome_cliente', 'telefone_cliente', 'plano_id'];
+          const missingFields = requiredFields.filter(field => !args[field]);
+          
+          if (missingFields.length > 0) {
+            console.error("❌ [Sales] Campos obrigatórios faltando:", missingFields);
+            return JSON.stringify({
+              error: `Dados incompletos. Faltam: ${missingFields.join(', ')}`,
+              campos_faltantes: missingFields
+            });
+          }
+
+          // Preparar dados do cadastro
+          const saleData = {
+            type: args.tipo_pessoa, // "PF" ou "PJ"
+            customerName: args.nome_cliente,
+            cpfCnpj: args.cpf_cnpj || args.cpf_cliente || args.cnpj,
+            email: args.email_cliente || args.email,
+            phone: args.telefone_cliente || args.telefone,
+            phone2: args.telefone_secundario || args.telefone2,
+            motherName: args.nome_mae,
+            birthDate: args.data_nascimento,
+            rg: args.rg,
+            sex: args.sexo,
+            address: args.endereco ? JSON.stringify(args.endereco) : null,
+            planId: args.plano_id,
+            billingDay: args.dia_vencimento ? parseInt(args.dia_vencimento) : null,
+            paymentMethod: args.forma_pagamento,
+            observations: args.observacoes,
+            source: "chat",
+            status: "Aguardando Análise",
+            conversationId
+          };
+
+          // Salvar no banco via storage
+          const { storage: storageSales } = await import("../storage");
+          const sale = await storageSales.addSale(saleData);
+
+          console.log(`✅ [Sales] Cadastro registrado com sucesso - ID: ${sale.id}`);
+
+          return JSON.stringify({
+            success: true,
+            lead_id: sale.id,
+            protocolo: sale.id,
+            mensagem: `Cadastro registrado com sucesso! Protocolo: ${sale.id}. Nossa equipe entrará em contato em breve no telefone ${saleData.phone} para confirmar os dados e agendar a instalação.`
+          });
+        } catch (error) {
+          console.error("❌ [Sales] Erro ao processar cadastro de venda:", error);
+          return JSON.stringify({
+            error: error instanceof Error ? error.message : "Erro ao processar cadastro. Tente novamente ou solicite transferência para atendimento humano."
+          });
+        }
 
       case "consultar_boleto_cliente":
         console.log(`🚨 [DEBUG] ENTRANDO NO CASE consultar_boleto_cliente - conversationId: ${conversationId || 'UNDEFINED'}`);

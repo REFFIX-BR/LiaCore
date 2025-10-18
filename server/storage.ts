@@ -281,6 +281,10 @@ export interface IStorage {
   // Private Notes
   createPrivateNote(note: InsertPrivateNote): Promise<PrivateNote>;
   getPrivateNotesByConversationId(conversationId: string): Promise<PrivateNote[]>;
+
+  // Plans & Sales
+  getActivePlans(): Promise<any[]>; // Returns all active plans
+  addSale(sale: any): Promise<any>; // Creates a new sale/lead
 }
 
 export class MemStorage implements IStorage {
@@ -1362,6 +1366,17 @@ export class MemStorage implements IStorage {
 
   async deleteGroup(id: string): Promise<void> {
     this.groups.delete(id);
+  }
+
+  // Plans & Sales
+  async getActivePlans(): Promise<any[]> {
+    // MemStorage stub - return empty array
+    return [];
+  }
+
+  async addSale(sale: any): Promise<any> {
+    // MemStorage stub - just return the sale with an ID
+    return { ...sale, id: randomUUID(), createdAt: new Date(), updatedAt: new Date() };
   }
 }
 
@@ -2976,6 +2991,19 @@ export class DbStorage implements IStorage {
       .from(schema.privateNotes)
       .where(eq(schema.privateNotes.conversationId, conversationId))
       .orderBy(desc(schema.privateNotes.createdAt));
+  }
+
+  // Plans & Sales
+  async getActivePlans(): Promise<any[]> {
+    return await db.select()
+      .from(schema.plans)
+      .where(eq(schema.plans.isActive, true))
+      .orderBy(schema.plans.id);
+  }
+
+  async addSale(sale: any): Promise<any> {
+    const [created] = await db.insert(schema.sales).values(sale).returning();
+    return created;
   }
 }
 

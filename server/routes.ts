@@ -776,6 +776,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // SALES & PLANS ROUTES
+  // ============================================================================
+
+  // Get all active plans
+  app.get("/api/plans", async (_req, res) => {
+    try {
+      const plans = await storage.getActivePlans();
+      res.json({ plans });
+    } catch (error) {
+      console.error("❌ [Plans] Error getting plans:", error);
+      res.status(500).json({ error: "Erro ao buscar planos" });
+    }
+  });
+
+  // Submit site lead (from commercial assistant chat)
+  app.post("/api/site-lead", async (req, res) => {
+    try {
+      const { insertSaleSchema } = await import("@shared/schema");
+      
+      // Validate request body
+      const saleData = insertSaleSchema.parse({
+        ...req.body,
+        source: "chat", // Always mark as chat source
+        status: "Aguardando Análise", // Default status
+      });
+
+      // Create sale record
+      const sale = await storage.addSale(saleData);
+
+      console.log(`✅ [Sales] Novo lead cadastrado via chat - ID: ${sale.id}, Cliente: ${sale.customerName}`);
+
+      res.json({
+        success: true,
+        message: "Cadastro recebido com sucesso! Nossa equipe entrará em contato em breve.",
+        leadId: sale.id,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.error("❌ [Sales] Validation error:", error.errors);
+        return res.status(400).json({
+          error: "Dados inválidos",
+          details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(", "),
+        });
+      }
+
+      console.error("❌ [Sales] Error creating lead:", error);
+      res.status(500).json({ error: "Erro ao processar cadastro" });
+    }
+  });
+
+  // ============================================================================
   // CHAT ROUTES
   // ============================================================================
   
