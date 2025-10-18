@@ -353,6 +353,7 @@ export default function Monitor() {
         verifiedAt: (conv as any).verifiedAt ? new Date((conv as any).verifiedAt) : null,
         verifiedBy: (conv as any).verifiedBy || null,
         resolvedBy,
+        resolvedByName: conv.resolvedByName || null,
       };
     });
 

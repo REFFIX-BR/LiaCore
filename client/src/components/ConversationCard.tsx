@@ -34,6 +34,7 @@ interface ConversationCardData {
   verifiedAt?: Date | null;
   verifiedBy?: string | null;
   resolvedBy?: "ai" | "agent" | "auto" | null;
+  resolvedByName?: string | null;
 }
 
 interface ConversationCardProps {
@@ -146,7 +147,7 @@ export function ConversationCard({ conversation, isActive, onClick }: Conversati
             )}
             {conversation.resolvedBy === "agent" && (
               <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300" data-testid="badge-resolved-agent">
-                👤 Finalizada por Atendente
+                👤 {conversation.resolvedByName ? `Finalizada por ${conversation.resolvedByName}` : "Finalizada por Atendente"}
               </Badge>
             )}
             {conversation.resolvedBy === "auto" && (
