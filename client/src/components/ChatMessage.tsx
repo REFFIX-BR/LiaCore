@@ -215,22 +215,31 @@ export function ChatMessage({ message, canEdit = false, onDelete }: ChatMessageP
           }`}
         >
 
-          {/* Botão de download da imagem do WhatsApp */}
-          {hasWhatsAppImage && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={downloadImage}
-              className={`mb-2 flex items-center gap-2 ${
-                isUser 
-                  ? 'hover:bg-background/50' 
-                  : 'hover:bg-primary-foreground/20 text-primary-foreground'
-              }`}
-              data-testid="button-download-image"
-            >
-              <Download className="h-4 w-4" />
-              <span>Baixar Imagem</span>
-            </Button>
+          {/* Imagem do WhatsApp - exibir imagem real */}
+          {hasWhatsAppImage && message.imageBase64 && (
+            <div className="mb-2">
+              <img 
+                src={message.imageBase64.startsWith('data:') ? message.imageBase64 : `data:image/jpeg;base64,${message.imageBase64}`}
+                alt="Imagem enviada pelo WhatsApp"
+                className="max-w-full rounded-md border"
+                style={{ maxHeight: '400px', objectFit: 'contain' }}
+                data-testid="whatsapp-image"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={downloadImage}
+                className={`mt-2 flex items-center gap-2 ${
+                  isUser 
+                    ? 'hover:bg-background/50' 
+                    : 'hover:bg-primary-foreground/20 text-primary-foreground'
+                }`}
+                data-testid="button-download-image"
+              >
+                <Download className="h-4 w-4" />
+                <span>Baixar Imagem</span>
+              </Button>
+            </div>
           )}
 
           {/* Badge de imagem/áudio/PDF */}
