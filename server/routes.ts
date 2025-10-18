@@ -2181,6 +2181,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const { addToBatch } = await import("./lib/message-batching");
           const { addMessageToQueue } = await import("./lib/queue");
           
+          // IMPORTANTE: Usar evolutionInstance da CONVERSA (não do webhook)
+          // Se a conversa já existe, sempre usar a instância original
+          const finalEvolutionInstance = conversation.evolutionInstance || instance;
+          
+          // Log se a instância do webhook for diferente da conversa
+          if (conversation.evolutionInstance && instance !== conversation.evolutionInstance) {
+            console.log(`⚠️ [Webhook] Cliente ${clientName} enviou mensagem via instância "${instance}", mas conversa original é "${conversation.evolutionInstance}" - usando instância original`);
+          }
+          
           // Prepara dados da mensagem
           const messageData = {
             chatId,
@@ -2189,7 +2198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             fromNumber: phoneNumber,
             messageId,
             timestamp: messageTimestamp || Date.now(),
-            evolutionInstance: instance,
+            evolutionInstance: finalEvolutionInstance,
             clientName,
             hasImage: !!imageBase64,
             imageUrl: imageMediaUrl,
@@ -2215,7 +2224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               fromNumber: phoneNumber,
               messageId,
               timestamp: messageTimestamp || Date.now(),
-              evolutionInstance: instance,
+              evolutionInstance: finalEvolutionInstance,
               clientName,
               hasImage: !!imageBase64,
               imageUrl: imageMediaUrl,
