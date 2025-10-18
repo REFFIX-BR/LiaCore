@@ -3470,12 +3470,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const conversation = await storage.getConversation(conversationId);
 
+      // Map department to assistant type (same logic as AI routing)
+      const departmentMap: Record<string, string> = {
+        "Suporte Técnico": "suporte",
+        "Suporte": "suporte",
+        "Técnico": "suporte",
+        "Comercial": "comercial",
+        "Vendas": "comercial",
+        "Financeiro": "financeiro",
+        "Finanças": "financeiro",
+        "Pagamento": "financeiro",
+        "Ouvidoria": "ouvidoria",
+        "SAC": "ouvidoria",
+        "Cancelamento": "cancelamento",
+        "Cancelar": "cancelamento",
+        "Apresentação": "apresentacao",
+        "Recepção": "apresentacao",
+      };
+
+      // Find matching assistant type from department name
+      let newAssistantType = conversation?.assistantType; // Keep current if no match
+      for (const [dept, type] of Object.entries(departmentMap)) {
+        if (department.toLowerCase().includes(dept.toLowerCase())) {
+          newAssistantType = type;
+          console.log(`🔄 [Manual Transfer] Updating assistant_type from '${conversation?.assistantType}' to '${type}' for department '${department}'`);
+          break;
+        }
+      }
+
       // Keep status as "active" but mark as transferred (for Conversas tab)
       await storage.updateConversation(conversationId, {
         status: "active",
         transferredToHuman: true,
         transferReason: `Transferência manual: ${notes}`,
         transferredAt: new Date(),
+        assistantType: newAssistantType, // Update assistant type to match department
         metadata: {
           ...(typeof conversation?.metadata === 'object' && conversation?.metadata !== null ? conversation.metadata : {}),
           transferred: true,
