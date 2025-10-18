@@ -26,7 +26,7 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 - **Vision System**: GPT-4o Vision for automatic WhatsApp image analysis.
 - **PDF Text Extraction System**: Extracts text from PDF documents for AI analysis.
 - **Audio Processing System**: Transcribes WhatsApp audio messages via OpenAI Whisper API.
-- **Video Processing System**: Displays WhatsApp video messages in chat interface with HTML5 player, caption support, and metadata storage (videoUrl, videoName, videoMimetype).
+- **Video Processing System**: Displays WhatsApp video messages in chat interface with HTML5 player, caption support, and metadata storage (videoUrl, videoName, videoMimetype). Video fields are explicitly selected in `getMessagesPaginated` query to ensure proper serialization in API responses. Videos stored as URLs (like audio), not base64 (like images/PDFs).
 - **Conversation Intelligence System**: Provides real-time analysis of sentiment, urgency, and technical problems, with automatic persistence of CPF/CNPJ.
 
 **Real-Time Monitoring**: The Supervisor Dashboard offers KPIs, live conversation queues, alerts, transcripts, human intervention controls, and a Live Logs System. The "Finalizadas" (Resolved) tab features sub-filters to distinguish between conversations resolved by AI, by human agents, or auto-closed due to inactivity, with visual badges on conversation cards.

@@ -3474,23 +3474,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const alerts = await storage.getAlertsByConversationId(conversation.id);
       const actions = await storage.getActionsByConversationId(conversation.id);
 
-      // DEBUG: Log completo para verificar estrutura das mensagens
-      if (messages.length > 0) {
-        console.log(`🔍 [DEBUG] Primeira mensagem retornada - campos disponíveis:`, Object.keys(messages[0]));
-        const videoMessages = messages.filter(m => m.videoUrl);
-        console.log(`🎥 [DEBUG] Total mensagens: ${messages.length}, Com vídeo: ${videoMessages.length}`);
-        if (videoMessages.length > 0) {
-          console.log(`🎥 [DEBUG] Mensagens com vídeo:`, 
-            videoMessages.map(m => ({
-              id: m.id,
-              videoUrl: m.videoUrl,
-              videoName: m.videoName,
-              videoMimetype: m.videoMimetype
-            }))
-          );
-        }
-      }
-
       // Desabilitar cache HTTP para garantir dados sempre atualizados
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       res.setHeader('Pragma', 'no-cache');
