@@ -194,9 +194,51 @@ export async function consultaBoletoCliente(
       { operationName: "consulta de boletos" }
     );
     
-    console.log(`📋 [AI Tool] ${boletos?.length || 0} boleto(s) encontrado(s)`);
+    console.log(`📋 [AI Tool] ${boletos?.length || 0} boleto(s) retornado(s) pela API`);
+    
+    // Log detalhado de cada boleto para análise
+    if (boletos && boletos.length > 0) {
+      boletos.forEach((boleto, index) => {
+        console.log(`📋 [AI Tool] Boleto ${index + 1}:`, {
+          vencimento: boleto.DATA_VENCIMENTO,
+          valor: boleto.VALOR_TOTAL,
+          status: boleto.STATUS,
+          nome: boleto.NOME
+        });
+      });
+    }
+    
+    // FILTRAR: Retornar apenas boletos EM ABERTO ou VENCIDOS (excluir PAGOS)
+    // STATUS possíveis: "PAGO", "EM ABERTO", "VENCIDO", "PENDENTE", etc.
+    const boletosEmAberto = boletos.filter(boleto => {
+      // Normalizar STATUS: trim, uppercase, remover acentos
+      const statusNormalizado = (boleto.STATUS || '')
+        .trim()
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, ''); // Remove acentos
+      
+      // Lista de STATUS que indicam boleto FECHADO/PAGO (não em aberto)
+      const statusFechados = ['PAGO', 'CANCELADO', 'QUITADO', 'LIQUIDADO', 'BAIXADO'];
+      
+      // Tratar STATUS vazio como potencialmente problemático - logar
+      if (!statusNormalizado) {
+        console.warn(`⚠️ [AI Tool] Boleto ${boleto.DATA_VENCIMENTO} com STATUS vazio/undefined - INCLUINDO como ABERTO por segurança`);
+        return true; // Incluir para não esconder débitos reais
+      }
+      
+      const isAberto = !statusFechados.includes(statusNormalizado);
+      
+      if (!isAberto) {
+        console.log(`📋 [AI Tool] Boleto ${boleto.DATA_VENCIMENTO} IGNORADO (STATUS original: "${boleto.STATUS}", normalizado: "${statusNormalizado}")`);
+      }
+      
+      return isAberto;
+    });
+    
+    console.log(`📋 [AI Tool] ${boletosEmAberto.length} boleto(s) EM ABERTO (filtrados de ${boletos.length} totais)`);
 
-    return boletos;
+    return boletosEmAberto;
   } catch (error) {
     console.error("❌ [AI Tool] Erro ao consultar boletos:", error);
     throw error;

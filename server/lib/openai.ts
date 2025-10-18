@@ -1019,12 +1019,14 @@ Fonte: ${fonte}`;
             storage
           );
           
-          console.log(`✅ [AI Tool Handler] Boletos consultados com sucesso: ${boletos?.length || 0} boleto(s)`);
+          console.log(`✅ [AI Tool Handler] Boletos consultados com sucesso: ${boletos?.length || 0} boleto(s) EM ABERTO`);
           
-          // Formatar resposta com link incluído
+          // Formatar resposta com mensagem clara para a IA
           if (!boletos || boletos.length === 0) {
             return JSON.stringify({
-              mensagem: "Não encontrei boletos em aberto ou vencidos para este CPF/CNPJ."
+              status: "EM_DIA",
+              mensagem: "Cliente está EM DIA - sem boletos pendentes, vencidos ou em aberto.",
+              boletos: []
             });
           }
           
@@ -1038,7 +1040,12 @@ Fonte: ${fonte}`;
             status: boleto.STATUS
           }));
           
-          return JSON.stringify(boletosFormatados);
+          return JSON.stringify({
+            status: "COM_DEBITOS",
+            mensagem: `ATENÇÃO: Cliente possui ${boletos.length} boleto(s) EM ABERTO ou VENCIDOS.`,
+            quantidade_boletos: boletos.length,
+            boletos: boletosFormatados
+          });
         } catch (error) {
           console.error("❌ [AI Tool Handler] Erro ao consultar boletos:", error);
           if (error instanceof Error) {
