@@ -58,9 +58,7 @@ export default function Contacts() {
     phoneNumber: "",
     name: "",
     document: "",
-    message: "",
     assignedTo: "",
-    evolutionInstance: "Principal",
   });
   const { toast } = useToast();
 
@@ -108,22 +106,24 @@ export default function Contacts() {
     mutationFn: async (data: typeof newContactData) => {
       return await apiRequest("/api/contacts/create", "POST", data);
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      const isAssigned = newContactData.assignedTo && newContactData.assignedTo !== 'none';
       toast({
         title: "Contato criado",
-        description: "Contato criado com sucesso e conversa iniciada",
+        description: isAssigned 
+          ? "Conversa criada e atribuída. Você pode enviar mensagens agora."
+          : "Conversa movida para 'Transferidas'. Você pode enviar mensagens agora.",
       });
       setIsCreateDialogOpen(false);
       setNewContactData({
         phoneNumber: "",
         name: "",
         document: "",
-        message: "",
         assignedTo: "",
-        evolutionInstance: "Principal",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations/transferred"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations/assigned"] });
     },
     onError: (error: any) => {
       toast({
@@ -430,51 +430,16 @@ export default function Contacts() {
             </div>
 
             <div>
-              <Label htmlFor="message">Mensagem Inicial</Label>
-              <Textarea
-                id="message"
-                value={newContactData.message}
-                onChange={(e) => setNewContactData({ ...newContactData, message: e.target.value })}
-                placeholder="Olá! Entramos em contato para iniciar seu atendimento."
-                rows={3}
-                data-testid="input-initial-message"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Mensagem que será enviada via WhatsApp
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="evolutionInstance">Instância WhatsApp</Label>
-              <Select
-                value={newContactData.evolutionInstance}
-                onValueChange={(value) => setNewContactData({ ...newContactData, evolutionInstance: value })}
-              >
-                <SelectTrigger data-testid="select-evolution-instance">
-                  <SelectValue placeholder="Selecione a instância" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Principal">Principal</SelectItem>
-                  <SelectItem value="Cobranca">Cobrança</SelectItem>
-                  <SelectItem value="Leads">Leads</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Instância do Evolution API para enviar a mensagem
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="assignedTo">Atribuir a Atendente</Label>
+              <Label htmlFor="assignedTo">Atribuir a Atendente (Opcional)</Label>
               <Select
                 value={newContactData.assignedTo}
                 onValueChange={(value) => setNewContactData({ ...newContactData, assignedTo: value })}
               >
                 <SelectTrigger data-testid="select-assigned-agent">
-                  <SelectValue placeholder="Selecione um atendente (opcional)" />
+                  <SelectValue placeholder="Não atribuir - vai para 'Transferidas'" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Não atribuir (IA responderá)</SelectItem>
+                  <SelectItem value="none">Não atribuir - vai para "Transferidas"</SelectItem>
                   {availableAgents?.users?.map((agent: User) => (
                     <SelectItem key={agent.id} value={agent.id}>
                       {agent.fullName} ({agent.role})
@@ -483,8 +448,26 @@ export default function Contacts() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
-                Se não atribuir, a IA responderá automaticamente
+                Se não atribuir, ficará disponível na aba "Transferidas" para qualquer atendente
               </p>
+            </div>
+
+            <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 p-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5">
+                  <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                    Nenhuma mensagem será enviada automaticamente
+                  </h4>
+                  <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                    A conversa será criada e você poderá escrever e enviar sua mensagem manualmente quando quiser.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -501,7 +484,7 @@ export default function Contacts() {
               disabled={createMutation.isPending}
               data-testid="button-confirm-create"
             >
-              {createMutation.isPending ? "Criando..." : "Criar e Enviar"}
+              {createMutation.isPending ? "Criando..." : "Criar Contato"}
             </Button>
           </DialogFooter>
         </DialogContent>

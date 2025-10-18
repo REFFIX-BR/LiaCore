@@ -6656,40 +6656,21 @@ A resposta deve:
         hasRecurringIssues: false,
       });
 
-      // Send initial message via Evolution API using shared helper
-      const chatId = `whatsapp_${cleanPhoneNumber}`;
-      const messageToSend = message || "Olá! Entramos em contato para iniciar seu atendimento.";
-      const instanceToUse = evolutionInstance || "Principal";
-      console.log(`📤 [Contacts] Sending message via instance: ${instanceToUse}`);
-      const sendResult = await sendWhatsAppMessage(cleanPhoneNumber, messageToSend, instanceToUse);
+      console.log(`✅ [Contacts] Created new contact ${cleanPhoneNumber}`);
 
-      if (!sendResult.success) {
-        // Rollback: delete the contact if message failed
-        try {
-          await storage.deleteContact(contact.id);
-        } catch (deleteError) {
-          console.error("❌ [Contacts] Failed to rollback contact creation:", deleteError);
-        }
-        
-        console.error("❌ [Contacts] Failed to send WhatsApp message - aborting contact creation");
-        return res.status(502).json({ 
-          error: "Failed to send WhatsApp message. Please check Evolution API configuration." 
-        });
-      }
-
-      console.log(`✅ [Contacts] Initial message sent to ${cleanPhoneNumber}`);
-
-      // Create conversation
+      // Create conversation (not assigned - goes to "Transferidas" for manual follow-up)
+      const chatId = `${cleanPhoneNumber}@s.whatsapp.net`;
       const conversation = await storage.createConversation({
         chatId,
         clientName: name || cleanPhoneNumber,
         clientId: cleanPhoneNumber,
         clientDocument: document || undefined,
-        assistantType: 'apresentacao', // Start with receptionist
-        status: assignedTo ? 'transferred' : 'active',
-        assignedTo: assignedTo || undefined,
-        transferredToHuman: !!assignedTo,
-        transferredAt: assignedTo ? new Date() : undefined,
+        assistantType: 'cortex',
+        status: 'active',
+        transferredToHuman: true,
+        transferReason: 'Novo contato criado via painel - aguardando mensagem manual do atendente',
+        transferredAt: new Date(),
+        assignedTo: assignedTo === 'none' || !assignedTo ? null : assignedTo, // null = "Transferidas", specific ID = "Atribuídas"
         metadata: { 
           createdFromContact: true, 
           createdBy: req.user?.userId,
@@ -6698,6 +6679,8 @@ A resposta deve:
         },
       });
 
+      console.log(`✅ [Contacts] Created conversation and moved to ${assignedTo && assignedTo !== 'none' ? 'Atribuídas' : 'Transferidas'}: ${conversation.id}`);
+
       // Update contact with conversation info
       await storage.updateContact(contact.id, {
         lastConversationId: conversation.id,
@@ -6705,15 +6688,17 @@ A resposta deve:
         totalConversations: 1,
       });
 
-      console.log(`✅ [Contacts] Created new contact ${cleanPhoneNumber} with conversation ${conversation.id}`);
-      
-      if (assignedTo) {
+      if (assignedTo && assignedTo !== 'none') {
         console.log(`✅ [Contacts] Conversation assigned to agent ${assignedTo}`);
+      } else {
+        console.log(`✅ [Contacts] Conversation moved to Transferidas - Agent can send message manually`);
       }
 
       return res.json({ 
         success: true, 
-        message: "Contact and conversation created successfully",
+        message: assignedTo && assignedTo !== 'none' 
+          ? "Contato criado e atribuído. Você pode enviar mensagens agora."
+          : "Contato criado e movido para 'Transferidas'. Você pode enviar mensagens agora.",
         contact,
         conversation,
       });
