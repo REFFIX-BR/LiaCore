@@ -7433,7 +7433,8 @@ A resposta deve:
         id: req.body.id,
         name: req.body.name,
         type: req.body.type,
-        speed: parseInt(req.body.speed) || 0,
+        downloadSpeed: parseInt(req.body.downloadSpeed) || 0,
+        uploadSpeed: parseInt(req.body.uploadSpeed) || 0,
         price: Math.round(parseFloat(req.body.price) * 100), // Converter reais para centavos
         description: req.body.description,
         features: req.body.features || [],
@@ -7476,7 +7477,8 @@ A resposta deve:
       const updates = updatePlanSchema.parse({
         name: req.body.name,
         type: req.body.type,
-        speed: req.body.speed !== undefined ? parseInt(req.body.speed) : undefined,
+        downloadSpeed: req.body.downloadSpeed !== undefined ? parseInt(req.body.downloadSpeed) : undefined,
+        uploadSpeed: req.body.uploadSpeed !== undefined ? parseInt(req.body.uploadSpeed) : undefined,
         price: req.body.price !== undefined ? Math.round(parseFloat(req.body.price) * 100) : undefined,
         description: req.body.description,
         features: req.body.features,
