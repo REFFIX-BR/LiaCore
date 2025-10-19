@@ -95,14 +95,15 @@ export const monitorAPI = {
     return apiRequest(`/api/supervisor/resolve`, "POST", { conversationId, supervisorId: "supervisor" });
   },
 
-  sendChatMessage: async (chatId: string, clientName: string, message: string, imageBase64?: string, audioBase64?: string, audioMimeType?: string) => {
+  sendChatMessage: async (chatId: string, clientName: string, message: string, imageBase64?: string, audioBase64?: string, audioMimeType?: string, forceAssistant?: string) => {
     const response = await apiRequest(`/api/chat/message`, "POST", { 
       chatId, 
       clientName, 
       message,
       imageBase64,
       audioBase64,
-      audioMimeType
+      audioMimeType,
+      forceAssistant
     });
     return response.json();
   },

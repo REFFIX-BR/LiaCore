@@ -833,10 +833,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chat endpoint - Main entry point for TR Chat messages
   app.post("/api/chat/message", async (req, res) => {
     try {
-      const { chatId, clientName, clientId, message, imageBase64, audioBase64, audioMimeType } = req.body;
+      const { chatId, clientName, clientId, message, imageBase64, audioBase64, audioMimeType, forceAssistant } = req.body;
 
       if (!chatId || (!message && !imageBase64 && !audioBase64)) {
         return res.status(400).json({ error: "chatId and (message, imageBase64, or audioBase64) are required" });
+      }
+      
+      // Validate forceAssistant if provided
+      const validAssistants = ["apresentacao", "comercial", "suporte", "financeiro", "cancelamento", "ouvidoria"];
+      if (forceAssistant && !validAssistants.includes(forceAssistant)) {
+        return res.status(400).json({ error: `forceAssistant must be one of: ${validAssistants.join(', ')}` });
       }
 
       // Process image if provided
@@ -895,20 +901,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let threadId = await getConversationThread(chatId);
 
       if (!conversation) {
-        // New conversation - SEMPRE inicia com a Recepcionista (Apresentação)
-        console.log(`🎭 [New Conversation] Iniciando com Recepcionista para ${clientName}`);
+        // New conversation - inicia com assistente forçado ou Recepcionista (padrão)
+        const initialAssistant = forceAssistant || "apresentacao";
+        console.log(`🎭 [New Conversation] Iniciando com ${initialAssistant} para ${clientName}${forceAssistant ? ' (FORÇADO)' : ''}`);
         
         // Create thread
         threadId = await createThread();
         await storeConversationThread(chatId, threadId);
 
-        // Create conversation record with Recepcionista
+        // Get assistant ID for the chosen assistant
+        const ASSISTANT_IDS = (await import("./lib/openai")).ASSISTANT_IDS;
+        const chosenAssistantId = ASSISTANT_IDS[initialAssistant as keyof typeof ASSISTANT_IDS];
+
+        // Create conversation record with chosen assistant
         conversation = await storage.createConversation({
           chatId,
           clientName: clientName || "Cliente",
           clientId,
           threadId,
-          assistantType: "apresentacao",  // SEMPRE inicia com recepcionista
+          assistantType: initialAssistant,  // Usa assistente forçado ou recepcionista
           status: "active",
           sentiment: "neutral",
           urgency: "normal",
@@ -916,9 +927,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastMessage: message,
           metadata: { 
             routing: {
-              assistantType: "apresentacao",
-              assistantId: (await import("./lib/openai")).ASSISTANT_IDS.apresentacao,
-              confidence: 1.0
+              assistantType: initialAssistant,
+              assistantId: chosenAssistantId,
+              confidence: forceAssistant ? 1.0 : 1.0
             }
           },
         });

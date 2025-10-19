@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { User, Bot, Image as ImageIcon, Mic, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -20,6 +21,7 @@ interface ChatMessage {
 export default function TestChat() {
   const [chatId, setChatId] = useState(`chat-${Date.now()}`);
   const [clientName, setClientName] = useState("João Silva");
+  const [selectedAssistant, setSelectedAssistant] = useState<string>("apresentacao");
   const [message, setMessage] = useState("");
   const [conversation, setConversation] = useState<ChatMessage[]>([]);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -36,7 +38,8 @@ export default function TestChat() {
       message,
       imageBase64 || undefined,
       audioBase64 || undefined,
-      audioMimeType || undefined
+      audioMimeType || undefined,
+      selectedAssistant
     ),
     onSuccess: (response: any) => {
       // Extract response text (handle both string and nested object)
@@ -96,6 +99,7 @@ export default function TestChat() {
     setAudioPreview(null);
     setAudioBase64(null);
     setAudioMimeType(null);
+    setSelectedAssistant("apresentacao");
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -362,6 +366,27 @@ export default function TestChat() {
               <CardTitle>Configuração</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Agente LIA</Label>
+                <Select value={selectedAssistant} onValueChange={setSelectedAssistant}>
+                  <SelectTrigger data-testid="select-assistant">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="apresentacao">🎭 Recepcionista (Auto-roteamento)</SelectItem>
+                    <SelectItem value="comercial">💼 Comercial (Vendas)</SelectItem>
+                    <SelectItem value="suporte">🔧 Suporte Técnico</SelectItem>
+                    <SelectItem value="financeiro">💰 Financeiro</SelectItem>
+                    <SelectItem value="cancelamento">❌ Cancelamento</SelectItem>
+                    <SelectItem value="ouvidoria">📢 Ouvidoria</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {selectedAssistant === "apresentacao" 
+                    ? "A recepcionista irá rotear automaticamente para o agente correto"
+                    : "Falar diretamente com este agente (sem roteamento)"}
+                </p>
+              </div>
               <div className="space-y-2">
                 <Label>Chat ID</Label>
                 <Input
