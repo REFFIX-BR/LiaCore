@@ -33,6 +33,7 @@ import Contacts from "@/pages/Contacts";
 import Groups from "@/pages/Groups";
 import LiveLogs from "@/pages/LiveLogs";
 import AgentLogs from "@/pages/AgentLogs";
+import Vendas from "@/pages/vendas";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -150,6 +151,9 @@ function Router() {
       </Route>
       <Route path="/ouvidoria">
         {() => <AdminSupervisorRoute component={Ouvidoria} />}
+      </Route>
+      <Route path="/vendas">
+        {() => <AdminSupervisorRoute component={Vendas} />}
       </Route>
       <Route path="/contacts">
         {() => <ProtectedRoute component={Contacts} />}

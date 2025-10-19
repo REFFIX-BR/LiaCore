@@ -37,7 +37,9 @@ import {
   UserPlus,
   History,
   AlertTriangle,
-  Contact
+  Contact,
+  ShoppingBag,
+  ShoppingCart
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
@@ -198,6 +200,19 @@ const menuCategories: MenuCategory[] = [
         title: "Ouvidoria",
         url: "/ouvidoria",
         icon: AlertTriangle,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+    ],
+  },
+  {
+    title: "Vendas",
+    icon: ShoppingBag,
+    roles: ["ADMIN", "SUPERVISOR"],
+    items: [
+      {
+        title: "Gestão de Vendas",
+        url: "/vendas",
+        icon: ShoppingCart,
         roles: ["ADMIN", "SUPERVISOR"],
       },
     ],

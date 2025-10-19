@@ -284,7 +284,9 @@ export interface IStorage {
 
   // Plans & Sales
   getActivePlans(): Promise<any[]>; // Returns all active plans
+  getAllSales(): Promise<any[]>; // Returns all sales/leads
   addSale(sale: any): Promise<any>; // Creates a new sale/lead
+  updateSaleStatus(id: string, status: string, observations?: string): Promise<any>; // Updates sale status
 }
 
 export class MemStorage implements IStorage {
@@ -1374,9 +1376,19 @@ export class MemStorage implements IStorage {
     return [];
   }
 
+  async getAllSales(): Promise<any[]> {
+    // MemStorage stub - return empty array
+    return [];
+  }
+
   async addSale(sale: any): Promise<any> {
     // MemStorage stub - just return the sale with an ID
     return { ...sale, id: randomUUID(), createdAt: new Date(), updatedAt: new Date() };
+  }
+
+  async updateSaleStatus(id: string, status: string, observations?: string): Promise<any> {
+    // MemStorage stub - just return the sale
+    return { id, status, observations };
   }
 }
 
@@ -3004,6 +3016,30 @@ export class DbStorage implements IStorage {
   async addSale(sale: any): Promise<any> {
     const [created] = await db.insert(schema.sales).values(sale).returning();
     return created;
+  }
+
+  async getAllSales(): Promise<any[]> {
+    return await db.select()
+      .from(schema.sales)
+      .orderBy(desc(schema.sales.createdAt));
+  }
+
+  async updateSaleStatus(id: string, status: string, observations?: string): Promise<any> {
+    const updates: any = {
+      status,
+      updatedAt: new Date(),
+    };
+    
+    if (observations !== undefined) {
+      updates.observations = observations;
+    }
+    
+    const [updated] = await db.update(schema.sales)
+      .set(updates)
+      .where(eq(schema.sales.id, id))
+      .returning();
+    
+    return updated;
   }
 }
 

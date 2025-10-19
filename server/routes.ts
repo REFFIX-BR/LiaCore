@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema, insertSatisfactionFeedbackSchema, loginSchema, insertUserSchema, updateUserSchema, insertComplaintSchema, updateComplaintSchema, type Conversation } from "@shared/schema";
+import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema, insertSatisfactionFeedbackSchema, loginSchema, insertUserSchema, updateUserSchema, insertComplaintSchema, updateComplaintSchema, insertSaleSchema, type Conversation } from "@shared/schema";
 import { routeMessage, createThread, sendMessageAndGetResponse, summarizeConversation, routeMessageWithContext, CONTEXT_CONFIG } from "./lib/openai";
 import { z } from "zod";
 import { storeConversationThread, getConversationThread, searchKnowledge } from "./lib/upstash";
@@ -7380,11 +7380,75 @@ A resposta deve:
     }
   });
 
+  // GET /api/sales - Retorna todas as vendas/leads
+  app.get("/api/sales", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const sales = await storage.getAllSales();
+      
+      // Buscar planos para enriquecer dados
+      const plans = await storage.getActivePlans();
+      const plansMap = new Map(plans.map((p: any) => [p.id, p]));
+      
+      // Formatar vendas com dados do plano
+      const salesFormatted = sales.map((sale: any) => {
+        const plan = plansMap.get(sale.planId);
+        return {
+          id: sale.id,
+          customerName: sale.customerName,
+          phone: sale.phone,
+          email: sale.email,
+          cpfCnpj: sale.cpfCnpj,
+          type: sale.type,
+          status: sale.status,
+          source: sale.source,
+          plan: plan ? {
+            id: plan.id,
+            name: plan.name,
+            type: plan.type,
+            price: plan.price / 100
+          } : null,
+          city: sale.city,
+          state: sale.state,
+          observations: sale.observations,
+          conversationId: sale.conversationId,
+          createdAt: sale.createdAt,
+          updatedAt: sale.updatedAt
+        };
+      });
+      
+      return res.json(salesFormatted);
+    } catch (error) {
+      console.error("❌ [Sales] Error fetching sales:", error);
+      return res.status(500).json({ error: "Erro ao buscar vendas" });
+    }
+  });
+
+  // PATCH /api/sales/:id/status - Atualiza status de uma venda
+  app.patch("/api/sales/:id/status", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status, observations } = req.body;
+
+      if (!status) {
+        return res.status(400).json({ error: "Status é obrigatório" });
+      }
+
+      const updated = await storage.updateSaleStatus(id, status, observations);
+
+      console.log(`✅ [Sales] Status atualizado - ID: ${id}, Status: ${status}`);
+
+      return res.json(updated);
+    } catch (error) {
+      console.error("❌ [Sales] Error updating sale status:", error);
+      return res.status(500).json({ error: "Erro ao atualizar status da venda" });
+    }
+  });
+
   // POST /api/site-lead - Recebe cadastro de venda do site ou chat
   app.post("/api/site-lead", async (req, res) => {
     try {
       // Validar dados com Zod
-      const saleData = schema.insertSaleSchema.parse({
+      const saleData = insertSaleSchema.parse({
         type: req.body.type,
         customerName: req.body.customerName,
         cpfCnpj: req.body.cpfCnpj,
