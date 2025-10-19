@@ -1228,9 +1228,9 @@ Fonte: ${fonte}`;
             });
           }
 
-          // Validar campos complementares para Pessoa Física
+          // Validar campos complementares para Pessoa Física (apenas obrigatórios)
           if (args.tipo_pessoa === 'PF') {
-            const pfFields = ['nome_mae', 'data_nascimento', 'rg', 'sexo', 'estado_civil'];
+            const pfFields = ['data_nascimento', 'rg'];
             const missingPfFields = pfFields.filter(field => !args[field]);
             
             if (missingPfFields.length > 0) {
@@ -1242,7 +1242,7 @@ Fonte: ${fonte}`;
             }
           }
 
-          // Validar campos de serviço
+          // Validar dia de vencimento
           if (!args.dia_vencimento) {
             console.error("❌ [Sales] Dia de vencimento não fornecido");
             return JSON.stringify({
