@@ -34,12 +34,33 @@ Registra cadastro de venda após coletar dados pessoais (nome, CPF, email, telef
 
 ---
 
-## 📝 Passo 4: Schema (Parameters)
+## 📝 Passo 4: Colar JSON Completo
 
-**IMPORTANTE:** No campo "Parameters", você tem 2 opções:
+**IMPORTANTE:** O OpenAI Dashboard precisa do JSON com o campo `"name"` incluído.
 
-### Opção A: Interface Visual (Recomendado)
-Se o Dashboard tem uma interface visual para adicionar parâmetros:
+### ✅ Opção Recomendada: Copiar Schema Validado
+
+1. Abra o arquivo **`SCHEMA_OPENAI_VALIDADO.json`**
+2. Copie **TODO** o conteúdo (Ctrl+A, Ctrl+C)
+3. No Dashboard, **delete completamente** a função antiga se existir
+4. Clique em **Add Function** (adicionar nova)
+5. Cole o JSON completo no campo
+6. Clique em **Save**
+
+### 🧪 Opção Teste: Schema Mínimo Primeiro
+
+Se o schema completo não funcionar, teste com o mínimo primeiro:
+
+1. Abra o arquivo **`SCHEMA_MINIMO_TESTE.json`**
+2. Copie TODO o conteúdo
+3. Cole no Dashboard
+4. Se funcionar, depois substitua pelo schema completo
+
+---
+
+## 📝 Passo 4 (Alternativo): Interface Visual
+
+Se preferir adicionar manualmente pela interface:
 
 1. Clique em **Add Parameter**
 2. Para cada campo abaixo, adicione manualmente:
@@ -118,44 +139,20 @@ Possíveis causas e soluções:
 
 ---
 
-## 📋 Schema Mínimo (Teste)
+## 📋 Arquivos Disponíveis
 
-Se nada funcionar, teste primeiro com este schema **super simplificado**:
+Criei 2 arquivos prontos para uso:
 
-```json
-{
-  "type": "object",
-  "properties": {
-    "tipo_pessoa": {
-      "type": "string",
-      "description": "PF ou PJ"
-    },
-    "nome_cliente": {
-      "type": "string",
-      "description": "Nome completo"
-    },
-    "cpf_cnpj": {
-      "type": "string",
-      "description": "CPF ou CNPJ"
-    },
-    "telefone_cliente": {
-      "type": "string",
-      "description": "Telefone"
-    },
-    "email_cliente": {
-      "type": "string",
-      "description": "Email"
-    },
-    "plano_id": {
-      "type": "string",
-      "description": "ID do plano"
-    }
-  },
-  "required": ["tipo_pessoa", "nome_cliente", "telefone_cliente", "plano_id"]
-}
-```
+### 1. `SCHEMA_OPENAI_VALIDADO.json` ✅
+Schema **COMPLETO** com todos os campos (nome_mae, RG, estado_civil, disponibilidade, etc.)
+- Use este se quiser a função completa de uma vez
 
-**Se este schema mínimo funcionar**, vá adicionando campos gradualmente pela interface visual.
+### 2. `SCHEMA_MINIMO_TESTE.json` 🧪
+Schema **SIMPLIFICADO** só com campos básicos
+- Use este primeiro para testar se o Dashboard aceita
+- Se funcionar, depois substitua pelo schema completo
+
+**Ambos os arquivos já incluem o campo `"name"` que é obrigatório!**
 
 ---
 

@@ -1,0 +1,35 @@
+{
+  "name": "enviar_cadastro_venda",
+  "description": "Registra cadastro de venda",
+  "strict": false,
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "tipo_pessoa": {
+        "type": "string",
+        "description": "PF ou PJ"
+      },
+      "nome_cliente": {
+        "type": "string",
+        "description": "Nome completo"
+      },
+      "cpf_cnpj": {
+        "type": "string",
+        "description": "CPF ou CNPJ"
+      },
+      "telefone_cliente": {
+        "type": "string",
+        "description": "Telefone"
+      },
+      "email_cliente": {
+        "type": "string",
+        "description": "Email"
+      },
+      "plano_id": {
+        "type": "string",
+        "description": "ID do plano"
+      }
+    },
+    "required": ["tipo_pessoa", "nome_cliente", "telefone_cliente", "plano_id"]
+  }
+}
