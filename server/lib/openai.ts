@@ -1068,14 +1068,26 @@ Fonte: ${fonte}`;
             birthDate: args.data_nascimento,
             rg: args.rg,
             sex: args.sexo,
-            address: args.endereco ? JSON.stringify(args.endereco) : null,
+            civilStatus: args.estado_civil,
+            // Address - Extract individual fields from endereco object
+            cep: args.endereco?.cep || null,
+            address: args.endereco?.logradouro || null,
+            number: args.endereco?.numero || null,
+            complement: args.endereco?.complemento || null,
+            neighborhood: args.endereco?.bairro || null,
+            city: args.endereco?.cidade || null,
+            state: args.endereco?.estado || null,
+            reference: args.endereco?.referencia || null,
+            // Service
             planId: args.plano_id,
             billingDay: args.dia_vencimento ? parseInt(args.dia_vencimento) : null,
-            paymentMethod: args.forma_pagamento,
-            observations: args.observacoes,
+            preferredInstallDate: args.data_instalacao_preferida,
+            availability: args.disponibilidade,
+            // Lead Management
             source: "chat",
             status: "Aguardando Análise",
-            conversationId
+            conversationId,
+            observations: args.observacoes
           };
 
           // Salvar no banco via storage
