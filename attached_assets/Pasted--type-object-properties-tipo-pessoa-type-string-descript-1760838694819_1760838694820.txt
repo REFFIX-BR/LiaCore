@@ -1,0 +1,78 @@
+{
+  "type": "object",
+  "properties": {
+    "tipo_pessoa": {
+      "type": "string",
+      "description": "Tipo de pessoa: 'PF' (Pessoa Física) ou 'PJ' (Pessoa Jurídica)",
+      "enum": ["PF", "PJ"]
+    },
+    "nome_cliente": {
+      "type": "string",
+      "description": "Nome completo do cliente"
+    },
+    "cpf_cnpj": {
+      "type": "string",
+      "description": "CPF (para PF) ou CNPJ (para PJ) do cliente"
+    },
+    "telefone_cliente": {
+      "type": "string",
+      "description": "Telefone principal do cliente (com DDD)"
+    },
+    "telefone_secundario": {
+      "type": "string",
+      "description": "Telefone secundário do cliente (opcional)"
+    },
+    "email_cliente": {
+      "type": "string",
+      "description": "Email do cliente"
+    },
+    "plano_id": {
+      "type": "string",
+      "description": "ID do plano escolhido (obtido via consultar_planos)"
+    },
+    "nome_mae": {
+      "type": "string",
+      "description": "Nome completo da mãe do cliente"
+    },
+    "data_nascimento": {
+      "type": "string",
+      "description": "Data de nascimento no formato YYYY-MM-DD"
+    },
+    "rg": {
+      "type": "string",
+      "description": "RG do cliente"
+    },
+    "sexo": {
+      "type": "string",
+      "description": "Sexo do cliente",
+      "enum": ["M", "F", "Outro"]
+    },
+    "endereco": {
+      "type": "object",
+      "description": "Endereço completo do cliente",
+      "properties": {
+        "cep": {"type": "string"},
+        "logradouro": {"type": "string"},
+        "numero": {"type": "string"},
+        "complemento": {"type": "string"},
+        "bairro": {"type": "string"},
+        "cidade": {"type": "string"},
+        "estado": {"type": "string"}
+      }
+    },
+    "dia_vencimento": {
+      "type": "string",
+      "description": "Dia de vencimento preferido (1-31)"
+    },
+    "forma_pagamento": {
+      "type": "string",
+      "description": "Forma de pagamento preferida",
+      "enum": ["boleto", "pix", "cartao_credito", "debito_automatico"]
+    },
+    "observacoes": {
+      "type": "string",
+      "description": "Observações adicionais sobre a venda"
+    }
+  },
+  "required": ["tipo_pessoa", "nome_cliente", "telefone_cliente", "plano_id"]
+}
