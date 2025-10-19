@@ -38,6 +38,7 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailwind 
 **Activity Logs & Audit System**: Comprehensive audit trail of user actions (LOGIN/LOGOUT, supervisor operations) with dual-tab interface and real-time KPI dashboard.
 **Conversational Sales System**: Autonomous AI system for lead qualification, plan presentation, data collection, and sales processing via WhatsApp. Includes a Plans database (10 TR Telecom plans), Sales table, dedicated RAG knowledge base (92 semantic chunks), AI tools (`consultar_planos`, `enviar_cadastro_venda`, `buscar_cep`), and specific API endpoints (`/api/plans`, `/api/site-lead`, `/api/sales`).
 **Sales Management Interface**: ADMIN/SUPERVISOR-only dashboard at `/vendas` with KPIs (total, aguardando, aprovados, instalados), status filters, sales table with pagination, detailed view dialogs, and status update functionality with observations. Features real-time updates via TanStack Query mutations and secure endpoints (`authenticate + requireAdminOrSupervisor`).
+**Plans Management System**: Complete CRUD interface for managing TR Telecom service plans within `/vendas` section. ADMIN/SUPERVISOR-only access with dedicated "Planos e Serviços" tab. Features include: create/edit/delete plans, toggle active status, auto-generated UUID primary keys, price conversion (centavos ↔ reais), plan type categorization (internet/combo/mobile), speed configuration, rich text descriptions, and feature lists. Fully integrated with conversational sales system's `consultar_planos` function.
 
 ### System Design Choices
 - **Conversation Prioritization**: Color-coded wait time indicators.
@@ -54,6 +55,7 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailwind 
 - **Monitor Resolved Conversations Sub-Filters**: "Finalizadas" tab with sub-filters for AI, agent, or auto-closed resolutions.
 - **WhatsApp Groups Chat Interface**: Dual-tab system (Chat/Informações) for group messaging with auto-refresh, pagination, and AI toggle.
 - **Sales Management UI**: "/vendas" page with KPI cards, status filters, sales table, detail dialogs, and status update dialogs. ShoppingBag icon in sidebar (ADMIN/SUPERVISOR only).
+- **Plans Management UI**: "/vendas" page with tabs interface (Vendas | Planos e Serviços). Plans tab features create/edit dialogs with comprehensive form fields, price formatting (R$ display), active/inactive badge toggles, and data table with edit/toggle actions. ID field auto-hidden during creation, displayed (disabled) during editing.
 
 ## External Dependencies
 
