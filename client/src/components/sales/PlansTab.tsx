@@ -67,7 +67,7 @@ type Plan = {
 };
 
 const planFormSchema = z.object({
-  id: z.string().min(1, "ID é obrigatório"),
+  id: z.string().optional(), // ID é opcional (gerado automaticamente na criação)
   name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
   type: z.string().min(1, "Tipo é obrigatório"),
   speed: z.string(),
@@ -105,12 +105,20 @@ export default function PlansTab() {
   // Mutation para criar/atualizar plano
   const savePlanMutation = useMutation({
     mutationFn: async (data: z.infer<typeof planFormSchema>) => {
-      const payload = {
-        ...data,
-        speed: parseInt(data.speed) || 0,
+      const payload: any = {
+        name: data.name,
+        type: data.type,
+        speed: parseInt(data.speed || "0") || 0,
         price: parseFloat(data.price),
+        description: data.description,
         features: data.features ? data.features.split("\n").filter(Boolean) : [],
+        isActive: data.isActive,
       };
+
+      // Apenas incluir ID ao editar
+      if (!isCreating && data.id) {
+        payload.id = data.id;
+      }
 
       if (isCreating) {
         return await apiRequest("/api/plans", "POST", payload);
@@ -355,49 +363,52 @@ export default function PlansTab() {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              {/* Mostrar ID apenas ao editar */}
+              {!isCreating && (
                 <FormField
                   control={form.control}
                   name="id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>ID *</FormLabel>
+                      <FormLabel>ID</FormLabel>
                       <FormControl>
                         <Input 
                           {...field} 
-                          placeholder="Ex: 28" 
-                          disabled={!isCreating}
+                          disabled
                           data-testid="input-plano-id"
                         />
                       </FormControl>
+                      <FormDescription>
+                        Identificador único do plano (não pode ser alterado)
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+              )}
 
-                <FormField
-                  control={form.control}
-                  name="type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tipo *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-plano-tipo">
-                            <SelectValue placeholder="Selecione o tipo" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="internet">Internet Pura</SelectItem>
-                          <SelectItem value="combo">Combo (Internet + Móvel + TV)</SelectItem>
-                          <SelectItem value="mobile">Móvel</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-plano-tipo">
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="internet">Internet Pura</SelectItem>
+                        <SelectItem value="combo">Combo (Internet + Móvel + TV)</SelectItem>
+                        <SelectItem value="mobile">Móvel</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}

@@ -566,7 +566,7 @@ export type InsertPrivateNote = z.infer<typeof insertPrivateNoteSchema>;
 
 // Plans Table - Internet/Combo Plans
 export const plans = pgTable("plans", {
-  id: varchar("id").primaryKey(), // IDs fixos: "17", "22", "23" (conforme HAG)
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`), // UUID gerado automaticamente
   name: text("name").notNull(), // Ex: "50 Mega", "650 Mega", "1 Giga"
   type: text("type").notNull(), // "internet" ou "combo"
   speed: integer("speed").notNull(), // Velocidade em Mbps (50, 650, 1000)
