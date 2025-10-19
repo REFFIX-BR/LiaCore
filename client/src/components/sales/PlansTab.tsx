@@ -57,7 +57,8 @@ type Plan = {
   id: string;
   name: string;
   type: string;
-  speed: number;
+  downloadSpeed: number;
+  uploadSpeed: number;
   price: number;
   description: string | null;
   features: string[];
@@ -70,7 +71,8 @@ const planFormSchema = z.object({
   id: z.string().optional(), // ID é opcional (gerado automaticamente na criação)
   name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
   type: z.string().min(1, "Tipo é obrigatório"),
-  speed: z.string(),
+  downloadSpeed: z.string(),
+  uploadSpeed: z.string(),
   price: z.string().min(1, "Preço é obrigatório"),
   description: z.string().optional(),
   features: z.string().optional(),
@@ -89,7 +91,8 @@ export default function PlansTab() {
       id: "",
       name: "",
       type: "internet",
-      speed: "0",
+      downloadSpeed: "0",
+      uploadSpeed: "0",
       price: "",
       description: "",
       features: "",
@@ -108,7 +111,8 @@ export default function PlansTab() {
       const payload: any = {
         name: data.name,
         type: data.type,
-        speed: parseInt(data.speed || "0") || 0,
+        downloadSpeed: parseInt(data.downloadSpeed || "0") || 0,
+        uploadSpeed: parseInt(data.uploadSpeed || "0") || 0,
         price: parseFloat(data.price),
         description: data.description,
         features: data.features ? data.features.split("\n").filter(Boolean) : [],
@@ -175,7 +179,8 @@ export default function PlansTab() {
       id: "",
       name: "",
       type: "internet",
-      speed: "0",
+      downloadSpeed: "0",
+      uploadSpeed: "0",
       price: "",
       description: "",
       features: "",
@@ -191,7 +196,8 @@ export default function PlansTab() {
       id: plan.id,
       name: plan.name,
       type: plan.type,
-      speed: plan.speed.toString(),
+      downloadSpeed: plan.downloadSpeed.toString(),
+      uploadSpeed: plan.uploadSpeed.toString(),
       price: plan.price.toString(),
       description: plan.description || "",
       features: plan.features?.join("\n") || "",
@@ -281,7 +287,7 @@ export default function PlansTab() {
                   <TableHead>ID</TableHead>
                   <TableHead>Nome</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead>Velocidade</TableHead>
+                  <TableHead>Download / Upload</TableHead>
                   <TableHead>Preço</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -305,7 +311,9 @@ export default function PlansTab() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {plan.speed > 0 ? `${plan.speed} Mbps` : "-"}
+                        {plan.downloadSpeed > 0 || plan.uploadSpeed > 0 
+                          ? `${plan.downloadSpeed} / ${plan.uploadSpeed} Mbps` 
+                          : "-"}
                       </TableCell>
                       <TableCell className="font-semibold">
                         R$ {plan.price.toFixed(2).replace(".", ",")}
@@ -428,23 +436,45 @@ export default function PlansTab() {
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
-                  name="speed"
+                  name="downloadSpeed"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Velocidade (Mbps)</FormLabel>
+                      <FormLabel>Download (Mbps)</FormLabel>
                       <FormControl>
                         <Input 
                           {...field} 
                           type="number" 
                           placeholder="Ex: 1000"
-                          data-testid="input-plano-velocidade"
+                          data-testid="input-plano-download"
                         />
                       </FormControl>
                       <FormDescription>
-                        Velocidade da internet (0 para planos móveis)
+                        Velocidade de download
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="uploadSpeed"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Upload (Mbps)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          type="number" 
+                          placeholder="Ex: 500"
+                          data-testid="input-plano-upload"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Velocidade de upload
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

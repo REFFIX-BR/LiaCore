@@ -569,7 +569,8 @@ export const plans = pgTable("plans", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`), // UUID gerado automaticamente
   name: text("name").notNull(), // Ex: "50 Mega", "650 Mega", "1 Giga"
   type: text("type").notNull(), // "internet" ou "combo"
-  speed: integer("speed").notNull(), // Velocidade em Mbps (50, 650, 1000)
+  downloadSpeed: integer("download_speed").notNull(), // Velocidade de download em Mbps (50, 650, 1000)
+  uploadSpeed: integer("upload_speed").notNull(), // Velocidade de upload em Mbps (25, 300, 500)
   price: integer("price").notNull(), // Preço em centavos (6990, 10990, 14990)
   description: text("description"), // Descrição do plano
   features: text("features").array().default(sql`'{}'::text[]`), // Benefícios/features do plano
