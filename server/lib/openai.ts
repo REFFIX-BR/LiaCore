@@ -993,6 +993,36 @@ Fonte: ${fonte}`;
 
           console.log("✅ [CEP] Endereço encontrado:", data.logradouro, data.bairro, data.localidade);
 
+          // ============================================================================
+          // VERIFICAÇÃO DE VIABILIDADE - CIDADES COM COBERTURA TR TELECOM
+          // ============================================================================
+          const cidadesComCobertura = [
+            "três rios",
+            "tres rios",
+            "petrópolis",
+            "petropolis"
+          ];
+          
+          const cidadeNormalizada = data.localidade?.toLowerCase().trim() || "";
+          const temCobertura = cidadesComCobertura.some(cidade => 
+            cidadeNormalizada.includes(cidade) || cidade.includes(cidadeNormalizada)
+          );
+
+          if (!temCobertura) {
+            console.log("⚠️ [CEP] Sem cobertura na cidade:", data.localidade);
+            return JSON.stringify({
+              success: true,
+              cep: data.cep,
+              logradouro: data.logradouro || "",
+              bairro: data.bairro || "",
+              cidade: data.localidade || "",
+              estado: data.uf || "",
+              complemento: data.complemento || "",
+              tem_cobertura: false,
+              mensagem: `Endereço encontrado: ${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}. Infelizmente, ainda não temos cobertura nessa região. 😔`
+            });
+          }
+
           return JSON.stringify({
             success: true,
             cep: data.cep,
@@ -1001,7 +1031,8 @@ Fonte: ${fonte}`;
             cidade: data.localidade || "",
             estado: data.uf || "",
             complemento: data.complemento || "",
-            mensagem: `Endereço encontrado: ${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}`
+            tem_cobertura: true,
+            mensagem: `Endereço encontrado: ${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}. Temos cobertura nessa região! 🎉`
           });
         } catch (error) {
           console.error("❌ [AI Tool] Erro ao buscar CEP:", error);
