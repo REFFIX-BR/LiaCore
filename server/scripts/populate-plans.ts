@@ -13,11 +13,12 @@ const plansData = [
     id: "17",
     name: "50 Mega",
     type: "internet",
-    speed: 50,
+    downloadSpeed: 50,
+    uploadSpeed: 25,
     price: 6990, // R$ 69,90 em centavos
     description: "Plano ideal para uso básico a moderado. Perfeito para 1-2 pessoas.",
     features: [
-      "50 Mbps de velocidade",
+      "50 Mbps de download / 25 Mbps de upload",
       "Ideal para 1-2 pessoas",
       "Redes sociais e navegação",
       "Streaming em boa qualidade",
@@ -30,11 +31,12 @@ const plansData = [
     id: "22",
     name: "650 Mega",
     type: "internet",
-    speed: 650,
+    downloadSpeed: 650,
+    uploadSpeed: 325,
     price: 10990, // R$ 109,90 em centavos
     description: "Nosso plano mais vendido! Ideal para famílias e home office.",
     features: [
-      "650 Mbps de velocidade",
+      "650 Mbps de download / 325 Mbps de upload",
       "Ideal para 3-4 pessoas",
       "Home office e videochamadas",
       "Streaming em 4K",
@@ -49,11 +51,12 @@ const plansData = [
     id: "23",
     name: "1 Giga",
     type: "internet",
-    speed: 1000,
+    downloadSpeed: 1000,
+    uploadSpeed: 500,
     price: 14990, // R$ 149,90 em centavos
     description: "Máxima performance para famílias grandes e pequenas empresas.",
     features: [
-      "1000 Mbps (1 Gbps) de velocidade",
+      "1000 Mbps (1 Gbps) de download / 500 Mbps de upload",
       "Ideal para 5+ pessoas ou empresas",
       "Múltiplos dispositivos simultâneos",
       "Streamers e criadores de conteúdo",
@@ -70,11 +73,12 @@ const plansData = [
     id: "24",
     name: "BRONZE - 650 Mega + 8GB + TV",
     type: "combo",
-    speed: 650,
+    downloadSpeed: 650,
+    uploadSpeed: 325,
     price: 14990, // R$ 149,90 em centavos
     description: "Combo completo com internet, telefonia móvel e TV. Ideal para quem quer tudo integrado.",
     features: [
-      "650 Mbps de internet fibra óptica",
+      "650 Mbps de download / 325 Mbps de upload fibra óptica",
       "8GB móvel (7GB + 1GB bônus portabilidade)",
       "TV inclusa",
       "Dupla operadora: Vivo e Tim",
@@ -87,11 +91,12 @@ const plansData = [
     id: "25",
     name: "PRATA - 650 Mega + 25GB + TV",
     type: "combo",
-    speed: 650,
+    downloadSpeed: 650,
+    uploadSpeed: 325,
     price: 17990, // R$ 179,90 em centavos
     description: "Combo intermediário com mais dados móveis. Perfeito para famílias conectadas.",
     features: [
-      "650 Mbps de internet fibra óptica",
+      "650 Mbps de download / 325 Mbps de upload fibra óptica",
       "25GB móvel (22GB + 3GB bônus portabilidade)",
       "TV inclusa",
       "Dupla operadora: Vivo e Tim",
@@ -104,11 +109,12 @@ const plansData = [
     id: "26",
     name: "OURO - 650 Mega + 50GB + TV",
     type: "combo",
-    speed: 650,
+    downloadSpeed: 650,
+    uploadSpeed: 325,
     price: 19900, // R$ 199,00 em centavos
     description: "Combo premium com grande pacote de dados móveis. Para quem precisa estar sempre conectado.",
     features: [
-      "650 Mbps de internet fibra óptica",
+      "650 Mbps de download / 325 Mbps de upload fibra óptica",
       "50GB móvel (45GB + 5GB bônus portabilidade)",
       "TV inclusa",
       "Dupla operadora: Vivo e Tim",
@@ -121,11 +127,12 @@ const plansData = [
     id: "27",
     name: "DIAMANTE - 1 Giga + 50GB + Telefonia Fixa",
     type: "combo",
-    speed: 1000,
+    downloadSpeed: 1000,
+    uploadSpeed: 500,
     price: 24990, // R$ 249,90 em centavos
     description: "Combo top de linha com máxima velocidade. Para quem não abre mão de performance.",
     features: [
-      "1 Giga (1000 Mbps) fibra óptica",
+      "1 Giga (1000 Mbps) download / 500 Mbps upload fibra óptica",
       "50GB móvel (45GB + 5GB bônus portabilidade)",
       "Telefonia Fixa inclusa",
       "Dupla operadora: Vivo e Tim",
@@ -140,7 +147,8 @@ const plansData = [
     id: "28",
     name: "Móvel 8GB",
     type: "movel",
-    speed: 0, // Plano móvel não tem velocidade de internet fixa
+    downloadSpeed: 0, // Plano móvel não tem velocidade de internet fixa
+    uploadSpeed: 0,
     price: 4990, // R$ 49,90 em centavos
     description: "Plano móvel com boa quantidade de dados. Ideal para uso moderado.",
     features: [
@@ -156,7 +164,8 @@ const plansData = [
     id: "29",
     name: "Móvel 25GB",
     type: "movel",
-    speed: 0,
+    downloadSpeed: 0,
+    uploadSpeed: 0,
     price: 7990, // R$ 79,90 em centavos
     description: "Plano móvel intermediário. Perfeito para quem usa redes sociais e streaming.",
     features: [
@@ -172,7 +181,8 @@ const plansData = [
     id: "30",
     name: "Móvel 50GB",
     type: "movel",
-    speed: 0,
+    downloadSpeed: 0,
+    uploadSpeed: 0,
     price: 9990, // R$ 99,90 em centavos
     description: "Plano móvel premium com grande pacote de dados. Para uso intenso.",
     features: [
@@ -209,7 +219,10 @@ async function populatePlans() {
     const allPlans = await db.select().from(plans);
     console.log("\n📋 Planos disponíveis no banco:");
     allPlans.forEach(p => {
-      console.log(`   - ${p.name} (${p.speed} Mbps) - R$ ${(p.price / 100).toFixed(2)}/mês`);
+      const speedInfo = p.downloadSpeed > 0 
+        ? `${p.downloadSpeed}/${p.uploadSpeed} Mbps` 
+        : "Plano móvel";
+      console.log(`   - ${p.name} (${speedInfo}) - R$ ${(p.price / 100).toFixed(2)}/mês`);
     });
 
     process.exit(0);
