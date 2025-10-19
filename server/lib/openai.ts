@@ -1021,7 +1021,8 @@ Fonte: ${fonte}`;
             id: plan.id,
             nome: plan.name,
             tipo: plan.type,
-            velocidade: plan.speed > 0 ? `${plan.speed} Mbps` : null,
+            velocidade_download: plan.downloadSpeed > 0 ? `${plan.downloadSpeed} Mbps` : null,
+            velocidade_upload: plan.uploadSpeed > 0 ? `${plan.uploadSpeed} Mbps` : null,
             preco: `R$ ${(plan.price / 100).toFixed(2).replace('.', ',')}`,
             descricao: plan.description,
             beneficios: plan.features
