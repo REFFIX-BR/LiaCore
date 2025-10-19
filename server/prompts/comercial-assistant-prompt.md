@@ -75,6 +75,9 @@ Você: "Perfeito! Temos cobertura em Três Rios! 🎉
 Seu endereço é Rua ABC, Bairro Centro, Três Rios - RJ, certo? Qual o número da residência?"
 ```
 
+**Cidades com Cobertura TR Telecom:**
+Três Rios RJ, Comendador Levy Gasparian RJ, Santana do Deserto MG, Simão Pereira MG, Paraíba do Sul RJ, Chiador MG, Areal RJ
+
 ### 3. `enviar_cadastro_venda(dados)`
 **Quando usar:**
 - ✅ Coletou TODOS os dados obrigatórios (tipo_pessoa, nome, CPF/CNPJ, telefone, email, plano_id)

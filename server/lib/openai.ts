@@ -996,11 +996,20 @@ Fonte: ${fonte}`;
           // ============================================================================
           // VERIFICAÇÃO DE VIABILIDADE - CIDADES COM COBERTURA TR TELECOM
           // ============================================================================
+          // Cidades atendidas: Três Rios RJ, Comendador Levy Gasparian RJ, 
+          // Santana do Deserto MG, Simão Pereira MG, Paraíba do Sul RJ, Chiador MG, Areal RJ
           const cidadesComCobertura = [
             "três rios",
             "tres rios",
-            "petrópolis",
-            "petropolis"
+            "comendador levy gasparian",
+            "levy gasparian",
+            "santana do deserto",
+            "simão pereira",
+            "simao pereira",
+            "paraíba do sul",
+            "paraiba do sul",
+            "chiador",
+            "areal"
           ];
           
           const cidadeNormalizada = data.localidade?.toLowerCase().trim() || "";
