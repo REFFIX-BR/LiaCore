@@ -1017,22 +1017,8 @@ Fonte: ${fonte}`;
             cidadeNormalizada.includes(cidade) || cidade.includes(cidadeNormalizada)
           );
 
-          if (!temCobertura) {
-            console.log("⚠️ [CEP] Sem cobertura na cidade:", data.localidade);
-            return JSON.stringify({
-              success: true,
-              cep: data.cep,
-              logradouro: data.logradouro || "",
-              bairro: data.bairro || "",
-              cidade: data.localidade || "",
-              estado: data.uf || "",
-              complemento: data.complemento || "",
-              tem_cobertura: false,
-              mensagem: `Endereço encontrado: ${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}. Infelizmente, ainda não temos cobertura nessa região. 😔`
-            });
-          }
-
-          return JSON.stringify({
+          // Preparar resultado para retorno e persistência
+          const coverageResult = {
             success: true,
             cep: data.cep,
             logradouro: data.logradouro || "",
@@ -1040,9 +1026,41 @@ Fonte: ${fonte}`;
             cidade: data.localidade || "",
             estado: data.uf || "",
             complemento: data.complemento || "",
-            tem_cobertura: true,
-            mensagem: `Endereço encontrado: ${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}. Temos cobertura nessa região! 🎉`
-          });
+            tem_cobertura: temCobertura,
+            mensagem: temCobertura 
+              ? `Endereço encontrado: ${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}. Temos cobertura nessa região! 🎉`
+              : `Endereço encontrado: ${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}. Infelizmente, ainda não temos cobertura nessa região. 😔`,
+            timestamp: new Date().toISOString()
+          };
+
+          // ============================================================================
+          // PERSISTIR RESULTADO DA VERIFICAÇÃO DE COBERTURA NO BANCO
+          // ============================================================================
+          if (conversationId) {
+            try {
+              const { db } = await import("../db");
+              const { conversations } = await import("../../shared/schema");
+              const { eq } = await import("drizzle-orm");
+              
+              await db.update(conversations)
+                .set({ 
+                  lastCoverageCheck: coverageResult 
+                })
+                .where(eq(conversations.id, conversationId));
+              
+              console.log(`✅ [CEP] Resultado da verificação de cobertura salvo no banco (tem_cobertura: ${temCobertura})`);
+            } catch (dbError) {
+              console.error("❌ [CEP] Erro ao salvar resultado da verificação de cobertura:", dbError);
+            }
+          } else {
+            console.warn("⚠️ [CEP] conversationId não disponível - resultado não será persistido");
+          }
+
+          if (!temCobertura) {
+            console.log("⚠️ [CEP] Sem cobertura na cidade:", data.localidade);
+          }
+
+          return JSON.stringify(coverageResult);
         } catch (error) {
           console.error("❌ [AI Tool] Erro ao buscar CEP:", error);
           return JSON.stringify({
@@ -1084,19 +1102,155 @@ Fonte: ${fonte}`;
       case "enviar_cadastro_venda":
         console.log("💰 [AI Tool] enviar_cadastro_venda chamada - processando lead");
         try {
-          // Validar dados obrigatórios
+          // ============================================================================
+          // VALIDAÇÃO CRÍTICA: VERIFICAR COBERTURA ANTES DE PROCESSAR VENDA
+          // ============================================================================
+          if (conversationId) {
+            try {
+              const { db: dbSales } = await import("../db");
+              const { conversations: conversationsSales } = await import("../../shared/schema");
+              const { eq: eqSales } = await import("drizzle-orm");
+              
+              const conversationData = await dbSales.query.conversations.findFirst({
+                where: eqSales(conversationsSales.id, conversationId)
+              });
+              
+              const lastCoverage = conversationData?.lastCoverageCheck as any;
+              
+              // Validação 1: Verificar se existe lastCoverageCheck
+              if (!lastCoverage) {
+                console.error("🚫 [Sales Validation] BLOQUEADO - Nenhuma verificação de CEP encontrada");
+                return JSON.stringify({
+                  error: "É necessário verificar o CEP antes de finalizar o cadastro. Por favor, informe o CEP do cliente.",
+                  instrucao: "Use a função buscar_cep() antes de enviar_cadastro_venda()."
+                });
+              }
+
+              // Validação 2: Verificar se tem cobertura
+              if (lastCoverage.tem_cobertura === false) {
+                console.error("🚫 [Sales Validation] BLOQUEADO - Tentativa de venda em região SEM cobertura");
+                console.error(`🚫 [Sales Validation] Cidade: ${lastCoverage.cidade}, Estado: ${lastCoverage.estado}`);
+                
+                return JSON.stringify({
+                  error: "Não é possível finalizar o cadastro de venda porque não temos cobertura nesta região.",
+                  tem_cobertura: false,
+                  cidade: lastCoverage.cidade,
+                  estado: lastCoverage.estado,
+                  instrucao: "Use a função registrar_lead_sem_cobertura() para registrar apenas o interesse do cliente (nome, telefone, cidade, email opcional)."
+                });
+              }
+
+              // Validação 3: Verificar se CEP da venda COINCIDE com lastCoverageCheck
+              const saleCep = args.endereco?.cep?.replace(/\D/g, '');
+              const checkedCep = lastCoverage.cep?.replace(/\D/g, '');
+              
+              if (saleCep && checkedCep && saleCep !== checkedCep) {
+                console.error("🚫 [Sales Validation] BLOQUEADO - CEP da venda não coincide com CEP verificado");
+                console.error(`🚫 [Sales Validation] CEP verificado: ${checkedCep}, CEP da venda: ${saleCep}`);
+                
+                return JSON.stringify({
+                  error: "O CEP fornecido no endereço não coincide com o CEP verificado anteriormente. Por favor, verifique o CEP novamente com buscar_cep().",
+                  cep_verificado: lastCoverage.cep,
+                  cep_fornecido: args.endereco?.cep,
+                  instrucao: "Chame buscar_cep() com o CEP correto antes de enviar_cadastro_venda()."
+                });
+              }
+
+              // Validação 4: Verificar freshness (5 minutos)
+              const coverageTimestamp = lastCoverage.timestamp ? new Date(lastCoverage.timestamp).getTime() : 0;
+              const now = Date.now();
+              const fiveMinutesMs = 5 * 60 * 1000;
+              
+              if (now - coverageTimestamp > fiveMinutesMs) {
+                console.warn("⚠️ [Sales Validation] lastCoverageCheck está DESATUALIZADO (>5 min)");
+                return JSON.stringify({
+                  error: "A verificação de cobertura está desatualizada. Por favor, verifique o CEP novamente.",
+                  instrucao: "Chame buscar_cep() novamente antes de enviar_cadastro_venda()."
+                });
+              }
+              
+              console.log(`✅ [Sales Validation] Todas validações OK - ${lastCoverage.cidade}, ${lastCoverage.estado}, CEP: ${lastCoverage.cep}`);
+            } catch (validationError) {
+              console.error("❌ [Sales Validation] Erro ao validar cobertura:", validationError);
+              return JSON.stringify({
+                error: "Erro ao validar cobertura. Por favor, tente novamente."
+              });
+            }
+          }
+
+          // ============================================================================
+          // VALIDAÇÃO COMPLETA DE CAMPOS OBRIGATÓRIOS PARA VENDA
+          // ============================================================================
           const requiredFields = ['tipo_pessoa', 'nome_cliente', 'telefone_cliente', 'plano_id'];
           const missingFields = requiredFields.filter(field => !args[field]);
           
           if (missingFields.length > 0) {
-            console.error("❌ [Sales] Campos obrigatórios faltando:", missingFields);
+            console.error("❌ [Sales] Campos básicos obrigatórios faltando:", missingFields);
             return JSON.stringify({
-              error: `Dados incompletos. Faltam: ${missingFields.join(', ')}`,
+              error: `Dados básicos incompletos. Faltam: ${missingFields.join(', ')}`,
               campos_faltantes: missingFields
             });
           }
 
-          // Preparar dados do cadastro
+          // Validar CPF/CNPJ
+          const cpfCnpj = args.cpf_cnpj || args.cpf_cliente || args.cnpj;
+          if (!cpfCnpj) {
+            console.error("❌ [Sales] CPF/CNPJ não fornecido");
+            return JSON.stringify({
+              error: "CPF ou CNPJ é obrigatório para finalizar o cadastro."
+            });
+          }
+
+          // Validar email
+          if (!args.email_cliente && !args.email) {
+            console.error("❌ [Sales] Email não fornecido");
+            return JSON.stringify({
+              error: "Email é obrigatório para finalizar o cadastro."
+            });
+          }
+
+          // Validar endereço completo
+          if (!args.endereco) {
+            console.error("❌ [Sales] Endereço não fornecido");
+            return JSON.stringify({
+              error: "Endereço completo é obrigatório (CEP, logradouro, número, bairro, cidade, estado)."
+            });
+          }
+
+          const enderecoFields = ['cep', 'logradouro', 'numero', 'bairro', 'cidade', 'estado'];
+          const missingAddressFields = enderecoFields.filter(field => !args.endereco[field]);
+          
+          if (missingAddressFields.length > 0) {
+            console.error("❌ [Sales] Campos de endereço faltando:", missingAddressFields);
+            return JSON.stringify({
+              error: `Endereço incompleto. Faltam: ${missingAddressFields.join(', ')}`,
+              campos_faltantes: missingAddressFields
+            });
+          }
+
+          // Validar campos complementares para Pessoa Física
+          if (args.tipo_pessoa === 'PF') {
+            const pfFields = ['nome_mae', 'data_nascimento', 'rg', 'sexo', 'estado_civil'];
+            const missingPfFields = pfFields.filter(field => !args[field]);
+            
+            if (missingPfFields.length > 0) {
+              console.error("❌ [Sales] Campos complementares PF faltando:", missingPfFields);
+              return JSON.stringify({
+                error: `Para Pessoa Física, são necessários: ${missingPfFields.join(', ')}`,
+                campos_faltantes: missingPfFields
+              });
+            }
+          }
+
+          // Validar campos de serviço
+          if (!args.dia_vencimento) {
+            console.error("❌ [Sales] Dia de vencimento não fornecido");
+            return JSON.stringify({
+              error: "Dia de vencimento é obrigatório (05, 10 ou 15)."
+            });
+          }
+
+          // Preparar dados do cadastro (já validados)
           const saleData = {
             type: args.tipo_pessoa, // "PF" ou "PJ"
             customerName: args.nome_cliente,
@@ -1152,7 +1306,9 @@ Fonte: ${fonte}`;
       case "registrar_lead_sem_cobertura":
         console.log("📋 [AI Tool] registrar_lead_sem_cobertura chamada - registrando interesse de cliente sem cobertura");
         try {
-          // Validar dados mínimos obrigatórios
+          // ============================================================================
+          // VALIDAÇÃO DE CAMPOS OBRIGATÓRIOS
+          // ============================================================================
           const requiredLeadFields = ['nome', 'telefone', 'cidade'];
           const missingLeadFields = requiredLeadFields.filter(field => !args[field]);
           
@@ -1164,19 +1320,57 @@ Fonte: ${fonte}`;
             });
           }
 
-          // Preparar dados mínimos do lead sem cobertura
+          // Validar e normalizar nome (mínimo 3 caracteres)
+          const leadName = args.nome.trim();
+          if (leadName.length < 3) {
+            console.error("❌ [Lead] Nome muito curto:", leadName);
+            return JSON.stringify({
+              error: "Nome inválido. Por favor, informe o nome completo (mínimo 3 caracteres)."
+            });
+          }
+
+          // Validar e normalizar telefone (apenas números, mínimo 10 dígitos)
+          const leadPhone = args.telefone.replace(/\D/g, '');
+          if (leadPhone.length < 10 || leadPhone.length > 11) {
+            console.error("❌ [Lead] Telefone inválido:", args.telefone);
+            return JSON.stringify({
+              error: "Telefone inválido. Por favor, informe um telefone válido com DDD (ex: (24) 99999-9999)."
+            });
+          }
+
+          // Validar e normalizar cidade (mínimo 3 caracteres)
+          const leadCity = args.cidade.trim();
+          if (leadCity.length < 3) {
+            console.error("❌ [Lead] Cidade inválida:", leadCity);
+            return JSON.stringify({
+              error: "Cidade inválida. Por favor, informe o nome completo da cidade."
+            });
+          }
+
+          // Validar email se fornecido
+          if (args.email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(args.email)) {
+              console.error("❌ [Lead] Email inválido:", args.email);
+              return JSON.stringify({
+                error: "Email inválido. Por favor, informe um email válido (ex: nome@exemplo.com)."
+              });
+            }
+          }
+
+          // Preparar dados mínimos do lead sem cobertura (já validados e normalizados)
           const leadData = {
             type: "PF", // Default PF para leads sem cobertura
-            customerName: args.nome,
+            customerName: leadName,
             email: args.email || null,
-            phone: args.telefone,
-            city: args.cidade,
+            phone: leadPhone,
+            city: leadCity,
             cep: args.cep || null,
             // Lead Management
             source: "chat",
             status: "Lead Sem Cobertura",
             conversationId,
-            observations: `Lead interessado em ${args.cidade}. Região sem cobertura TR Telecom. ${args.observacoes || ''}`
+            observations: `Lead interessado em ${leadCity}. Região sem cobertura TR Telecom. ${args.observacoes || ''}`
           };
 
           // Salvar no banco via storage
