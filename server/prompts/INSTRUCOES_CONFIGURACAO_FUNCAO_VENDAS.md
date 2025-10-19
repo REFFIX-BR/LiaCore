@@ -17,7 +17,7 @@ enviar_cadastro_venda
 
 ### Descrição
 ```
-Registra um novo cadastro de venda/lead após coletar TODOS os dados obrigatórios do cliente: tipo_pessoa, nome, CPF/CNPJ, telefone, EMAIL, plano_id e ENDEREÇO COMPLETO via buscar_cep. Use APENAS após cliente confirmar os dados e confirmar que quer contratar.
+Registra um novo cadastro de venda/lead após coletar TODOS os dados do cliente de forma estruturada: dados pessoais básicos (nome, CPF/CNPJ, telefone, EMAIL), dados complementares (nome_mae, data_nascimento, RG, sexo, estado_civil), endereço completo via buscar_cep, e dados do serviço (dia_vencimento, data_instalacao_preferida, disponibilidade). Use APENAS após cliente confirmar TODOS os dados e confirmar que quer contratar.
 ```
 
 ### Schema JSON (Parameters)
@@ -96,29 +96,29 @@ Registra um novo cadastro de venda/lead após coletar TODOS os dados obrigatóri
     },
     "nome_mae": {
       "type": "string",
-      "description": "Nome completo da mãe (PF - opcional)"
+      "description": "Nome completo da mãe (PF - SEMPRE coletar)"
     },
     "data_nascimento": {
       "type": "string",
-      "description": "Data de nascimento no formato YYYY-MM-DD (PF - opcional)"
+      "description": "Data de nascimento no formato YYYY-MM-DD (PF - SEMPRE coletar)"
     },
     "rg": {
       "type": "string",
-      "description": "RG (PF - opcional)"
+      "description": "RG (PF - SEMPRE coletar)"
     },
     "sexo": {
       "type": "string",
       "enum": ["M", "F", "Outro"],
-      "description": "Sexo (PF - opcional)"
+      "description": "Sexo (PF - SEMPRE coletar)"
     },
     "estado_civil": {
       "type": "string",
       "enum": ["S", "C", "V", "O"],
-      "description": "Estado civil: S=Solteiro, C=Casado, V=Viúvo, O=Outro (PF - opcional)"
+      "description": "Estado civil: S=Solteiro, C=Casado, V=Viúvo, O=Outro (PF - SEMPRE coletar)"
     },
     "dia_vencimento": {
       "type": "string",
-      "description": "Dia de vencimento preferido: 5, 10 ou 15 (opcional)"
+      "description": "Dia de vencimento preferido: 5, 10 ou 15 (SEMPRE coletar)"
     },
     "forma_pagamento": {
       "type": "string",
@@ -127,12 +127,12 @@ Registra um novo cadastro de venda/lead após coletar TODOS os dados obrigatóri
     },
     "data_instalacao_preferida": {
       "type": "string",
-      "description": "Data preferida para instalação YYYY-MM-DD (opcional)"
+      "description": "Data preferida para instalação YYYY-MM-DD (SEMPRE coletar)"
     },
     "disponibilidade": {
       "type": "string",
       "enum": ["Manhã", "Tarde", "Comercial"],
-      "description": "Disponibilidade para instalação (opcional)"
+      "description": "Disponibilidade para instalação (SEMPRE coletar)"
     },
     "observacoes": {
       "type": "string",
@@ -145,44 +145,76 @@ Registra um novo cadastro de venda/lead após coletar TODOS os dados obrigatóri
 
 ---
 
-## ✅ Campos OBRIGATÓRIOS
+## ✅ Campos que o Assistente DEVE Coletar
 
-O assistente DEVE coletar e enviar:
+### Dados Pessoais Básicos (OBRIGATÓRIOS)
 1. **tipo_pessoa** (PF ou PJ)
 2. **nome_cliente** (nome completo ou razão social)
 3. **cpf_cnpj** (CPF ou CNPJ - apenas números)
 4. **telefone_cliente** (telefone com DDD - apenas números)
 5. **email_cliente** (email válido)
 6. **plano_id** (ID do plano escolhido)
-7. **endereco** (objeto completo):
+
+### Dados Complementares (SEMPRE coletar para PF)
+7. **nome_mae** (nome completo da mãe)
+8. **data_nascimento** (formato: YYYY-MM-DD)
+9. **rg** (número do RG)
+10. **sexo** (M/F/Outro)
+11. **estado_civil** (S/C/V/O)
+
+### Endereço Completo (OBRIGATÓRIO)
+12. **endereco** (objeto completo):
    - **cep** (CEP sem formatação)
    - **logradouro** (obtido via buscar_cep)
    - **numero** (coletado do cliente)
+   - **complemento** (coletado do cliente)
    - **bairro** (obtido via buscar_cep)
    - **cidade** (obtido via buscar_cep)
    - **estado** (obtido via buscar_cep)
+   - **referencia** (ponto de referência - coletado do cliente)
+
+### Dados do Serviço (SEMPRE coletar)
+13. **dia_vencimento** (5, 10 ou 15)
+14. **data_instalacao_preferida** (formato: YYYY-MM-DD)
+15. **disponibilidade** (Manhã/Tarde/Comercial)
+
+### Opcionais
+- **telefone_secundario** (se cliente informar)
+- **forma_pagamento** (se cliente informar)
+- **observacoes** (se cliente informar)
 
 ---
 
-## 🔄 Fluxo de Coleta e Envio
+## 🔄 Fluxo de Coleta e Envio Estruturado
 
 1. **Cliente escolhe plano** → Assistente usa `consultar_planos()`
-2. **Cliente informa CEP** → Assistente usa `buscar_cep(cep)` e GUARDA os dados retornados
-3. **Assistente coleta:**
+2. **Assistente pergunta tipo de documento** → CPF (PF) ou CNPJ (PJ)
+3. **Coleta dados pessoais básicos:**
    - Nome completo
    - CPF/CNPJ
+   - Email
    - Telefone
-   - **Email** (CRÍTICO - não esquecer!)
-   - Número da residência
-   - Complemento (se houver)
-4. **Cliente confirma dados** → Assistente monta objeto `endereco` usando:
-   - Dados de `buscar_cep`: cep, logradouro, bairro, cidade, estado
-   - Dados do cliente: numero, complemento (opcional)
-5. **Assistente chama `enviar_cadastro_venda`** com TODOS os dados coletados
+4. **Coleta dados complementares (PF):**
+   - Nome da mãe
+   - Data de nascimento
+   - RG
+   - Sexo
+   - Estado civil
+5. **Coleta endereço completo:**
+   - CEP → Chama `buscar_cep(cep)` e VALIDA com cliente ("Está correto?")
+   - Número
+   - Complemento
+   - Ponto de referência
+6. **Coleta dados do serviço:**
+   - Dia de vencimento (5, 10 ou 15)
+   - Data preferida de instalação
+   - Disponibilidade (Manhã/Tarde/Comercial)
+   - Telefone secundário (opcional)
+7. **Cliente confirma TODOS os dados** → Assistente monta objeto completo e chama `enviar_cadastro_venda`
 
 ---
 
-## 📋 Exemplo de Chamada Correta
+## 📋 Exemplo de Chamada Correta (COMPLETA)
 
 ```json
 {
@@ -192,6 +224,11 @@ O assistente DEVE coletar e enviar:
   "telefone_cliente": "24999998888",
   "email_cliente": "joao@email.com",
   "plano_id": "abc123-uuid-here",
+  "nome_mae": "Maria Silva",
+  "data_nascimento": "1990-05-15",
+  "rg": "123456789",
+  "sexo": "M",
+  "estado_civil": "S",
   "endereco": {
     "cep": "25805290",
     "logradouro": "Rua Nelson Viana",
@@ -199,11 +236,12 @@ O assistente DEVE coletar e enviar:
     "complemento": "Apto 45",
     "bairro": "Centro",
     "cidade": "Três Rios",
-    "estado": "RJ"
+    "estado": "RJ",
+    "referencia": "Perto da padaria São José"
   },
-  "nome_mae": "Maria Silva",
-  "data_nascimento": "1990-05-15",
   "dia_vencimento": "10",
+  "data_instalacao_preferida": "2025-10-27",
+  "disponibilidade": "Manhã",
   "forma_pagamento": "pix"
 }
 ```
