@@ -36,7 +36,8 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailwind 
 **Private Notes System**: Internal collaboration feature for agents to add notes to conversations.
 **Conversation Verification System**: Supervisor workflow tracking to mark conversations as reviewed. Verification resets on new client messages.
 **Activity Logs & Audit System**: Comprehensive audit trail of user actions (LOGIN/LOGOUT, supervisor operations) with dual-tab interface and real-time KPI dashboard.
-**Conversational Sales System**: Autonomous AI system for lead qualification, plan presentation, data collection, and sales processing via WhatsApp. Includes a Plans database, Sales table, dedicated RAG knowledge base, AI tools (`consultar_planos`, `enviar_cadastro_venda`), and specific API endpoints (`/api/plans`, `/api/site-lead`).
+**Conversational Sales System**: Autonomous AI system for lead qualification, plan presentation, data collection, and sales processing via WhatsApp. Includes a Plans database (10 TR Telecom plans), Sales table, dedicated RAG knowledge base (92 semantic chunks), AI tools (`consultar_planos`, `enviar_cadastro_venda`, `buscar_cep`), and specific API endpoints (`/api/plans`, `/api/site-lead`, `/api/sales`).
+**Sales Management Interface**: ADMIN/SUPERVISOR-only dashboard at `/vendas` with KPIs (total, aguardando, aprovados, instalados), status filters, sales table with pagination, detailed view dialogs, and status update functionality with observations. Features real-time updates via TanStack Query mutations and secure endpoints (`authenticate + requireAdminOrSupervisor`).
 
 ### System Design Choices
 - **Conversation Prioritization**: Color-coded wait time indicators.
@@ -52,6 +53,7 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailwind 
 - **Activity Logs UI**: Dual-tab interface (Agentes/Supervisão) with KPI cards.
 - **Monitor Resolved Conversations Sub-Filters**: "Finalizadas" tab with sub-filters for AI, agent, or auto-closed resolutions.
 - **WhatsApp Groups Chat Interface**: Dual-tab system (Chat/Informações) for group messaging with auto-refresh, pagination, and AI toggle.
+- **Sales Management UI**: "/vendas" page with KPI cards, status filters, sales table, detail dialogs, and status update dialogs. ShoppingBag icon in sidebar (ADMIN/SUPERVISOR only).
 
 ## External Dependencies
 
