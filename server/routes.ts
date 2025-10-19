@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema, insertSatisfactionFeedbackSchema, loginSchema, insertUserSchema, updateUserSchema, insertComplaintSchema, updateComplaintSchema, insertSaleSchema, type Conversation } from "@shared/schema";
+import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema, insertSatisfactionFeedbackSchema, loginSchema, insertUserSchema, updateUserSchema, insertComplaintSchema, updateComplaintSchema, insertPlanSchema, updatePlanSchema, insertSaleSchema, type Conversation } from "@shared/schema";
 import { routeMessage, createThread, sendMessageAndGetResponse, summarizeConversation, routeMessageWithContext, CONTEXT_CONFIG } from "./lib/openai";
 import { z } from "zod";
 import { storeConversationThread, getConversationThread, searchKnowledge } from "./lib/upstash";
