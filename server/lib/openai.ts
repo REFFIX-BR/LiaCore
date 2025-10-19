@@ -970,6 +970,46 @@ Fonte: ${fonte}`;
           error: "Função de agendamento de visita não está disponível no momento. Por favor, solicite transferência para atendimento humano."
         });
 
+      case "buscar_cep":
+        console.log("📍 [AI Tool] buscar_cep chamada -", args.cep);
+        try {
+          const cep = args.cep?.replace(/\D/g, ''); // Remove caracteres não numéricos
+          
+          if (!cep || cep.length !== 8) {
+            return JSON.stringify({
+              error: "CEP inválido. Por favor, informe um CEP válido com 8 dígitos (ex: 12345-678)."
+            });
+          }
+
+          // Buscar endereço na API ViaCEP
+          const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+          const data = await response.json();
+          
+          if (data.erro) {
+            return JSON.stringify({
+              error: "CEP não encontrado. Por favor, verifique o CEP informado."
+            });
+          }
+
+          console.log("✅ [CEP] Endereço encontrado:", data.logradouro, data.bairro, data.localidade);
+
+          return JSON.stringify({
+            success: true,
+            cep: data.cep,
+            logradouro: data.logradouro || "",
+            bairro: data.bairro || "",
+            cidade: data.localidade || "",
+            estado: data.uf || "",
+            complemento: data.complemento || "",
+            mensagem: `Endereço encontrado: ${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}`
+          });
+        } catch (error) {
+          console.error("❌ [AI Tool] Erro ao buscar CEP:", error);
+          return JSON.stringify({
+            error: "Erro ao buscar CEP. Por favor, tente novamente ou informe o endereço manualmente."
+          });
+        }
+
       case "consultar_planos":
         console.log("📋 [AI Tool] consultar_planos chamada - buscando planos ativos");
         try {

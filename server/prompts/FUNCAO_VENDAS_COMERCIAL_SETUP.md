@@ -2,10 +2,11 @@
 
 ## 📋 **O QUE SÃO ESSAS FUNÇÕES?**
 
-O assistente comercial precisa de **2 novas ferramentas** para vender planos autonomamente pelo WhatsApp:
+O assistente comercial precisa de **3 ferramentas essenciais** para vender planos autonomamente pelo WhatsApp:
 
-1. **`consultar_planos`** - Busca planos disponíveis no banco de dados
-2. **`enviar_cadastro_venda`** - Submete cadastro de venda após coletar dados completos do cliente
+1. **`buscar_cep`** - Busca endereço completo pela API ViaCEP (logradouro, bairro, cidade, estado)
+2. **`consultar_planos`** - Busca planos disponíveis no banco de dados em tempo real
+3. **`enviar_cadastro_venda`** - Submete cadastro de venda após coletar dados completos do cliente
 
 ---
 
@@ -16,7 +17,34 @@ O assistente comercial precisa de **2 novas ferramentas** para vender planos aut
 - Vá em **Assistants**
 - Selecione: **LIA Comercial - TR Telecom** (`asst_KY7AbcYc3VeVk9QPlk8xPYAA`)
 
-### **2. Adicione a Função 1: consultar_planos**
+### **2. Adicione a Função 1: buscar_cep**
+
+Clique em **Add Function** e cole o JSON completo:
+
+**JSON completo da função:**
+```json
+{
+  "type": "function",
+  "function": {
+    "name": "buscar_cep",
+    "description": "Busca endereço completo pela API ViaCEP. Retorna: logradouro, bairro, cidade e estado. Use quando cliente informar CEP para preencher automaticamente o endereço de instalação.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "cep": {
+          "type": "string",
+          "description": "CEP com 8 dígitos (ex: 12345-678 ou 12345678)"
+        }
+      },
+      "required": ["cep"]
+    }
+  }
+}
+```
+
+---
+
+### **3. Adicione a Função 2: consultar_planos**
 
 Clique em **Add Function** e configure:
 
