@@ -1149,6 +1149,54 @@ Fonte: ${fonte}`;
           });
         }
 
+      case "registrar_lead_sem_cobertura":
+        console.log("📋 [AI Tool] registrar_lead_sem_cobertura chamada - registrando interesse de cliente sem cobertura");
+        try {
+          // Validar dados mínimos obrigatórios
+          const requiredLeadFields = ['nome', 'telefone', 'cidade'];
+          const missingLeadFields = requiredLeadFields.filter(field => !args[field]);
+          
+          if (missingLeadFields.length > 0) {
+            console.error("❌ [Lead] Campos obrigatórios faltando:", missingLeadFields);
+            return JSON.stringify({
+              error: `Dados incompletos. Para registrar seu interesse, preciso de: ${missingLeadFields.join(', ')}`,
+              campos_faltantes: missingLeadFields
+            });
+          }
+
+          // Preparar dados mínimos do lead sem cobertura
+          const leadData = {
+            type: "PF", // Default PF para leads sem cobertura
+            customerName: args.nome,
+            email: args.email || null,
+            phone: args.telefone,
+            city: args.cidade,
+            cep: args.cep || null,
+            // Lead Management
+            source: "chat",
+            status: "Lead Sem Cobertura",
+            conversationId,
+            observations: `Lead interessado em ${args.cidade}. Região sem cobertura TR Telecom. ${args.observacoes || ''}`
+          };
+
+          // Salvar no banco via storage
+          const { storage: storageLead } = await import("../storage");
+          const lead = await storageLead.addSale(leadData);
+
+          console.log(`✅ [Lead] Lead sem cobertura registrado com sucesso - ID: ${lead.id}, Cidade: ${args.cidade}`);
+
+          return JSON.stringify({
+            success: true,
+            lead_id: lead.id,
+            mensagem: `Perfeito! Registrei seu interesse. Assim que a TR Telecom chegar em ${args.cidade}, entraremos em contato no telefone ${args.telefone}. Obrigado! 🎉`
+          });
+        } catch (error) {
+          console.error("❌ [Lead] Erro ao registrar lead sem cobertura:", error);
+          return JSON.stringify({
+            error: "Erro ao registrar seu interesse. Tente novamente."
+          });
+        }
+
       case "consultar_boleto_cliente":
         console.log(`🚨 [DEBUG] ENTRANDO NO CASE consultar_boleto_cliente - conversationId: ${conversationId || 'UNDEFINED'}`);
         if (!conversationId) {
