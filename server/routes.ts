@@ -7356,7 +7356,7 @@ A resposta deve:
 
   // ==================== VENDAS/COMERCIAL ROUTES ====================
   
-  // GET /api/plans - Retorna todos os planos ativos
+  // GET /api/plans - Retorna todos os planos ativos (público)
   app.get("/api/plans", async (req, res) => {
     try {
       const plans = await storage.getActivePlans();
@@ -7377,6 +7377,149 @@ A resposta deve:
     } catch (error) {
       console.error("❌ [Plans] Error fetching plans:", error);
       return res.status(500).json({ error: "Erro ao buscar planos" });
+    }
+  });
+
+  // GET /api/plans/all - Retorna TODOS os planos (ativos e inativos) - ADMIN/SUPERVISOR
+  app.get("/api/plans/all", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const plans = await storage.getAllPlans();
+      
+      // Formatar planos
+      const plansFormatted = plans.map(plan => ({
+        id: plan.id,
+        name: plan.name,
+        type: plan.type,
+        speed: plan.speed,
+        price: plan.price / 100,
+        description: plan.description,
+        features: plan.features,
+        isActive: plan.isActive,
+        createdAt: plan.createdAt,
+        updatedAt: plan.updatedAt
+      }));
+      
+      return res.json(plansFormatted);
+    } catch (error) {
+      console.error("❌ [Plans] Error fetching all plans:", error);
+      return res.status(500).json({ error: "Erro ao buscar planos" });
+    }
+  });
+
+  // GET /api/plans/:id - Retorna um plano específico - ADMIN/SUPERVISOR
+  app.get("/api/plans/:id", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const plan = await storage.getPlan(id);
+      
+      if (!plan) {
+        return res.status(404).json({ error: "Plano não encontrado" });
+      }
+      
+      return res.json({
+        ...plan,
+        price: plan.price / 100
+      });
+    } catch (error) {
+      console.error("❌ [Plans] Error fetching plan:", error);
+      return res.status(500).json({ error: "Erro ao buscar plano" });
+    }
+  });
+
+  // POST /api/plans - Cria um novo plano - ADMIN/SUPERVISOR
+  app.post("/api/plans", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const planData = insertPlanSchema.parse({
+        id: req.body.id,
+        name: req.body.name,
+        type: req.body.type,
+        speed: parseInt(req.body.speed) || 0,
+        price: Math.round(parseFloat(req.body.price) * 100), // Converter reais para centavos
+        description: req.body.description,
+        features: req.body.features || [],
+        isActive: req.body.isActive !== undefined ? req.body.isActive : true
+      });
+
+      const plan = await storage.addPlan(planData);
+      
+      console.log(`✅ [Plans] Novo plano criado - ID: ${plan.id}, Nome: ${plan.name}`);
+      
+      return res.status(201).json({
+        ...plan,
+        price: plan.price / 100
+      });
+    } catch (error) {
+      console.error("❌ [Plans] Error creating plan:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          error: "Dados inválidos",
+          details: error.errors
+        });
+      }
+      
+      return res.status(500).json({ error: "Erro ao criar plano" });
+    }
+  });
+
+  // PUT /api/plans/:id - Atualiza um plano - ADMIN/SUPERVISOR
+  app.put("/api/plans/:id", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Verificar se o plano existe
+      const existingPlan = await storage.getPlan(id);
+      if (!existingPlan) {
+        return res.status(404).json({ error: "Plano não encontrado" });
+      }
+
+      const updates = updatePlanSchema.parse({
+        name: req.body.name,
+        type: req.body.type,
+        speed: req.body.speed !== undefined ? parseInt(req.body.speed) : undefined,
+        price: req.body.price !== undefined ? Math.round(parseFloat(req.body.price) * 100) : undefined,
+        description: req.body.description,
+        features: req.body.features,
+        isActive: req.body.isActive
+      });
+
+      const updated = await storage.updatePlan(id, updates);
+      
+      console.log(`✅ [Plans] Plano atualizado - ID: ${id}`);
+      
+      return res.json({
+        ...updated,
+        price: updated.price / 100
+      });
+    } catch (error) {
+      console.error("❌ [Plans] Error updating plan:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          error: "Dados inválidos",
+          details: error.errors
+        });
+      }
+      
+      return res.status(500).json({ error: "Erro ao atualizar plano" });
+    }
+  });
+
+  // POST /api/plans/:id/toggle-status - Ativa/desativa um plano - ADMIN/SUPERVISOR
+  app.post("/api/plans/:id/toggle-status", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updated = await storage.togglePlanStatus(id);
+      
+      console.log(`✅ [Plans] Status do plano alterado - ID: ${id}, Ativo: ${updated.isActive}`);
+      
+      return res.json({
+        ...updated,
+        price: updated.price / 100
+      });
+    } catch (error) {
+      console.error("❌ [Plans] Error toggling plan status:", error);
+      return res.status(500).json({ error: "Erro ao alterar status do plano" });
     }
   });
 

@@ -283,7 +283,12 @@ export interface IStorage {
   getPrivateNotesByConversationId(conversationId: string): Promise<PrivateNote[]>;
 
   // Plans & Sales
+  getAllPlans(): Promise<any[]>; // Returns all plans (active and inactive)
   getActivePlans(): Promise<any[]>; // Returns all active plans
+  getPlan(id: string): Promise<any | undefined>; // Returns a specific plan
+  addPlan(plan: any): Promise<any>; // Creates a new plan
+  updatePlan(id: string, updates: any): Promise<any>; // Updates a plan
+  togglePlanStatus(id: string): Promise<any>; // Toggles plan active status
   getAllSales(): Promise<any[]>; // Returns all sales/leads
   addSale(sale: any): Promise<any>; // Creates a new sale/lead
   updateSaleStatus(id: string, status: string, observations?: string): Promise<any>; // Updates sale status
@@ -1371,9 +1376,34 @@ export class MemStorage implements IStorage {
   }
 
   // Plans & Sales
+  async getAllPlans(): Promise<any[]> {
+    // MemStorage stub - return empty array
+    return [];
+  }
+
   async getActivePlans(): Promise<any[]> {
     // MemStorage stub - return empty array
     return [];
+  }
+
+  async getPlan(id: string): Promise<any | undefined> {
+    // MemStorage stub - return undefined
+    return undefined;
+  }
+
+  async addPlan(plan: any): Promise<any> {
+    // MemStorage stub - just return the plan with an ID
+    return { ...plan, id: randomUUID(), createdAt: new Date(), updatedAt: new Date(), isActive: true };
+  }
+
+  async updatePlan(id: string, updates: any): Promise<any> {
+    // MemStorage stub - just return the updates with id
+    return { ...updates, id, updatedAt: new Date() };
+  }
+
+  async togglePlanStatus(id: string): Promise<any> {
+    // MemStorage stub - just return the plan
+    return { id, isActive: true };
   }
 
   async getAllSales(): Promise<any[]> {
@@ -3006,11 +3036,63 @@ export class DbStorage implements IStorage {
   }
 
   // Plans & Sales
+  async getAllPlans(): Promise<any[]> {
+    return await db.select()
+      .from(schema.plans)
+      .orderBy(schema.plans.id);
+  }
+
   async getActivePlans(): Promise<any[]> {
     return await db.select()
       .from(schema.plans)
       .where(eq(schema.plans.isActive, true))
       .orderBy(schema.plans.id);
+  }
+
+  async getPlan(id: string): Promise<any | undefined> {
+    const [plan] = await db.select()
+      .from(schema.plans)
+      .where(eq(schema.plans.id, id));
+    return plan;
+  }
+
+  async addPlan(plan: any): Promise<any> {
+    const [created] = await db.insert(schema.plans).values({
+      ...plan,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }).returning();
+    return created;
+  }
+
+  async updatePlan(id: string, updates: any): Promise<any> {
+    const [updated] = await db.update(schema.plans)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.plans.id, id))
+      .returning();
+    return updated;
+  }
+
+  async togglePlanStatus(id: string): Promise<any> {
+    // Get current plan
+    const plan = await this.getPlan(id);
+    if (!plan) {
+      throw new Error('Plan not found');
+    }
+    
+    // Toggle status
+    const [updated] = await db.update(schema.plans)
+      .set({
+        isActive: !plan.isActive,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.plans.id, id))
+      .returning();
+    
+    return updated;
   }
 
   async addSale(sale: any): Promise<any> {
