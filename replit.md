@@ -3,6 +3,10 @@
 ## Overview
 LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Telecom's customer service. It orchestrates specialized AI assistants using OpenAI's Assistants API and a RAG knowledge base to automate Q&A and actions. The platform features a real-time supervisor monitoring dashboard and an autonomous continuous learning system. Its core purpose is to enhance customer service efficiency and satisfaction through a robust, scalable, and intelligent AI solution for telecommunications.
 
+## Recent Critical Fixes
+**Date: 2025-10-20**
+- **FINANCEIRO ASSISTANT BUG FIX**: Updated instructions to fix critical issue where boleto data wasn't being sent to customers. Assistant was only mentioning STATUS instead of providing complete boleto details (vencimento, valor, código de barras, link de pagamento, PIX). New instructions include explicit formatting template and absolute rules requiring ALL data to be sent immediately when function returns results. User must update OpenAI Assistant instructions manually.
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
