@@ -115,6 +115,7 @@ export interface IStorage {
   getSatisfactionFeedbackByConversationId(conversationId: string): Promise<SatisfactionFeedback | undefined>;
   getSatisfactionFeedbackByAssistantType(assistantType: string): Promise<SatisfactionFeedback[]>;
   getSatisfactionFeedbackWithConversations(): Promise<Array<SatisfactionFeedback & { conversation?: Conversation }>>;
+  updateSatisfactionFeedback(id: string, updates: Partial<SatisfactionFeedback>): Promise<SatisfactionFeedback | undefined>;
   updateSatisfactionFeedbackHandling(id: string, updates: {
     handlingScore?: number;
     handlingStatus?: string;
@@ -825,6 +826,15 @@ export class MemStorage implements IStorage {
       ...feedback,
       conversation: this.conversations.get(feedback.conversationId)
     }));
+  }
+
+  async updateSatisfactionFeedback(id: string, updates: Partial<SatisfactionFeedback>): Promise<SatisfactionFeedback | undefined> {
+    const feedback = this.satisfactionFeedback.get(id);
+    if (!feedback) return undefined;
+    
+    const updated = { ...feedback, ...updates };
+    this.satisfactionFeedback.set(id, updated);
+    return updated;
   }
 
   async updateSatisfactionFeedbackHandling(
@@ -1879,6 +1889,14 @@ export class DbStorage implements IStorage {
     }
     
     return results;
+  }
+
+  async updateSatisfactionFeedback(id: string, updates: Partial<SatisfactionFeedback>): Promise<SatisfactionFeedback | undefined> {
+    const [updated] = await db.update(schema.satisfactionFeedback)
+      .set(updates)
+      .where(eq(schema.satisfactionFeedback.id, id))
+      .returning();
+    return updated;
   }
 
   async updateSatisfactionFeedbackHandling(

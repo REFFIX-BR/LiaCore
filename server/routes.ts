@@ -2079,34 +2079,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log(`✅ [NPS] Feedback salvo com ID:`, savedFeedback.id);
           
-          // Remover flag awaitingNPS e garantir que status permaneça resolved
-          await storage.updateConversation(conversation.id, {
-            status: 'resolved',  // Explicitamente manter como resolved
-            metadata: { ...metadata, awaitingNPS: false }
-          });
+          // Verificar se é detrator (score 0-6) para enviar follow-up
+          const isDetractor = npsScore >= 0 && npsScore <= 6;
           
-          // Atualizar objeto local para evitar que código subsequente veja estado antigo
-          conversation = { 
-            ...conversation, 
-            status: 'resolved',
-            metadata: { ...metadata, awaitingNPS: false }
-          };
+          if (isDetractor) {
+            // DETRATOR: Pedir feedback adicional
+            console.log(`🔴 [NPS Detrator] Cliente ${clientName} deu nota ${npsScore} - solicitando feedback`);
+            
+            const detractorFollowupMessage = `
+Agradecemos sua avaliação! 🙏
+
+Sentimos muito que sua experiência não tenha sido a melhor.
+
+*Poderia nos contar o que aconteceu?*
+
+Seu feedback é fundamental para melhorarmos nosso atendimento.
+            `.trim();
+            
+            // Marcar que está aguardando comentário do detrator
+            await storage.updateConversation(conversation.id, {
+              status: 'resolved',
+              metadata: { 
+                ...metadata, 
+                awaitingNPS: false,
+                awaitingNPSComment: true,
+                npsScore,
+                feedbackId: savedFeedback.id
+              }
+            });
+            
+            conversation = { 
+              ...conversation, 
+              status: 'resolved',
+              metadata: { 
+                ...metadata, 
+                awaitingNPS: false,
+                awaitingNPSComment: true,
+                npsScore,
+                feedbackId: savedFeedback.id
+              }
+            };
+            
+            await sendWhatsAppMessage(phoneNumber, detractorFollowupMessage, conversation.evolutionInstance || undefined);
+            
+            return res.json({ 
+              success: true, 
+              processed: true, 
+              nps_received: true,
+              score: npsScore,
+              feedbackId: savedFeedback.id,
+              detractor_followup_sent: true
+            });
+          } else {
+            // NÃO É DETRATOR: Apenas agradecer
+            await storage.updateConversation(conversation.id, {
+              status: 'resolved',
+              metadata: { ...metadata, awaitingNPS: false }
+            });
+            
+            conversation = { 
+              ...conversation, 
+              status: 'resolved',
+              metadata: { ...metadata, awaitingNPS: false }
+            };
+            
+            console.log(`📊 [NPS] Cliente ${clientName} avaliou com nota ${npsScore} - conversa mantida como resolved`);
+            
+            // Mensagem personalizada baseada no score
+            let thankYouMessage = '';
+            if (npsScore >= 9) {
+              // Promotor (9-10)
+              thankYouMessage = `🌟 *Obrigado pela avaliação!*\n\nFicamos muito felizes que você tenha gostado do nosso atendimento! 😊\n\nSeu feedback é muito importante para nós! 💙`;
+            } else {
+              // Neutro (7-8)
+              thankYouMessage = `Obrigado pela sua avaliação! 👍\n\nEstamos sempre trabalhando para melhorar nosso atendimento.\n\nQualquer coisa, estamos à disposição! 😊`;
+            }
+            
+            await sendWhatsAppMessage(phoneNumber, thankYouMessage, conversation.evolutionInstance || undefined);
+            
+            return res.json({ 
+              success: true, 
+              processed: true, 
+              nps_received: true,
+              score: npsScore,
+              feedbackId: savedFeedback.id 
+            });
+          }
+        }
+
+        // Check if awaiting NPS comment from detractor
+        if (metadata.awaitingNPSComment) {
+          console.log(`💬 [NPS Comment] Recebendo comentário de detrator de ${clientName}`);
           
-          console.log(`📊 [NPS] Cliente ${clientName} avaliou com nota ${npsScore} - conversa mantida como resolved`);
-          
-          // Buscar template de agradecimento
-          const thankYouTemplate = await storage.getMessageTemplateByKey('nps_thank_you');
-          const thankYouMessage = thankYouTemplate?.template || `Obrigado! Seu feedback já foi registrado!`;
-          
-          const result = await sendWhatsAppMessage(phoneNumber, thankYouMessage, conversation.evolutionInstance || undefined);
-          
-          return res.json({ 
-            success: true, 
-            processed: true, 
-            nps_received: true,
-            score: npsScore,
-            feedbackId: savedFeedback.id 
-          });
+          const feedbackId = metadata.feedbackId;
+          if (feedbackId) {
+            try {
+              // Atualizar feedback com o comentário
+              await storage.updateSatisfactionFeedback(feedbackId, {
+                comment: messageText.trim()
+              });
+              
+              console.log(`✅ [NPS Comment] Comentário salvo para feedback ${feedbackId}`);
+              
+              // Remover flag awaitingNPSComment
+              await storage.updateConversation(conversation.id, {
+                status: 'resolved',
+                metadata: { 
+                  ...metadata, 
+                  awaitingNPSComment: false,
+                  feedbackId: undefined,
+                  npsScore: undefined
+                }
+              });
+              
+              conversation = { 
+                ...conversation, 
+                status: 'resolved',
+                metadata: { 
+                  ...metadata, 
+                  awaitingNPSComment: false
+                }
+              };
+              
+              // Enviar mensagem de agradecimento pelo feedback detalhado
+              const detractorThankYouMessage = `
+🙏 *Muito obrigado pelo seu feedback!*
+
+Sua opinião foi registrada e será analisada pela nossa equipe.
+
+Vamos trabalhar para melhorar e esperamos poder te atender melhor da próxima vez! 💙
+
+Qualquer coisa, estamos à disposição! 😊
+              `.trim();
+              
+              await sendWhatsAppMessage(phoneNumber, detractorThankYouMessage, conversation.evolutionInstance || undefined);
+              
+              return res.json({ 
+                success: true, 
+                processed: true, 
+                nps_comment_received: true
+              });
+            } catch (error) {
+              console.error(`❌ [NPS Comment] Erro ao salvar comentário:`, error);
+            }
+          }
         }
 
         // If conversation is resolved and message is NOT an NPS response, reopen it

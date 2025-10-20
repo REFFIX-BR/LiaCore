@@ -705,13 +705,18 @@ if (redisConnection) {
 
     try {
       const npsMessage = `
-🌟 *Pesquisa de Satisfação*
+🌟 *Pesquisa de Satisfação - TR Telecom*
 
-Como você avalia nosso atendimento?
+Olá! Seu atendimento foi finalizado 😊
 
-Numa escala de 0 a 10, onde 0 é "muito insatisfeito" e 10 é "muito satisfeito", que nota você daria?
+*Sua opinião é muito importante para nós!*
 
-Responda apenas com o número (0 a 10).
+📊 De 0 a 10, o quanto você recomendaria nosso atendimento para um amigo?
+
+• 0 = Não recomendaria de jeito nenhum
+• 10 = Recomendaria com certeza!
+
+Por favor, responda apenas com um número de 0 a 10.
       `.trim();
 
       const surveySent = await sendWhatsAppMessage(chatId, npsMessage);
