@@ -367,7 +367,7 @@ if (redisConnection) {
         // Se não tiver imageSource válido, buscar base64 do banco de dados
         if (!imageSource) {
           console.log(`📥 [Worker] No imageUrl, fetching from database...`);
-          const messages = await storage.getConversationMessages(conversationId);
+          const messages = await storage.getMessagesByConversation(conversationId);
           const lastMessage = messages[0]; // Mensagem mais recente
           
           if (lastMessage?.imageBase64) {

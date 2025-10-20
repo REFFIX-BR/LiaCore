@@ -4965,7 +4965,7 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
         handlingScore,
         handlingStatus,
         handlingNotes,
-        handledBy: req.user!.id
+        handledBy: (req.user as any).id
       });
 
       if (!updated) {
