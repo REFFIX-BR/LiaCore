@@ -520,8 +520,54 @@ export async function sendMessageAndGetResponse(
     console.log("🔍 [OpenAI DEBUG] Last message:", JSON.stringify(lastMessage, null, 2));
     
     if (lastMessage && lastMessage.role === "assistant") {
+      // Check if content array exists and is not empty before accessing
+      if (!Array.isArray(lastMessage.content) || lastMessage.content.length === 0) {
+        console.log("⚠️ [OpenAI] Assistant returned empty content array");
+        
+        // If routing was requested, return routing confirmation
+        if (routingData.routed) {
+          console.log("✅ [OpenAI] Empty content with routing - using fallback message");
+          return {
+            response: `Perfeito! Vou conectar você com nosso time de ${routingData.assistantTarget}. Um momento!`,
+            ...routingData,
+            functionCalls: functionCalls.length > 0 ? functionCalls : undefined
+          };
+        }
+        
+        // If transfer was requested, return transfer confirmation
+        if (transferData.transferred) {
+          console.log("✅ [OpenAI] Empty content with transfer - using fallback message");
+          return {
+            response: `Entendido! Vou transferir você para ${transferData.transferredTo || 'um atendente humano'}. Em instantes você será atendido por nossa equipe.`,
+            ...transferData,
+            ...resolveData,
+            functionCalls: functionCalls.length > 0 ? functionCalls : undefined
+          };
+        }
+        
+        // If resolve was requested, return resolve confirmation
+        if (resolveData.resolved) {
+          console.log("✅ [OpenAI] Empty content with resolve - using fallback message");
+          return {
+            response: "Conversa finalizada. Foi um prazer ajudar você! 😊",
+            ...resolveData,
+            functionCalls: functionCalls.length > 0 ? functionCalls : undefined
+          };
+        }
+        
+        // No action taken, return generic message
+        console.log("⚠️ [OpenAI] Empty content without action - returning fallback");
+        return {
+          response: "Entendi. Como posso ajudar você?",
+          ...transferData,
+          ...resolveData,
+          ...routingData,
+          functionCalls: functionCalls.length > 0 ? functionCalls : undefined
+        };
+      }
+      
       const content = lastMessage.content[0];
-      if (content.type === "text") {
+      if (content && content.type === "text") {
         const responseText = content.text.value;
         
         // Detect if assistant is returning JSON instead of conversational response
