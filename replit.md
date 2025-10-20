@@ -7,6 +7,7 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Te
 **Date: 2025-10-20**
 - **FINANCEIRO ASSISTANT BUG FIX**: Updated instructions to fix critical issue where boleto data wasn't being sent to customers. Assistant was only mentioning STATUS instead of providing complete boleto details (vencimento, valor, código de barras, link de pagamento, PIX). New instructions include explicit formatting template and absolute rules requiring ALL data to be sent immediately when function returns results. User must update OpenAI Assistant instructions manually.
 - **RECEPCIONISTA ROUTING BUG FIX**: Updated instructions to fix critical issue where "desbloqueio em confiança" (unblock in trust) requests were not being routed to Financeiro assistant. Added explicit keywords and examples (cortou, bloqueou, desbloquear, liberar, em confiança) to ensure proper routing. System has automated unblocking capability with monthly limits and multi-bill policies. User must update OpenAI Assistant instructions manually.
+- **FINANCEIRO UX IMPROVEMENT**: Added conversation closure flow to prevent conversations from staying "pendurada" (hanging) after boleto delivery. Assistant now asks if customer needs anything else after sending boleto data, and uses `finalizar_conversa()` when customer confirms/thanks. Reduces active conversation queue and improves customer experience. User must update OpenAI Assistant instructions manually.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
