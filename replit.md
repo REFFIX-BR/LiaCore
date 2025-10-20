@@ -39,6 +39,7 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 
 ### Recent Fixes (2025-10-20)
 - **FINANCEIRO DESBLOQUEIO FIX**: Fixed critical bug where `solicitarDesbloqueio` function was failing with "função não implementada" error despite being fully implemented. Issue: OpenAI calls function in camelCase (`solicitarDesbloqueio`) but switch case in `ai-tools.ts` only had snake_case (`solicitar_desbloqueio`). Added camelCase variant to switch case. Also added "religamento" (reconnection) as keyword synonym since desbloqueio and religamento are the same operation. Updated instructions with keywords: "religamento", "religar", "reativar".
+- **ADMIN DASHBOARD CHART REPLACEMENT**: Replaced "Uso de Tokens OpenAI" chart with "Quantidade de Mensagens Diárias" chart showing daily message volume over the last 30 days. Created `getDailyMessagesCount()` method in storage.ts that queries messages table excluding private/deleted messages (handles both `isPrivate = false` and `isPrivate = null`). Updated `getAdminMetrics()` to return `dailyMessages` instead of `tokenUsage`. Frontend uses green AreaChart (#10b981) with fallback to empty array. Successfully tested and verified in production.
 
 ### System Design Choices
 - **Conversation Prioritization**: Color-coded wait time indicators.
