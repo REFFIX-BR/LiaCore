@@ -1,0 +1,120 @@
+{
+  "name": "enviar_cadastro_venda",
+  "description": "Registra cadastro de venda após coletar: nome, como conheceu a TR Telecom, CPF/CNPJ, email, telefone, dados complementares PF (data_nascimento, RG), endereço completo via buscar_cep, e dia_vencimento. Use APENAS após cliente confirmar TODOS os dados. FLUXO SIMPLIFICADO: não coleta mais forma_pagamento, data_instalacao, disponibilidade, nome_mae, sexo ou estado_civil.",
+  "strict": false,
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "tipo_pessoa": {
+        "type": "string",
+        "enum": [
+          "PF",
+          "PJ"
+        ],
+        "description": "Tipo de pessoa: PF (Pessoa Física) ou PJ (Pessoa Jurídica)"
+      },
+      "nome_cliente": {
+        "type": "string",
+        "description": "Nome completo (PF) ou Razão Social (PJ) - OBRIGATÓRIO"
+      },
+      "como_conheceu": {
+        "type": "string",
+        "description": "Como o cliente conheceu a TR Telecom (ex: indicação, Google, Facebook, Instagram, amigo, outdoor, etc). Pergunta feita LOGO APÓS coletar o nome. OBRIGATÓRIO - dados valiosos para marketing."
+      },
+      "cpf_cnpj": {
+        "type": "string",
+        "description": "CPF ou CNPJ do cliente (apenas números) - OBRIGATÓRIO"
+      },
+      "telefone_cliente": {
+        "type": "string",
+        "description": "Telefone principal com DDD (apenas números) - OBRIGATÓRIO"
+      },
+      "email_cliente": {
+        "type": "string",
+        "description": "Email do cliente - OBRIGATÓRIO"
+      },
+      "plano_id": {
+        "type": "string",
+        "description": "ID do plano escolhido (obtido via consultar_planos) - OBRIGATÓRIO"
+      },
+      "endereco": {
+        "type": "object",
+        "description": "Endereço completo obtido via buscar_cep + dados do cliente - OBRIGATÓRIO",
+        "properties": {
+          "cep": {
+            "type": "string",
+            "description": "CEP sem formatação - OBRIGATÓRIO"
+          },
+          "logradouro": {
+            "type": "string",
+            "description": "Nome da rua (retornado por buscar_cep) - OBRIGATÓRIO"
+          },
+          "numero": {
+            "type": "string",
+            "description": "Número da residência - OBRIGATÓRIO"
+          },
+          "complemento": {
+            "type": "string",
+            "description": "Complemento (apto, bloco, sala) - OPCIONAL"
+          },
+          "bairro": {
+            "type": "string",
+            "description": "Bairro (retornado por buscar_cep) - OBRIGATÓRIO"
+          },
+          "cidade": {
+            "type": "string",
+            "description": "Cidade (retornado por buscar_cep) - OBRIGATÓRIO"
+          },
+          "estado": {
+            "type": "string",
+            "description": "UF do estado (retornado por buscar_cep) - OBRIGATÓRIO"
+          },
+          "referencia": {
+            "type": "string",
+            "description": "Ponto de referência - OBRIGATÓRIO para facilitar localização do técnico"
+          }
+        },
+        "required": [
+          "cep",
+          "logradouro",
+          "numero",
+          "bairro",
+          "cidade",
+          "estado",
+          "referencia"
+        ]
+      },
+      "telefone_secundario": {
+        "type": "string",
+        "description": "Telefone secundário (opcional)"
+      },
+      "data_nascimento": {
+        "type": "string",
+        "description": "Data de nascimento formato YYYY-MM-DD (OBRIGATÓRIO para PF)"
+      },
+      "rg": {
+        "type": "string",
+        "description": "RG apenas números (OBRIGATÓRIO para PF)"
+      },
+      "dia_vencimento": {
+        "type": "string",
+        "description": "Dia de vencimento da fatura: 5, 10 ou 15 - OBRIGATÓRIO"
+      },
+      "observacoes": {
+        "type": "string",
+        "description": "Observações especiais sobre o cadastro (opcional)"
+      }
+    },
+    "required": [
+      "tipo_pessoa",
+      "nome_cliente",
+      "como_conheceu",
+      "cpf_cnpj",
+      "telefone_cliente",
+      "email_cliente",
+      "plano_id",
+      "endereco",
+      "dia_vencimento"
+    ]
+  }
+}
