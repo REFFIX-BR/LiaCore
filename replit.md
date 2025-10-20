@@ -37,6 +37,9 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 **Sales Management Interface**: An ADMIN/SUPERVISOR-only dashboard at `/vendas` provides KPIs, status filters, a sales table, detailed views, and status update functionality.
 **Plans Management System**: A complete CRUD interface for managing TR Telecom service plans within the `/vendas` section, accessible only by ADMIN/SUPERVISOR. It supports plan creation, editing, deletion, active status toggling, and integrates with the conversational sales system.
 
+### Recent Fixes (2025-10-20)
+- **FINANCEIRO DESBLOQUEIO FIX**: Fixed critical bug where `solicitarDesbloqueio` function was failing with "função não implementada" error despite being fully implemented. Issue: OpenAI calls function in camelCase (`solicitarDesbloqueio`) but switch case in `ai-tools.ts` only had snake_case (`solicitar_desbloqueio`). Added camelCase variant to switch case. Also added "religamento" (reconnection) as keyword synonym since desbloqueio and religamento are the same operation. Updated instructions with keywords: "religamento", "religar", "reativar".
+
 ### System Design Choices
 - **Conversation Prioritization**: Color-coded wait time indicators.
 - **Admin Tools**: Mass-closing abandoned conversations, reprocessing stuck messages, configuration management.

@@ -559,6 +559,7 @@ export async function executeAssistantTool(
       return await consultaStatusConexao(args.documento, context, storage);
 
     case 'solicitar_desbloqueio':
+    case 'solicitarDesbloqueio':  // OpenAI usa camelCase
       if (!args.documento) {
         throw new Error("Parâmetro 'documento' é obrigatório para solicitar_desbloqueio");
       }
