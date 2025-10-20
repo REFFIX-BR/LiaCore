@@ -61,9 +61,9 @@ interface AdminMetrics {
     total: number;
     failedLogins: number;
   };
-  tokenUsage: Array<{
+  dailyMessages: Array<{
     date: string;
-    tokens: number;
+    messages: number;
   }>;
   recentActivity: Array<{
     type: string;
@@ -567,22 +567,22 @@ export function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Token Usage Chart */}
+      {/* Daily Messages Chart */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Uso de Tokens OpenAI
+            <BarChart3 className="h-5 w-5" />
+            Quantidade de Mensagens Diárias
           </CardTitle>
-          <CardDescription>Consumo de tokens nos últimos 30 dias</CardDescription>
+          <CardDescription>Volume de mensagens enviadas nos últimos 30 dias</CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={320}>
-            <AreaChart data={metrics.tokenUsage}>
+            <AreaChart data={metrics.dailyMessages || []}>
               <defs>
-                <linearGradient id="colorTokens" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                <linearGradient id="colorMessages" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" opacity={0.3} />
@@ -598,7 +598,6 @@ export function AdminDashboard() {
               <YAxis 
                 className="text-xs" 
                 tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
               />
               <Tooltip 
                 contentStyle={{ 
@@ -607,15 +606,15 @@ export function AdminDashboard() {
                   borderRadius: '8px'
                 }}
                 labelFormatter={(value) => new Date(value).toLocaleDateString('pt-BR')}
-                formatter={(value: number) => [`${value.toLocaleString()} tokens`, 'Consumo']}
+                formatter={(value: number) => [`${value.toLocaleString()} mensagens`, 'Volume']}
               />
               <Area 
                 type="monotone" 
-                dataKey="tokens" 
-                stroke="#8b5cf6" 
+                dataKey="messages" 
+                stroke="#10b981" 
                 strokeWidth={2}
                 fillOpacity={1} 
-                fill="url(#colorTokens)" 
+                fill="url(#colorMessages)" 
               />
             </AreaChart>
           </ResponsiveContainer>

@@ -163,7 +163,7 @@ export interface IStorage {
     estimatedCost: { total: number; openai: number; upstash: number };
     activeUsers: { total: number; admins: number; supervisors: number; agents: number };
     securityEvents: { total: number; failedLogins: number };
-    tokenUsage: Array<{ date: string; tokens: number }>;
+    dailyMessages: Array<{ date: string; messages: number }>;
     recentActivity: Array<{ type: string; message: string; timestamp: Date | null }>;
   }>;
 
@@ -2205,11 +2205,8 @@ export class DbStorage implements IStorage {
       failedLogins: securityStats.failedLogins
     };
 
-    // ✅ DADOS REAIS - Token usage baseado em rastreamento real
-    const tokenUsage = usageMetrics.dailyUsage.map(day => ({
-      date: day.date,
-      tokens: day.tokens
-    }));
+    // ✅ DADOS REAIS - Mensagens diárias dos últimos 30 dias
+    const dailyMessages = await this.getDailyMessagesCount();
 
     // Atividade recente
     const recentActions = await db.select().from(schema.supervisorActions)
@@ -2227,7 +2224,7 @@ export class DbStorage implements IStorage {
       estimatedCost,
       activeUsers,
       securityEvents,
-      tokenUsage,
+      dailyMessages,
       recentActivity
     };
 
@@ -2236,6 +2233,41 @@ export class DbStorage implements IStorage {
     console.log('💾 [Cache] Admin metrics cached for 60s');
 
     return metrics;
+  }
+
+  private async getDailyMessagesCount() {
+    const dailyMessages = [];
+    
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+      
+      const dateStr = date.toISOString().split('T')[0];
+      
+      // Buscar todas as mensagens do dia (excluindo privadas e deletadas)
+      // Nota: isPrivate pode ser null (default), então tratamos null como false (pública)
+      const messages = await db.select().from(schema.messages)
+        .where(and(
+          gte(schema.messages.timestamp, date),
+          lt(schema.messages.timestamp, nextDate),
+          or(
+            eq(schema.messages.isPrivate, false),
+            isNull(schema.messages.isPrivate)
+          ),
+          isNull(schema.messages.deletedAt)
+        ));
+      
+      dailyMessages.push({
+        date: dateStr,
+        messages: messages.length
+      });
+    }
+    
+    return dailyMessages;
   }
 
   private calculateSentimentTrend(conversations: Conversation[]) {
