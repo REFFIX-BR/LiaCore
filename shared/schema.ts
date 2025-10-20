@@ -183,6 +183,11 @@ export const satisfactionFeedback = pgTable("satisfaction_feedback", {
   comment: text("comment"),
   clientName: text("client_name"),
   createdAt: timestamp("created_at").defaultNow(),
+  handlingScore: integer("handling_score"), // 1-5 (nota da tratativa)
+  handlingStatus: text("handling_status").default("pending"), // 'pending', 'in_progress', 'resolved'
+  handlingNotes: text("handling_notes"), // Observações sobre a tratativa
+  handledBy: varchar("handled_by"), // User ID de quem tratou
+  handledAt: timestamp("handled_at"), // Quando foi tratado
 });
 
 export const suggestedResponses = pgTable("suggested_responses", {
@@ -324,6 +329,11 @@ export const insertSatisfactionFeedbackSchema = createInsertSchema(satisfactionF
   id: true,
   createdAt: true,
   category: true, // Category is calculated by backend based on npsScore
+  handlingScore: true, // Handling fields are managed separately via update API
+  handlingStatus: true,
+  handlingNotes: true,
+  handledBy: true,
+  handledAt: true,
 });
 
 export const insertSuggestedResponseSchema = createInsertSchema(suggestedResponses).omit({

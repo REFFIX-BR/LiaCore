@@ -1,23 +1,34 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star, MessageSquare, ExternalLink, Filter, X, User, Bot } from "lucide-react";
+import { Star, MessageSquare, ExternalLink, Filter, X, User, Bot, ClipboardCheck, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { SatisfactionFeedback, Conversation, Message } from "@shared/schema";
 
 type FeedbackWithConversation = SatisfactionFeedback & { conversation?: Conversation };
 
 export default function Feedbacks() {
+  const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [showHandlingDialog, setShowHandlingDialog] = useState(false);
+  const [selectedFeedback, setSelectedFeedback] = useState<FeedbackWithConversation | null>(null);
+  const [handlingScore, setHandlingScore] = useState<number>(3);
+  const [handlingStatus, setHandlingStatus] = useState<string>("pending");
+  const [handlingNotes, setHandlingNotes] = useState<string>("");
 
   const { data: feedbacks, isLoading, error } = useQuery<FeedbackWithConversation[]>({
     queryKey: ["/api/satisfaction-feedback"],
@@ -33,6 +44,64 @@ export default function Feedbacks() {
     queryKey: ["/api/monitor/conversations", selectedConversationId],
     enabled: !!selectedConversationId,
   });
+
+  const handlingMutation = useMutation({
+    mutationFn: ({ id, handlingScore, handlingStatus, handlingNotes }: any) =>
+      apiRequest(`/api/satisfaction-feedback/${id}/handling`, 'PUT', {
+        handlingScore,
+        handlingStatus,
+        handlingNotes
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/satisfaction-feedback'] });
+      toast({
+        title: 'Tratativa Registrada',
+        description: 'As informações da tratativa foram salvas com sucesso.',
+      });
+      setShowHandlingDialog(false);
+      setSelectedFeedback(null);
+      setHandlingNotes("");
+      setHandlingScore(3);
+      setHandlingStatus("pending");
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao Registrar',
+        description: 'Não foi possível salvar a tratativa. Tente novamente.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleOpenHandlingDialog = (feedback: FeedbackWithConversation, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedFeedback(feedback);
+    setHandlingScore(feedback.handlingScore || 3);
+    setHandlingStatus(feedback.handlingStatus || "pending");
+    setHandlingNotes(feedback.handlingNotes || "");
+    setShowHandlingDialog(true);
+  };
+
+  const handleSubmitHandling = () => {
+    if (!selectedFeedback) return;
+    
+    handlingMutation.mutate({
+      id: selectedFeedback.id,
+      handlingScore,
+      handlingStatus,
+      handlingNotes
+    });
+  };
+
+  const getHandlingStatusBadge = (status: string | null) => {
+    if (!status || status === "pending") {
+      return <Badge variant="outline" className="text-orange-600 border-orange-600">Pendente</Badge>;
+    }
+    if (status === "in_progress") {
+      return <Badge variant="outline" className="text-blue-600 border-blue-600">Em Andamento</Badge>;
+    }
+    return <Badge variant="outline" className="text-green-600 border-green-600">Resolvido</Badge>;
+  };
 
   if (isLoading) {
     return (
@@ -183,6 +252,13 @@ export default function Feedbacks() {
                           <Badge variant="outline" data-testid="badge-assistant">
                             {assistantNames[feedback.assistantType] || feedback.assistantType}
                           </Badge>
+                          {getHandlingStatusBadge(feedback.handlingStatus)}
+                          {feedback.category === "detractor" && (!feedback.handlingStatus || feedback.handlingStatus === "pending") && (
+                            <Badge variant="destructive" className="gap-1" data-testid="badge-needs-handling">
+                              <AlertCircle className="h-3 w-3" />
+                              Precisa Tratativa
+                            </Badge>
+                          )}
                           {!feedback.conversation && (
                             <Badge variant="secondary" data-testid="badge-no-conversation">
                               Conversa não disponível
@@ -210,18 +286,30 @@ export default function Feedbacks() {
                         </div>
                       </div>
 
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        disabled={!feedback.conversation}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenConversation(feedback);
-                        }}
-                        data-testid="button-open-conversation"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={(e) => handleOpenHandlingDialog(feedback, e)}
+                          data-testid="button-add-handling"
+                          title="Registrar Tratativa"
+                        >
+                          <ClipboardCheck className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          disabled={!feedback.conversation}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenConversation(feedback);
+                          }}
+                          data-testid="button-open-conversation"
+                          title="Ver Conversa"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
 
                     {feedback.conversation && (
@@ -232,6 +320,35 @@ export default function Feedbacks() {
                             {feedback.conversation.lastMessage?.substring(0, 100)}
                             {(feedback.conversation.lastMessage?.length || 0) > 100 ? "..." : ""}
                           </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {feedback.handlingNotes && (
+                      <div className="mt-3 pt-3 border-t">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <ClipboardCheck className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs font-medium">Notas da Tratativa:</span>
+                            {feedback.handlingScore && (
+                              <div className="flex gap-0.5">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star 
+                                    key={i} 
+                                    className={`h-3 w-3 ${i < feedback.handlingScore! ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground" data-testid="text-handling-notes">
+                            {feedback.handlingNotes}
+                          </p>
+                          {feedback.handledAt && (
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(feedback.handledAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                            </p>
+                          )}
                         </div>
                       </div>
                     )}
@@ -325,6 +442,87 @@ export default function Feedbacks() {
               </div>
             </ScrollArea>
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showHandlingDialog} onOpenChange={setShowHandlingDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Registrar Tratativa</DialogTitle>
+            <DialogDescription>
+              Adicione informações sobre como este feedback foi tratado
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="handling-status">Status da Tratativa</Label>
+              <Select value={handlingStatus} onValueChange={setHandlingStatus}>
+                <SelectTrigger id="handling-status" data-testid="select-handling-status">
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pendente</SelectItem>
+                  <SelectItem value="in_progress">Em Andamento</SelectItem>
+                  <SelectItem value="resolved">Resolvido</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="handling-score">Nota da Tratativa (1-5 estrelas)</Label>
+              <div className="flex gap-2 items-center">
+                {[1, 2, 3, 4, 5].map((score) => (
+                  <button
+                    key={score}
+                    type="button"
+                    onClick={() => setHandlingScore(score)}
+                    className="focus:outline-none"
+                    data-testid={`star-${score}`}
+                  >
+                    <Star 
+                      className={`h-8 w-8 cursor-pointer transition-colors ${
+                        score <= handlingScore 
+                          ? 'fill-yellow-400 text-yellow-400' 
+                          : 'text-gray-300 hover:text-yellow-200'
+                      }`}
+                    />
+                  </button>
+                ))}
+                <span className="ml-2 text-sm text-muted-foreground">{handlingScore}/5</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="handling-notes">Observações da Tratativa</Label>
+              <Textarea
+                id="handling-notes"
+                placeholder="Descreva como o cliente foi tratado, quais ações foram tomadas, resultados obtidos..."
+                value={handlingNotes}
+                onChange={(e) => setHandlingNotes(e.target.value)}
+                rows={5}
+                data-testid="textarea-handling-notes"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowHandlingDialog(false)}
+              disabled={handlingMutation.isPending}
+              data-testid="button-cancel-handling"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSubmitHandling}
+              disabled={handlingMutation.isPending}
+              data-testid="button-submit-handling"
+            >
+              {handlingMutation.isPending ? 'Salvando...' : 'Salvar Tratativa'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

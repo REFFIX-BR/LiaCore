@@ -4909,6 +4909,46 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
     }
   });
 
+  // Update satisfaction feedback handling (notes and verification)
+  app.put("/api/satisfaction-feedback/:id/handling", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // Validate input with Zod
+      const handlingUpdateSchema = z.object({
+        handlingScore: z.number().int().min(1).max(5).optional(),
+        handlingStatus: z.enum(["pending", "in_progress", "resolved"]).optional(),
+        handlingNotes: z.string().optional()
+      });
+
+      const validationResult = handlingUpdateSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Invalid input", 
+          details: validationResult.error.errors 
+        });
+      }
+
+      const { handlingScore, handlingStatus, handlingNotes } = validationResult.data;
+
+      const updated = await storage.updateSatisfactionFeedbackHandling(id, {
+        handlingScore,
+        handlingStatus,
+        handlingNotes,
+        handledBy: req.user!.id
+      });
+
+      if (!updated) {
+        return res.status(404).json({ error: "Feedback not found" });
+      }
+
+      return res.json(updated);
+    } catch (error) {
+      console.error("Update satisfaction feedback handling error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Get NPS metrics
   app.get("/api/metrics/nps", authenticate, async (req, res) => {
     try {

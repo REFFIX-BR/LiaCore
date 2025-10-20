@@ -115,6 +115,12 @@ export interface IStorage {
   getSatisfactionFeedbackByConversationId(conversationId: string): Promise<SatisfactionFeedback | undefined>;
   getSatisfactionFeedbackByAssistantType(assistantType: string): Promise<SatisfactionFeedback[]>;
   getSatisfactionFeedbackWithConversations(): Promise<Array<SatisfactionFeedback & { conversation?: Conversation }>>;
+  updateSatisfactionFeedbackHandling(id: string, updates: {
+    handlingScore?: number;
+    handlingStatus?: string;
+    handlingNotes?: string;
+    handledBy?: string;
+  }): Promise<SatisfactionFeedback | undefined>;
   
   // Suggested Responses
   createSuggestedResponse(response: InsertSuggestedResponse): Promise<SuggestedResponse>;
@@ -819,6 +825,27 @@ export class MemStorage implements IStorage {
       ...feedback,
       conversation: this.conversations.get(feedback.conversationId)
     }));
+  }
+
+  async updateSatisfactionFeedbackHandling(
+    id: string, 
+    updates: {
+      handlingScore?: number;
+      handlingStatus?: string;
+      handlingNotes?: string;
+      handledBy?: string;
+    }
+  ): Promise<SatisfactionFeedback | undefined> {
+    const feedback = this.satisfactionFeedback.get(id);
+    if (!feedback) return undefined;
+    
+    const updated = {
+      ...feedback,
+      ...updates,
+      handledAt: new Date()
+    };
+    this.satisfactionFeedback.set(id, updated);
+    return updated;
   }
 
   // Suggested Responses
@@ -1852,6 +1879,25 @@ export class DbStorage implements IStorage {
     }
     
     return results;
+  }
+
+  async updateSatisfactionFeedbackHandling(
+    id: string, 
+    updates: {
+      handlingScore?: number;
+      handlingStatus?: string;
+      handlingNotes?: string;
+      handledBy?: string;
+    }
+  ): Promise<SatisfactionFeedback | undefined> {
+    const [updated] = await db.update(schema.satisfactionFeedback)
+      .set({
+        ...updates,
+        handledAt: new Date()
+      })
+      .where(eq(schema.satisfactionFeedback.id, id))
+      .returning();
+    return updated;
   }
 
   // Suggested Responses
