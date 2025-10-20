@@ -629,6 +629,7 @@ export const sales = pgTable("sales", {
   source: text("source").notNull().default("chat"), // "chat", "site", "manual"
   seller: text("seller").default("Site"), // Nome do vendedor ou "Site"
   conversationId: varchar("conversation_id"), // Referência à conversa de origem
+  howDidYouKnow: text("how_did_you_know"), // Como conheceu a TR Telecom (indicação, google, facebook, etc)
   
   // Tracking
   pendingItems: text("pending_items").array().default(sql`'{}'::text[]`), // Itens pendentes

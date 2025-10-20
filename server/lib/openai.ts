@@ -1281,7 +1281,8 @@ Fonte: ${fonte}`;
             source: "chat",
             status: "Aguardando Análise",
             conversationId,
-            observations: args.observacoes
+            observations: args.observacoes,
+            howDidYouKnow: args.como_conheceu || null, // Como conheceu a TR Telecom
           };
 
           // Salvar no banco via storage
