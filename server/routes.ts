@@ -18,12 +18,26 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Helper function to normalize Evolution API URL (ensure protocol)
+function normalizeEvolutionUrl(url?: string): string {
+  if (!url) return '';
+  let normalized = url.trim();
+  if (!normalized.startsWith('http://') && !normalized.startsWith('https://')) {
+    normalized = `https://${normalized}`;
+    console.log(`✅ [Config] Evolution API URL normalized: ${normalized}`);
+  }
+  return normalized;
+}
+
 // Evolution API configuration
 const EVOLUTION_CONFIG = {
-  apiUrl: process.env.EVOLUTION_API_URL,
+  apiUrl: normalizeEvolutionUrl(process.env.EVOLUTION_API_URL),
   apiKey: process.env.EVOLUTION_API_KEY,
   instance: "Principal", // Force "Principal" instance (WhatsApp Business - most stable)
 };
+
+// Log configuration at startup
+console.log(`📡 [Config] Evolution API URL: ${EVOLUTION_CONFIG.apiUrl}`);
 
 // Helper function to get API key for specific instance
 function getEvolutionApiKey(instanceName?: string): string | undefined {
@@ -39,6 +53,22 @@ function getEvolutionApiKey(instanceName?: string): string | undefined {
   
   // Fallback to default key
   return EVOLUTION_CONFIG.apiKey;
+}
+
+// Helper function to get Evolution API URL for specific instance
+function getEvolutionApiUrl(instanceName?: string): string {
+  if (!instanceName) {
+    return EVOLUTION_CONFIG.apiUrl;
+  }
+  
+  // Try to get instance-specific URL from environment
+  const instanceUrl = process.env[`EVOLUTION_API_URL_${instanceName.toUpperCase()}`];
+  if (instanceUrl) {
+    return normalizeEvolutionUrl(instanceUrl);
+  }
+  
+  // Fallback to default URL
+  return EVOLUTION_CONFIG.apiUrl;
 }
 
 // Helper function to send WhatsApp image via Evolution API
@@ -6491,26 +6521,21 @@ A resposta deve:
       };
     }
     
-    // Validate Evolution API configuration
-    const evolutionUrl = process.env.EVOLUTION_API_URL;
-    const evolutionApiKey = process.env.EVOLUTION_API_KEY;
-    const evolutionInstance = process.env.EVOLUTION_API_INSTANCE;
+    // Validate Evolution API configuration (use normalized URL that the code actually uses)
+    const evolutionUrl = EVOLUTION_CONFIG.apiUrl; // Already normalized with protocol
+    const evolutionApiKey = EVOLUTION_CONFIG.apiKey;
+    const evolutionInstance = EVOLUTION_CONFIG.instance;
     
     let evolutionUrlStatus = 'not_configured';
     let evolutionUrlDetails = '';
     
     if (evolutionUrl) {
-      const trimmedUrl = evolutionUrl.trim();
-      
-      if (trimmedUrl !== evolutionUrl) {
-        evolutionUrlStatus = 'has_whitespace';
-        evolutionUrlDetails = `URL tem espaços extras! Use: "${trimmedUrl}"`;
-      } else if (!trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')) {
+      if (!evolutionUrl.startsWith('http://') && !evolutionUrl.startsWith('https://')) {
         evolutionUrlStatus = 'missing_protocol';
-        evolutionUrlDetails = `URL sem protocolo. Use: https://${trimmedUrl}`;
+        evolutionUrlDetails = `URL sem protocolo. Use: https://${evolutionUrl}`;
       } else {
         evolutionUrlStatus = 'ok';
-        evolutionUrlDetails = `${trimmedUrl.substring(0, 30)}...`;
+        evolutionUrlDetails = `${evolutionUrl.substring(0, 50)}...`;
       }
     }
     

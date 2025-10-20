@@ -23,13 +23,26 @@ function getEvolutionApiKey(instance?: string): string | undefined {
 }
 
 /**
+ * Normalize Evolution API URL (ensure protocol)
+ */
+function normalizeEvolutionUrl(url?: string): string {
+  if (!url) return '';
+  let normalized = url.trim();
+  if (!normalized.startsWith('http://') && !normalized.startsWith('https://')) {
+    normalized = `https://${normalized}`;
+  }
+  return normalized;
+}
+
+/**
  * Get Evolution API URL for a specific instance
  */
-function getEvolutionApiUrl(instance?: string): string | undefined {
+function getEvolutionApiUrl(instance?: string): string {
   // Tenta URL específica da instância primeiro, senão usa global
-  return instance
+  const url = instance
     ? (process.env[`EVOLUTION_API_URL_${instance}`] || process.env.EVOLUTION_API_URL)
     : process.env.EVOLUTION_API_URL;
+  return normalizeEvolutionUrl(url);
 }
 
 /**
