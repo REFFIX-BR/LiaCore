@@ -65,10 +65,10 @@ interface AdminMetrics {
     date: string;
     messages: number;
   }>;
-  recentActivity: Array<{
-    type: string;
-    message: string;
-    timestamp: string | null;
+  volumeVsSuccess: Array<{
+    hour: string;
+    volume: number;
+    successRate: number;
   }>;
 }
 
@@ -621,52 +621,66 @@ export function AdminDashboard() {
         </CardContent>
       </Card>
 
-      {/* Recent Activity */}
+      {/* Volume vs Success Rate Chart */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            Atividade Recente do Sistema
+            <BarChart3 className="h-5 w-5" />
+            Volume de Conversas vs. Taxa de Sucesso da IA (Últimas 24h)
           </CardTitle>
-          <CardDescription>Últimas 10 ações e eventos relevantes</CardDescription>
+          <CardDescription>Análise horária do volume de conversas e taxa de resolução por IA</CardDescription>
         </CardHeader>
         <CardContent>
-          {metrics.recentActivity.length > 0 ? (
-            <div className="space-y-3">
-              {metrics.recentActivity.map((activity, idx) => (
-                <div 
-                  key={idx} 
-                  className="flex items-start gap-3 p-3 rounded-lg hover-elevate border border-border/50"
-                  data-testid={`activity-${idx}`}
-                >
-                  <Badge 
-                    variant={
-                      activity.type === 'error' ? 'destructive' : 
-                      activity.type === 'warning' ? 'secondary' : 
-                      'default'
-                    }
-                    className="mt-0.5 shrink-0"
-                  >
-                    {activity.type.toUpperCase()}
-                  </Badge>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{activity.message}</p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <Clock className="h-3 w-3 text-muted-foreground" />
-                      <p className="text-xs text-muted-foreground">
-                        {activity.timestamp ? new Date(activity.timestamp).toLocaleString('pt-BR') : 'Data desconhecida'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12">
-              <BarChart3 className="h-12 w-12 text-muted-foreground/50 mb-3" />
-              <p className="text-sm text-muted-foreground">Nenhuma atividade recente registrada</p>
-            </div>
-          )}
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={metrics.volumeVsSuccess || []}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" opacity={0.3} />
+              <XAxis 
+                dataKey="hour" 
+                className="text-xs" 
+                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+              />
+              <YAxis 
+                yAxisId="left"
+                className="text-xs" 
+                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+              />
+              <YAxis 
+                yAxisId="right"
+                orientation="right"
+                className="text-xs" 
+                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                domain={[0, 100]}
+                tickFormatter={(value) => `${value}%`}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px'
+                }}
+                formatter={(value: number, name: string) => {
+                  if (name === 'Volume') return [`${value} conversas`, 'Volume'];
+                  if (name === 'Taxa de Sucesso') return [`${value}%`, 'Taxa de Sucesso'];
+                  return [value, name];
+                }}
+              />
+              <Legend />
+              <Bar 
+                yAxisId="left"
+                dataKey="volume" 
+                fill="#3b82f6" 
+                radius={[4, 4, 0, 0]}
+                name="Volume"
+              />
+              <Bar 
+                yAxisId="right"
+                dataKey="successRate" 
+                fill="#10b981" 
+                radius={[4, 4, 0, 0]}
+                name="Taxa de Sucesso"
+              />
+            </BarChart>
+          </ResponsiveContainer>
         </CardContent>
       </Card>
         </TabsContent>

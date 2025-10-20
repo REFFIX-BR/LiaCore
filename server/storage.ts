@@ -164,7 +164,7 @@ export interface IStorage {
     activeUsers: { total: number; admins: number; supervisors: number; agents: number };
     securityEvents: { total: number; failedLogins: number };
     dailyMessages: Array<{ date: string; messages: number }>;
-    recentActivity: Array<{ type: string; message: string; timestamp: Date | null }>;
+    volumeVsSuccess: Array<{ hour: string; volume: number; successRate: number }>;
   }>;
 
   // Agent Status Monitor
@@ -2208,16 +2208,8 @@ export class DbStorage implements IStorage {
     // ✅ DADOS REAIS - Mensagens diárias dos últimos 30 dias
     const dailyMessages = await this.getDailyMessagesCount();
 
-    // Atividade recente
-    const recentActions = await db.select().from(schema.supervisorActions)
-      .orderBy(desc(schema.supervisorActions.createdAt))
-      .limit(10);
-
-    const recentActivity = recentActions.map(action => ({
-      type: action.action,
-      message: `Ação: ${action.action} na conversa`,
-      timestamp: action.createdAt
-    }));
+    // ✅ DADOS REAIS - Volume vs Taxa de Sucesso (últimas 24h)
+    const volumeVsSuccess = await this.calculateVolumeVsSuccess();
 
     const metrics = {
       systemStatus,
@@ -2225,7 +2217,7 @@ export class DbStorage implements IStorage {
       activeUsers,
       securityEvents,
       dailyMessages,
-      recentActivity
+      volumeVsSuccess
     };
 
     // ✅ Armazena no cache por 60 segundos
