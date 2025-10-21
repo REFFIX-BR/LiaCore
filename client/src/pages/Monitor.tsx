@@ -23,6 +23,7 @@ export default function Monitor() {
   const [isPaused, setIsPaused] = useState(false);
   const [allMessages, setAllMessages] = useState<any[]>([]);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreLocal, setHasMoreLocal] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -363,14 +364,15 @@ export default function Monitor() {
   // Sincronizar mensagens quando conversationDetails mudar
   useEffect(() => {
     if (conversationDetails?.messages) {
-      // Ao carregar nova conversa, substituir todas as mensagens
+      // Ao carregar nova conversa ou receber atualizações do polling
       setAllMessages(conversationDetails.messages);
+      setHasMoreLocal(conversationDetails.hasMore || false);
     }
-  }, [activeConvId, conversationDetails?.messages.length]);
+  }, [activeConvId, conversationDetails?.messages, conversationDetails?.hasMore]);
 
   // Função para carregar mensagens anteriores
   const handleLoadMore = async () => {
-    if (!activeConvId || isLoadingMore || !conversationDetails?.hasMore) return;
+    if (!activeConvId || isLoadingMore || !hasMoreLocal) return;
     
     setIsLoadingMore(true);
     try {
@@ -379,6 +381,9 @@ export default function Monitor() {
       
       // Buscar mensagens anteriores
       const olderData = await monitorAPI.getConversationDetails(activeConvId, oldestMessageId);
+      
+      // Atualizar flag hasMore local
+      setHasMoreLocal(olderData.hasMore || false);
       
       // Adicionar mensagens antigas ao início do array
       setAllMessages(prev => [...olderData.messages, ...prev]);
@@ -627,7 +632,7 @@ export default function Monitor() {
                 onReopen={(user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') ? handleReopen : undefined}
                 conversationStatus={activeConversation.status}
                 onLoadMore={handleLoadMore}
-                hasMore={conversationDetails?.hasMore || false}
+                hasMore={hasMoreLocal}
                 isLoadingMore={isLoadingMore}
               />
             )}
