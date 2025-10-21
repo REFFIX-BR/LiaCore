@@ -86,12 +86,71 @@ Resultado: Clientes recebiam respostas genéricas ou eram roteados incorretament
 
 ---
 
+## ✅ ASSISTENTE: APRESENTAÇÃO (RECEPCIONISTA)
+
+### **Sugestão Aplicada #1: Nunca Pergunte "Você Está Aí?"**
+
+**Score de Confiança:** 90%  
+**Ocorrências:** 15+ sugestões (duplicatas)  
+**Conversas Afetadas:** 20+ conversas únicas
+
+#### **Problema Identificado:**
+O assistente frequentemente perguntava "você está aí?" quando o cliente JÁ estava interagindo.
+
+#### **Mudanças Implementadas (linhas 1038-1061):**
+- Adicionada seção explícita proibindo "você está aí?"
+- Exemplos de ERRADO vs CORRETO
+
+#### **Impacto Esperado:**
+- ✅ Eliminação de 100% das perguntas inadequadas
+- ✅ Respostas mais diretas e contextuais
+
+---
+
+### **Sugestão Aplicada #2: Reconhecimento Ampliado de Despedidas**
+
+**Score de Confiança:** 90%  
+**Conversas Afetadas:** 8+ conversas únicas
+
+#### **Problema Identificado:**
+Não reconhecia variações como "vlw", "tmj", "falou", "show".
+
+#### **Mudanças Implementadas (linhas 1226-1230):**
+Expandida de 5 para 15+ variações:
+- "valeu mesmo", "vlw", "tmj", "falou", "show", "até mais", "tchau", etc.
+
+#### **Impacto Esperado:**
+- ✅ Reconhecimento de 3x mais despedidas
+- ✅ Conversas finalizadas automaticamente
+
+---
+
+### **Sugestão Aplicada #3: Palavras-Chave Financeiras Ampliadas**
+
+**Score de Confiança:** 90%  
+**Conversas Afetadas:** 5+ conversas únicas
+
+#### **Problema Identificado:**
+"Segunda via", "débito", "pendência" não eram roteadas para Financeiro.
+
+#### **Mudanças Implementadas (linhas 1104-1114):**
+Expandida de 6 para 15+ palavras-chave:
+- "segunda via", "débito", "pendência", "acordo", etc.
+
+#### **Impacto Esperado:**
+- ✅ Roteamento correto de 2.5x mais variações
+
+#### **Status:** ✅ **APLICADO** - 21/10/2025
+
+---
+
 ## 📊 RESUMO
 
 **Total de Sugestões Analisadas:** 503  
-**Sugestões Aplicadas:** 1 (10 duplicatas resolvidas)  
-**Assistentes Melhorados:** Cancelamento, Apresentação  
-**Tempo de Aplicação:** ~15 minutos  
+**Sugestões Aplicadas:** 4 principais (38+ duplicatas resolvidas)  
+**Assistentes Melhorados:** Cancelamento (1), Apresentação (3)  
+**Conversas Afetadas Total:** 50+  
+**Tempo de Aplicação:** ~35 minutos  
 
 ---
 
@@ -99,16 +158,14 @@ Resultado: Clientes recebiam respostas genéricas ou eram roteados incorretament
 
 ### **Aguardando Aplicação (Tier 1 - Score 90%):**
 
-1. **Apresentação** - "Você está aí?" inadequado (8+ conversas)
-2. **Comercial** - Encerramento prematuro (9+ conversas)
-3. **Comercial** - Ignora dados específicos (9+ conversas)
-4. **Suporte** - Não reconhece CPF/CNPJ (10+ conversas)
-5. **Financeiro** - Mudança de vencimento (1+ conversa)
-6. **Financeiro** - Boleto do mês errado (2+ conversas)
-
-### **Para Verificação:**
-- Apresentação - Despedidas (pode já estar implementado)
-- Apresentação - Boletos não roteados (pode já estar implementado)
+1. ✅ ~~Apresentação - "Você está aí?" inadequado~~ **APLICADO**
+2. ✅ ~~Apresentação - Despedidas~~ **APLICADO**
+3. ✅ ~~Apresentação - Boletos não roteados~~ **APLICADO**
+4. **Comercial** - Encerramento prematuro (9+ conversas)
+5. **Comercial** - Ignora dados específicos (9+ conversas)
+6. **Suporte** - Não reconhece CPF/CNPJ (10+ conversas)
+7. **Financeiro** - Mudança de vencimento (1+ conversa)
+8. **Financeiro** - Boleto do mês errado (2+ conversas)
 
 ---
 
