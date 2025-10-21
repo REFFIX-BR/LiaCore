@@ -24,6 +24,13 @@ export default function Monitor() {
   const [allMessages, setAllMessages] = useState<any[]>([]);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMoreLocal, setHasMoreLocal] = useState(false);
+
+  // Resetar estado ao trocar de conversa
+  useEffect(() => {
+    setAllMessages([]);
+    setHasMoreLocal(false);
+    setIsLoadingMore(false);
+  }, [activeConvId]);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -363,12 +370,32 @@ export default function Monitor() {
 
   // Sincronizar mensagens quando conversationDetails mudar
   useEffect(() => {
-    if (conversationDetails?.messages) {
-      // Ao carregar nova conversa ou receber atualizações do polling
-      setAllMessages(conversationDetails.messages);
-      setHasMoreLocal(conversationDetails.hasMore || false);
-    }
-  }, [activeConvId, conversationDetails?.messages, conversationDetails?.hasMore]);
+    if (!conversationDetails?.messages) return;
+
+    setAllMessages((prevMessages) => {
+      // Se mudou de conversa, substituir completamente
+      const currentIds = new Set(prevMessages.map(m => m.id));
+      const newMessages = conversationDetails.messages;
+      
+      // Se não há mensagens antigas OU todas as novas mensagens são diferentes (nova conversa)
+      if (prevMessages.length === 0 || !newMessages.some(m => currentIds.has(m.id))) {
+        setHasMoreLocal(conversationDetails.hasMore || false);
+        return newMessages;
+      }
+      
+      // Mesma conversa: mesclar apenas mensagens novas (mantendo antigas carregadas via paginação)
+      const newMessageIds = new Set(newMessages.map(m => m.id));
+      const onlyNewMessages = newMessages.filter(m => !currentIds.has(m.id));
+      
+      if (onlyNewMessages.length > 0) {
+        // Adicionar apenas mensagens novas no final
+        return [...prevMessages, ...onlyNewMessages];
+      }
+      
+      // Nenhuma mensagem nova, manter como está
+      return prevMessages;
+    });
+  }, [conversationDetails?.messages, conversationDetails?.hasMore]);
 
   // Função para carregar mensagens anteriores
   const handleLoadMore = async () => {
