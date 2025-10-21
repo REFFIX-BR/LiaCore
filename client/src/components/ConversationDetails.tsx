@@ -98,13 +98,52 @@ export function ConversationDetails({
   const [internalNote, setInternalNote] = useState("");
   const [showTransferDialog, setShowTransferDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [isNearBottom, setIsNearBottom] = useState(true);
+  const previousMessageCountRef = useRef(messages.length);
 
-  // Auto-scroll para última mensagem quando abrir ou mensagens mudarem
+  // Detecta se o usuário está perto do final da lista
+  const checkIfNearBottom = () => {
+    if (scrollAreaRef.current) {
+      const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollElement) {
+        const { scrollTop, scrollHeight, clientHeight } = scrollElement;
+        const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+        setIsNearBottom(distanceFromBottom < 100); // threshold de 100px
+      }
+    }
+  };
+
+  // Auto-scroll inteligente: só rola se estiver perto do final OU se for primeira carga
   useEffect(() => {
-    if (messagesEndRef.current) {
+    const isFirstLoad = previousMessageCountRef.current === 0;
+    const hasNewMessages = messages.length > previousMessageCountRef.current;
+    
+    // Só faz scroll se:
+    // 1. É a primeira carga, OU
+    // 2. O usuário está perto do final E há novas mensagens
+    if (messagesEndRef.current && (isFirstLoad || (isNearBottom && hasNewMessages))) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
     }
-  }, [messages]);
+    
+    previousMessageCountRef.current = messages.length;
+  }, [messages, isNearBottom]);
+
+  // Adiciona listener de scroll para detectar posição do usuário
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollElement) {
+        scrollElement.addEventListener('scroll', checkIfNearBottom);
+        // Verifica posição inicial
+        checkIfNearBottom();
+        
+        return () => {
+          scrollElement.removeEventListener('scroll', checkIfNearBottom);
+        };
+      }
+    }
+  }, []);
 
   const handleTransfer = () => {
     if (transferDept && transferNotes) {
@@ -138,7 +177,7 @@ export function ConversationDetails({
         </TabsList>
 
         <TabsContent value="transcript" className="flex-1 px-6 pb-6">
-          <ScrollArea className="h-[500px]">
+          <ScrollArea className="h-[500px]" ref={scrollAreaRef}>
             <div className="space-y-4 pt-4">
               {hasMore && (
                 <div className="flex justify-center pb-4">
