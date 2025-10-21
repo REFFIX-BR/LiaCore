@@ -24,12 +24,14 @@ export default function Monitor() {
   const [allMessages, setAllMessages] = useState<any[]>([]);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMoreLocal, setHasMoreLocal] = useState(false);
+  const [paginatedMessageIds, setPaginatedMessageIds] = useState<Set<string>>(new Set());
 
   // Resetar estado ao trocar de conversa
   useEffect(() => {
     setAllMessages([]);
     setHasMoreLocal(false);
     setIsLoadingMore(false);
+    setPaginatedMessageIds(new Set());
   }, [activeConvId]);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -373,27 +375,54 @@ export default function Monitor() {
     if (!conversationDetails?.messages) return;
 
     setAllMessages((prevMessages) => {
-      // Se mudou de conversa, substituir completamente
-      const currentIds = new Set(prevMessages.map(m => m.id));
       const newMessages = conversationDetails.messages;
       
-      // Se não há mensagens antigas OU todas as novas mensagens são diferentes (nova conversa)
-      if (prevMessages.length === 0 || !newMessages.some(m => currentIds.has(m.id))) {
+      // Se não há mensagens antigas, carregar as novas
+      if (prevMessages.length === 0) {
         setHasMoreLocal(conversationDetails.hasMore || false);
         return newMessages;
       }
-      
-      // Mesma conversa: mesclar apenas mensagens novas (mantendo antigas carregadas via paginação)
+
+      // Criar Set de IDs das novas mensagens (sempre são as mais recentes do servidor)
       const newMessageIds = new Set(newMessages.map(m => m.id));
-      const onlyNewMessages = newMessages.filter(m => !currentIds.has(m.id));
       
-      if (onlyNewMessages.length > 0) {
-        // Adicionar apenas mensagens novas no final
-        return [...prevMessages, ...onlyNewMessages];
+      // Se não há sobreposição, é uma nova conversa
+      if (!newMessages.some(m => prevMessages.some(p => p.id === m.id))) {
+        setHasMoreLocal(conversationDetails.hasMore || false);
+        setPaginatedMessageIds(new Set());
+        return newMessages;
       }
       
-      // Nenhuma mensagem nova, manter como está
-      return prevMessages;
+      // Mesma conversa: reconstruir usando rastreamento explícito de paginação
+      // Encontrar timestamp mais antigo do servidor para determinar fronteira
+      const oldestServerTimestamp = newMessages.length > 0
+        ? Math.min(...newMessages.map(m => new Date(m.timestamp).getTime()))
+        : Infinity;
+      
+      // Manter apenas mensagens paginadas que:
+      // 1. Foram explicitamente carregadas via handleLoadMore E
+      // 2. São mais antigas que todas as mensagens do servidor E
+      // 3. Não estão na janela atual do servidor (para evitar duplicatas)
+      const historicalPaginatedMessages = prevMessages.filter(m => {
+        const msgTimestamp = new Date(m.timestamp).getTime();
+        return (
+          paginatedMessageIds.has(m.id) &&
+          msgTimestamp < oldestServerTimestamp &&
+          !newMessageIds.has(m.id)
+        );
+      });
+      
+      // Remover IDs do servidor do conjunto de paginados (foram alcançados pelo polling)
+      setPaginatedMessageIds(prev => {
+        const updated = new Set(prev);
+        newMessages.forEach(m => updated.delete(m.id));
+        return updated;
+      });
+      
+      // Combinar histórico paginado + mensagens do servidor (sempre fonte da verdade)
+      const mergedMessages = [...historicalPaginatedMessages, ...newMessages];
+      
+      return mergedMessages;
     });
   }, [conversationDetails?.messages, conversationDetails?.hasMore]);
 
@@ -411,6 +440,13 @@ export default function Monitor() {
       
       // Atualizar flag hasMore local
       setHasMoreLocal(olderData.hasMore || false);
+      
+      // Adicionar IDs das mensagens paginadas ao conjunto de rastreamento
+      setPaginatedMessageIds(prev => {
+        const updated = new Set(prev);
+        olderData.messages.forEach(m => updated.add(m.id));
+        return updated;
+      });
       
       // Adicionar mensagens antigas ao início do array
       setAllMessages(prev => [...olderData.messages, ...prev]);
