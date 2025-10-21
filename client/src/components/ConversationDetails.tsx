@@ -61,6 +61,9 @@ interface ConversationDetailsProps {
   isVerified?: boolean;
   onReopen?: () => void;
   conversationStatus?: string;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
 }
 
 const functionIcons: Record<string, string> = {
@@ -86,6 +89,9 @@ export function ConversationDetails({
   isVerified,
   onReopen,
   conversationStatus,
+  onLoadMore,
+  hasMore,
+  isLoadingMore,
 }: ConversationDetailsProps) {
   const [transferDept, setTransferDept] = useState("");
   const [transferNotes, setTransferNotes] = useState("");
@@ -134,6 +140,19 @@ export function ConversationDetails({
         <TabsContent value="transcript" className="flex-1 px-6 pb-6">
           <ScrollArea className="h-[500px]">
             <div className="space-y-4 pt-4">
+              {hasMore && (
+                <div className="flex justify-center pb-4">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={onLoadMore}
+                    disabled={isLoadingMore}
+                    data-testid="button-load-more"
+                  >
+                    {isLoadingMore ? "Carregando..." : "Carregar mensagens anteriores"}
+                  </Button>
+                </div>
+              )}
               {messages.map((msg) => (
                 <ChatMessage 
                   key={msg.id} 
