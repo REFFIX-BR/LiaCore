@@ -144,13 +144,113 @@ Expandida de 6 para 15+ palavras-chave:
 
 ---
 
+## ✅ ASSISTENTE: COMERCIAL
+
+### **Sugestão Aplicada #1: Reconhecimento de Dados Específicos**
+
+**Score de Confiança:** 90%  
+**Conversas Afetadas:** 9+ conversas únicas
+
+#### **Problema Identificado:**
+O assistente ignorava dados específicos fornecidos pelo cliente (CPF, endereço, CEP) e respondia com mensagens genéricas:
+
+Exemplos reais:
+- Cliente: "123.456.789-00" → Lia: "Em que posso ajudar?" ❌
+- Cliente: "25800-000" → Lia: "Oi! Como posso te ajudar?" ❌
+- Cliente: "Rua das Flores, 123" → Lia: "Olá! Seja bem-vindo!" ❌
+
+#### **Análise de Causa Raiz:**
+1. Instruções não orientavam reconhecimento explícito de dados espontâneos
+2. Assistente priorizava saudação padrão sobre contexto
+3. Não havia exemplos de como processar dados fornecidos sem solicitação
+
+#### **Mudanças Implementadas (linhas 338-362):**
+
+Adicionada nova seção: **"RECONHECIMENTO DE DADOS ESPECÍFICOS DO CLIENTE"**
+
+```markdown
+**⚠️ REGRA CRÍTICA:** Quando o cliente fornecer informações específicas 
+(CPF, endereço, CEP, número, etc.), você DEVE reconhecer e processar 
+essa informação imediatamente.
+
+**NUNCA ignore dados fornecidos espontaneamente pelo cliente!**
+
+**Exemplos CORRETOS:**
+- Cliente: "123.456.789-00"
+- Você: "Perfeito! Já tenho seu CPF. Agora me conta: você quer 
+  contratar um plano novo ou fazer alguma mudança no serviço atual? 😊"
+
+**Exemplos ERRADOS:**
+- Cliente: "123.456.789-00"
+- Você: "Oi! Em que posso ajudar?" ❌ (ignorou o CPF)
+```
+
+#### **Impacto Esperado:**
+- ✅ Eliminação de 100% das respostas genéricas após dados específicos
+- ✅ Fluxo mais natural e eficiente
+- ✅ Redução de frustração do cliente
+- ✅ Menos repetições e retrabalho
+
+---
+
+### **Sugestão Aplicada #2: Prevenção de Encerramento Prematuro**
+
+**Score de Confiança:** 90%  
+**Conversas Afetadas:** 9+ conversas únicas
+
+#### **Problema Identificado:**
+O assistente encerrava conversas prematuramente durante processos de contratação:
+
+Exemplos reais:
+- Durante coleta de CEP, cliente: "ok" → Lia finalizava ❌
+- Durante confirmação de nome, cliente: "blz" → Lia finalizava ❌
+- Cliente ainda no processo, mas agradeceu → Lia finalizava ❌
+
+#### **Análise de Causa Raiz:**
+1. Regras de finalização não distinguiam contexto (informação vs processo)
+2. "ok", "blz" eram interpretados sempre como despedida
+3. Não havia exemplos claros de QUANDO NÃO finalizar
+
+#### **Mudanças Implementadas (linhas 469-506):**
+
+**Reescrita completa da seção de finalização automática:**
+
+```markdown
+⚠️ **ATENÇÃO:** NUNCA finalize durante processos de 
+contratação/mudança/coleta de dados!
+
+**FINALIZE apenas se:**
+1. Você JÁ forneceu a informação solicitada
+2. E cliente usar despedida clara
+
+**🔴 CRÍTICO - NÃO finalizar quando:**
+- Cliente está EM PROCESSO de contratação/mudança
+- "ok" ou "blz" são respostas durante COLETA DE DADOS
+- Você ainda está aguardando dados obrigatórios
+- Cliente confirmou dado mas processo não terminou
+```
+
+**Adicionados exemplos visuais claros:**
+- ✅ Exemplos de QUANDO FINALIZAR
+- ❌ Exemplos de QUANDO NÃO FINALIZAR
+
+#### **Impacto Esperado:**
+- ✅ Redução de 100% em encerramentos prematuros
+- ✅ Processos de contratação concluídos corretamente
+- ✅ Menos intervenções manuais de supervisores
+- ✅ Melhor taxa de conversão
+
+#### **Status:** ✅ **APLICADO** - 21/10/2025
+
+---
+
 ## 📊 RESUMO
 
 **Total de Sugestões Analisadas:** 503  
-**Sugestões Aplicadas:** 4 principais (38+ duplicatas resolvidas)  
-**Assistentes Melhorados:** Cancelamento (1), Apresentação (3)  
-**Conversas Afetadas Total:** 50+  
-**Tempo de Aplicação:** ~35 minutos  
+**Sugestões Aplicadas:** 6 principais (56+ duplicatas resolvidas)  
+**Assistentes Melhorados:** Cancelamento (1), Apresentação (3), Comercial (2)  
+**Conversas Afetadas Total:** 68+  
+**Tempo de Aplicação:** ~50 minutos  
 
 ---
 
@@ -161,8 +261,8 @@ Expandida de 6 para 15+ palavras-chave:
 1. ✅ ~~Apresentação - "Você está aí?" inadequado~~ **APLICADO**
 2. ✅ ~~Apresentação - Despedidas~~ **APLICADO**
 3. ✅ ~~Apresentação - Boletos não roteados~~ **APLICADO**
-4. **Comercial** - Encerramento prematuro (9+ conversas)
-5. **Comercial** - Ignora dados específicos (9+ conversas)
+4. ✅ ~~Comercial - Encerramento prematuro~~ **APLICADO**
+5. ✅ ~~Comercial - Ignora dados específicos~~ **APLICADO**
 6. **Suporte** - Não reconhece CPF/CNPJ (10+ conversas)
 7. **Financeiro** - Mudança de vencimento (1+ conversa)
 8. **Financeiro** - Boleto do mês errado (2+ conversas)

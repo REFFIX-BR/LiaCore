@@ -1,72 +1,46 @@
 # LIA CORTEX - AI Orchestration Platform
 
 ## Overview
-LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed for TR Telecom's customer service. It leverages OpenAI's Assistants API and a RAG knowledge base to automate Q&A and actions through specialized AI assistants. Key features include a real-time supervisor monitoring dashboard and an autonomous continuous learning system. The platform's primary goal is to enhance customer service efficiency and satisfaction for telecommunications operations through a robust, scalable, and intelligent AI solution.
+LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Telecom's customer service. It uses OpenAI's Assistants API and a RAG knowledge base to automate Q&A and actions via specialized AI assistants. The platform includes a real-time supervisor monitoring dashboard and an autonomous continuous learning system. Its core purpose is to enhance customer service efficiency and satisfaction in telecommunications through a robust, scalable, and intelligent AI solution, focusing on business vision, market potential, and project ambitions.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 ### UI/UX Decisions
-The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailwind CSS. The design draws inspiration from Carbon Design System and Linear, offering both dark and light modes. `Wouter` handles client-side routing.
+The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailwind CSS, inspired by Carbon Design System and Linear, supporting both dark and light modes. `Wouter` is used for client-side routing. UI components include color-coded wait time indicators, enhanced UI for complaint descriptions, a dialog interface for private notes, dedicated UIs for new contact creation, conversation reopening, and activity logs. The sales management and plans management systems feature dedicated dashboards with KPIs, tables, and CRUD interfaces.
 
 ### Technical Implementations
 **Frontend**: Utilizes TanStack Query for server state management.
 **Backend**: Developed with Node.js and Express.js (TypeScript), incorporating GPT-5 for intelligent routing, OpenAI Assistants API, Upstash Vector for RAG, Upstash Redis for conversation threads, and PostgreSQL via Drizzle ORM.
-**Queue System**: BullMQ with Redis TLS manages asynchronous processing, ensuring message delivery with retries and webhooks.
+**Queue System**: BullMQ with Redis TLS manages asynchronous processing with retries and webhooks.
 **AI & Knowledge Management**:
 - **AI Provider**: OpenAI Assistants API orchestrates six specialized AI roles (Support, Sales, Finance, Cancellation, Ombudsman, Presentation) using a "Receptionist-First" routing model.
-- **RAG Architecture**: A dual-layer prompt system separates System and RAG Prompts, powered by Upstash Vector, with specific RAG systems for equipment returns and sales documentation.
-- **Function Calling**: Custom functions enable verification, knowledge queries, invoice lookups, scheduling, and sales operations.
-- **Automated Systems**: Includes document detection, "Boleto Consultation," "PPPoE Connection Status," "Unlock/Unblock," HTTP Resilience, GPT-4o Vision for image analysis, PDF text extraction, and OpenAI Whisper for audio transcription. Video messages are displayed within chat with HTML5 player support.
-- **Conversation Intelligence**: Real-time analysis of sentiment, urgency, and problem identification, alongside automatic persistence of CPF/CNPJ.
-**Real-Time Monitoring**: A Supervisor Dashboard provides KPIs, live queues, alerts, transcripts, human intervention controls, and a Live Logs System, including sub-filters for conversation resolution types.
-**Continuous Learning System**: An autonomous GPT-4 agent suggests prompt improvements based on feedback.
-**NPS & Customer Satisfaction**: Automated NPS surveys via WhatsApp with feedback integrated into the learning system.
+- **RAG Architecture**: A dual-layer prompt system with Upstash Vector, including specific RAG systems for equipment returns and sales documentation.
+- **Function Calling**: Custom functions for verification, knowledge queries, invoice lookups, scheduling, and sales operations.
+- **Automated Systems**: Document detection, "Boleto Consultation," "PPPoE Connection Status," "Unlock/Unblock," HTTP Resilience, GPT-4o Vision, PDF text extraction, and OpenAI Whisper.
+- **Conversation Intelligence**: Real-time sentiment analysis, urgency detection, problem identification, and automatic persistence of CPF/CNPJ.
+**Real-Time Monitoring**: Supervisor Dashboard provides KPIs, live queues, alerts, transcripts, human intervention controls, and a Live Logs System with sub-filters.
+**Continuous Learning System**: GPT-4 agent suggests prompt improvements based on feedback.
+**NPS & Customer Satisfaction**: Automated NPS surveys via WhatsApp with feedback integration.
 **Hybrid Supervised Mode**: Manages "Transferred" and "Assigned" conversations with AI-assisted agent responses.
-**WhatsApp Integration**: Native integration with Evolution API supports real-time messaging, AI routing, outbound messaging, a triple-fallback message delivery system, and WhatsApp Groups Management with individual AI control and multimedia support. A critical architectural decision ensures conversation consistency by prioritizing `conversation.evolutionInstance`.
-**Role-Based Access Control (RBAC)**: A 3-tier system (ADMIN, SUPERVISOR, AGENT) with granular permissions.
-**Contact Management System**: Centralized client database with automatic WhatsApp contact sync, enabling "New Contact" creation and "Conversation Reopen" while preserving the original `evolutionInstance`.
+**WhatsApp Integration**: Native integration with Evolution API for real-time messaging, AI routing, outbound messaging, triple-fallback delivery, and WhatsApp Groups Management with individual AI control and multimedia support.
+**Role-Based Access Control (RBAC)**: 3-tier system (ADMIN, SUPERVISOR, AGENT) with granular permissions.
+**Contact Management System**: Centralized client database with automatic WhatsApp contact sync, "New Contact" creation, and "Conversation Reopen".
 **Message Deletion System**: Supervisors/admins can soft-delete assistant messages.
 **Redis Optimization System**: Intelligent caching, batching, and hash storage.
-**Message Batching System**: Atomic Redis-based debouncing groups sequential client messages into single AI requests (3-second window), excluding media.
-**Private Notes System**: Internal collaboration feature for agents.
-**Conversation Verification System**: Supervisor workflow to mark conversations as reviewed, resetting on new client messages.
-**Activity Logs & Audit System**: Comprehensive audit trail of user actions with a dual-tab interface and real-time KPI dashboard.
-**Conversational Sales System**: An autonomous AI system for lead qualification, plan presentation, data collection, and sales processing via WhatsApp, following a structured 5-step data collection process. It includes a robust 4-layer backend coverage verification system and two distinct functions (`registrar_lead_sem_cobertura` for no coverage, `enviar_cadastro_venda` for coverage). The system integrates with a Plans database, Sales table, dedicated RAG, and AI tools (`consultar_planos`, `enviar_cadastro_venda`, `buscar_cep`, `registrar_lead_sem_cobertura`).
-**Sales Management Interface**: An ADMIN/SUPERVISOR-only dashboard at `/vendas` provides KPIs, status filters, a sales table, detailed views, and status update functionality.
-**Plans Management System**: A complete CRUD interface for managing TR Telecom service plans within the `/vendas` section, accessible only by ADMIN/SUPERVISOR. It supports plan creation, editing, deletion, active status toggling, and integrates with the conversational sales system.
-**Multiple Points Detection System**: Automatic detection of customers with multiple internet installations (points) using the field NOME pattern (1, 2, 3, 4... prefix). When `consultar_boleto_cliente` returns bills from multiple addresses, the system automatically groups them by point, calculates totals per point (bill count, overdue count, total value), and presents a clear selection interface to the customer before showing detailed bill information.
-
-### Recent Fixes (2025-10-21)
-- **APRESENTAÇÃO - MELHORIAS DE UX (3 fixes críticos)**: Aplicadas melhorias do sistema de Learning (score 90%, 30+ conversas afetadas). (1) Adicionada regra explícita **NUNCA pergunte "você está aí?"** - cliente já está interagindo, perguntar presença é redundante e frustrante. (2) Expandida lista de palavras de despedida de 5 para 15+ variações ("valeu", "vlw", "tmj", "falou", "show", etc.) para melhor reconhecimento de finalização. (3) Expandida lista de palavras-chave financeiras de 6 para 15+ variações, incluindo "segunda via", "segunda via do boleto", "débito", "pendência", "acordo", garantindo roteamento correto para setor Financeiro. Isso resolve os principais problemas de UX onde clientes recebiam respostas inadequadas ou tinham conversas que não finalizavam corretamente.
-- **CANCELAMENTO - RECONHECIMENTO DE PALAVRAS-CHAVE**: Aplicada melhoria do sistema de Learning (score 90%, 10+ ocorrências). Adicionado reconhecimento explícito de palavras-chave de cancelamento no assistente de Cancelamento: "cancelar", "cancelamento", "mudar de operadora", "multa", "quero sair", "encerrar contrato". Também melhorado o roteamento do assistente Apresentação para incluir todas essas variações. Isso resolve o problema onde clientes solicitando cancelamento recebiam respostas genéricas ou eram roteados incorretamente.
-
-### Recent Fixes (2025-10-20)
-- **FINANCEIRO DESBLOQUEIO FIX**: Fixed critical bug where `solicitarDesbloqueio` function was failing with "função não implementada" error despite being fully implemented. Issue: OpenAI calls function in camelCase (`solicitarDesbloqueio`) but switch case in `ai-tools.ts` only had snake_case (`solicitar_desbloqueio`). Added camelCase variant to switch case. Also added "religamento" (reconnection) as keyword synonym since desbloqueio and religamento are the same operation. Updated instructions with keywords: "religamento", "religar", "reativar".
-- **IP BLOQUEADO = PROBLEMA FINANCEIRO**: Fixed critical routing issue where Support assistant was treating IP blockage as technical problem instead of financial (payment) issue. When `verificar_conexao` returns `statusIP: "BLOQUEADO"`, this indicates unpaid bills/delinquency, NOT a technical fault. Updated Support assistant instructions to immediately transfer to FINANCEIRO department when IP blockage is detected, instead of requesting modem light checks or offering technical support transfer. Also updated Presentation (receptionist) assistant keywords to include "IP bloqueado" and "religamento" as financial routing triggers.
-- **AUTO-CLOSE CONVERSATIONS ON FAREWELL**: Fixed critical UX issue where conversations remained open indefinitely after customers said goodbye. Problem: Only FINANCEIRO assistant had farewell detection rules; SUPORTE, COMERCIAL, and APRESENTAÇÃO assistants would continue trying to help even after customer said "obrigado", "ok", "já me atenderam", etc. Solution: Added comprehensive farewell detection rules to all three assistants with clear guidelines on when to call `finalizar_conversa()`. Each assistant now recognizes farewell keywords ("obrigado/a", "valeu", "blz", "já me atenderam", "já resolveram", etc.) and automatically finalizes conversations when appropriate, while avoiding premature closure during data collection. APRESENTAÇÃO assistant now correctly distinguishes between "ok" as farewell (after routing) vs. "ok" as confirmation (during need identification).
-- **FUNCTION CALLING FIX**: Resolved critical bug where assistants were writing function calls as text in messages to customers (e.g., "[use rotear_para_assistente com assistantType='financeiro', motivo='...']") instead of executing them via OpenAI Function Calling API. Root cause: Instructions contained JavaScript/TypeScript/JSON syntax examples (function names with parentheses, parameter objects with braces, etc.) that confused assistants into mimicking code syntax. Solution: (1) Systematically removed ALL literal function syntax from INSTRUCOES_ASSISTENTES_OPENAI_OTIMIZADO.md across all 6 assistants - replaced with narrative descriptions, (2) Added explicit "REGRA CRÍTICA - FUNCTION CALLING" section with clear CORRECT vs INCORRECT examples, (3) Converted all 12 function definitions from `**function_name(params):**` to `**function_name:**` with narrative parameter descriptions, (4) Created CHECKLIST_VERIFICACAO_FUNCOES_OPENAI.md with complete configuration guide for OpenAI Dashboard including proper JSON schemas for manual setup. Backend (server/ai-tools.ts) was already correct - issue was purely instructional. Assistants must now EXECUTE functions via Function Calling, never write them as text.
-- **ADMIN DASHBOARD MODERNIZATION**: Replaced two charts in the admin dashboard for better operational insights:
-  1. **Daily Messages Chart**: Replaced "Uso de Tokens OpenAI" with "Quantidade de Mensagens Diárias" showing last 30 days message volume. Created `getDailyMessagesCount()` method querying messages table (excludes private/deleted). Green AreaChart (#10b981).
-  2. **Volume vs Success Chart**: Replaced "Atividade Recente do Sistema" with "Volume de Conversas vs. Taxa de Sucesso da IA (Últimas 24h)" showing hourly conversation volume and AI resolution rate. Uses `calculateVolumeVsSuccess()` method returning hourly data. Dual-axis BarChart with blue bars (#3b82f6) for volume (left axis) and green bars (#10b981) for success rate percentage (right axis, 0-100%). Updated `getAdminMetrics()` interface to return `dailyMessages` and `volumeVsSuccess` arrays instead of `tokenUsage` and `recentActivity`.
+**Message Batching System**: Atomic Redis-based debouncing groups sequential client messages into single AI requests.
+**Private Notes System**: Internal collaboration feature.
+**Conversation Verification System**: Supervisor workflow to mark conversations as reviewed.
+**Activity Logs & Audit System**: Comprehensive audit trail with a dual-tab interface and KPI dashboard.
+**Conversational Sales System**: Autonomous AI system for lead qualification, plan presentation, data collection, and sales processing via WhatsApp, including coverage verification and integration with Plans database.
+**Multiple Points Detection System**: Automatic detection of customers with multiple internet installations by grouping bills from multiple addresses and presenting selection options.
 
 ### System Design Choices
-- **Conversation Prioritization**: Color-coded wait time indicators.
 - **Admin Tools**: Mass-closing abandoned conversations, reprocessing stuck messages, configuration management.
 - **Image Handling**: Supervisors can download WhatsApp images.
 - **Worker Concurrency**: Optimized for messages, images, and NPS workers.
-- **Ouvidoria Details Modal**: Enhanced UI for complaint descriptions.
 - **API Key Management**: Robust handling of multi-instance Evolution API keys.
-- **Private Notes UI**: Dialog interface with StickyNote icon.
-- **New Contact Creation**: "Novo" button to create contacts and manual conversations, moved to "Transferidas" or "Atribuídas".
-- **Conversation Reopen**: "Reabrir Conversa" button moves conversation to "Transferidas" queue.
-- **Conversation Verification UI**: Green CheckCircle2 icon on verified conversations.
-- **Activity Logs UI**: Dual-tab interface (Agentes/Supervisão) with KPI cards.
-- **Monitor Resolved Conversations Sub-Filters**: "Finalizadas" tab with sub-filters for AI, agent, or auto-closed resolutions.
-- **WhatsApp Groups Chat Interface**: Dual-tab system (Chat/Informações) for group messaging with auto-refresh, pagination, and AI toggle.
-- **Sales Management UI**: "/vendas" page with KPI cards, status filters, sales table, detail dialogs, and status update dialogs. ShoppingBag icon in sidebar (ADMIN/SUPERVISOR only).
-- **Plans Management UI**: "/vendas" page with tabs interface (Vendas | Planos e Serviços). Plans tab features create/edit dialogs with comprehensive form fields, price formatting (R$ display), active/inactive badge toggles, and data table with edit/toggle actions. ID field auto-hidden during creation, displayed (disabled) during editing.
 
 ## External Dependencies
 
