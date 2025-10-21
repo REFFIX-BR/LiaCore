@@ -359,6 +359,11 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
       queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations", conversation.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations/assigned"] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations/transferred"] });
+      
+      // Manter foco no textarea para facilitar conversação contínua
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 100);
     },
     onError: () => {
       toast({
