@@ -48,6 +48,7 @@ export interface AlertData {
 export interface ConversationDetails {
   conversation: ConversationData;
   messages: MessageData[];
+  hasMore?: boolean;
   alerts: AlertData[];
   actions: any[];
 }
@@ -62,8 +63,11 @@ export const monitorAPI = {
     return response.json();
   },
 
-  getConversationDetails: async (id: string): Promise<ConversationDetails> => {
-    const response = await fetch(`/api/monitor/conversations/${id}`);
+  getConversationDetails: async (id: string, before?: string): Promise<ConversationDetails> => {
+    const url = before 
+      ? `/api/monitor/conversations/${id}?before=${before}&limit=15`
+      : `/api/monitor/conversations/${id}?limit=15`;
+    const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to fetch conversation details: ${response.status}`);
     }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ConversationCard } from "@/components/ConversationCard";
 import { ConversationDetails } from "@/components/ConversationDetails";
@@ -21,6 +21,8 @@ export default function Monitor() {
   const [resolvedSubFilter, setResolvedSubFilter] = useState("all"); // all, ai, agent, auto
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [allMessages, setAllMessages] = useState<any[]>([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -358,14 +360,52 @@ export default function Monitor() {
       };
     });
 
+  // Sincronizar mensagens quando conversationDetails mudar
+  useEffect(() => {
+    if (conversationDetails?.messages) {
+      // Ao carregar nova conversa, substituir todas as mensagens
+      setAllMessages(conversationDetails.messages);
+    }
+  }, [activeConvId, conversationDetails?.messages.length]);
+
+  // Função para carregar mensagens anteriores
+  const handleLoadMore = async () => {
+    if (!activeConvId || isLoadingMore || !conversationDetails?.hasMore) return;
+    
+    setIsLoadingMore(true);
+    try {
+      // Pegar o ID da mensagem mais antiga atual
+      const oldestMessageId = allMessages[0]?.id;
+      
+      // Buscar mensagens anteriores
+      const olderData = await monitorAPI.getConversationDetails(activeConvId, oldestMessageId);
+      
+      // Adicionar mensagens antigas ao início do array
+      setAllMessages(prev => [...olderData.messages, ...prev]);
+      
+      toast({
+        title: "Mensagens Carregadas",
+        description: `${olderData.messages.length} mensagens anteriores carregadas`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao Carregar",
+        description: "Não foi possível carregar mensagens anteriores",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
   const activeConversation = conversations.find(c => c.id === activeConvId);
-  const activeMessages = conversationDetails?.messages.map(msg => ({
+  const activeMessages = allMessages.map(msg => ({
     id: msg.id,
     role: msg.role as "user" | "assistant",
     content: msg.content,
     timestamp: new Date(msg.timestamp),
     functionCall: msg.functionCall,
-  })) || [];
+  }));
 
   const mockAnalysis = {
     summary: conversationDetails?.messages.slice(0, 3).map(m => m.content).join(" ") || "Aguardando análise...",
@@ -586,6 +626,9 @@ export default function Monitor() {
                 isVerified={!!(activeConversation as any).verifiedAt}
                 onReopen={(user?.role === 'ADMIN' || user?.role === 'SUPERVISOR') ? handleReopen : undefined}
                 conversationStatus={activeConversation.status}
+                onLoadMore={handleLoadMore}
+                hasMore={conversationDetails?.hasMore || false}
+                isLoadingMore={isLoadingMore}
               />
             )}
           </div>
