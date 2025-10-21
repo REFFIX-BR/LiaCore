@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { User, Bot, Pause, Play, FileText, UserPlus, Trash2, RotateCcw, FolderOpen } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { ChatMessage, type Message as ChatMessageType } from "@/components/ChatMessage";
 import {
   Dialog,
@@ -103,7 +103,7 @@ export function ConversationDetails({
   const previousMessageCountRef = useRef(messages.length);
 
   // Detecta se o usuário está perto do final da lista
-  const checkIfNearBottom = () => {
+  const checkIfNearBottom = useCallback(() => {
     if (scrollAreaRef.current) {
       const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
       if (scrollElement) {
@@ -112,7 +112,7 @@ export function ConversationDetails({
         setIsNearBottom(distanceFromBottom < 100); // threshold de 100px
       }
     }
-  };
+  }, []);
 
   // Auto-scroll inteligente: só rola se estiver perto do final OU se for primeira carga
   useEffect(() => {
@@ -143,7 +143,7 @@ export function ConversationDetails({
         };
       }
     }
-  }, []);
+  }, [checkIfNearBottom]);
 
   const handleTransfer = () => {
     if (transferDept && transferNotes) {
