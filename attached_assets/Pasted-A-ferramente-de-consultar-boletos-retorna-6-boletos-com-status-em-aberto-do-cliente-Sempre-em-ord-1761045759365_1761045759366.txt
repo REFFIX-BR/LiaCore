@@ -1,0 +1,87 @@
+A ferramente de consultar boletos retorna 6 boletos com status em aberto do cliente. 
+
+Sempre em ordem de vencimento, o que quer dizer que se existem dois boletos em aberto com a mesma data, mas em pontos diferentes, eles serão, respectivamente, o item 0 e 1 do array de retorno. Ela já recebe essa informação diretamente por aqui, por que seria mais viável acessar um booleano no banco se essa informação já é passada no payload da resposta da ferramenta? 
+
+Veja um payload que vem dentro da resposta completo: 
+
+
+[
+  {
+    "ID_TRANSACAO": "769214128",
+    "NOME": "ADRIANA PERES DA SILVA AZEVEDO (C.I)",
+    "CIDADE": "TRES RIOS",
+    "BAIRRO": "VILA ISABEL",
+    "RUA": "FELICIANO CERQUEIRA DE CARVALHO",
+    "DATA_VENCIMENTO": "2024-10-15",
+    "VALOR_TOTAL": "51.29",
+    "PIX_TXT": "00020101021226940014BR.GOV.BCB.PIX2572qrcodespix.sejaefi.com.br/bolix/v2/cobv/5ee99f00eef94a62b5d79f7c02e6c14d5204000053039865802BR5905EFISA6008SAOPAULO62070503***63047B4B",
+    "CODIGO_BARRA_TRANSACAO": "36490.00092 00003.305901 00004.979928 8 00000000005129",
+    "link_carne_completo": "https://download.gerencianet.com.br/v1/33059_134562_LEOBO2/33059-497992-LOHI0",
+    "STATUS": "VENCIDO"
+  },
+  {
+    "ID_TRANSACAO": "810903073",
+    "NOME": "ADRIANA PERES DA SILVA AZEVEDO (C.I)",
+    "CIDADE": "TRES RIOS",
+    "BAIRRO": "VILA ISABEL",
+    "RUA": "FELICIANO CERQUEIRA DE CARVALHO",
+    "DATA_VENCIMENTO": "2025-01-03",
+    "VALOR_TOTAL": "300.00",
+    "PIX_TXT": "00020101021226940014BR.GOV.BCB.PIX2572qrcodespix.sejaefi.com.br/bolix/v2/cobv/961d254cf3c04cc682f2e4c4a20ad3645204000053039865802BR5905EFISA6008SAOPAULO62070503***6304D265",
+    "CODIGO_BARRA_TRANSACAO": "36490.00076 00003.305901 00005.407457 1 00000000030000",
+    "link_carne_completo": "https://download.gerencianet.com.br/v1/33059_140534_NAEXI7/33059-540745-HIMA1",
+    "STATUS": "VENCIDO"
+  },
+  {
+    "ID_TRANSACAO": "855258840",
+    "NOME": "2 ADRIANA PERES DA SILVA AZEVEDO",
+    "CIDADE": "TRES RIOS",
+    "BAIRRO": "TRIÂNGULO",
+    "RUA": "JOÃO ALEXANDRE",
+    "DATA_VENCIMENTO": "2025-10-15",
+    "VALOR_TOTAL": "109.90",
+    "PIX_TXT": "00020101021226940014BR.GOV.BCB.PIX2572qrcodespix.sejaefi.com.br/bolix/v2/cobv/3210fa4f7a7e472fad58efbdbbb2f1085204000053039865802BR5905EFISA6008SAOPAULO62070503***630463C0",
+    "CODIGO_BARRA_TRANSACAO": "36490.00068 00003.305901 00006.023014 5 00000000010990",
+    "link_carne_completo": "https://download.gerencianet.com.br/v1/33059_149454_LELEO7/33059-602297-LOTA0/33059-602301-CACOR2",
+    "STATUS": "VENCIDO"
+  },
+  {
+    "ID_TRANSACAO": "855258841",
+    "NOME": "2 ADRIANA PERES DA SILVA AZEVEDO",
+    "CIDADE": "TRES RIOS",
+    "BAIRRO": "TRIÂNGULO",
+    "RUA": "JOÃO ALEXANDRE",
+    "DATA_VENCIMENTO": "2025-11-15",
+    "VALOR_TOTAL": "109.90",
+    "PIX_TXT": "00020101021226940014BR.GOV.BCB.PIX2572qrcodespix.sejaefi.com.br/bolix/v2/cobv/c933323dcbea4466ba349fc5b34ba68d5204000053039865802BR5905EFISA6008SAOPAULO62070503***63041A31",
+    "CODIGO_BARRA_TRANSACAO": "36490.00043 00003.305901 00006.023022 4 00000000010990",
+    "link_carne_completo": "https://download.gerencianet.com.br/v1/33059_149454_LELEO7/33059-602297-LOTA0/33059-602302-LACA0",
+    "STATUS": "EM DIA"
+  },
+  {
+    "ID_TRANSACAO": "855258842",
+    "NOME": "2 ADRIANA PERES DA SILVA AZEVEDO",
+    "CIDADE": "TRES RIOS",
+    "BAIRRO": "TRIÂNGULO",
+    "RUA": "JOÃO ALEXANDRE",
+    "DATA_VENCIMENTO": "2025-12-15",
+    "VALOR_TOTAL": "109.90",
+    "PIX_TXT": "00020101021226940014BR.GOV.BCB.PIX2572qrcodespix.sejaefi.com.br/bolix/v2/cobv/2a40dd4aba8f46b08c3153f0e4fc55d85204000053039865802BR5905EFISA6008SAOPAULO62070503***63042CE3",
+    "CODIGO_BARRA_TRANSACAO": "36490.00027 00003.305901 00006.023030 3 00000000010990",
+    "link_carne_completo": "https://download.gerencianet.com.br/v1/33059_149454_LELEO7/33059-602297-LOTA0/33059-602303-DRACA3",
+    "STATUS": "EM DIA"
+  },
+  {
+    "ID_TRANSACAO": "855258843",
+    "NOME": "2 ADRIANA PERES DA SILVA AZEVEDO",
+    "CIDADE": "TRES RIOS",
+    "BAIRRO": "TRIÂNGULO",
+    "RUA": "JOÃO ALEXANDRE",
+    "DATA_VENCIMENTO": "2026-01-15",
+    "VALOR_TOTAL": "109.90",
+    "PIX_TXT": "00020101021226940014BR.GOV.BCB.PIX2572qrcodespix.sejaefi.com.br/bolix/v2/cobv/ba4938bc9776438e9fba07c8c2555ec55204000053039865802BR5905EFISA6008SAOPAULO62070503***6304C9FD",
+    "CODIGO_BARRA_TRANSACAO": "36490.00019 00003.305901 00006.023048 7 00000000010990",
+    "link_carne_completo": "https://download.gerencianet.com.br/v1/33059_149454_LELEO7/33059-602297-LOTA0/33059-602304-DROCA9",
+    "STATUS": "EM DIA"
+  }
+]
