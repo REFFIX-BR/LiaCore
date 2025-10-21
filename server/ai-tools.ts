@@ -102,6 +102,25 @@ interface ConsultaBoletoResult {
   STATUS: string;
 }
 
+interface PontoInfo {
+  numero: string;
+  nome: string;
+  endereco: string;
+  bairro: string;
+  cidade: string;
+  boletos: ConsultaBoletoResult[];
+  totalBoletos: number;
+  totalVencidos: number;
+  valorTotal: number;
+}
+
+interface ConsultaBoletoResponse {
+  hasMultiplePoints: boolean;
+  totalBoletos: number;
+  pontos?: PontoInfo[];
+  boletos?: ConsultaBoletoResult[];
+}
+
 interface StatusConexaoResult {
   COD_CLIENTE: string;
   nomeCliente: string;
@@ -153,13 +172,13 @@ interface AbrirTicketResult {
  * @param documento CPF ou CNPJ do cliente
  * @param conversationContext Contexto OBRIGATÓRIO da conversa para validação de segurança
  * @param storage Interface de storage para validação da conversa
- * @returns Array de boletos encontrados
+ * @returns Objeto com boletos e informação sobre múltiplos pontos
  */
 export async function consultaBoletoCliente(
   documento: string,
   conversationContext: { conversationId: string },
   storage: IStorage
-): Promise<ConsultaBoletoResult[]> {
+): Promise<ConsultaBoletoResponse> {
   try {
     // Validação de segurança OBRIGATÓRIA: contexto da conversa deve ser fornecido
     if (!conversationContext || !conversationContext.conversationId) {
@@ -238,7 +257,92 @@ export async function consultaBoletoCliente(
     
     console.log(`📋 [AI Tool] ${boletosEmAberto.length} boleto(s) EM ABERTO (filtrados de ${boletos.length} totais)`);
 
-    return boletosEmAberto;
+    // ====================================
+    // DETECÇÃO DE MÚLTIPLOS PONTOS
+    // ====================================
+    
+    // Extrair número do ponto do campo NOME
+    // Exemplos:
+    // "ADRIANA PERES DA SILVA AZEVEDO (C.I)" -> Ponto 1 (padrão, sem número)
+    // "2 ADRIANA PERES DA SILVA AZEVEDO" -> Ponto 2
+    // "3 ALEXANDRE MARQUES CARVALHO" -> Ponto 3
+    
+    const pontosMap = new Map<string, PontoInfo>();
+    
+    boletosEmAberto.forEach(boleto => {
+      // Tentar extrair número do ponto do início do nome
+      const nomeMatch = boleto.NOME?.match(/^(\d+)\s+(.+)$/);
+      
+      let pontoNumero: string;
+      let nomeCliente: string;
+      
+      if (nomeMatch) {
+        // Nome começa com número: "2 ADRIANA..."
+        pontoNumero = nomeMatch[1];
+        nomeCliente = nomeMatch[2];
+      } else {
+        // Nome sem número no início -> Ponto 1 (padrão)
+        pontoNumero = "1";
+        nomeCliente = boleto.NOME || "Cliente";
+      }
+      
+      // Criar ou recuperar informações do ponto
+      if (!pontosMap.has(pontoNumero)) {
+        pontosMap.set(pontoNumero, {
+          numero: pontoNumero,
+          nome: nomeCliente,
+          endereco: boleto.RUA || '',
+          bairro: boleto.BAIRRO || '',
+          cidade: boleto.CIDADE || '',
+          boletos: [],
+          totalBoletos: 0,
+          totalVencidos: 0,
+          valorTotal: 0
+        });
+      }
+      
+      const ponto = pontosMap.get(pontoNumero)!;
+      
+      // Adicionar boleto ao ponto
+      ponto.boletos.push(boleto);
+      ponto.totalBoletos++;
+      
+      // Verificar se está vencido
+      if (boleto.STATUS?.toUpperCase().includes('VENCIDO')) {
+        ponto.totalVencidos++;
+      }
+      
+      // Somar valor (converter de string para número)
+      const valor = parseFloat(boleto.VALOR_TOTAL.replace(',', '.')) || 0;
+      ponto.valorTotal += valor;
+    });
+    
+    const pontos = Array.from(pontosMap.values()).sort((a, b) => 
+      parseInt(a.numero) - parseInt(b.numero)
+    );
+    
+    const hasMultiplePoints = pontos.length > 1;
+    
+    if (hasMultiplePoints) {
+      console.log(`📍 [AI Tool] MÚLTIPLOS PONTOS DETECTADOS: ${pontos.length} pontos`);
+      pontos.forEach(ponto => {
+        console.log(`📍 [AI Tool] Ponto ${ponto.numero}: ${ponto.endereco}, ${ponto.bairro} - ${ponto.totalBoletos} boleto(s), ${ponto.totalVencidos} vencido(s), Total: R$ ${ponto.valorTotal.toFixed(2)}`);
+      });
+      
+      return {
+        hasMultiplePoints: true,
+        totalBoletos: boletosEmAberto.length,
+        pontos
+      };
+    } else {
+      console.log(`📍 [AI Tool] PONTO ÚNICO detectado`);
+      
+      return {
+        hasMultiplePoints: false,
+        totalBoletos: boletosEmAberto.length,
+        boletos: boletosEmAberto
+      };
+    }
   } catch (error) {
     console.error("❌ [AI Tool] Erro ao consultar boletos:", error);
     throw error;
