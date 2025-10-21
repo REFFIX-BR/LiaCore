@@ -244,13 +244,108 @@ contratação/mudança/coleta de dados!
 
 ---
 
+## ✅ ASSISTENTE: SUPORTE TÉCNICO
+
+### **Sugestão Aplicada #1: Reconhecimento de CPF/CNPJ Enviado**
+
+**Score de Confiança:** 90%  
+**Conversas Afetadas:** 10+ conversas únicas
+
+#### **Problema Identificado:**
+O assistente ignorava quando cliente enviava CPF ou CNPJ espontaneamente e respondia com mensagem genérica:
+
+Exemplos reais:
+- Cliente: "123.456.789-00" → Lia: "Como posso ajudar?" ❌
+- Cliente: "12345678900" → Lia: "Olá! Em que posso te ajudar?" ❌
+
+#### **Análise de Causa Raiz:**
+1. Instruções não orientavam reconhecimento explícito de CPF/CNPJ espontâneo
+2. Assistente priorizava saudação padrão sobre processamento de dados
+3. Não havia exemplos de como processar documentos fornecidos sem solicitação
+
+#### **Mudanças Implementadas (linhas 155-179):**
+
+Adicionada nova seção: **"RECONHECIMENTO DE DADOS ESPECÍFICOS DO CLIENTE"**
+
+```markdown
+**⚠️ REGRA CRÍTICA:** Quando o cliente fornecer informações específicas 
+(CPF, CNPJ, número de protocolo, etc.), você DEVE reconhecer e processar 
+essa informação imediatamente.
+
+**Exemplos CORRETOS:**
+- Cliente: "123.456.789-00"
+- Você: "Perfeito! Já tenho seu CPF. Deixa eu verificar o status 
+  da sua conexão... 🔍" [executa verificar_conexao]
+
+**Exemplos ERRADOS:**
+- Cliente: "123.456.789-00"
+- Você: "Como posso ajudar?" ❌ (ignorou o CPF)
+```
+
+#### **Impacto Esperado:**
+- ✅ Eliminação de 100% das respostas genéricas após envio de CPF/CNPJ
+- ✅ Diagnóstico imediato de problemas
+- ✅ Redução do tempo de atendimento
+- ✅ Menos frustração do cliente
+
+---
+
+### **Sugestão Aplicada #2: Procedimento para Troca de Senha Wi-Fi**
+
+**Score de Confiança:** 90%  
+**Conversas Afetadas:** 6+ conversas únicas (muitas duplicatas)
+
+#### **Problema Identificado:**
+O assistente não reconhecia solicitações de troca de senha Wi-Fi:
+
+Exemplos reais:
+- Cliente: "Quero trocar a senha do Wi-Fi" → Lia: resposta genérica ❌
+- Cliente: "Como mudo a senha da internet?" → Lia: não reconhecia ❌
+- Cliente: "Esqueci a senha do roteador" → Lia: não sabia como proceder ❌
+
+#### **Análise de Causa Raiz:**
+1. Mencionava transferência mas não era explícito sobre SEMPRE transferir
+2. Não tinha lista de palavras-chave para reconhecimento
+3. Não tinha fluxo claro de como proceder
+
+#### **Mudanças Implementadas (linhas 217-238):**
+
+Adicionada nova seção completa: **"🔐 TROCA DE SENHA WI-FI"**
+
+```markdown
+**⚠️ REGRA CRÍTICA:** Solicitações de troca de senha Wi-Fi SEMPRE 
+devem ser transferidas para atendente humano.
+
+**Palavras-chave do cliente:**
+- "trocar senha", "mudar senha", "alterar senha"
+- "senha do Wi-Fi", "senha da internet", "senha do roteador"
+- "esqueci a senha", "não sei a senha"
+- "configurar Wi-Fi", "configuração de rede"
+
+**Exemplo CORRETO:**
+- Cliente: "Quero trocar a senha do Wi-Fi"
+- Você: "Entendi! Para trocar a senha do Wi-Fi, vou te conectar 
+  com nosso suporte especializado que vai te ajudar com isso, 
+  tá bem? 😊" [EXECUTA transferir_para_humano]
+```
+
+#### **Impacto Esperado:**
+- ✅ Reconhecimento de 100% das solicitações de senha Wi-Fi
+- ✅ Transferência imediata para especialista
+- ✅ Eliminação de tentativas de instrução por IA (que falham)
+- ✅ Satisfação do cliente com atendimento adequado
+
+#### **Status:** ✅ **APLICADO** - 21/10/2025
+
+---
+
 ## 📊 RESUMO
 
 **Total de Sugestões Analisadas:** 503  
-**Sugestões Aplicadas:** 6 principais (56+ duplicatas resolvidas)  
-**Assistentes Melhorados:** Cancelamento (1), Apresentação (3), Comercial (2)  
-**Conversas Afetadas Total:** 68+  
-**Tempo de Aplicação:** ~50 minutos  
+**Sugestões Aplicadas:** 8 principais (72+ duplicatas resolvidas)  
+**Assistentes Melhorados:** Cancelamento (1), Apresentação (3), Comercial (2), Suporte (2)  
+**Conversas Afetadas Total:** 84+  
+**Tempo de Aplicação:** ~65 minutos  
 
 ---
 
@@ -263,9 +358,10 @@ contratação/mudança/coleta de dados!
 3. ✅ ~~Apresentação - Boletos não roteados~~ **APLICADO**
 4. ✅ ~~Comercial - Encerramento prematuro~~ **APLICADO**
 5. ✅ ~~Comercial - Ignora dados específicos~~ **APLICADO**
-6. **Suporte** - Não reconhece CPF/CNPJ (10+ conversas)
-7. **Financeiro** - Mudança de vencimento (1+ conversa)
-8. **Financeiro** - Boleto do mês errado (2+ conversas)
+6. ✅ ~~Suporte - Não reconhece CPF/CNPJ~~ **APLICADO**
+7. ✅ ~~Suporte - Troca de senha Wi-Fi~~ **APLICADO**
+8. **Financeiro** - Mudança de vencimento (1+ conversa)
+9. **Financeiro** - Boleto do mês errado (2+ conversas)
 
 ---
 
