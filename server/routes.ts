@@ -1255,7 +1255,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           try {
             // Send a context message to the new assistant to generate welcome
-            const welcomePrompt = `[CONTEXTO: Cliente foi encaminhado pela recepcionista. Apresente-se brevemente e mostre que está pronto para ajudar com base no histórico da conversa]`;
+            const welcomePrompt = `[CONTEXTO INTERNO: Cliente foi encaminhado pela recepcionista]
+
+IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que ele disse). Apresente-se brevemente como o assistente especializado responsável e mostre que está pronto para ajudar com a solicitação dele.`;
             
             const welcomeResult = await sendMessageAndGetResponse(
               threadId!,
@@ -2730,7 +2732,16 @@ Qualquer coisa, estamos à disposição! 😊
               
               // Injetar contexto na nova thread
               const { sendMessageAndGetResponse } = await import("./lib/openai");
-              const contextMessage = `[CONTEXTO DA CONVERSA ANTERIOR - USO INTERNO]\n\nVocê está assumindo esta conversa. Aqui está o histórico recente:\n\n${contextSummary}\n\nMotivo do roteamento: ${routingReason}\n\nApresente-se brevemente e continue ajudando o cliente com base no contexto acima.`;
+              const contextMessage = `[CONTEXTO DA CONVERSA ANTERIOR - USO INTERNO]
+
+Você está assumindo esta conversa que foi transferida do assistente ${conversationRef.assistantType.toUpperCase()}.
+
+HISTÓRICO RECENTE:
+${contextSummary}
+
+MOTIVO DO ROTEAMENTO: ${routingReason}
+
+IMPORTANTE: Você deve RESPONDER diretamente ao cliente (não parafrasear ou repetir o que ele disse). Apresente-se brevemente como o novo assistente responsável e continue ajudando com base na última solicitação do cliente acima.`;
               
               await sendMessageAndGetResponse(
                 newThreadId,
@@ -2929,7 +2940,9 @@ Qualquer coisa, estamos à disposição! 😊
                 
                 try {
                   // Send a context message to the new assistant to generate welcome
-                  const welcomePrompt = `[CONTEXTO: Cliente foi encaminhado pela recepcionista. Apresente-se brevemente e mostre que está pronto para ajudar com base no histórico da conversa]`;
+                  const welcomePrompt = `[CONTEXTO INTERNO: Cliente foi encaminhado pela recepcionista]
+
+IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que ele disse). Apresente-se brevemente como o assistente especializado responsável e mostre que está pronto para ajudar com a solicitação dele.`;
                   
                   const welcomeResult = await sendMessageAndGetResponse(
                     threadId!,
