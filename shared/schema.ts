@@ -457,7 +457,10 @@ export type InsertMessageTemplate = z.infer<typeof insertMessageTemplateSchema>;
 export type UpdateMessageTemplate = z.infer<typeof updateMessageTemplateSchema>;
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
-export type Complaint = typeof complaints.$inferSelect;
+export type Complaint = typeof complaints.$inferSelect & {
+  clientName?: string | null; // Nome do cliente da conversa relacionada
+  chatId?: string | null; // Chat ID (contém telefone) da conversa relacionada
+};
 export type InsertComplaint = z.infer<typeof insertComplaintSchema>;
 export type UpdateComplaint = z.infer<typeof updateComplaintSchema>;
 export type TrainingSession = typeof trainingSessions.$inferSelect;

@@ -2721,37 +2721,93 @@ export class DbStorage implements IStorage {
   }
 
   async getComplaint(id: string): Promise<Complaint | undefined> {
-    const [complaint] = await db.select()
+    const [result] = await db.select({
+      complaint: schema.complaints,
+      clientName: schema.conversations.clientName,
+      chatId: schema.conversations.chatId,
+    })
       .from(schema.complaints)
+      .leftJoin(schema.conversations, eq(schema.complaints.conversationId, schema.conversations.id))
       .where(eq(schema.complaints.id, id));
-    return complaint;
+    
+    if (!result) return undefined;
+    
+    return {
+      ...result.complaint,
+      clientName: result.clientName,
+      chatId: result.chatId,
+    } as Complaint;
   }
 
   async getComplaintsByConversationId(conversationId: string): Promise<Complaint[]> {
-    return await db.select()
+    const results = await db.select({
+      complaint: schema.complaints,
+      clientName: schema.conversations.clientName,
+      chatId: schema.conversations.chatId,
+    })
       .from(schema.complaints)
+      .leftJoin(schema.conversations, eq(schema.complaints.conversationId, schema.conversations.id))
       .where(eq(schema.complaints.conversationId, conversationId))
       .orderBy(desc(schema.complaints.createdAt));
+    
+    return results.map(r => ({
+      ...r.complaint,
+      clientName: r.clientName,
+      chatId: r.chatId,
+    })) as Complaint[];
   }
 
   async getAllComplaints(): Promise<Complaint[]> {
-    return await db.select()
+    const results = await db.select({
+      complaint: schema.complaints,
+      clientName: schema.conversations.clientName,
+      chatId: schema.conversations.chatId,
+    })
       .from(schema.complaints)
+      .leftJoin(schema.conversations, eq(schema.complaints.conversationId, schema.conversations.id))
       .orderBy(desc(schema.complaints.createdAt));
+    
+    return results.map(r => ({
+      ...r.complaint,
+      clientName: r.clientName,
+      chatId: r.chatId,
+    })) as Complaint[];
   }
 
   async getComplaintsByStatus(status: string): Promise<Complaint[]> {
-    return await db.select()
+    const results = await db.select({
+      complaint: schema.complaints,
+      clientName: schema.conversations.clientName,
+      chatId: schema.conversations.chatId,
+    })
       .from(schema.complaints)
+      .leftJoin(schema.conversations, eq(schema.complaints.conversationId, schema.conversations.id))
       .where(eq(schema.complaints.status, status))
       .orderBy(desc(schema.complaints.createdAt));
+    
+    return results.map(r => ({
+      ...r.complaint,
+      clientName: r.clientName,
+      chatId: r.chatId,
+    })) as Complaint[];
   }
 
   async getComplaintsBySeverity(severity: string): Promise<Complaint[]> {
-    return await db.select()
+    const results = await db.select({
+      complaint: schema.complaints,
+      clientName: schema.conversations.clientName,
+      chatId: schema.conversations.chatId,
+    })
       .from(schema.complaints)
+      .leftJoin(schema.conversations, eq(schema.complaints.conversationId, schema.conversations.id))
       .where(eq(schema.complaints.severity, severity))
       .orderBy(desc(schema.complaints.createdAt));
+    
+    return results.map(r => ({
+      ...r.complaint,
+      clientName: r.clientName,
+      chatId: r.chatId,
+    })) as Complaint[];
   }
 
   async updateComplaint(id: string, updates: UpdateComplaint): Promise<Complaint | undefined> {
