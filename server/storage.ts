@@ -270,6 +270,7 @@ export interface IStorage {
     document?: string;
     hasRecurringIssues?: boolean;
   }): Promise<Contact>;
+  syncContactToConversations(phoneNumber: string, updates: { name?: string; document?: string }): Promise<number>;
   deleteContact(id: string): Promise<void>;
   
   // Groups
@@ -1318,6 +1319,30 @@ export class MemStorage implements IStorage {
     }
 
     return contact;
+  }
+
+  async syncContactToConversations(phoneNumber: string, updates: { name?: string; document?: string }): Promise<number> {
+    const conversations = Array.from(this.conversations.values()).filter(
+      conv => conv.chatId.includes(phoneNumber)
+    );
+    
+    let updatedCount = 0;
+    for (const conv of conversations) {
+      const conversationUpdates: any = {};
+      if (updates.name !== undefined) {
+        conversationUpdates.clientName = updates.name;
+      }
+      if (updates.document !== undefined) {
+        conversationUpdates.clientDocument = updates.document;
+      }
+      
+      if (Object.keys(conversationUpdates).length > 0) {
+        this.conversations.set(conv.id, { ...conv, ...conversationUpdates });
+        updatedCount++;
+      }
+    }
+    
+    return updatedCount;
   }
 
   async deleteContact(id: string): Promise<void> {
@@ -3096,6 +3121,29 @@ export class DbStorage implements IStorage {
     }
 
     return contact;
+  }
+
+  async syncContactToConversations(phoneNumber: string, updates: { name?: string; document?: string }): Promise<number> {
+    const conversationUpdates: any = {};
+    
+    if (updates.name !== undefined) {
+      conversationUpdates.clientName = updates.name;
+    }
+    if (updates.document !== undefined) {
+      conversationUpdates.clientDocument = updates.document;
+    }
+    
+    if (Object.keys(conversationUpdates).length === 0) {
+      return 0;
+    }
+    
+    // Update all conversations that contain this phone number
+    const result = await db.update(schema.conversations)
+      .set(conversationUpdates)
+      .where(sql`${schema.conversations.chatId} LIKE ${'%' + phoneNumber + '%'}`)
+      .returning();
+    
+    return result.length;
   }
 
   async deleteContact(id: string): Promise<void> {
