@@ -7052,6 +7052,28 @@ A resposta deve:
         return res.status(500).json({ error: "Failed to update contact" });
       }
 
+      // Sync contact changes to all related conversations
+      try {
+        const syncUpdates: { name?: string; document?: string } = {};
+        if (validation.data.name !== undefined) {
+          syncUpdates.name = validation.data.name;
+        }
+        if (validation.data.document !== undefined) {
+          syncUpdates.document = validation.data.document;
+        }
+        
+        if (Object.keys(syncUpdates).length > 0) {
+          const conversationsUpdated = await storage.syncContactToConversations(
+            updatedContact.phoneNumber,
+            syncUpdates
+          );
+          console.log(`🔄 [Contacts] Synced contact updates to ${conversationsUpdated} conversations`);
+        }
+      } catch (syncError) {
+        console.error("⚠️ [Contacts] Error syncing contact to conversations:", syncError);
+        // Don't fail the whole request if sync fails
+      }
+
       console.log(`✅ [Contacts] Contact ${contactId} updated successfully`);
       return res.json(updatedContact);
     } catch (error) {
