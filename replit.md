@@ -25,7 +25,7 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 **Hybrid Supervised Mode**: Manages "Transferred" and "Assigned" conversations with AI-assisted agent responses.
 **WhatsApp Integration**: Native integration with Evolution API for real-time messaging, AI routing, outbound messaging, triple-fallback delivery, and WhatsApp Groups Management.
 **Role-Based Access Control (RBAC)**: A 3-tier system (ADMIN, SUPERVISOR, AGENT) with granular permissions.
-**Contact Management System**: Centralized client database with automatic WhatsApp contact sync.
+**Contact Management System**: Centralized client database with automatic WhatsApp contact sync and bidirectional synchronization with conversations (contact updates automatically propagate to all related conversations).
 **Message Deletion System**: Supervisors/admins can soft-delete assistant messages.
 **Redis Optimization System**: Intelligent caching, batching, and hash storage.
 **Message Batching System**: Atomic Redis-based debouncing groups sequential client messages into single AI requests.
