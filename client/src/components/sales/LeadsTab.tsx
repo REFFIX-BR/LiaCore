@@ -32,7 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   UserPlus, 
   Clock, 
-  CheckCircle2, 
+  XCircle, 
   TrendingUp,
   Phone,
   Mail,
@@ -71,8 +71,6 @@ type Lead = {
 
 const LEAD_STATUS_OPTIONS = [
   "Prospecção",
-  "Aguardando Análise",
-  "Aprovado",
   "Cancelado"
 ];
 
@@ -99,14 +97,15 @@ export default function LeadsTab() {
   const [newStatus, setNewStatus] = useState("");
   const [statusObservations, setStatusObservations] = useState("");
 
-  // Buscar todas as vendas para cálculo de KPIs correto
+  // Buscar todas as vendas
   const { data: allSales = [], isLoading } = useQuery<Lead[]>({
     queryKey: ["/api/sales"],
   });
 
-  // Leads = todas as vendas que ainda não foram instaladas (pipeline completo)
+  // Leads = apenas clientes com interesse inicial que NÃO completaram a contratação
+  // (Prospecção = dados incompletos, cliente não deu continuidade)
   const leads = allSales.filter((sale) => 
-    sale.status !== "Instalado" && sale.status !== "Agendado para Instalação" && sale.status !== "Inadimplente"
+    sale.status === "Prospecção" || sale.status === "Cancelado"
   );
 
   // Mutation para atualizar status
@@ -141,20 +140,19 @@ export default function LeadsTab() {
     return matchStatus && matchSource;
   });
 
-  // Estatísticas de leads (pipeline completo)
+  // Estatísticas de leads (apenas prospects não concluídos)
   const stats = {
     total: leads.length,
     prospeccao: leads.filter((l) => l.status === "Prospecção").length,
-    aguardando: leads.filter((l) => l.status === "Aguardando Análise").length,
-    aprovados: leads.filter((l) => l.status === "Aprovado").length,
+    cancelado: leads.filter((l) => l.status === "Cancelado").length,
     whatsapp: leads.filter((l) => l.source === "chat").length,
     site: leads.filter((l) => l.source === "site").length,
     manual: leads.filter((l) => l.source === "manual").length,
   };
 
-  // Taxa de conversão (leads aprovados / total de leads inicial)
-  const conversionRate = stats.total > 0 
-    ? ((stats.aprovados / stats.total) * 100).toFixed(1) 
+  // Taxa de abandono (leads cancelados / total)
+  const abandonRate = stats.total > 0 
+    ? ((stats.cancelado / stats.total) * 100).toFixed(1) 
     : "0.0";
 
   const handleViewDetails = (lead: Lead) => {
@@ -204,39 +202,39 @@ export default function LeadsTab() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Aguardando Análise</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-500" />
+            <CardTitle className="text-sm font-medium">Em Prospecção</CardTitle>
+            <Clock className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-aguardando-leads">{stats.aguardando}</div>
+            <div className="text-2xl font-bold" data-testid="text-prospeccao-leads">{stats.prospeccao}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Requer atenção
+              Interesse sem conclusão
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Aprovados</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
+            <CardTitle className="text-sm font-medium">Cancelados</CardTitle>
+            <XCircle className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-aprovados-leads">{stats.aprovados}</div>
+            <div className="text-2xl font-bold" data-testid="text-cancelado-leads">{stats.cancelado}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Prontos para instalação
+              Desistiram do processo
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Taxa de Conversão</CardTitle>
-            <TrendingUp className="h-4 w-4 text-emerald-600" />
+            <CardTitle className="text-sm font-medium">Taxa de Abandono</CardTitle>
+            <TrendingUp className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-conversion-rate">{conversionRate}%</div>
+            <div className="text-2xl font-bold" data-testid="text-abandon-rate">{abandonRate}%</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Leads → Aprovados
+              Cancelados / Total
             </p>
           </CardContent>
         </Card>
