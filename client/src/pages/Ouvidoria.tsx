@@ -138,6 +138,22 @@ export default function Ouvidoria() {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
+  const extractPhoneFromChatId = (chatId?: string | null): string => {
+    if (!chatId) return "Não disponível";
+    // chatId formato: "whatsapp_5524988113941"
+    const phone = chatId.replace("whatsapp_", "");
+    if (!phone || phone === chatId) return "Não disponível";
+    // Formatar o telefone: +55 (24) 98811-3941
+    if (phone.length === 13 && phone.startsWith("55")) {
+      const ddi = phone.substring(0, 2);
+      const ddd = phone.substring(2, 4);
+      const firstPart = phone.substring(4, 9);
+      const secondPart = phone.substring(9);
+      return `+${ddi} (${ddd}) ${firstPart}-${secondPart}`;
+    }
+    return phone;
+  };
+
   const getTypeBadge = (type: string) => {
     const labels: Record<string, string> = {
       atendimento: "Atendimento",
@@ -386,6 +402,21 @@ export default function Ouvidoria() {
           
           {selectedComplaint && (
             <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Cliente</label>
+                  <p className="text-sm mt-1 font-medium" data-testid="text-details-client-name">
+                    {selectedComplaint.clientName || "Não identificado"}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Telefone</label>
+                  <p className="text-sm mt-1 font-mono" data-testid="text-details-phone">
+                    {extractPhoneFromChatId(selectedComplaint.chatId)}
+                  </p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Data</label>
