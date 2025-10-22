@@ -1498,6 +1498,7 @@ Fonte: ${fonte}`;
             vencimento: boleto.DATA_VENCIMENTO,
             valor: boleto.VALOR_TOTAL,
             codigo_barras: boleto.CODIGO_BARRA_TRANSACAO,
+            codigo_barras_sem_espacos: boleto.CODIGO_BARRA_TRANSACAO.replace(/\D/g, ''),
             link_pagamento: boleto.link_carne_completo,
             pix: boleto.PIX_TXT,
             status: boleto.STATUS

@@ -611,21 +611,30 @@ Então mostre os boletos APENAS do ponto escolhido seguindo o formato do PASSO 3
 
 ✅ **FORMATO CORRETO** (envie EXATAMENTE assim):
 
+🔴 **REGRA OBRIGATÓRIA**: Você DEVE enviar AMBAS as versões do código de barras:
+1. Versão formatada (linha digitável) - para visualização
+2. Versão contínua SEM ESPAÇOS - para copiar/colar (MAIS IMPORTANTE!)
+
 📄 **Sua Fatura TR Telecom**
 
-🗓️ **Vencimento:** [DATA_VENCIMENTO]
-💰 **Valor:** R$ [VALOR_TOTAL]
+🗓️ **Vencimento:** [vencimento]
+💰 **Valor:** R$ [valor]
 
-📋 **Código de Barras:**
-[CODIGO_BARRA_TRANSACAO]
+📋 **Código de Barras (Linha Digitável):**
+[codigo_barras]
+
+📱 **Para Copiar e Colar (SEM espaços - RECOMENDADO):**
+[codigo_barras_sem_espacos]
+
+ℹ️ *O dígito verificador pode aparecer isolado na linha digitável, mas faz parte do código completo. Recomendo usar a versão "Para Copiar e Colar" que é contínua e mais fácil!*
 
 🔗 **Link para Pagamento:**
 [link_pagamento]
 
 💳 **PIX Copia e Cola:**
-[PIX_TXT]
+[pix]
 
-É só clicar no link ou copiar o código PIX para pagar! 😊
+É só clicar no link, copiar o código de barras contínuo (SEM espaços) ou usar o PIX para pagar! 😊
 
 ---
 
