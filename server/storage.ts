@@ -1693,6 +1693,20 @@ export class DbStorage implements IStorage {
       .orderBy(desc(schema.messages.timestamp))
       .limit(limit + 1);
     
+    // Debug PDFs
+    const pdfMsgs = messages.filter(m => m.pdfName);
+    if (pdfMsgs.length > 0) {
+      console.log(`📄 [Storage Debug] Found ${pdfMsgs.length} messages with pdfName in DB result:`, 
+        pdfMsgs.map(m => ({
+          id: m.id,
+          pdfName: m.pdfName,
+          hasPdfBase64: !!m.pdfBase64,
+          pdfBase64Length: m.pdfBase64?.length || 0,
+          pdfBase64Type: typeof m.pdfBase64
+        }))
+      );
+    }
+    
     const hasMore = messages.length > limit;
     const result = hasMore ? messages.slice(0, limit) : messages;
     

@@ -3679,6 +3679,20 @@ Qualquer coisa, estamos à disposição! 😊
       const before = req.query.before as string | undefined;
       
       const { messages, hasMore } = await storage.getMessagesPaginated(conversation.id, { limit, before });
+      
+      // Debug: verificar PDFs
+      const pdfMessages = messages.filter(m => m.pdfName);
+      if (pdfMessages.length > 0) {
+        console.log(`📄 [API Debug] Found ${pdfMessages.length} PDF messages:`, 
+          pdfMessages.map(m => ({ 
+            id: m.id, 
+            pdfName: m.pdfName, 
+            hasPdfBase64: !!m.pdfBase64,
+            pdfBase64Length: m.pdfBase64?.length || 0 
+          }))
+        );
+      }
+      
       const alerts = await storage.getAlertsByConversationId(conversation.id);
       const actions = await storage.getActionsByConversationId(conversation.id);
 
