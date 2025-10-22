@@ -307,19 +307,27 @@ export function ChatMessage({ message, canEdit = false, onDelete, onReply, showI
             </Badge>
           )}
 
-          {/* PDF com base64 salvo - mostrar botão de download */}
+          {/* PDF com base64 salvo - mostrar visualização inline */}
           {message.pdfBase64 && message.pdfName && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={downloadPdf}
-              className="mb-2 flex items-center gap-2"
-              data-testid="button-download-pdf"
-            >
-              <FileText className="h-4 w-4" />
-              <span>{message.pdfName}</span>
-              <Download className="h-4 w-4" />
-            </Button>
+            <div className="mb-2">
+              <iframe
+                src={message.pdfBase64.startsWith('data:') ? message.pdfBase64 : `data:application/pdf;base64,${message.pdfBase64}`}
+                className="w-full rounded-md border"
+                style={{ height: '400px' }}
+                title={message.pdfName}
+                data-testid="pdf-viewer"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={downloadPdf}
+                className="mt-2 flex items-center gap-2"
+                data-testid="button-download-pdf"
+              >
+                <Download className="h-4 w-4" />
+                <span>Baixar {message.pdfName}</span>
+              </Button>
+            </div>
           )}
 
           {/* Áudio do WhatsApp - player de áudio */}
