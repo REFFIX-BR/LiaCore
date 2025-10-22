@@ -1520,6 +1520,70 @@ Fonte: ${fonte}`;
           });
         }
 
+      case "solicitarDesbloqueio":
+        if (!conversationId) {
+          console.error("❌ [AI Tool] solicitarDesbloqueio chamada sem conversationId");
+          return JSON.stringify({
+            error: "Contexto de conversa não disponível"
+          });
+        }
+        
+        const { solicitarDesbloqueio } = await import("../ai-tools");
+        const { storage: storageDesbloqueio } = await import("../storage");
+        
+        try {
+          console.log(`🔓 [AI Tool Handler] Iniciando solicitação de desbloqueio para conversação ${conversationId}`);
+          
+          // Buscar documento do cliente automaticamente da conversa
+          const conversationDesbloqueio = await storageDesbloqueio.getConversation(conversationId);
+          
+          if (!conversationDesbloqueio) {
+            console.error("❌ [AI Tool] Conversa não encontrada:", conversationId);
+            return JSON.stringify({
+              error: "Conversa não encontrada"
+            });
+          }
+          
+          console.log(`🔓 [AI Tool Handler] Conversa encontrada. clientDocument: ${conversationDesbloqueio.clientDocument ? 'SIM' : 'NÃO'}`);
+          
+          if (!conversationDesbloqueio.clientDocument) {
+            console.warn("⚠️ [AI Tool] Cliente ainda não forneceu CPF/CNPJ");
+            return JSON.stringify({
+              error: "Para solicitar desbloqueio, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
+            });
+          }
+          
+          console.log(`🔓 [AI Tool Handler] Chamando solicitarDesbloqueio com documento do banco...`);
+          
+          // Chamar diretamente a API real de desbloqueio
+          const resultado = await solicitarDesbloqueio(
+            conversationDesbloqueio.clientDocument,
+            { conversationId },
+            storageDesbloqueio
+          );
+          
+          console.log(`✅ [AI Tool Handler] Desbloqueio solicitado com sucesso:`, resultado);
+          
+          // Extrair mensagem de resposta da API
+          const obs = resultado.data?.[0]?.resposta?.[0]?.obs || "";
+          const status = resultado.data?.[0]?.status?.[0]?.status || "";
+          
+          return JSON.stringify({
+            success: true,
+            mensagem: obs || "Desbloqueio solicitado com sucesso",
+            status: status,
+            detalhes: resultado
+          });
+        } catch (error) {
+          console.error("❌ [AI Tool Handler] Erro ao solicitar desbloqueio:", error);
+          if (error instanceof Error) {
+            console.error("❌ [AI Tool Handler] Stack trace:", error.stack);
+          }
+          return JSON.stringify({
+            error: error instanceof Error ? error.message : "Erro ao solicitar desbloqueio"
+          });
+        }
+
       case "priorizar_atendimento_tecnico":
         if (!conversationId) {
           console.error("❌ [AI Tool] priorizar_atendimento_tecnico chamada sem conversationId");
