@@ -308,18 +308,6 @@ export function ChatMessage({ message, canEdit = false, onDelete, onReply, showI
           )}
 
           {/* PDF com base64 salvo - mostrar visualização inline */}
-          {(() => {
-            if (message.pdfName) {
-              console.log('[ChatMessage] PDF Debug:', {
-                hasPdfName: !!message.pdfName,
-                pdfName: message.pdfName,
-                hasPdfBase64: !!message.pdfBase64,
-                pdfBase64Length: message.pdfBase64?.length || 0,
-                pdfBase64Preview: message.pdfBase64?.substring(0, 50) || 'null'
-              });
-            }
-            return null;
-          })()}
           {message.pdfBase64 && message.pdfName && (
             <div className="mb-2">
               <iframe
