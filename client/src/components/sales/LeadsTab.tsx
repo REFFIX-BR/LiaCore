@@ -99,14 +99,14 @@ export default function LeadsTab() {
   const [newStatus, setNewStatus] = useState("");
   const [statusObservations, setStatusObservations] = useState("");
 
-  // Buscar vendas/leads
+  // Buscar todas as vendas para cálculo de KPIs correto
   const { data: allSales = [], isLoading } = useQuery<Lead[]>({
     queryKey: ["/api/sales"],
   });
 
-  // Filtrar apenas leads (Prospecção e Aguardando Análise)
+  // Leads = todas as vendas que ainda não foram instaladas (pipeline completo)
   const leads = allSales.filter((sale) => 
-    sale.status === "Prospecção" || sale.status === "Aguardando Análise"
+    sale.status !== "Instalado" && sale.status !== "Agendado para Instalação" && sale.status !== "Inadimplente"
   );
 
   // Mutation para atualizar status
@@ -141,7 +141,7 @@ export default function LeadsTab() {
     return matchStatus && matchSource;
   });
 
-  // Estatísticas de leads
+  // Estatísticas de leads (pipeline completo)
   const stats = {
     total: leads.length,
     prospeccao: leads.filter((l) => l.status === "Prospecção").length,
@@ -149,9 +149,10 @@ export default function LeadsTab() {
     aprovados: leads.filter((l) => l.status === "Aprovado").length,
     whatsapp: leads.filter((l) => l.source === "chat").length,
     site: leads.filter((l) => l.source === "site").length,
+    manual: leads.filter((l) => l.source === "manual").length,
   };
 
-  // Taxa de conversão (leads aprovados / total)
+  // Taxa de conversão (leads aprovados / total de leads inicial)
   const conversionRate = stats.total > 0 
     ? ((stats.aprovados / stats.total) * 100).toFixed(1) 
     : "0.0";
@@ -304,6 +305,14 @@ export default function LeadsTab() {
                 data-testid="button-filter-source-site"
               >
                 Site ({stats.site})
+              </Button>
+              <Button
+                variant={filterSource === "manual" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilterSource("manual")}
+                data-testid="button-filter-source-manual"
+              >
+                Manual ({stats.manual})
               </Button>
             </div>
           </div>
