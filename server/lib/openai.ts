@@ -1474,8 +1474,8 @@ Fonte: ${fonte}`;
           
           console.log(`🔍 [AI Tool Handler] Chamando consultaBoletoCliente com documento do banco...`);
           
-          // Chamar diretamente a API real - retorna { boletos, temMultiplosPontos }
-          const { boletos, temMultiplosPontos } = await consultaBoletoCliente(
+          // Chamar diretamente a API real - retorna { boletos, hasMultiplePoints }
+          const { boletos, hasMultiplePoints: temMultiplosPontos } = await consultaBoletoCliente(
             conversation.clientDocument,
             { conversationId },
             storage
