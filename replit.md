@@ -8,7 +8,7 @@ Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 ### UI/UX Decisions
-The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailwind CSS, inspired by Carbon Design System and Linear, supporting both dark and light modes. `Wouter` is used for client-side routing. UI components include color-coded wait time indicators, enhanced UI for complaint descriptions, a dialog interface for private notes, dedicated UIs for new contact creation, conversation reopening, and activity logs. The sales management and plans management systems feature dedicated dashboards with KPIs, tables, and CRUD interfaces.
+The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and Tailwind CSS, inspired by Carbon Design System and Linear, supporting both dark and light modes. `Wouter` is used for client-side routing. UI components include color-coded wait time indicators, enhanced UI for complaint descriptions, a dialog interface for private notes, dedicated UIs for new contact creation, conversation reopening, and activity logs. The sales management and plans management systems feature dedicated dashboards with KPIs, tables, and CRUD interfaces. Chat interface features message pagination with intelligent auto-scroll, auto-focus textarea after sending messages, and inline PDF visualization.
 
 ### Technical Implementations
 **Frontend**: Utilizes TanStack Query for server state management.
@@ -44,9 +44,12 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 - **APRESENTAÇÃO - MELHORIAS DE UX (3 fixes críticos)**: Aplicadas melhorias do sistema de Learning (score 90%, 30+ conversas afetadas). (1) Adicionada regra explícita **NUNCA pergunte "você está aí?"** - cliente já está interagindo, perguntar presença é redundante e frustrante. (2) Expandida lista de palavras de despedida de 5 para 15+ variações ("valeu", "vlw", "tmj", "falou", "show", etc.) para melhor reconhecimento de finalização. (3) Expandida lista de palavras-chave financeiras de 6 para 15+ variações, incluindo "segunda via", "segunda via do boleto", "débito", "pendência", "acordo", garantindo roteamento correto para setor Financeiro.
 - **CANCELAMENTO - RECONHECIMENTO DE PALAVRAS-CHAVE**: Aplicada melhoria do sistema de Learning (score 90%, 10+ ocorrências). Adicionado reconhecimento explícito de palavras-chave de cancelamento no assistente de Cancelamento: "cancelar", "cancelamento", "mudar de operadora", "multa", "quero sair", "encerrar contrato". Também melhorado o roteamento do assistente Apresentação para incluir todas essas variações.
 
+### Recent Updates (2025-10-22)
+- **Chat UX Enhancements**: (1) Message pagination with cursor-based loading (15 messages/page) and "Load previous messages" button. (2) Intelligent auto-scroll that maintains scroll position when loading history and auto-scrolls to bottom when user is near bottom (100px threshold). (3) Auto-focus textarea after sending message for continuous typing without clicking. (4) Inline PDF visualization with 400px iframe viewer and download button, following same pattern as images.
+
 ### System Design Choices
 - **Admin Tools**: Mass-closing abandoned conversations, reprocessing stuck messages, configuration management.
-- **Image Handling**: Supervisors can download WhatsApp images.
+- **Media Handling**: Supervisors can download WhatsApp images and PDFs. PDFs display inline with 400px viewer for immediate visualization.
 - **Worker Concurrency**: Optimized for messages, images, and NPS workers.
 - **API Key Management**: Robust handling of multi-instance Evolution API keys.
 
