@@ -941,6 +941,55 @@ Por favor, responda apenas com um número de 0 a 10.
 
         console.log(`✅ [Auto-Closure Worker] Conversa ${conversationId} encerrada automaticamente por inatividade`);
 
+        // 9. AUTO-SAVE LEAD: Se conversa comercial abandonada, salvar lead "Prospecção"
+        if (conversation.assistantType === 'comercial') {
+          try {
+            // Verificar se já existe uma venda cadastrada para essa conversa
+            const { db } = await import('./db');
+            const { sales } = await import('../shared/schema');
+            const { eq } = await import('drizzle-orm');
+            
+            const existingSale = await db.query.sales.findFirst({
+              where: eq(sales.conversationId, conversationId)
+            });
+            
+            if (!existingSale) {
+              // Verificar se a conversa teve engajamento (pelo menos 3+ mensagens do cliente)
+              const messages = await storage.getMessagesByConversationId(conversationId);
+              const clientMessages = messages.filter((m: any) => m.role === 'user');
+              
+              if (clientMessages.length >= 3) {
+                console.log(`📊 [Auto-Lead] Conversa comercial abandonada com ${clientMessages.length} mensagens do cliente - salvando lead automático`);
+                
+                // Extrair dados básicos da conversa para salvar o lead
+                const leadData = {
+                  type: "PF", // Default
+                  customerName: clientName || "Lead Automático",
+                  phone: clientId.replace(/\D/g, ''), // Remover caracteres não numéricos
+                  email: null,
+                  city: null,
+                  state: null,
+                  planId: null,
+                  source: "chat",
+                  status: "Prospecção",
+                  conversationId,
+                  observations: `Lead salvo automaticamente - conversa abandonada por inatividade. ${clientMessages.length} mensagens trocadas.`
+                };
+                
+                const savedLead = await storage.addSale(leadData);
+                console.log(`✅ [Auto-Lead] Lead Prospecção salvo automaticamente - ID: ${savedLead.id}`);
+              } else {
+                console.log(`⚠️ [Auto-Lead] Conversa comercial com apenas ${clientMessages.length} mensagens - não salvar lead (mínimo 3)`);
+              }
+            } else {
+              console.log(`⚠️ [Auto-Lead] Venda já existe para conversa ${conversationId} (status: ${existingSale.status}) - não criar lead duplicado`);
+            }
+          } catch (error) {
+            console.error(`❌ [Auto-Lead] Erro ao salvar lead automático:`, error);
+            // Não lançar erro - não queremos falhar o auto-closure por causa disso
+          }
+        }
+
         // Mark job as processed
         await markJobProcessed(job.id!);
 

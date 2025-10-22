@@ -1438,6 +1438,86 @@ Fonte: ${fonte}`;
           });
         }
 
+      case "registrar_lead_prospeccao":
+        console.log("📊 [AI Tool] registrar_lead_prospeccao chamada - salvando lead com interesse inicial");
+        try {
+          // ============================================================================
+          // VALIDAÇÃO DE CAMPOS OBRIGATÓRIOS PARA PROSPECÇÃO
+          // ============================================================================
+          const requiredProspectFields = ['nome', 'telefone'];
+          const missingProspectFields = requiredProspectFields.filter(field => !args[field]);
+          
+          if (missingProspectFields.length > 0) {
+            console.error("❌ [Prospect] Campos obrigatórios faltando:", missingProspectFields);
+            return JSON.stringify({
+              error: `Dados incompletos. Para registrar o lead, preciso de: ${missingProspectFields.join(', ')}`,
+              campos_faltantes: missingProspectFields
+            });
+          }
+
+          // Validar e normalizar nome (mínimo 3 caracteres)
+          const prospectName = args.nome.trim();
+          if (prospectName.length < 3) {
+            console.error("❌ [Prospect] Nome muito curto:", prospectName);
+            return JSON.stringify({
+              error: "Nome inválido. Por favor, informe o nome completo (mínimo 3 caracteres)."
+            });
+          }
+
+          // Validar e normalizar telefone (apenas números, mínimo 10 dígitos)
+          const prospectPhone = args.telefone.replace(/\D/g, '');
+          if (prospectPhone.length < 10 || prospectPhone.length > 11) {
+            console.error("❌ [Prospect] Telefone inválido:", args.telefone);
+            return JSON.stringify({
+              error: "Telefone inválido. Por favor, informe um telefone válido com DDD (ex: (24) 99999-9999)."
+            });
+          }
+
+          // Validar email se fornecido
+          if (args.email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(args.email)) {
+              console.error("❌ [Prospect] Email inválido:", args.email);
+              return JSON.stringify({
+                error: "Email inválido. Por favor, informe um email válido (ex: nome@exemplo.com)."
+              });
+            }
+          }
+
+          // Preparar dados do lead em prospecção
+          const prospectData = {
+            type: args.tipo_pessoa || "PF", // PF ou PJ
+            customerName: prospectName,
+            email: args.email || null,
+            phone: prospectPhone,
+            city: args.cidade || null,
+            state: args.estado || null,
+            planId: args.plano_id || null, // ID do plano de interesse
+            // Lead Management
+            source: "chat",
+            status: "Prospecção", // Status específico para leads em prospecção
+            conversationId,
+            observations: args.observacoes || `Lead com interesse inicial. ${args.plano_interesse ? `Plano de interesse: ${args.plano_interesse}` : ''}`
+          };
+
+          // Salvar no banco via storage
+          const { storage: storageProspect } = await import("../storage");
+          const prospect = await storageProspect.addSale(prospectData);
+
+          console.log(`✅ [Prospect] Lead em prospecção registrado com sucesso - ID: ${prospect.id}, Nome: ${args.nome}`);
+
+          return JSON.stringify({
+            success: true,
+            lead_id: prospect.id,
+            mensagem: `Lead registrado com sucesso! Vou anotar seu interesse. Nossa equipe pode entrar em contato para mais informações se necessário.`
+          });
+        } catch (error) {
+          console.error("❌ [Prospect] Erro ao registrar lead em prospecção:", error);
+          return JSON.stringify({
+            error: "Erro ao registrar lead. Tente novamente."
+          });
+        }
+
       case "consultar_boleto_cliente":
         console.log(`🚨 [DEBUG] ENTRANDO NO CASE consultar_boleto_cliente - conversationId: ${conversationId || 'UNDEFINED'}`);
         if (!conversationId) {

@@ -33,15 +33,15 @@ import {
   UserPlus, 
   Clock, 
   XCircle, 
-  TrendingUp,
+  MapPin,
   Phone,
   Mail,
-  MapPin,
   User,
   FileText,
   Filter,
   Eye,
-  MessageSquare
+  MessageSquare,
+  Wifi
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -71,7 +71,8 @@ type Lead = {
 
 const LEAD_STATUS_OPTIONS = [
   "Prospecção",
-  "Cancelado"
+  "Cancelado",
+  "Lead Sem Cobertura"
 ];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -79,6 +80,7 @@ const STATUS_COLORS: Record<string, string> = {
   "Aguardando Análise": "bg-yellow-500",
   "Aprovado": "bg-green-500",
   "Cancelado": "bg-red-500",
+  "Lead Sem Cobertura": "bg-gray-500",
 };
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -104,8 +106,11 @@ export default function LeadsTab() {
 
   // Leads = apenas clientes com interesse inicial que NÃO completaram a contratação
   // (Prospecção = dados incompletos, cliente não deu continuidade)
+  // (Lead Sem Cobertura = cliente interessado mas região sem cobertura)
   const leads = allSales.filter((sale) => 
-    sale.status === "Prospecção" || sale.status === "Cancelado"
+    sale.status === "Prospecção" || 
+    sale.status === "Cancelado" ||
+    sale.status === "Lead Sem Cobertura"
   );
 
   // Mutation para atualizar status
@@ -145,6 +150,7 @@ export default function LeadsTab() {
     total: leads.length,
     prospeccao: leads.filter((l) => l.status === "Prospecção").length,
     cancelado: leads.filter((l) => l.status === "Cancelado").length,
+    semCobertura: leads.filter((l) => l.status === "Lead Sem Cobertura").length,
     whatsapp: leads.filter((l) => l.source === "chat").length,
     site: leads.filter((l) => l.source === "site").length,
     manual: leads.filter((l) => l.source === "manual").length,
@@ -228,13 +234,13 @@ export default function LeadsTab() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Taxa de Abandono</CardTitle>
-            <TrendingUp className="h-4 w-4 text-orange-500" />
+            <CardTitle className="text-sm font-medium">Sem Cobertura</CardTitle>
+            <MapPin className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-abandon-rate">{abandonRate}%</div>
+            <div className="text-2xl font-bold" data-testid="text-sem-cobertura-leads">{stats.semCobertura}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Cancelados / Total
+              Região sem atendimento
             </p>
           </CardContent>
         </Card>
@@ -497,7 +503,7 @@ export default function LeadsTab() {
               {selectedLead.plan && (
                 <div>
                   <h3 className="font-semibold flex items-center gap-2 mb-2">
-                    <TrendingUp className="h-4 w-4" />
+                    <Wifi className="h-4 w-4" />
                     Plano de Interesse
                   </h3>
                   <div className="text-sm">
