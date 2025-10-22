@@ -2588,7 +2588,12 @@ export class DbStorage implements IStorage {
       const convs = data.conversations.map(c => c.conversation);
       
       const totalConversations = convs.length;
-      const resolvedConversations = convs.filter(c => c.status === 'resolved').length;
+      // Conta conversas resolvidas: status 'resolved' OU 'awaiting_nps' OU com resolvedBy preenchido
+      const resolvedConversations = convs.filter(c => 
+        c.status === 'resolved' || 
+        c.status === 'awaiting_nps' || 
+        c.resolvedBy !== null
+      ).length;
       const successRate = totalConversations > 0 
         ? Math.round((resolvedConversations / totalConversations) * 100)
         : 0;
