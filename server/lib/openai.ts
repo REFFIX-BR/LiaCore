@@ -1474,21 +1474,22 @@ Fonte: ${fonte}`;
           
           console.log(`🔍 [AI Tool Handler] Chamando consultaBoletoCliente com documento do banco...`);
           
-          // Chamar diretamente a API real
-          const boletos = await consultaBoletoCliente(
+          // Chamar diretamente a API real - retorna { boletos, temMultiplosPontos }
+          const { boletos, temMultiplosPontos } = await consultaBoletoCliente(
             conversation.clientDocument,
             { conversationId },
             storage
           );
           
-          console.log(`✅ [AI Tool Handler] Boletos consultados com sucesso: ${boletos?.length || 0} boleto(s) EM ABERTO`);
+          console.log(`✅ [AI Tool Handler] Boletos consultados com sucesso: ${boletos?.length || 0} boleto(s) EM ABERTO, múltiplos pontos: ${temMultiplosPontos}`);
           
           // Formatar resposta com mensagem clara para a IA
           if (!boletos || boletos.length === 0) {
             return JSON.stringify({
               status: "EM_DIA",
               mensagem: "Cliente está EM DIA - sem boletos pendentes, vencidos ou em aberto.",
-              boletos: []
+              boletos: [],
+              temMultiplosPontos
             });
           }
           
@@ -1506,7 +1507,8 @@ Fonte: ${fonte}`;
             status: "COM_DEBITOS",
             mensagem: `ATENÇÃO: Cliente possui ${boletos.length} boleto(s) EM ABERTO ou VENCIDOS.`,
             quantidade_boletos: boletos.length,
-            boletos: boletosFormatados
+            boletos: boletosFormatados,
+            temMultiplosPontos
           });
         } catch (error) {
           console.error("❌ [AI Tool Handler] Erro ao consultar boletos:", error);
