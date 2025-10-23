@@ -940,8 +940,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storeConversationThread(chatId, threadId);
 
         // Get assistant ID for the chosen assistant
-        const ASSISTANT_IDS = (await import("./lib/openai")).ASSISTANT_IDS;
+        const { ASSISTANT_IDS, ASSISTANT_TO_DEPARTMENT } = await import("./lib/openai");
         const chosenAssistantId = ASSISTANT_IDS[initialAssistant as keyof typeof ASSISTANT_IDS];
+        const department = ASSISTANT_TO_DEPARTMENT[initialAssistant] || "general";
 
         // Create conversation record with chosen assistant
         conversation = await storage.createConversation({
@@ -950,6 +951,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           clientId,
           threadId,
           assistantType: initialAssistant,  // Usa assistente forçado ou recepcionista
+          department, // Departamento baseado no assistente
           status: "active",
           sentiment: "neutral",
           urgency: "normal",
@@ -1213,10 +1215,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           
-          const { ASSISTANT_IDS } = await import("./lib/openai");
+          const { ASSISTANT_IDS, ASSISTANT_TO_DEPARTMENT } = await import("./lib/openai");
           const newAssistantId = ASSISTANT_IDS[newAssistantType as keyof typeof ASSISTANT_IDS];
+          const newDepartment = ASSISTANT_TO_DEPARTMENT[newAssistantType] || "general";
           
-          console.log(`🔄 [Routing] Trocando de 'apresentacao' para '${newAssistantType}' (${newAssistantId})`);
+          console.log(`🔄 [Routing] Trocando de 'apresentacao' para '${newAssistantType}' (${newAssistantId}) - Departamento: ${newDepartment}`);
           
           // Update conversation to use new assistant
           const updatedMetadata = {
@@ -1232,6 +1235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           await storage.updateConversation(conversation.id, {
             assistantType: newAssistantType,
+            department: newDepartment, // Atualiza departamento baseado no assistente
             lastMessage: message,
             lastMessageTime: new Date(),
             duration: (conversation.duration || 0) + 30,
@@ -1971,13 +1975,14 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
           await storeConversationThread(chatId, threadId);
 
           // Create conversation record with Recepcionista
-          const { ASSISTANT_IDS } = await import("./lib/openai");
+          const { ASSISTANT_IDS, ASSISTANT_TO_DEPARTMENT } = await import("./lib/openai");
           conversation = await storage.createConversation({
             chatId,
             clientName,
             clientId: phoneNumber,
             threadId,
             assistantType: "apresentacao",  // SEMPRE inicia com recepcionista
+            department: ASSISTANT_TO_DEPARTMENT["apresentacao"] || "general", // Departamento baseado no assistente
             status: "active",
             sentiment: "neutral",
             urgency: "normal",
@@ -2896,10 +2901,11 @@ IMPORTANTE: Você deve RESPONDER diretamente ao cliente (não parafrasear ou rep
                   }
                 }
                 
-                const { ASSISTANT_IDS } = await import("./lib/openai");
+                const { ASSISTANT_IDS, ASSISTANT_TO_DEPARTMENT } = await import("./lib/openai");
                 const newAssistantId = ASSISTANT_IDS[newAssistantType as keyof typeof ASSISTANT_IDS];
+                const newDepartment = ASSISTANT_TO_DEPARTMENT[newAssistantType] || "general";
                 
-                console.log(`🔄 [Evolution Routing] Trocando de 'apresentacao' para '${newAssistantType}' (${newAssistantId})`);
+                console.log(`🔄 [Evolution Routing] Trocando de 'apresentacao' para '${newAssistantType}' (${newAssistantId}) - Departamento: ${newDepartment}`);
                 
                 // Update conversation to use new assistant
                 const updatedMetadata = {
@@ -2915,6 +2921,7 @@ IMPORTANTE: Você deve RESPONDER diretamente ao cliente (não parafrasear ou rep
                 
                 await storage.updateConversation(conversationRef.id, {
                   assistantType: newAssistantType,
+                  department: newDepartment, // Atualiza departamento baseado no assistente
                   lastMessage: responseText,
                   lastMessageTime: new Date(),
                   metadata: updatedMetadata,
@@ -3239,7 +3246,8 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
         clientName: testName,
         clientId: testPhone,
         status: "active",
-        assistantType: "Suporte Técnico",
+        assistantType: "suporte",
+        department: "support",
         sentiment: "neutral",
         urgency: "medium",
         lastMessage: "Olá, preciso de ajuda",
@@ -7234,6 +7242,7 @@ A resposta deve:
           clientId: contact.phoneNumber,
           clientDocument: contact.document || undefined,
           assistantType: 'cortex',
+          department: 'general', // Cortex = general department
           status: 'active',
           transferredToHuman: true,
           transferReason: 'Conversa reaberta pelo atendente via painel de Contatos',
@@ -7454,7 +7463,7 @@ A resposta deve:
       if (!conversation) {
         const { createThread } = await import("./lib/openai");
         const { storeConversationThread } = await import("./lib/upstash");
-        const { ASSISTANT_IDS } = await import("./lib/openai");
+        const { ASSISTANT_IDS, ASSISTANT_TO_DEPARTMENT } = await import("./lib/openai");
         
         const threadId = await createThread();
         await storeConversationThread(chatId, threadId);
@@ -7465,6 +7474,7 @@ A resposta deve:
           clientId: group.groupId,
           threadId,
           assistantType: "apresentacao",
+          department: ASSISTANT_TO_DEPARTMENT["apresentacao"] || "general",
           status: "active",
           sentiment: "neutral",
           urgency: "normal",

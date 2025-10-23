@@ -153,6 +153,17 @@ export const ASSISTANT_IDS = {
   cancelamento: process.env.OPENAI_CANCELAMENTO_ASSISTANT_ID!,
 };
 
+// Mapeamento de assistente para departamento
+export const ASSISTANT_TO_DEPARTMENT: Record<string, string> = {
+  cortex: "general",
+  apresentacao: "general",
+  comercial: "commercial",
+  financeiro: "financial",
+  suporte: "support",
+  ouvidoria: "cancellation",
+  cancelamento: "cancellation",
+};
+
 export interface RouterResult {
   assistantType: string;
   assistantId: string;

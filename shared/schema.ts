@@ -16,6 +16,15 @@ export const UserStatus = {
   INACTIVE: "INACTIVE",
 } as const;
 
+// Department enum
+export const Department = {
+  COMMERCIAL: "commercial",
+  SUPPORT: "support",
+  FINANCIAL: "financial",
+  CANCELLATION: "cancellation",
+  GENERAL: "general",
+} as const;
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
@@ -24,6 +33,7 @@ export const users = pgTable("users", {
   email: text("email").unique(), // Added for user invites
   role: text("role").notNull().default("AGENT"), // 'ADMIN', 'SUPERVISOR', or 'AGENT'
   status: text("status").notNull().default("ACTIVE"), // 'ACTIVE' or 'INACTIVE'
+  departments: text("departments").array().default(sql`'{general}'::text[]`), // Departamentos do atendente: 'commercial', 'support', 'financial', 'cancellation', 'general'
   lastLoginAt: timestamp("last_login_at"),
   lastActivityAt: timestamp("last_activity_at"), // Track real-time activity for status
   createdAt: timestamp("created_at").defaultNow(),
@@ -51,6 +61,7 @@ export const conversations = pgTable("conversations", {
   clientDocument: text("client_document"), // CPF ou CNPJ do cliente (para validação de segurança)
   threadId: text("thread_id"),
   assistantType: text("assistant_type").notNull(),
+  department: text("department").default("general"), // Departamento responsável: 'commercial', 'support', 'financial', 'cancellation', 'general'
   status: text("status").notNull().default("active"), // 'active', 'transferred', 'resolved'
   sentiment: text("sentiment").default("neutral"),
   urgency: text("urgency").default("normal"),
@@ -83,6 +94,7 @@ export const conversations = pgTable("conversations", {
   statusLastMessageIdx: index("conversations_status_last_message_idx").on(table.status, table.lastMessageTime),
   assignedToIdx: index("conversations_assigned_to_idx").on(table.assignedTo),
   transferredToHumanIdx: index("conversations_transferred_idx").on(table.transferredToHuman),
+  departmentIdx: index("conversations_department_idx").on(table.department),
 }));
 
 export const messages = pgTable("messages", {
