@@ -1573,12 +1573,16 @@ export class DbStorage implements IStorage {
       .from(schema.conversations)
       .leftJoin(schema.users, eq(schema.conversations.resolvedBy, schema.users.id))
       .where(
-        or(
-          eq(schema.conversations.status, 'active'),
-          and(
-            eq(schema.conversations.status, 'resolved'),
-            isNotNull(schema.conversations.lastMessageTime),
-            gte(schema.conversations.lastMessageTime, twelveHoursAgo)
+        and(
+          // Only show conversations actively assigned to agents (not in queue)
+          isNotNull(schema.conversations.assignedTo),
+          or(
+            eq(schema.conversations.status, 'active'),
+            and(
+              eq(schema.conversations.status, 'resolved'),
+              isNotNull(schema.conversations.lastMessageTime),
+              gte(schema.conversations.lastMessageTime, twelveHoursAgo)
+            )
           )
         )
       )
