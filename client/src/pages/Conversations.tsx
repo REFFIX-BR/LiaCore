@@ -284,9 +284,6 @@ export default function Conversations() {
                                 {new Date(conv.transferredAt || conv.lastMessageTime).toLocaleString("pt-BR")}
                               </div>
                               {conv.department && getDepartmentBadge(conv.department)}
-                              <Badge variant="outline" className="text-xs">
-                                {conv.assistantType}
-                              </Badge>
                             </div>
                           </div>
                         </div>
@@ -352,9 +349,6 @@ export default function Conversations() {
                                 {new Date(conv.transferredAt || conv.lastMessageTime).toLocaleString("pt-BR")}
                               </div>
                               {conv.department && getDepartmentBadge(conv.department)}
-                              <Badge variant="outline" className="text-xs">
-                                {conv.assistantType}
-                              </Badge>
                             </div>
                           </div>
                         </div>
