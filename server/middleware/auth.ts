@@ -138,18 +138,34 @@ export function requireSalesAccess(
   next: NextFunction
 ) {
   if (!req.user) {
+    console.log("❌ [Sales Access] Não autenticado");
     return res.status(401).json({ error: "Não autenticado" });
   }
 
+  console.log("🔍 [Sales Access] Verificando acesso:", {
+    userId: req.user.userId,
+    username: req.user.username,
+    role: req.user.role,
+    departments: req.user.departments
+  });
+
   // Allow ADMIN and SUPERVISOR
   if (req.user.role === "ADMIN" || req.user.role === "SUPERVISOR") {
+    console.log("✅ [Sales Access] Acesso permitido - ADMIN/SUPERVISOR");
     return next();
   }
 
   // Allow AGENT with "commercial" department
   if (req.user.role === "AGENT" && req.user.departments?.includes("commercial")) {
+    console.log("✅ [Sales Access] Acesso permitido - AGENT comercial");
     return next();
   }
+
+  console.log("❌ [Sales Access] Acesso negado", {
+    role: req.user.role,
+    departments: req.user.departments,
+    hasCommercial: req.user.departments?.includes("commercial")
+  });
 
   return res.status(403).json({ error: "Acesso restrito a comerciais, supervisores e administradores" });
 }
