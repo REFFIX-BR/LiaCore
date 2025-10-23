@@ -6129,7 +6129,7 @@ A resposta deve:
   app.post("/api/conversations/:id/transfer", authenticate, async (req, res) => {
     try {
       const { id } = req.params;
-      const { agentId, notes } = req.body;
+      const { agentId, notes, department } = req.body;
       const currentUser = req.user!;
 
       if (!agentId) {
@@ -6174,10 +6174,27 @@ A resposta deve:
         }
       }
 
-      // Atualizar conversa com novo agente
-      await storage.updateConversation(id, {
+      // Atualizar conversa com novo agente e departamento (se fornecido)
+      const updateData: any = {
         assignedTo: agentId,
-      });
+      };
+      
+      // Se departamento foi fornecido pelo supervisor, atualizar
+      if (department && ['commercial', 'support', 'financial', 'cancellation', 'general'].includes(department)) {
+        updateData.department = department;
+        
+        // Mapear departamento para assistantType correspondente
+        const departmentToAssistant: Record<string, string> = {
+          'commercial': 'comercial',
+          'support': 'suporte',
+          'financial': 'financeiro',
+          'cancellation': 'cancelamento',
+          'general': 'apresentacao',
+        };
+        updateData.assistantType = departmentToAssistant[department];
+      }
+      
+      await storage.updateConversation(id, updateData);
 
       // Pegar apenas o primeiro nome do novo agente para mensagem ao cliente
       const targetAgentFirstName = getFirstName(targetAgent.fullName);
@@ -7136,6 +7153,7 @@ A resposta deve:
         document: z.string().optional(),
         message: z.string().optional(),
         assignedTo: z.string().optional(),
+        department: z.string().optional(),
         evolutionInstance: z.string().optional(),
       });
 
@@ -7148,7 +7166,7 @@ A resposta deve:
         });
       }
 
-      const { phoneNumber, name, document, message, assignedTo, evolutionInstance } = validation.data;
+      const { phoneNumber, name, document, message, assignedTo, department, evolutionInstance } = validation.data;
 
       // Validate and format phone number (remove special characters)
       const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
@@ -7177,13 +7195,23 @@ A resposta deve:
       console.log(`✅ [Contacts] Created new contact ${cleanPhoneNumber}`);
 
       // Create conversation (not assigned - goes to "Transferidas" for manual follow-up)
+      // Map department to assistantType
+      const departmentToAssistant: Record<string, string> = {
+        'commercial': 'comercial',
+        'support': 'suporte',
+        'financial': 'financeiro',
+        'cancellation': 'cancelamento',
+        'general': 'apresentacao',
+      };
+      
       const chatId = `${cleanPhoneNumber}@s.whatsapp.net`;
       const conversation = await storage.createConversation({
         chatId,
         clientName: name || cleanPhoneNumber,
         clientId: cleanPhoneNumber,
         clientDocument: document || undefined,
-        assistantType: 'cortex',
+        assistantType: department ? (departmentToAssistant[department] || 'cortex') : 'cortex',
+        department: department || 'general',
         status: 'active',
         transferredToHuman: true,
         transferReason: 'Novo contato criado via painel - aguardando mensagem manual do atendente',
@@ -7254,17 +7282,28 @@ A resposta deve:
       let conversation = await storage.getConversationByChatId(chatId);
 
       if (!conversation) {
-        // Determine evolutionInstance: use last conversation's instance or default to 'Principal'
+        // Determine evolutionInstance and department: use last conversation's values or defaults
         let evolutionInstance = 'Principal'; // Default
+        let department = 'general'; // Default
+        let assistantType = 'cortex'; // Default
+        
         if (contact.lastConversationId) {
           try {
             const lastConversation = await storage.getConversation(contact.lastConversationId);
-            if (lastConversation?.evolutionInstance) {
-              evolutionInstance = lastConversation.evolutionInstance;
-              console.log(`📞 [Contacts] Reusing evolutionInstance from last conversation: ${evolutionInstance}`);
+            if (lastConversation) {
+              if (lastConversation.evolutionInstance) {
+                evolutionInstance = lastConversation.evolutionInstance;
+                console.log(`📞 [Contacts] Reusing evolutionInstance from last conversation: ${evolutionInstance}`);
+              }
+              // Preserve department and assistantType from last conversation
+              if (lastConversation.department && lastConversation.department !== 'general') {
+                department = lastConversation.department;
+                assistantType = lastConversation.assistantType;
+                console.log(`📞 [Contacts] Preserving department=${department} and assistantType=${assistantType} from last conversation`);
+              }
             }
           } catch (error) {
-            console.warn(`⚠️ [Contacts] Could not fetch last conversation, using default instance`);
+            console.warn(`⚠️ [Contacts] Could not fetch last conversation, using defaults`);
           }
         }
 
@@ -7274,8 +7313,8 @@ A resposta deve:
           clientName: contact.name || contact.phoneNumber,
           clientId: contact.phoneNumber,
           clientDocument: contact.document || undefined,
-          assistantType: 'cortex',
-          department: 'general', // Cortex = general department
+          assistantType,
+          department,
           status: 'active',
           transferredToHuman: true,
           transferReason: 'Conversa reaberta pelo atendente via painel de Contatos',
@@ -7289,7 +7328,7 @@ A resposta deve:
           },
         });
 
-        console.log(`✅ [Contacts] Created new conversation with evolutionInstance=${evolutionInstance} and moved to Transferidas: ${conversation.id}`);
+        console.log(`✅ [Contacts] Created new conversation with evolutionInstance=${evolutionInstance}, department=${department} and moved to Transferidas: ${conversation.id}`);
       } else {
         // Reactivate existing conversation and transfer to human (not assigned - goes to "Transferidas")
         // IMPORTANT: Preserve evolutionInstance from original conversation

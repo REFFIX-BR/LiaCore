@@ -60,6 +60,7 @@ export default function Contacts() {
     name: "",
     document: "",
     assignedTo: "",
+    department: "",
   });
   const [editContactData, setEditContactData] = useState({
     name: "",
@@ -124,6 +125,7 @@ export default function Contacts() {
         phoneNumber: "",
         name: "",
         document: "",
+        department: "",
         assignedTo: "",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
@@ -193,6 +195,15 @@ export default function Contacts() {
       toast({
         title: "Telefone obrigatório",
         description: "Por favor, informe o número de telefone",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!newContactData.department) {
+      toast({
+        title: "Departamento obrigatório",
+        description: "Por favor, selecione um departamento",
         variant: "destructive",
       });
       return;
@@ -513,6 +524,35 @@ export default function Contacts() {
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
                 Se não atribuir, ficará disponível na aba "Transferidas" para qualquer atendente
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="department">Departamento *</Label>
+              <Select
+                value={newContactData.department}
+                onValueChange={(value) => setNewContactData({ ...newContactData, department: value })}
+              >
+                <SelectTrigger data-testid="select-department-create">
+                  <SelectValue placeholder="Selecione um departamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="commercial" data-testid="department-create-commercial">
+                    🔵 Comercial
+                  </SelectItem>
+                  <SelectItem value="support" data-testid="department-create-support">
+                    🟢 Suporte
+                  </SelectItem>
+                  <SelectItem value="financial" data-testid="department-create-financial">
+                    🟠 Financeiro
+                  </SelectItem>
+                  <SelectItem value="cancellation" data-testid="department-create-cancellation">
+                    🔴 Cancelamento
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Selecione o departamento responsável por esta conversa
               </p>
             </div>
 

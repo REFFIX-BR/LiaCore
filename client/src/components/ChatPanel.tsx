@@ -67,6 +67,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   const [replyingTo, setReplyingTo] = useState<Message | null>(null); // Mensagem sendo respondida
   const [showTransferDialog, setShowTransferDialog] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("");
   const [transferNotes, setTransferNotes] = useState("");
   const [privateNoteContent, setPrivateNoteContent] = useState("");
   const [showPrivateNotesDialog, setShowPrivateNotesDialog] = useState(false);
@@ -469,10 +470,20 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   // Transferir conversa para outro agente
   const transferMutation = useMutation({
     mutationFn: async () => {
+      const requestBody: any = { 
+        agentId: selectedAgentId, 
+        notes: transferNotes 
+      };
+      
+      // Incluir departamento se foi selecionado
+      if (selectedDepartment) {
+        requestBody.department = selectedDepartment;
+      }
+      
       const response = await apiRequest(
         `/api/conversations/${conversation.id}/transfer`, 
         "POST",
-        { agentId: selectedAgentId, notes: transferNotes }
+        requestBody
       );
       return response.json();
     },
@@ -483,6 +494,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
       });
       setShowTransferDialog(false);
       setSelectedAgentId("");
+      setSelectedDepartment("");
       setTransferNotes("");
       queryClient.invalidateQueries({ queryKey: ["/api/conversations/assigned"] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations/transferred"] });
@@ -1144,6 +1156,35 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="department-select">Departamento (opcional)</Label>
+              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                <SelectTrigger id="department-select" data-testid="select-department">
+                  <SelectValue placeholder="Selecione um departamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="" data-testid="department-option-none">
+                    (Manter departamento atual)
+                  </SelectItem>
+                  <SelectItem value="commercial" data-testid="department-option-commercial">
+                    🔵 Comercial
+                  </SelectItem>
+                  <SelectItem value="support" data-testid="department-option-support">
+                    🟢 Suporte
+                  </SelectItem>
+                  <SelectItem value="financial" data-testid="department-option-financial">
+                    🟠 Financeiro
+                  </SelectItem>
+                  <SelectItem value="cancellation" data-testid="department-option-cancellation">
+                    🔴 Cancelamento
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Reclassifique o departamento se necessário
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="transfer-notes">Motivo da transferência (opcional)</Label>
               <TextareaComponent
                 id="transfer-notes"
@@ -1163,6 +1204,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               onClick={() => {
                 setShowTransferDialog(false);
                 setSelectedAgentId("");
+                setSelectedDepartment("");
                 setTransferNotes("");
               }}
               data-testid="button-cancel-transfer"
