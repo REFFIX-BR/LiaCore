@@ -50,5 +50,6 @@ export function getUserFromUser(user: User) {
     status: user.status,
     lastLoginAt: user.lastLoginAt,
     createdAt: user.createdAt,
+    departments: user.departments,
   };
 }
