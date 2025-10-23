@@ -5302,15 +5302,8 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
       const role = req.user?.role;
       
       // ADMIN e SUPERVISOR veem todas as conversas atribuídas
-      // AGENT vê apenas suas próprias conversas atribuídas (E do seu departamento)
+      // AGENT vê apenas suas próprias conversas atribuídas (SEM filtro por departamento)
       const isAdminOrSupervisor = role === 'ADMIN' || role === 'SUPERVISOR';
-      
-      // Get user departments if AGENT
-      let userDepartments: string[] = [];
-      if (role === 'AGENT' && userId) {
-        const user = await storage.getUser(userId);
-        userDepartments = user?.departments || [];
-      }
       
       const allConversations = await storage.getAllConversations();
       const assignedConversations = allConversations.filter(conv => {
@@ -5328,15 +5321,9 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
           return true;
         } else {
           // AGENT vê apenas as suas próprias atribuições
-          if (conv.assignedTo !== userId) return false;
-          
-          // DEPARTMENT-BASED FILTER: AGENTs also filter by department
-          // If agent has no departments, show all their assigned conversations (backward compatibility)
-          if (userDepartments.length === 0) return true;
-          // If conversation has no department (legacy), show it (backward compatibility)
-          if (!conv.department) return true;
-          // Otherwise, only show if department matches
-          return userDepartments.includes(conv.department);
+          // NOTA: Removida filtragem por departamento para conversas atribuídas
+          // Se está atribuído ao agente, ele deve ver independente do departamento
+          return conv.assignedTo === userId;
         }
       });
       
