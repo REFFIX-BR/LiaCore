@@ -3858,21 +3858,27 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     }
   });
 
-  app.post("/api/supervisor/note", authenticate, requireAdmin, async (req, res) => {
+  app.post("/api/supervisor/note", authenticate, requireAnyRole("ADMIN", "SUPERVISOR", "AGENT"), async (req, res) => {
     try {
       const { conversationId, note, supervisorId } = req.body;
+      
+      // Usar informações do usuário autenticado
+      const currentUser = req.user;
+      const createdBy = currentUser?.fullName || currentUser?.username || supervisorId || "supervisor";
 
       const action = await storage.createSupervisorAction({
         conversationId,
         action: "add_note",
         notes: note,
-        createdBy: supervisorId || "supervisor",
+        createdBy,
       });
+
+      console.log(`✅ [Notes] Nota adicionada por ${createdBy} (${currentUser?.role}) na conversa ${conversationId}`);
 
       return res.json({ success: true, action });
     } catch (error) {
-      console.error("Note error:", error);
-      return res.status(500).json({ error: "Internal server error" });
+      console.error("❌ [Notes] Error:", error);
+      return res.status(500).json({ error: "Erro ao adicionar nota interna" });
     }
   });
 

@@ -77,7 +77,16 @@ export default function Monitor() {
       monitorAPI.addNote(conversationId, note),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations", activeConvId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations"] });
       toast({ title: "Nota Adicionada", description: "Nota interna registrada com sucesso" });
+    },
+    onError: (error: Error) => {
+      console.error("❌ Erro ao adicionar nota:", error);
+      toast({ 
+        title: "Erro ao Adicionar Nota", 
+        description: error.message || "Não foi possível adicionar a nota interna. Verifique suas permissões.",
+        variant: "destructive"
+      });
     },
   });
 
