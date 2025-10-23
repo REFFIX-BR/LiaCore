@@ -678,6 +678,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user departments (admin/supervisor only)
+  app.patch("/api/users/:id/departments", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { departments } = req.body;
+
+      // Validate departments array
+      if (!Array.isArray(departments)) {
+        return res.status(400).json({ error: "Departments deve ser um array" });
+      }
+
+      const validDepartments = ["commercial", "support", "financial", "cancellation", "general"];
+      const invalidDepartments = departments.filter(d => !validDepartments.includes(d));
+      
+      if (invalidDepartments.length > 0) {
+        return res.status(400).json({ 
+          error: `Departamentos inválidos: ${invalidDepartments.join(", ")}. Use: ${validDepartments.join(", ")}` 
+        });
+      }
+
+      const user = await storage.updateUser(id, { departments });
+      res.json({ user: getUserFromUser(user) });
+    } catch (error) {
+      console.error("❌ [Users] Error updating user departments:", error);
+      res.status(500).json({ error: "Erro ao atualizar departamentos do usuário" });
+    }
+  });
+
   // Delete user (admin only)
   app.delete("/api/users/:id", authenticate, requireAdmin, async (req, res) => {
     try {
