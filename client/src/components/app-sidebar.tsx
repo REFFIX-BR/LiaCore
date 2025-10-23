@@ -266,17 +266,39 @@ export function AppSidebar() {
     localStorage.setItem("sidebar-categories-state", JSON.stringify(openCategories));
   }, [openCategories]);
 
+  // Helper function to check if user has access to sales
+  const hasAccessToSales = (user: any) => {
+    if (!user) return false;
+    if (user.role === "ADMIN" || user.role === "SUPERVISOR") return true;
+    if (user.role === "AGENT" && user.departments?.includes("commercial")) return true;
+    return false;
+  };
+
   // Filter categories and items based on user role
   const visibleCategories = menuCategories
     .map((category) => ({
       ...category,
-      items: category.items.filter((item) => 
-        user && item.roles.includes(user.role)
-      ),
+      items: category.items.filter((item) => {
+        if (!user) return false;
+        
+        // Special handling for sales items
+        if (item.url === "/vendas") {
+          return hasAccessToSales(user);
+        }
+        
+        return item.roles.includes(user.role);
+      }),
     }))
-    .filter((category) => 
-      user && category.roles.includes(user.role) && category.items.length > 0
-    );
+    .filter((category) => {
+      if (!user) return false;
+      
+      // Special handling for sales category
+      if (category.title === "Vendas") {
+        return hasAccessToSales(user) && category.items.length > 0;
+      }
+      
+      return category.roles.includes(user.role) && category.items.length > 0;
+    });
 
   const toggleCategory = (categoryTitle: string) => {
     setOpenCategories((prev) => ({

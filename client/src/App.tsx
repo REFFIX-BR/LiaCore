@@ -91,6 +91,56 @@ function AdminSupervisorRoute({ component: Component }: { component: React.Compo
   return <Component />;
 }
 
+function SalesRoute({ component: Component }: { component: React.ComponentType }) {
+  const { user, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      setLocation("/login");
+    } else if (!isLoading && user) {
+      // Verificar se o usuário tem permissão
+      const hasAccess = 
+        user.role === "ADMIN" || 
+        user.role === "SUPERVISOR" || 
+        (user.role === "AGENT" && user.departments?.includes("commercial"));
+      
+      if (!hasAccess) {
+        setLocation("/");
+      }
+    }
+  }, [user, isLoading, setLocation]);
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  // Verificar permissão de acesso
+  const hasAccess = 
+    user.role === "ADMIN" || 
+    user.role === "SUPERVISOR" || 
+    (user.role === "AGENT" && user.departments?.includes("commercial"));
+
+  if (!hasAccess) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <p className="text-destructive mb-4">Acesso Negado</p>
+          <p className="text-sm text-muted-foreground">
+            Você precisa ter o departamento "Comercial" para acessar esta página.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return <Component />;
+}
+
 function Router() {
   return (
     <Switch>
@@ -153,7 +203,7 @@ function Router() {
         {() => <AdminSupervisorRoute component={Ouvidoria} />}
       </Route>
       <Route path="/vendas">
-        {() => <AdminSupervisorRoute component={Vendas} />}
+        {() => <SalesRoute component={Vendas} />}
       </Route>
       <Route path="/contacts">
         {() => <ProtectedRoute component={Contacts} />}

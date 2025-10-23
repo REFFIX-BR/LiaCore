@@ -294,6 +294,7 @@ export const updateUserSchema = z.object({
   role: z.enum(["ADMIN", "SUPERVISOR", "AGENT"]).optional(),
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
   password: z.string().min(6, "Senha deve ter no mínimo 6 caracteres").optional(),
+  departments: z.array(z.string()).optional(),
 });
 
 export const loginSchema = z.object({

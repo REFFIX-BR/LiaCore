@@ -8,6 +8,7 @@ export interface User {
   fullName: string;
   role: "ADMIN" | "SUPERVISOR" | "AGENT";
   status: string;
+  departments?: string[];
   lastLoginAt: Date | null;
   createdAt: Date | null;
 }
