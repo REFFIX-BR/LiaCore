@@ -1564,20 +1564,9 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     console.log(JSON.stringify(req.body, null, 2));
     console.log(`${'='.repeat(80)}\n`);
     
-    // Salvar em arquivo para análise
-    const fs = require('fs');
-    const debugDir = '/tmp/webhook-debug';
-    if (!fs.existsSync(debugDir)) {
-      fs.mkdirSync(debugDir, { recursive: true });
-    }
-    const filename = `${debugDir}/webhook-${Date.now()}.json`;
-    fs.writeFileSync(filename, JSON.stringify({ debugInfo, fullPayload: req.body }, null, 2));
-    console.log(`💾 Debug salvo em: ${filename}`);
-    
     return res.json({ 
       success: true, 
       debug: true,
-      saved: filename,
       info: debugInfo 
     });
   });
