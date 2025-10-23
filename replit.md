@@ -16,7 +16,7 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 **Queue System**: BullMQ with Redis TLS manages asynchronous processing with retries and webhooks.
 **AI & Knowledge Management**:
 - **AI Provider**: OpenAI Assistants API orchestrates six specialized AI roles using a "Receptionist-First" routing model.
-- **RAG Architecture**: A dual-layer prompt system with Upstash Vector, including specific RAG for equipment returns and sales documentation.
+- **RAG Architecture**: A dual-layer prompt system with Upstash Vector, including specific RAG for equipment returns, sales documentation, and TR Telecom Câmeras (security cameras service).
 - **Function Calling**: Custom functions for verification, knowledge queries, invoice lookups, scheduling, and sales operations.
 - **Automated Systems**: Document detection, "Boleto Consultation," "PPPoE Connection Status," "Unlock/Unblock," HTTP Resilience, GPT-4o Vision, PDF text extraction, and OpenAI Whisper.
 - **Conversation Intelligence**: Real-time sentiment analysis, urgency detection, problem identification, and automatic persistence of CPF/CNPJ.
