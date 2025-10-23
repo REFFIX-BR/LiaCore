@@ -1609,9 +1609,13 @@ export class DbStorage implements IStorage {
     ];
     
     // Get all matching conversations
-    const conversations = await db.select().from(schema.conversations)
+    let conversations = await db.select().from(schema.conversations)
       .where(and(...conditions))
       .orderBy(desc(schema.conversations.transferredAt));
+    
+    // FILTER OUT "general" department conversations (still being handled by AI receptionist)
+    // Keep conversations without department (null) for backward compatibility
+    conversations = conversations.filter(conv => conv.department !== 'general');
     
     // DEPARTMENT-BASED FILTER: AGENTs see only their department's conversations
     if (role === 'AGENT' && userId) {
@@ -1632,7 +1636,7 @@ export class DbStorage implements IStorage {
       });
     }
     
-    // ADMIN/SUPERVISOR see all conversations
+    // ADMIN/SUPERVISOR see all conversations (except "general")
     return conversations;
   }
 
