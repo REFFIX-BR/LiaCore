@@ -232,7 +232,8 @@ export default function Monitor() {
     if (activeFilter === "alerts") {
       passesStatusFilter = alerts.some(alert => alert.conversationId === conv.id);
     } else if (activeFilter === "all") {
-      passesStatusFilter = conv.status === "active" && !conv.transferredToHuman;
+      // Show active conversations EXCEPT those waiting in transfer queue
+      passesStatusFilter = conv.status === "active" && !(conv.transferredToHuman === true && conv.assignedTo === null);
     } else if (activeFilter === "transfer") {
       passesStatusFilter = conv.status === "active" && conv.transferredToHuman === true && conv.assignedTo === null;
     } else if (activeFilter === "ouvidoria") {
@@ -282,7 +283,8 @@ export default function Monitor() {
       if (activeFilter === "alerts") {
         passesStatusFilter = alerts.some(alert => alert.conversationId === c.id);
       } else if (activeFilter === "all") {
-        passesStatusFilter = c.status === "active" && !c.transferredToHuman;
+        // Show active conversations EXCEPT those waiting in transfer queue
+        passesStatusFilter = c.status === "active" && !(c.transferredToHuman === true && c.assignedTo === null);
       } else if (activeFilter === "transfer") {
         passesStatusFilter = c.status === "active" && c.transferredToHuman === true && c.assignedTo === null;
       } else if (activeFilter === "ouvidoria") {
@@ -297,7 +299,8 @@ export default function Monitor() {
 
   const getConversationCountByFilter = (filterId: string) => {
     if (filterId === "all") {
-      return conversations.filter(c => c.status === "active" && !c.transferredToHuman).length;
+      // Show active conversations EXCEPT those waiting in transfer queue
+      return conversations.filter(c => c.status === "active" && !(c.transferredToHuman === true && c.assignedTo === null)).length;
     } else if (filterId === "transfer") {
       return conversations.filter(c => c.status === "active" && c.transferredToHuman === true && c.assignedTo === null).length;
     } else if (filterId === "ouvidoria") {
