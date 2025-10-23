@@ -37,17 +37,17 @@ function getDepartmentBadge(department: string | null | undefined) {
   };
 
   const departmentColors: Record<string, string> = {
-    commercial: "bg-chart-1/10 text-chart-1",
-    support: "bg-chart-2/10 text-chart-2",
-    financial: "bg-chart-3/10 text-chart-3",
-    cancellation: "bg-destructive/10 text-destructive",
-    general: "bg-muted text-muted-foreground",
+    commercial: "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30",
+    support: "bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30",
+    financial: "bg-orange-500/20 text-orange-700 dark:text-orange-300 border-orange-500/30",
+    cancellation: "bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30",
+    general: "bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30",
   };
 
   return (
     <Badge 
       variant="outline" 
-      className={`text-xs ${departmentColors[department] || ""}`}
+      className={`text-xs font-medium ${departmentColors[department] || ""}`}
       data-testid={`badge-department-${department}`}
     >
       {departmentLabels[department] || department}
@@ -91,24 +91,6 @@ export default function Conversations() {
     queryKey: ["/api/conversations/assigned"],
     refetchInterval: 5000,
   });
-
-  // DEBUG: Log temporário para verificar departamentos
-  useEffect(() => {
-    if (transferredConversations.length > 0) {
-      console.log('🔍 TRANSFERRED Conversations:', transferredConversations.map(c => ({
-        name: c.clientName,
-        dept: c.department,
-        assistantType: c.assistantType
-      })));
-    }
-    if (assignedConversations.length > 0) {
-      console.log('🔍 ASSIGNED Conversations:', assignedConversations.map(c => ({
-        name: c.clientName,
-        dept: c.department,
-        assistantType: c.assistantType
-      })));
-    }
-  }, [transferredConversations, assignedConversations]);
 
   // Usar a lista correta baseada na aba ativa
   const conversations = activeTab === "transferred" ? transferredConversations : assignedConversations;
