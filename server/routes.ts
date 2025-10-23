@@ -9,7 +9,7 @@ import { RedisCache } from "./lib/redis-config";
 import { webhookLogger } from "./lib/webhook-logger";
 import { agentLogger } from "./lib/agent-logger";
 import { setupWebSockets } from "./lib/websocket-manager";
-import { authenticate, authenticateWithTracking, requireAdmin, requireAdminOrSupervisor, requireAnyRole } from "./middleware/auth";
+import { authenticate, authenticateWithTracking, requireAdmin, requireAdminOrSupervisor, requireSalesAccess, requireAnyRole } from "./middleware/auth";
 import { hashPassword, comparePasswords, generateToken, getUserFromUser } from "./lib/auth";
 import { trackSecurityEvent, SecurityEventType } from "./lib/security-events";
 import OpenAI from "openai";
@@ -7692,7 +7692,7 @@ A resposta deve:
   });
 
   // GET /api/plans/all - Retorna TODOS os planos (ativos e inativos) - ADMIN/SUPERVISOR
-  app.get("/api/plans/all", authenticate, requireAdminOrSupervisor, async (req, res) => {
+  app.get("/api/plans/all", authenticate, requireSalesAccess, async (req, res) => {
     try {
       const plans = await storage.getAllPlans();
       
@@ -7719,7 +7719,7 @@ A resposta deve:
   });
 
   // GET /api/plans/:id - Retorna um plano específico - ADMIN/SUPERVISOR
-  app.get("/api/plans/:id", authenticate, requireAdminOrSupervisor, async (req, res) => {
+  app.get("/api/plans/:id", authenticate, requireSalesAccess, async (req, res) => {
     try {
       const { id } = req.params;
       const plan = await storage.getPlan(id);
@@ -7838,7 +7838,7 @@ A resposta deve:
   });
 
   // GET /api/sales - Retorna todas as vendas/leads
-  app.get("/api/sales", authenticate, requireAdminOrSupervisor, async (req, res) => {
+  app.get("/api/sales", authenticate, requireSalesAccess, async (req, res) => {
     try {
       const sales = await storage.getAllSales();
       
@@ -7881,7 +7881,7 @@ A resposta deve:
   });
 
   // PATCH /api/sales/:id/status - Atualiza status de uma venda
-  app.patch("/api/sales/:id/status", authenticate, requireAdminOrSupervisor, async (req, res) => {
+  app.patch("/api/sales/:id/status", authenticate, requireSalesAccess, async (req, res) => {
     try {
       const { id } = req.params;
       const { status, observations } = req.body;

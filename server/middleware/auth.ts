@@ -130,3 +130,26 @@ export function canManageResource(userId: string, resourceOwnerId?: string | nul
   // Agent can only manage their own resources
   return !resourceOwnerId || resourceOwnerId === userId;
 }
+
+// Sales access: Admin, Supervisor, or Agent with "commercial" department
+export function requireSalesAccess(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  if (!req.user) {
+    return res.status(401).json({ error: "Não autenticado" });
+  }
+
+  // Allow ADMIN and SUPERVISOR
+  if (req.user.role === "ADMIN" || req.user.role === "SUPERVISOR") {
+    return next();
+  }
+
+  // Allow AGENT with "commercial" department
+  if (req.user.role === "AGENT" && req.user.departments?.includes("commercial")) {
+    return next();
+  }
+
+  return res.status(403).json({ error: "Acesso restrito a comerciais, supervisores e administradores" });
+}
