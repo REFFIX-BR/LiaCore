@@ -92,6 +92,24 @@ export default function Conversations() {
     refetchInterval: 5000,
   });
 
+  // DEBUG: Log temporário para verificar departamentos
+  useEffect(() => {
+    if (transferredConversations.length > 0) {
+      console.log('🔍 TRANSFERRED Conversations:', transferredConversations.map(c => ({
+        name: c.clientName,
+        dept: c.department,
+        assistantType: c.assistantType
+      })));
+    }
+    if (assignedConversations.length > 0) {
+      console.log('🔍 ASSIGNED Conversations:', assignedConversations.map(c => ({
+        name: c.clientName,
+        dept: c.department,
+        assistantType: c.assistantType
+      })));
+    }
+  }, [transferredConversations, assignedConversations]);
+
   // Usar a lista correta baseada na aba ativa
   const conversations = activeTab === "transferred" ? transferredConversations : assignedConversations;
   const conversationsLoading = activeTab === "transferred" ? transferredLoading : assignedLoading;
