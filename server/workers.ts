@@ -499,10 +499,29 @@ if (redisConnection) {
       if (result.transferred) {
         console.log(`🔀 [Worker] Conversation transferred to human`);
         
+        // Map department names to conversation department codes
+        const departmentMapping: Record<string, string> = {
+          'Suporte Técnico': 'support',
+          'Suporte': 'support',
+          'Comercial': 'commercial',
+          'Financeiro': 'financial',
+          'Financial': 'financial',
+          'Ouvidoria': 'cancellation',
+          'Cancelamento': 'cancellation',
+          'Suporte Geral': 'support',
+        };
+        
+        const mappedDepartment = result.transferredTo 
+          ? (departmentMapping[result.transferredTo] || 'support')
+          : 'support';
+        
         await storage.updateConversation(conversationId, {
           status: 'queued',
           transferredToHuman: true,
+          department: mappedDepartment,
         });
+        
+        console.log(`✅ [Worker] Conversation transferred to ${mappedDepartment} department`);
       }
 
       // Flag para controlar se deve enviar a mensagem da Apresentação

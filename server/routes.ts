@@ -3777,11 +3777,28 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
 
       const conversation = await storage.getConversation(conversationId);
 
+      // Map department names to conversation department codes
+      const departmentMapping: Record<string, string> = {
+        'Suporte Técnico': 'support',
+        'Suporte': 'support',
+        'Comercial': 'commercial',
+        'Financeiro': 'financial',
+        'Financial': 'financial',
+        'Ouvidoria': 'cancellation',
+        'Cancelamento': 'cancellation',
+        'Suporte Geral': 'support',
+      };
+      
+      const mappedDepartment = department 
+        ? (departmentMapping[department] || 'support')
+        : 'support';
+
       // Transferência manual vai para a aba "Conversas" (transferredToHuman = true)
-      // NÃO atualiza assistant_type - a conversa deve aparecer em "Conversas", não em departamentos específicos
+      // Atualiza department para que a conversa apareça corretamente na lista de transferidas
       await storage.updateConversation(conversationId, {
         status: "active",
         transferredToHuman: true,
+        department: mappedDepartment,
         transferReason: `Transferência manual: ${notes}`,
         transferredAt: new Date(),
         metadata: {
@@ -7271,8 +7288,8 @@ A resposta deve:
       if (!conversation) {
         // Determine evolutionInstance and department: use last conversation's values or defaults
         let evolutionInstance = 'Principal'; // Default
-        let department = 'general'; // Default
-        let assistantType = 'cortex'; // Default
+        let department = 'support'; // Default: support instead of general (so it appears in Transferidas)
+        let assistantType = 'suporte'; // Default: suporte assistant
         
         if (contact.lastConversationId) {
           try {
@@ -7282,9 +7299,9 @@ A resposta deve:
                 evolutionInstance = lastConversation.evolutionInstance;
                 console.log(`📞 [Contacts] Reusing evolutionInstance from last conversation: ${evolutionInstance}`);
               }
-              // Preserve department and assistantType from last conversation
-              if (lastConversation.department && lastConversation.department !== 'general') {
-                department = lastConversation.department;
+              // Preserve department and assistantType from last conversation (even if general)
+              if (lastConversation.department) {
+                department = lastConversation.department === 'general' ? 'support' : lastConversation.department;
                 assistantType = lastConversation.assistantType;
                 console.log(`📞 [Contacts] Preserving department=${department} and assistantType=${assistantType} from last conversation`);
               }
