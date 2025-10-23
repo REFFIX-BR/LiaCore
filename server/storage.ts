@@ -1485,7 +1485,7 @@ export class MemStorage implements IStorage {
 }
 
 import { db } from "./db";
-import { eq, desc, and, or, gte, lte, lt, isNotNull, isNull, sql, inArray } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, lt, isNotNull, isNull, not, sql, inArray } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { trainingSessions } from "@shared/schema";
 
@@ -1574,10 +1574,16 @@ export class DbStorage implements IStorage {
       .leftJoin(schema.users, eq(schema.conversations.resolvedBy, schema.users.id))
       .where(
         or(
-          // Active conversations: only show if assigned to an agent (not in transfer queue)
+          // Active conversations: show ALL except those in transfer queue (waiting for assignment)
           and(
             eq(schema.conversations.status, 'active'),
-            isNotNull(schema.conversations.assignedTo)
+            // Exclude conversations waiting in "Transferidas" queue
+            not(
+              and(
+                eq(schema.conversations.transferredToHuman, true),
+                isNull(schema.conversations.assignedTo)
+              )
+            )
           ),
           // Resolved conversations: show ALL (by AI, agent, or auto-close) from last 12h
           and(
