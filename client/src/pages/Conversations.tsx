@@ -281,7 +281,7 @@ export default function Conversations() {
                             )}
                           </div>
                           <div className="flex flex-col gap-1 items-end flex-shrink-0">
-                            {getDepartmentBadge(conv.department)}
+                            {conv.department && getDepartmentBadge(conv.department)}
                             <Badge variant="outline" className="max-w-[110px] truncate text-xs">
                               {conv.assistantType}
                             </Badge>
@@ -349,7 +349,7 @@ export default function Conversations() {
                             )}
                           </div>
                           <div className="flex flex-col gap-1 items-end flex-shrink-0">
-                            {getDepartmentBadge(conv.department)}
+                            {conv.department && getDepartmentBadge(conv.department)}
                             <Badge variant="outline" className="max-w-[110px] truncate text-xs">
                               {conv.assistantType}
                             </Badge>
