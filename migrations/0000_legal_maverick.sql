@@ -5,6 +5,9 @@ CREATE TABLE "activity_logs" (
 	"ip_address" text,
 	"user_agent" text,
 	"session_duration" integer,
+	"conversation_id" varchar,
+	"target_user_id" varchar,
+	"details" jsonb,
 	"created_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
@@ -58,6 +61,7 @@ CREATE TABLE "conversations" (
 	"client_document" text,
 	"thread_id" text,
 	"assistant_type" text NOT NULL,
+	"department" text DEFAULT 'general',
 	"status" text DEFAULT 'active' NOT NULL,
 	"sentiment" text DEFAULT 'neutral',
 	"urgency" text DEFAULT 'normal',
@@ -73,13 +77,33 @@ CREATE TABLE "conversations" (
 	"transfer_reason" text,
 	"transferred_at" timestamp,
 	"assigned_to" varchar,
+	"resolved_by" varchar,
 	"resolved_at" timestamp,
 	"resolution_time" integer,
 	"evolution_instance" text,
 	"auto_closed" boolean DEFAULT false,
 	"auto_closed_reason" text,
 	"auto_closed_at" timestamp,
+	"verified_at" timestamp,
+	"verified_by" varchar,
+	"last_coverage_check" jsonb,
 	CONSTRAINT "conversations_chat_id_unique" UNIQUE("chat_id")
+);
+--> statement-breakpoint
+CREATE TABLE "groups" (
+	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"group_id" text NOT NULL,
+	"name" text NOT NULL,
+	"avatar" text,
+	"ai_enabled" boolean DEFAULT false NOT NULL,
+	"evolution_instance" text,
+	"last_message_time" timestamp,
+	"last_message" text,
+	"participants_count" integer DEFAULT 0,
+	"metadata" jsonb,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now(),
+	CONSTRAINT "groups_group_id_unique" UNIQUE("group_id")
 );
 --> statement-breakpoint
 CREATE TABLE "learning_events" (
@@ -122,10 +146,38 @@ CREATE TABLE "messages" (
 	"pdf_base64" text,
 	"pdf_name" text,
 	"audio_url" text,
+	"video_url" text,
+	"video_name" text,
+	"video_mimetype" text,
 	"whatsapp_message_id" text,
 	"remote_jid" text,
 	"is_private" boolean DEFAULT false,
-	"send_by" text
+	"send_by" text,
+	"deleted_at" timestamp,
+	"deleted_by" text
+);
+--> statement-breakpoint
+CREATE TABLE "plans" (
+	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" text NOT NULL,
+	"type" text NOT NULL,
+	"download_speed" integer NOT NULL,
+	"upload_speed" integer NOT NULL,
+	"price" integer NOT NULL,
+	"description" text,
+	"features" text[] DEFAULT '{}'::text[],
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
+);
+--> statement-breakpoint
+CREATE TABLE "private_notes" (
+	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"conversation_id" varchar NOT NULL,
+	"content" text NOT NULL,
+	"created_by" varchar NOT NULL,
+	"created_by_name" text,
+	"created_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
 CREATE TABLE "prompt_suggestions" (
@@ -182,6 +234,49 @@ CREATE TABLE "registration_requests" (
 	"created_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
+CREATE TABLE "sales" (
+	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"type" text NOT NULL,
+	"customer_name" text,
+	"cpf_cnpj" text,
+	"email" text,
+	"phone" text NOT NULL,
+	"phone2" text,
+	"mother_name" text,
+	"birth_date" text,
+	"rg" text,
+	"sex" text,
+	"civil_status" text,
+	"company_name" text,
+	"state_registration" text,
+	"city_registration" text,
+	"cep" text,
+	"address" text,
+	"number" text,
+	"complement" text,
+	"neighborhood" text,
+	"city" text,
+	"state" text,
+	"reference" text,
+	"plan_id" varchar NOT NULL,
+	"billing_day" integer,
+	"preferred_install_date" text,
+	"availability" text,
+	"status" text DEFAULT 'Aguardando Análise' NOT NULL,
+	"source" text DEFAULT 'chat' NOT NULL,
+	"seller" text DEFAULT 'Site',
+	"conversation_id" varchar,
+	"how_did_you_know" text,
+	"pending_items" text[] DEFAULT '{}'::text[],
+	"observations" text,
+	"utm_source" text,
+	"utm_medium" text,
+	"utm_campaign" text,
+	"metadata" jsonb,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
+);
+--> statement-breakpoint
 CREATE TABLE "satisfaction_feedback" (
 	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"conversation_id" varchar NOT NULL,
@@ -190,7 +285,12 @@ CREATE TABLE "satisfaction_feedback" (
 	"category" text NOT NULL,
 	"comment" text,
 	"client_name" text,
-	"created_at" timestamp DEFAULT now()
+	"created_at" timestamp DEFAULT now(),
+	"handling_score" integer,
+	"handling_status" text DEFAULT 'pending',
+	"handling_notes" text,
+	"handled_by" varchar,
+	"handled_at" timestamp
 );
 --> statement-breakpoint
 CREATE TABLE "suggested_responses" (
@@ -242,6 +342,7 @@ CREATE TABLE "users" (
 	"email" text,
 	"role" text DEFAULT 'AGENT' NOT NULL,
 	"status" text DEFAULT 'ACTIVE' NOT NULL,
+	"departments" text[] DEFAULT '{general}'::text[],
 	"last_login_at" timestamp,
 	"last_activity_at" timestamp,
 	"created_at" timestamp DEFAULT now(),
@@ -258,10 +359,23 @@ CREATE INDEX "conversations_status_idx" ON "conversations" USING btree ("status"
 CREATE INDEX "conversations_status_last_message_idx" ON "conversations" USING btree ("status","last_message_time");--> statement-breakpoint
 CREATE INDEX "conversations_assigned_to_idx" ON "conversations" USING btree ("assigned_to");--> statement-breakpoint
 CREATE INDEX "conversations_transferred_idx" ON "conversations" USING btree ("transferred_to_human");--> statement-breakpoint
+CREATE INDEX "conversations_department_idx" ON "conversations" USING btree ("department");--> statement-breakpoint
+CREATE INDEX "groups_group_id_idx" ON "groups" USING btree ("group_id");--> statement-breakpoint
+CREATE INDEX "groups_ai_enabled_idx" ON "groups" USING btree ("ai_enabled");--> statement-breakpoint
+CREATE INDEX "groups_last_message_time_idx" ON "groups" USING btree ("last_message_time");--> statement-breakpoint
 CREATE INDEX "messages_conversation_id_idx" ON "messages" USING btree ("conversation_id");--> statement-breakpoint
 CREATE INDEX "messages_conversation_timestamp_idx" ON "messages" USING btree ("conversation_id","timestamp");--> statement-breakpoint
+CREATE INDEX "plans_is_active_idx" ON "plans" USING btree ("is_active");--> statement-breakpoint
+CREATE INDEX "private_notes_conversation_id_idx" ON "private_notes" USING btree ("conversation_id");--> statement-breakpoint
+CREATE INDEX "private_notes_created_at_idx" ON "private_notes" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "rag_analytics_conversation_id_idx" ON "rag_analytics" USING btree ("conversation_id");--> statement-breakpoint
 CREATE INDEX "rag_analytics_assistant_type_idx" ON "rag_analytics" USING btree ("assistant_type");--> statement-breakpoint
 CREATE INDEX "rag_analytics_created_at_idx" ON "rag_analytics" USING btree ("created_at");--> statement-breakpoint
+CREATE INDEX "sales_status_idx" ON "sales" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "sales_plan_id_idx" ON "sales" USING btree ("plan_id");--> statement-breakpoint
+CREATE INDEX "sales_phone_idx" ON "sales" USING btree ("phone");--> statement-breakpoint
+CREATE INDEX "sales_cpf_cnpj_idx" ON "sales" USING btree ("cpf_cnpj");--> statement-breakpoint
+CREATE INDEX "sales_conversation_id_idx" ON "sales" USING btree ("conversation_id");--> statement-breakpoint
+CREATE INDEX "sales_created_at_idx" ON "sales" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "training_sessions_status_idx" ON "training_sessions" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "training_sessions_assistant_type_idx" ON "training_sessions" USING btree ("assistant_type");
