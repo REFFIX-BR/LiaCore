@@ -24,12 +24,44 @@ function getWaitTimeIndicator(lastMessageTime: Date): { color: string; label: st
   }
 }
 
+// Função para retornar badge de departamento
+function getDepartmentBadge(department: string | null | undefined) {
+  if (!department) return null;
+
+  const departmentLabels: Record<string, string> = {
+    commercial: "Comercial",
+    support: "Suporte",
+    financial: "Financeiro",
+    cancellation: "Cancelamento",
+    general: "Geral",
+  };
+
+  const departmentColors: Record<string, string> = {
+    commercial: "bg-chart-1/10 text-chart-1",
+    support: "bg-chart-2/10 text-chart-2",
+    financial: "bg-chart-3/10 text-chart-3",
+    cancellation: "bg-destructive/10 text-destructive",
+    general: "bg-muted text-muted-foreground",
+  };
+
+  return (
+    <Badge 
+      variant="outline" 
+      className={`text-xs ${departmentColors[department] || ""}`}
+      data-testid={`badge-department-${department}`}
+    >
+      {departmentLabels[department] || department}
+    </Badge>
+  );
+}
+
 interface Conversation {
   id: string;
   chatId: string;
   clientName: string;
   clientDocument: string | null;
   assistantType: string;
+  department?: string | null;
   lastMessage: string | null;
   lastMessageTime: Date;
   transferredToHuman: boolean;
@@ -248,9 +280,12 @@ export default function Conversations() {
                               </div>
                             )}
                           </div>
-                          <Badge variant="outline" className="max-w-[110px] truncate text-xs">
-                            {conv.assistantType}
-                          </Badge>
+                          <div className="flex flex-col gap-1 items-end flex-shrink-0">
+                            {getDepartmentBadge(conv.department)}
+                            <Badge variant="outline" className="max-w-[110px] truncate text-xs">
+                              {conv.assistantType}
+                            </Badge>
+                          </div>
                         </div>
                       <div className="text-xs text-muted-foreground mt-2">
                         {new Date(conv.transferredAt || conv.lastMessageTime).toLocaleString("pt-BR")}
@@ -313,9 +348,12 @@ export default function Conversations() {
                               </div>
                             )}
                           </div>
-                          <Badge variant="outline" className="max-w-[110px] truncate text-xs">
-                            {conv.assistantType}
-                          </Badge>
+                          <div className="flex flex-col gap-1 items-end flex-shrink-0">
+                            {getDepartmentBadge(conv.department)}
+                            <Badge variant="outline" className="max-w-[110px] truncate text-xs">
+                              {conv.assistantType}
+                            </Badge>
+                          </div>
                         </div>
                       <div className="text-xs text-muted-foreground mt-2">
                         {new Date(conv.transferredAt || conv.lastMessageTime).toLocaleString("pt-BR")}
