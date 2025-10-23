@@ -67,7 +67,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   const [replyingTo, setReplyingTo] = useState<Message | null>(null); // Mensagem sendo respondida
   const [showTransferDialog, setShowTransferDialog] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
-  const [selectedDepartment, setSelectedDepartment] = useState<string>("");
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("keep_current");
   const [transferNotes, setTransferNotes] = useState("");
   const [privateNoteContent, setPrivateNoteContent] = useState("");
   const [showPrivateNotesDialog, setShowPrivateNotesDialog] = useState(false);
@@ -475,8 +475,8 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         notes: transferNotes 
       };
       
-      // Incluir departamento se foi selecionado
-      if (selectedDepartment) {
+      // Incluir departamento apenas se foi selecionado um departamento específico
+      if (selectedDepartment && selectedDepartment !== "keep_current") {
         requestBody.department = selectedDepartment;
       }
       
@@ -494,7 +494,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
       });
       setShowTransferDialog(false);
       setSelectedAgentId("");
-      setSelectedDepartment("");
+      setSelectedDepartment("keep_current");
       setTransferNotes("");
       queryClient.invalidateQueries({ queryKey: ["/api/conversations/assigned"] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations/transferred"] });
@@ -1162,7 +1162,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
                   <SelectValue placeholder="Selecione um departamento" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="" data-testid="department-option-none">
+                  <SelectItem value="keep_current" data-testid="department-option-none">
                     (Manter departamento atual)
                   </SelectItem>
                   <SelectItem value="commercial" data-testid="department-option-commercial">
@@ -1204,7 +1204,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
               onClick={() => {
                 setShowTransferDialog(false);
                 setSelectedAgentId("");
-                setSelectedDepartment("");
+                setSelectedDepartment("keep_current");
                 setTransferNotes("");
               }}
               data-testid="button-cancel-transfer"
