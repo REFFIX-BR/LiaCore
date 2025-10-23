@@ -1608,9 +1608,32 @@ export class DbStorage implements IStorage {
       )
     ];
     
-    return await db.select().from(schema.conversations)
+    // Get all matching conversations
+    const conversations = await db.select().from(schema.conversations)
       .where(and(...conditions))
       .orderBy(desc(schema.conversations.transferredAt));
+    
+    // DEPARTMENT-BASED FILTER: AGENTs see only their department's conversations
+    if (role === 'AGENT' && userId) {
+      const user = await this.getUser(userId);
+      const userDepartments = user?.departments || [];
+      
+      // If agent has no departments configured, show all conversations (backward compatibility)
+      if (userDepartments.length === 0) {
+        return conversations;
+      }
+      
+      // Filter conversations by department
+      return conversations.filter(conv => {
+        // If conversation has no department (legacy data), show it to all agents (backward compatibility)
+        if (!conv.department) return true;
+        // Show only if conversation department matches one of agent's departments
+        return userDepartments.includes(conv.department);
+      });
+    }
+    
+    // ADMIN/SUPERVISOR see all conversations
+    return conversations;
   }
 
   async getAllConversations(): Promise<Conversation[]> {
