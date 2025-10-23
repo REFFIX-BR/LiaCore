@@ -348,15 +348,42 @@ export async function sendMessageAndGetResponse(
       for (const activeRun of activeRuns.data) {
         if (activeRun.status === 'queued' || activeRun.status === 'in_progress' || activeRun.status === 'requires_action') {
           console.warn(`⚠️  [OpenAI] Cancelling active run ${activeRun.id} (status: ${activeRun.status})`);
-          await openaiCircuitBreaker.execute(() =>
-            openai.beta.threads.runs.cancel(activeRun.id, { thread_id: threadId })
-          );
-          await new Promise(resolve => setTimeout(resolve, 500)); // Wait for cancellation
+          
+          try {
+            await openaiCircuitBreaker.execute(() =>
+              openai.beta.threads.runs.cancel(activeRun.id, { thread_id: threadId })
+            );
+            
+            // Wait and verify cancellation (up to 5 seconds)
+            let cancelled = false;
+            for (let i = 0; i < 10; i++) {
+              await new Promise(resolve => setTimeout(resolve, 500));
+              const runStatus = await openaiCircuitBreaker.execute(() =>
+                openai.beta.threads.runs.retrieve(activeRun.id, { thread_id: threadId })
+              );
+              
+              if (runStatus.status === 'cancelled' || runStatus.status === 'failed' || runStatus.status === 'completed') {
+                console.log(`✅ [OpenAI] Run ${activeRun.id} successfully cancelled (final status: ${runStatus.status})`);
+                cancelled = true;
+                break;
+              }
+              
+              console.log(`⏳ [OpenAI] Waiting for cancellation... (attempt ${i + 1}/10, status: ${runStatus.status})`);
+            }
+            
+            if (!cancelled) {
+              console.error(`❌ [OpenAI] Failed to cancel run ${activeRun.id} after 5 seconds`);
+              throw new Error(`Could not cancel active run ${activeRun.id}`);
+            }
+          } catch (cancelError) {
+            console.error(`❌ [OpenAI] Error cancelling run ${activeRun.id}:`, cancelError);
+            throw cancelError;
+          }
         }
       }
     } catch (error) {
-      console.warn(`⚠️  [OpenAI] Error checking/cancelling active runs:`, error);
-      // Continue anyway
+      console.error(`❌ [OpenAI] Error checking/cancelling active runs:`, error);
+      throw new Error("Não foi possível processar sua mensagem no momento. Por favor, aguarde alguns segundos e tente novamente.");
     }
 
     await openaiCircuitBreaker.execute(() =>
