@@ -37,6 +37,90 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 **Multiple Points Detection System**: Automatically detects customers with multiple internet installations by grouping bills and presenting selection options.
 **Lead Capture System**: Comprehensive system for capturing and managing incomplete sales prospects via manual functions, automatic backup, and updated lead statuses.
 
+### Monitor de Atendimento - Real-Time Supervision Dashboard
+
+The Monitor de Atendimento (Service Monitor) is the real-time supervision center where supervisors track all active conversations. It provides comprehensive visibility into AI and human interactions through a multi-tab interface.
+
+#### Tab Structure and Functionality
+
+**1. Aba "Todas" (All Active Conversations)**
+- **Purpose**: Displays conversations currently being actively handled
+- **Shows**:
+  - Conversations being answered by AI assistants (before transfer)
+  - Conversations assigned to and being handled by human agents
+- **Excludes**: Conversations waiting in the transfer queue (not yet assigned)
+- **Use Case**: Monitor active service operations and conversation flow
+- **Filter Logic**: `status = 'active' AND NOT (transferredToHuman = true AND assignedTo = null)`
+
+**2. Aba "Transferidas" (Transfer Queue)**
+- **Purpose**: Waiting room for conversations transferred to humans but not yet assigned
+- **Shows**: Conversations transferred by AI or supervisors awaiting agent assignment
+- **Flow**: 
+  1. AI detects need for human intervention → transfers → enters this queue
+  2. Agent views conversation in "Transferidas" list
+  3. Agent clicks "Assumir Conversa" (Take Conversation)
+  4. Conversation moves to "Todas" tab as assigned conversation
+- **Filter Logic**: `status = 'active' AND transferredToHuman = true AND assignedTo = null`
+- **Department Filtering**: Agents see only conversations from their assigned departments
+
+**3. Aba "Ouvidoria" (Customer Complaints)**
+- **Purpose**: Critical escalations requiring special attention
+- **Shows**: Serious complaints being handled by the Ouvidoria assistant
+- **Use Case**: Track sensitive cases needing careful management
+
+**4. Aba "Com Alertas" (With Alerts)**
+- **Purpose**: Conversations flagged by the system for immediate attention
+- **Alert Types**:
+  - Negative sentiment detected (frustrated customers)
+  - Extended conversations without resolution
+  - Critical urgency detected
+  - Technical problems identified
+- **Use Case**: Prioritize conversations requiring urgent intervention
+
+**5. Aba "Finalizadas" (Resolved Conversations)**
+- **Purpose**: Historical view of resolved conversations from the last 12 hours
+- **Shows ALL**:
+  - 🤖 Resolved by AI (automated resolution)
+  - 👤 Resolved by agents (human closure)
+  - ⏱️ Auto-closed (inactivity timeout)
+- **Sub-filters**:
+  - "Todas": All 145+ resolved conversations
+  - "Pela IA": Only AI-resolved conversations
+  - "Por Agente": Only agent-resolved conversations
+  - "Automático": Only auto-closed due to inactivity
+- **Filter Logic**: `status = 'resolved' AND lastMessageTime >= (now - 12 hours)`
+- **Use Case**: Quality review, audit trail, performance analysis
+
+#### Conversation Lifecycle Flow
+```
+1. CLIENT SENDS MESSAGE
+   ↓ Appears in "Todas" (AI handling)
+
+2. AI DETECTS NEED FOR HUMAN
+   ↓ Moves to "Transferidas" (waiting for assignment)
+
+3. AGENT ASSUMES CONVERSATION
+   ↓ Returns to "Todas" (agent handling)
+
+4. AGENT RESOLVES CONVERSATION
+   ↓ Moves to "Finalizadas" (12-hour retention)
+```
+
+#### Department Filters
+Available across all tabs:
+- **Apresentação**: Initial reception/routing
+- **Financeiro**: Billing and payments
+- **Suporte Técnico**: Internet/technical issues
+- **Comercial**: Sales and plans
+- **Ouvidoria**: Formal complaints
+- **Cancelamento**: Cancellation requests
+
+#### Technical Implementation
+- **Backend**: `getMonitorConversations()` returns all active + resolved (12h) conversations
+- **Frontend**: Client-side filtering by tab logic in `Monitor.tsx`
+- **Real-time Updates**: 5-second polling interval for conversation list, 3-second for alerts
+- **Performance**: Optimized queries with pagination, last 10 messages cached per conversation
+
 ### System Design Choices
 - **Admin Tools**: Features for mass-closing abandoned conversations, reprocessing stuck messages, and configuration management.
 - **Media Handling**: Supervisors can download WhatsApp images and PDFs, with inline PDF viewing.
