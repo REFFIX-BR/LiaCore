@@ -186,7 +186,7 @@ export default function Conversations() {
   return (
     <div className="h-full flex gap-4">
       {/* Lista de conversas */}
-      <Card className="w-80 flex flex-col overflow-hidden">
+      <Card className="w-96 flex flex-col overflow-hidden">
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "transferred" | "assigned")} className="flex flex-col h-full">
           <div className="p-4 pb-0 border-b">
             <TabsList className="grid w-full grid-cols-2" data-testid="tabs-conversations">
@@ -255,12 +255,12 @@ export default function Conversations() {
                       <div
                         key={conv.id}
                         onClick={() => handleSelectConversation(conv.id)}
-                        className={`p-3 rounded-md cursor-pointer transition-colors overflow-hidden hover:bg-accent/50 ${
+                        className={`p-3 rounded-md cursor-pointer transition-colors hover:bg-accent/50 ${
                           activeIds.includes(conv.id) ? "bg-accent" : ""
                         }`}
                         data-testid={`conversation-item-${conv.id}`}
                       >
-                        <div className="flex items-start justify-between gap-2 w-full">
+                        <div className="flex items-start justify-between gap-3 w-full">
                           <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="flex items-center gap-2 min-w-0">
                               <Circle className={`h-3 w-3 fill-current flex-shrink-0 ${waitTimeIndicator.color}`} data-testid="wait-indicator" />
@@ -318,12 +318,12 @@ export default function Conversations() {
                       <div
                         key={conv.id}
                         onClick={() => handleSelectConversation(conv.id)}
-                        className={`p-3 rounded-md cursor-pointer transition-colors overflow-hidden hover:bg-accent/50 ${
+                        className={`p-3 rounded-md cursor-pointer transition-colors hover:bg-accent/50 ${
                           activeIds.includes(conv.id) ? "bg-accent" : ""
                         }`}
                         data-testid={`conversation-item-${conv.id}`}
                       >
-                        <div className="flex items-start justify-between gap-2 w-full">
+                        <div className="flex items-start justify-between gap-3 w-full">
                           <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="flex items-center gap-2 min-w-0">
                               <Circle className={`h-3 w-3 fill-current flex-shrink-0 ${waitTimeIndicator.color}`} data-testid="wait-indicator" />
