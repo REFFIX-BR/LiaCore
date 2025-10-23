@@ -180,7 +180,9 @@ export default function Users() {
       return apiRequest(`/api/users/${id}/departments`, "PATCH", { departments });
     },
     onSuccess: () => {
+      // Force refetch to ensure we get updated data
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.refetchQueries({ queryKey: ["/api/users"] });
       setDepartmentsUser(null);
       toast({
         title: "Sucesso",
