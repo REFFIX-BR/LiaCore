@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Pencil, Power, Trash2, Search } from "lucide-react";
+import { UserPlus, Pencil, Power, Trash2, Search, Building2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -43,6 +43,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const userFormSchema = z.object({
   username: z.string().min(3, "Usuário deve ter no mínimo 3 caracteres"),
@@ -69,6 +70,7 @@ interface User {
   email: string | null;
   role: "ADMIN" | "SUPERVISOR" | "AGENT";
   status: "ACTIVE" | "INACTIVE";
+  departments?: string[] | null;
 }
 
 export default function Users() {
@@ -78,6 +80,8 @@ export default function Users() {
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [departmentsUser, setDepartmentsUser] = useState<User | null>(null);
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
 
   // Fetch all users
   const { data: usersData, isLoading } = useQuery<{ users: User[] }>({
@@ -170,6 +174,28 @@ export default function Users() {
     },
   });
 
+  // Update departments mutation
+  const updateDepartmentsMutation = useMutation({
+    mutationFn: async ({ id, departments }: { id: string; departments: string[] }) => {
+      return apiRequest(`/api/users/${id}/departments`, "PATCH", { departments });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setDepartmentsUser(null);
+      toast({
+        title: "Sucesso",
+        description: "Departamentos atualizados com sucesso",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error?.message || "Erro ao atualizar departamentos",
+        variant: "destructive",
+      });
+    },
+  });
+
   const createForm = useForm<UserFormData>({
     resolver: zodResolver(userFormSchema),
     defaultValues: {
@@ -221,6 +247,59 @@ export default function Users() {
     if (confirm(`Tem certeza que deseja deletar o usuário ${user.fullName}?`)) {
       deleteUserMutation.mutate(user.id);
     }
+  };
+
+  const handleOpenDepartmentsDialog = (user: User) => {
+    setDepartmentsUser(user);
+    setSelectedDepartments(user.departments || []);
+  };
+
+  const handleSaveDepartments = () => {
+    if (!departmentsUser) return;
+    updateDepartmentsMutation.mutate({
+      id: departmentsUser.id,
+      departments: selectedDepartments,
+    });
+  };
+
+  const toggleDepartment = (department: string) => {
+    setSelectedDepartments(prev => 
+      prev.includes(department)
+        ? prev.filter(d => d !== department)
+        : [...prev, department]
+    );
+  };
+
+  const DEPARTMENTS = [
+    { value: "commercial", label: "Comercial" },
+    { value: "support", label: "Suporte Técnico" },
+    { value: "financial", label: "Financeiro" },
+    { value: "cancellation", label: "Cancelamento" },
+    { value: "general", label: "Geral" },
+  ];
+
+  const getDepartmentBadges = (departments: string[] | null | undefined) => {
+    if (!departments || departments.length === 0) {
+      return <span className="text-muted-foreground text-sm">-</span>;
+    }
+
+    const departmentLabels: Record<string, string> = {
+      commercial: "Comercial",
+      support: "Suporte",
+      financial: "Financeiro",
+      cancellation: "Cancelamento",
+      general: "Geral",
+    };
+
+    return (
+      <div className="flex flex-wrap gap-1">
+        {departments.map(dept => (
+          <Badge key={dept} variant="outline" className="text-xs">
+            {departmentLabels[dept] || dept}
+          </Badge>
+        ))}
+      </div>
+    );
   };
 
   const getRoleBadge = (role: string) => {
@@ -416,6 +495,7 @@ export default function Users() {
                   <TableHead>E-mail</TableHead>
                   <TableHead>Usuário</TableHead>
                   <TableHead>Papel</TableHead>
+                  <TableHead>Departamentos</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -423,7 +503,7 @@ export default function Users() {
               <TableBody>
                 {filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                       Nenhum usuário encontrado
                     </TableCell>
                   </TableRow>
@@ -439,6 +519,7 @@ export default function Users() {
                       <TableCell>{user.email || "-"}</TableCell>
                       <TableCell className="font-mono text-sm">{user.username}</TableCell>
                       <TableCell>{getRoleBadge(user.role)}</TableCell>
+                      <TableCell>{getDepartmentBadges(user.departments)}</TableCell>
                       <TableCell>{getStatusBadge(user.status)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -570,6 +651,17 @@ export default function Users() {
                             </DialogContent>
                           </Dialog>
 
+                          {user.role === "AGENT" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenDepartmentsDialog(user)}
+                              data-testid={`button-departments-${user.id}`}
+                            >
+                              <Building2 className="h-4 w-4" />
+                            </Button>
+                          )}
+
                           <Button
                             variant="ghost"
                             size="icon"
@@ -601,6 +693,68 @@ export default function Users() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Departments Dialog */}
+      <Dialog 
+        open={departmentsUser !== null} 
+        onOpenChange={(open) => !open && setDepartmentsUser(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gerenciar Departamentos</DialogTitle>
+            <DialogDescription>
+              Selecione os departamentos aos quais {departmentsUser?.fullName} terá acesso. 
+              Atendentes verão apenas conversas dos departamentos selecionados.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-3">
+              {DEPARTMENTS.map((dept) => (
+                <div key={dept.value} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`dept-${dept.value}`}
+                    checked={selectedDepartments.includes(dept.value)}
+                    onCheckedChange={() => toggleDepartment(dept.value)}
+                    data-testid={`checkbox-dept-${dept.value}`}
+                  />
+                  <Label 
+                    htmlFor={`dept-${dept.value}`}
+                    className="text-sm font-normal cursor-pointer"
+                  >
+                    {dept.label}
+                  </Label>
+                </div>
+              ))}
+            </div>
+
+            {selectedDepartments.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Selecione pelo menos um departamento
+              </p>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDepartmentsUser(null)}
+              data-testid="button-cancel-departments"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveDepartments}
+              disabled={updateDepartmentsMutation.isPending || selectedDepartments.length === 0}
+              data-testid="button-save-departments"
+            >
+              {updateDepartmentsMutation.isPending ? "Salvando..." : "Salvar"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
