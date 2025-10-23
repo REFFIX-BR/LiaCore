@@ -261,7 +261,7 @@ export default function Conversations() {
                         data-testid={`conversation-item-${conv.id}`}
                       >
                         <div className="flex items-start justify-between gap-3 w-full">
-                          <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 min-w-0">
                               <Circle className={`h-3 w-3 fill-current flex-shrink-0 ${waitTimeIndicator.color}`} data-testid="wait-indicator" />
                               <div className="font-medium truncate min-w-0">{conv.clientName}</div>
@@ -279,17 +279,17 @@ export default function Conversations() {
                                 {conv.lastMessage}
                               </div>
                             )}
-                          </div>
-                          <div className="flex flex-col gap-1 items-end flex-shrink-0">
-                            {conv.department && getDepartmentBadge(conv.department)}
-                            <Badge variant="outline" className="max-w-[110px] truncate text-xs">
-                              {conv.assistantType}
-                            </Badge>
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                              <div className="text-xs text-muted-foreground">
+                                {new Date(conv.transferredAt || conv.lastMessageTime).toLocaleString("pt-BR")}
+                              </div>
+                              {conv.department && getDepartmentBadge(conv.department)}
+                              <Badge variant="outline" className="text-xs">
+                                {conv.assistantType}
+                              </Badge>
+                            </div>
                           </div>
                         </div>
-                      <div className="text-xs text-muted-foreground mt-2">
-                        {new Date(conv.transferredAt || conv.lastMessageTime).toLocaleString("pt-BR")}
-                      </div>
                     </div>
                     )
                   })}
@@ -324,7 +324,7 @@ export default function Conversations() {
                         data-testid={`conversation-item-${conv.id}`}
                       >
                         <div className="flex items-start justify-between gap-3 w-full">
-                          <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 min-w-0">
                               <Circle className={`h-3 w-3 fill-current flex-shrink-0 ${waitTimeIndicator.color}`} data-testid="wait-indicator" />
                               <div className="font-medium truncate min-w-0">{conv.clientName}</div>
@@ -347,17 +347,17 @@ export default function Conversations() {
                                 {conv.lastMessage}
                               </div>
                             )}
-                          </div>
-                          <div className="flex flex-col gap-1 items-end flex-shrink-0">
-                            {conv.department && getDepartmentBadge(conv.department)}
-                            <Badge variant="outline" className="max-w-[110px] truncate text-xs">
-                              {conv.assistantType}
-                            </Badge>
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                              <div className="text-xs text-muted-foreground">
+                                {new Date(conv.transferredAt || conv.lastMessageTime).toLocaleString("pt-BR")}
+                              </div>
+                              {conv.department && getDepartmentBadge(conv.department)}
+                              <Badge variant="outline" className="text-xs">
+                                {conv.assistantType}
+                              </Badge>
+                            </div>
                           </div>
                         </div>
-                      <div className="text-xs text-muted-foreground mt-2">
-                        {new Date(conv.transferredAt || conv.lastMessageTime).toLocaleString("pt-BR")}
-                      </div>
                     </div>
                     )
                   })}
