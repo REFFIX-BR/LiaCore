@@ -39,18 +39,50 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 
 ### Monitor de Atendimento - Real-Time Supervision Dashboard
 
-The Monitor de Atendimento (Service Monitor) is the real-time supervision center where supervisors track all active conversations. It provides comprehensive visibility into AI and human interactions through a multi-tab interface.
+The Monitor de Atendimento (Service Monitor) is the real-time supervision center where supervisors track all active conversations. It provides comprehensive visibility into AI and human interactions through a **4-state view mode system** and multi-tab interface.
+
+#### View Mode System (4 Estados)
+
+The Monitor features a primary view mode selector that filters the entire conversation list before applying tab/department filters:
+
+**🌐 Todas (All Conversations - Default)**
+- Shows all active and resolved conversations without mode-specific filtering
+- Tabs work with original logic (e.g., "Todas" tab excludes transfer queue)
+- **Use Case**: Complete overview of all system activity
+
+**🤖 IA Atendendo (AI Handling)**
+- Shows **only** conversations actively being handled by AI assistants
+- Filters: `status = 'active' AND transferredToHuman = false`
+- Excludes all transferred conversations (queue and assigned)
+- **Use Case**: Monitor AI performance and automated resolutions
+
+**⏳ Aguardando (Waiting in Queue)**
+- Shows **only** conversations transferred to humans but not yet assigned
+- Filters: `status = 'active' AND transferredToHuman = true AND assignedTo = null`
+- This is the transfer queue waiting for agent assignment
+- **Use Case**: See which conversations need agent attention
+
+**👤 Em Atendimento (Being Handled by Agents)**
+- Shows **only** conversations assigned to and being handled by human agents
+- Filters: `status = 'active' AND transferredToHuman = true AND assignedTo != null`
+- Excludes AI conversations and unassigned queue
+- **Use Case**: Monitor agent performance and workload
+
+**Filtering Precedence**: View Mode → Tab Filter → Department Filter → Search
+
+**Adaptive Tab Logic**: When a specific view mode is selected (not "Todas"), the status tab filters adapt to avoid contradictions:
+- In "Todas" mode: Tabs use original complex logic
+- In specific modes: Tab "Todas" becomes simple `status = 'active'` (show all within mode)
 
 #### Tab Structure and Functionality
 
 **1. Aba "Todas" (All Active Conversations)**
 - **Purpose**: Displays conversations currently being actively handled
-- **Shows**:
+- **Shows** (when viewMode = "Todas"):
   - Conversations being answered by AI assistants (before transfer)
   - Conversations assigned to and being handled by human agents
 - **Excludes**: Conversations waiting in the transfer queue (not yet assigned)
-- **Use Case**: Monitor active service operations and conversation flow
-- **Filter Logic**: `status = 'active' AND NOT (transferredToHuman = true AND assignedTo = null)`
+- **Filter Logic**: Adapts based on viewMode (see above)
 
 **2. Aba "Transferidas" (Transfer Queue)**
 - **Purpose**: Waiting room for conversations transferred to humans but not yet assigned
@@ -60,7 +92,7 @@ The Monitor de Atendimento (Service Monitor) is the real-time supervision center
   2. Agent views conversation in "Transferidas" list
   3. Agent clicks "Assumir Conversa" (Take Conversation)
   4. Conversation moves to "Todas" tab as assigned conversation
-- **Filter Logic**: `status = 'active' AND transferredToHuman = true AND assignedTo = null`
+- **Filter Logic**: Adapts based on viewMode
 - **Department Filtering**: Agents see only conversations from their assigned departments
 
 **3. Aba "Ouvidoria" (Customer Complaints)**
