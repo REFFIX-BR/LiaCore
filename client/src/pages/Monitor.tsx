@@ -19,6 +19,7 @@ export default function Monitor() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [activeDepartment, setActiveDepartment] = useState("all");
   const [resolvedSubFilter, setResolvedSubFilter] = useState("all"); // all, ai, agent, auto
+  const [viewMode, setViewMode] = useState<"todas" | "ia_atendendo" | "aguardando" | "em_atendimento">("todas"); // NEW: 4 estados
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [allMessages, setAllMessages] = useState<any[]>([]);
@@ -237,14 +238,42 @@ export default function Monitor() {
     let passesDepartmentFilter = true;
     let passesSearchFilter = true;
     let passesResolvedSubFilter = true;
+    let passesViewModeFilter = true;
 
+    // FIRST: Apply viewMode filter (4 estados)
+    if (viewMode === "ia_atendendo") {
+      // IA Atendendo: conversas ativas sendo atendidas pela IA (não transferidas)
+      passesViewModeFilter = conv.status === "active" && !conv.transferredToHuman;
+    } else if (viewMode === "aguardando") {
+      // Aguardando: transferidas mas sem atendente atribuído (fila de espera)
+      passesViewModeFilter = conv.status === "active" && conv.transferredToHuman === true && conv.assignedTo === null;
+    } else if (viewMode === "em_atendimento") {
+      // Em Atendimento: transferidas E com atendente atribuído
+      passesViewModeFilter = conv.status === "active" && conv.transferredToHuman === true && conv.assignedTo !== null;
+    }
+    // viewMode === "todas" -> show all active/resolved, passesViewModeFilter stays true
+
+    // SECOND: Apply status filter (abas: Todas, Transferidas, Ouvidoria, Alertas, Finalizadas)
+    // When viewMode is not "todas", adapt the logic to avoid contradictions
     if (activeFilter === "alerts") {
       passesStatusFilter = alerts.some(alert => alert.conversationId === conv.id);
     } else if (activeFilter === "all") {
-      // Show active conversations EXCEPT those waiting in transfer queue
-      passesStatusFilter = conv.status === "active" && !(conv.transferredToHuman === true && conv.assignedTo === null);
+      // Adapt logic based on viewMode to avoid contradictions
+      if (viewMode === "todas") {
+        // Original behavior: Show active conversations EXCEPT those waiting in transfer queue
+        passesStatusFilter = conv.status === "active" && !(conv.transferredToHuman === true && conv.assignedTo === null);
+      } else {
+        // When viewMode is specific, "Todas" just means "all within this viewMode"
+        passesStatusFilter = conv.status === "active";
+      }
     } else if (activeFilter === "transfer") {
-      passesStatusFilter = conv.status === "active" && conv.transferredToHuman === true && conv.assignedTo === null;
+      // Only makes sense in "todas" mode or already filtered by viewMode
+      if (viewMode === "todas") {
+        passesStatusFilter = conv.status === "active" && conv.transferredToHuman === true && conv.assignedTo === null;
+      } else {
+        // Already filtered by viewMode, just ensure active
+        passesStatusFilter = conv.status === "active";
+      }
     } else if (activeFilter === "ouvidoria") {
       passesStatusFilter = conv.assistantType === "ouvidoria";
     } else if (activeFilter === "resolved") {
@@ -275,49 +304,89 @@ export default function Monitor() {
         conv.clientName.toLowerCase().includes(searchLower);
     }
 
-    return passesStatusFilter && passesDepartmentFilter && passesSearchFilter && passesResolvedSubFilter;
+    return passesViewModeFilter && passesStatusFilter && passesDepartmentFilter && passesSearchFilter && passesResolvedSubFilter;
   });
 
   const getConversationCountByDepartment = (deptValue: string) => {
     return conversations.filter(c => {
       let passesDepartmentFilter = true;
       let passesStatusFilter = true;
+      let passesViewModeFilter = true;
+
+      // ViewMode filter
+      if (viewMode === "ia_atendendo") {
+        passesViewModeFilter = c.status === "active" && !c.transferredToHuman;
+      } else if (viewMode === "aguardando") {
+        passesViewModeFilter = c.status === "active" && c.transferredToHuman === true && c.assignedTo === null;
+      } else if (viewMode === "em_atendimento") {
+        passesViewModeFilter = c.status === "active" && c.transferredToHuman === true && c.assignedTo !== null;
+      }
 
       // Department filter
       if (deptValue !== "all") {
         passesDepartmentFilter = c.assistantType === deptValue;
       }
 
-      // Status filter (same logic as main filter)
+      // Status filter (adapted to viewMode)
       if (activeFilter === "alerts") {
         passesStatusFilter = alerts.some(alert => alert.conversationId === c.id);
       } else if (activeFilter === "all") {
-        // Show active conversations EXCEPT those waiting in transfer queue
-        passesStatusFilter = c.status === "active" && !(c.transferredToHuman === true && c.assignedTo === null);
+        if (viewMode === "todas") {
+          passesStatusFilter = c.status === "active" && !(c.transferredToHuman === true && c.assignedTo === null);
+        } else {
+          passesStatusFilter = c.status === "active";
+        }
       } else if (activeFilter === "transfer") {
-        passesStatusFilter = c.status === "active" && c.transferredToHuman === true && c.assignedTo === null;
+        if (viewMode === "todas") {
+          passesStatusFilter = c.status === "active" && c.transferredToHuman === true && c.assignedTo === null;
+        } else {
+          passesStatusFilter = c.status === "active";
+        }
       } else if (activeFilter === "ouvidoria") {
         passesStatusFilter = c.assistantType === "ouvidoria";
       } else if (activeFilter === "resolved") {
         passesStatusFilter = c.status === "resolved";
       }
 
-      return passesDepartmentFilter && passesStatusFilter;
+      return passesViewModeFilter && passesDepartmentFilter && passesStatusFilter;
     }).length;
   };
 
   const getConversationCountByFilter = (filterId: string) => {
+    const filtered = conversations.filter(c => {
+      let passesViewModeFilter = true;
+
+      // Apply viewMode filter
+      if (viewMode === "ia_atendendo") {
+        passesViewModeFilter = c.status === "active" && !c.transferredToHuman;
+      } else if (viewMode === "aguardando") {
+        passesViewModeFilter = c.status === "active" && c.transferredToHuman === true && c.assignedTo === null;
+      } else if (viewMode === "em_atendimento") {
+        passesViewModeFilter = c.status === "active" && c.transferredToHuman === true && c.assignedTo !== null;
+      }
+
+      return passesViewModeFilter;
+    });
+
     if (filterId === "all") {
-      // Show active conversations EXCEPT those waiting in transfer queue
-      return conversations.filter(c => c.status === "active" && !(c.transferredToHuman === true && c.assignedTo === null)).length;
+      // Adapt logic based on viewMode
+      if (viewMode === "todas") {
+        return filtered.filter(c => c.status === "active" && !(c.transferredToHuman === true && c.assignedTo === null)).length;
+      } else {
+        return filtered.filter(c => c.status === "active").length;
+      }
     } else if (filterId === "transfer") {
-      return conversations.filter(c => c.status === "active" && c.transferredToHuman === true && c.assignedTo === null).length;
+      if (viewMode === "todas") {
+        return filtered.filter(c => c.status === "active" && c.transferredToHuman === true && c.assignedTo === null).length;
+      } else {
+        return filtered.filter(c => c.status === "active").length;
+      }
     } else if (filterId === "ouvidoria") {
-      return conversations.filter(c => c.assistantType === "ouvidoria").length;
+      return filtered.filter(c => c.assistantType === "ouvidoria").length;
     } else if (filterId === "alerts") {
-      return alerts.length;
+      return alerts.filter(alert => filtered.some(c => c.id === alert.conversationId)).length;
     } else if (filterId === "resolved") {
-      return conversations.filter(c => c.status === "resolved").length;
+      return filtered.filter(c => c.status === "resolved").length;
     }
     return 0;
   };
@@ -563,6 +632,49 @@ export default function Monitor() {
             <Search className="h-4 w-4" />
           </Button>
         </div>
+      </div>
+
+      {/* NEW: Seletor de Modo de Visualização (4 Estados) */}
+      <div className="flex gap-2 p-4 border-2 border-primary/20 rounded-lg bg-muted/30">
+        <div className="flex items-center gap-1 text-sm font-medium text-muted-foreground mr-2">
+          Modo de Visualização:
+        </div>
+        <Button
+          variant={viewMode === "todas" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setViewMode("todas")}
+          data-testid="viewmode-todas"
+          className="gap-2"
+        >
+          🌐 Todas
+        </Button>
+        <Button
+          variant={viewMode === "ia_atendendo" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setViewMode("ia_atendendo")}
+          data-testid="viewmode-ia-atendendo"
+          className="gap-2"
+        >
+          🤖 IA Atendendo
+        </Button>
+        <Button
+          variant={viewMode === "aguardando" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setViewMode("aguardando")}
+          data-testid="viewmode-aguardando"
+          className="gap-2"
+        >
+          ⏳ Aguardando
+        </Button>
+        <Button
+          variant={viewMode === "em_atendimento" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setViewMode("em_atendimento")}
+          data-testid="viewmode-em-atendimento"
+          className="gap-2"
+        >
+          👤 Em Atendimento
+        </Button>
       </div>
 
       <div className="flex gap-2">
