@@ -411,7 +411,12 @@ export async function consultaBoletoCliente(
       if (selectedPointNumber !== undefined && selectedPointNumber !== null) {
         console.log(`🎯 [AI Tool] Filtrando boletos do ponto ${selectedPointNumber} (solicitado explicitamente)`);
         
-        const pontoSelecionado = pontos.find(p => parseInt(p.numero) === selectedPointNumber);
+        // CRÍTICO: Normalizar tipos - selectedPointNumber pode ser string ou number
+        const selectedAsNumber = typeof selectedPointNumber === 'string' 
+          ? parseInt(selectedPointNumber) 
+          : selectedPointNumber;
+        
+        const pontoSelecionado = pontos.find(p => parseInt(p.numero) === selectedAsNumber);
         
         if (!pontoSelecionado) {
           console.warn(`⚠️ [AI Tool] Ponto ${selectedPointNumber} não encontrado. Pontos disponíveis: ${pontos.map(p => p.numero).join(', ')}`);

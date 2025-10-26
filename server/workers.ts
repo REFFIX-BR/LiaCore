@@ -602,11 +602,11 @@ if (redisConnection) {
                 `✅ O endereço selecionado está EM DIA - sem boletos pendentes!`,
                 evolutionInstance
               );
-            } else if (boletosResult.boletos && boletosResult.boletos.length > 0) {
+            } else {
               // Formatar boletos
               let mensagem = `📋 *Boletos do endereço selecionado*\n\n`;
               
-              boletosResult.boletos.forEach((boleto, index) => {
+              boletosResult.boletos!.forEach((boleto, index) => {
                 // Formatar data de ISO (YYYY-MM-DD) para BR (DD/MM/YYYY)
                 let dataFormatada = boleto.DATA_VENCIMENTO;
                 try {
@@ -629,7 +629,7 @@ if (redisConnection) {
                   mensagem += `💳 *PIX Copia e Cola:*\n${boleto.PIX_TXT}\n\n`;
                 }
                 
-                if (index < boletosResult.boletos.length - 1) {
+                if (boletosResult.boletos && index < boletosResult.boletos.length - 1) {
                   mensagem += `---\n\n`;
                 }
               });
