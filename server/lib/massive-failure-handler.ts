@@ -27,6 +27,7 @@ export async function fetchClientRegionFromCRM(cpfCnpj: string): Promise<{ city:
     }
 
     const data = await response.json();
+    console.log(`🔍 [Massive Failure DEBUG] CRM Response:`, JSON.stringify(data));
 
     if (data && data.BAIRRO && data.CIDADE) {
       console.log(`✅ [Massive Failure] Região obtida do CRM: ${data.CIDADE}/${data.BAIRRO}`);
@@ -36,7 +37,7 @@ export async function fetchClientRegionFromCRM(cpfCnpj: string): Promise<{ city:
       };
     }
 
-    console.log("⚠️ [Massive Failure] Região não encontrada no CRM");
+    console.log("⚠️ [Massive Failure] Região não encontrada no CRM - BAIRRO ou CIDADE ausentes");
     return null;
   } catch (error) {
     console.error("❌ [Massive Failure] Erro ao consultar CRM:", error);

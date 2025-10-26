@@ -335,8 +335,6 @@ if (redisConnection) {
 
       // 3.5 MASSIVE FAILURE DETECTION - Check for active failures affecting this client
       try {
-        console.log(`🔍 [DEBUG Massive Failure] Conversation clientDocument: "${conversation.clientDocument}", clientId: "${conversation.clientId}", chatId: "${conversation.chatId}"`);
-        
         const wasNotifiedOfFailure = await checkAndNotifyMassiveFailure(
           conversationId,
           fromNumber,
@@ -577,41 +575,10 @@ if (redisConnection) {
           assistantType: result.assistantTarget,
         });
 
-        // Send welcome message from new assistant
-        const newAssistantId = ASSISTANT_IDS[result.assistantTarget.toLowerCase() as keyof typeof ASSISTANT_IDS];
-        
-        if (newAssistantId && threadId) {
-          console.log(`👋 [Worker] Sending welcome message from new assistant: ${result.assistantTarget}`);
-          
-          try {
-            const welcomeResult = await sendMessageAndGetResponse(
-              threadId,
-              newAssistantId,
-              "Olá! Como posso ajudar você?", // Trigger welcome from new assistant
-              chatId,
-              conversationId
-            );
-
-            // Send welcome message to customer
-            await sendWhatsAppMessage(fromNumber, welcomeResult.response, evolutionInstance);
-            
-            // Store welcome message
-            await storage.createMessage({
-              conversationId,
-              role: 'assistant',
-              content: welcomeResult.response,
-              assistant: result.assistantTarget,
-            });
-
-            console.log(`✅ [Worker] Welcome message sent from ${result.assistantTarget}`);
-            
-            // Não enviar mensagem da Apresentação (evita duplicidade)
-            shouldSendPresentationMessage = false;
-          } catch (welcomeError) {
-            console.error(`❌ [Worker] Error sending welcome message:`, welcomeError);
-            // Continue anyway - routing was successful
-          }
-        }
+        // IMPORTANTE: Não enviamos mensagem de boas-vindas ao rotear
+        // O novo assistente tem acesso ao contexto completo da conversa na thread OpenAI
+        // Enviar "Como posso ajudar?" é redundante e confunde o cliente
+        console.log(`ℹ️ [Worker] Roteamento concluído - novo assistente ${result.assistantTarget} processará próximas mensagens`);
       }
 
       if (result.resolved) {
