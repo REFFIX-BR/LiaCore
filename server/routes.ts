@@ -8181,6 +8181,62 @@ A resposta deve:
 
       console.log(`✅ [Failures] Falha resolvida - ID: ${id}`);
 
+      // 🆕 NOTIFICAR TODOS OS CLIENTES SOBRE A RESOLUÇÃO
+      try {
+        // Buscar todas as notificações de 'failure' (clientes que foram notificados sobre a falha)
+        const notifications = await storage.getFailureNotificationsByFailureId(id);
+        const failureNotifications = notifications.filter((n: any) => n.notificationType === 'failure');
+        
+        if (failureNotifications.length > 0) {
+          console.log(`📢 [Failures] Enviando notificação de resolução para ${failureNotifications.length} cliente(s)...`);
+          
+          // Preparar mensagem de resolução
+          const messageText = resolutionMessage || failure.resolutionMessage || 
+            `✅ *Boa notícia!* A falha massiva foi normalizada. Seu serviço já está funcionando normalmente. 🎉`;
+          
+          // Enviar mensagem para cada cliente (em paralelo)
+          const sendPromises = failureNotifications.map(async (notification: any) => {
+            try {
+              // Buscar conversa para pegar a instância Evolution
+              const conversation = notification.conversationId 
+                ? await storage.getConversation(notification.conversationId)
+                : null;
+              
+              const evolutionInstance = conversation?.evolutionInstance || 'Principal';
+              
+              // Enviar mensagem via WhatsApp
+              await sendWhatsAppMessage(notification.clientPhone, messageText, evolutionInstance);
+              
+              // Registrar notificação de resolução
+              await storage.addFailureNotification({
+                failureId: id,
+                contactId: notification.contactId,
+                conversationId: notification.conversationId,
+                clientPhone: notification.clientPhone,
+                notificationType: 'resolution' as const,
+                messageSent: messageText
+              });
+              
+              console.log(`✅ [Failures] Notificação de resolução enviada para ${notification.clientPhone}`);
+              return { success: true, phone: notification.clientPhone };
+            } catch (error) {
+              console.error(`❌ [Failures] Erro ao enviar notificação para ${notification.clientPhone}:`, error);
+              return { success: false, phone: notification.clientPhone, error };
+            }
+          });
+          
+          const results = await Promise.allSettled(sendPromises);
+          const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+          
+          console.log(`✅ [Failures] ${successful}/${failureNotifications.length} notificações de resolução enviadas com sucesso`);
+        } else {
+          console.log(`ℹ️ [Failures] Nenhum cliente para notificar sobre resolução`);
+        }
+      } catch (notificationError) {
+        // Não falhar a requisição se notificações falharem
+        console.error(`⚠️ [Failures] Erro ao enviar notificações de resolução (falha resolvida com sucesso):`, notificationError);
+      }
+
       return res.json(failure);
     } catch (error) {
       console.error("❌ [Failures] Error resolving failure:", error);
