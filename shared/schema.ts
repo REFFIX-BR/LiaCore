@@ -87,7 +87,6 @@ export const conversations = pgTable("conversations", {
   verifiedAt: timestamp("verified_at"), // Quando a conversa foi verificada pelo supervisor
   verifiedBy: varchar("verified_by"), // ID do supervisor que verificou
   lastCoverageCheck: jsonb("last_coverage_check"), // Resultado da última verificação de cobertura via buscar_cep (para validação de vendas)
-  selectedInstallationPoint: jsonb("selected_installation_point"), // Ponto de instalação selecionado pelo cliente (quando há múltiplos pontos): { numero, endereco, bairro, cidade }
 }, (table) => ({
   // Índices para performance em queries de dashboard e monitor
   lastMessageTimeIdx: index("conversations_last_message_time_idx").on(table.lastMessageTime),
