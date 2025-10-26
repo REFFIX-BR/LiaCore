@@ -2414,23 +2414,23 @@ export class DbStorage implements IStorage {
     const usageMetrics = await getUsageMetrics();
     const upstashCost = await getUpstashCost();
     
-    // Calcular custo do mês anterior (30-60 dias atrás) diretamente do banco
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const sixtyDaysAgo = new Date();
-    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+    // Calcular mudança de custo: comparar custo médio diário dos últimos 7 dias vs 7-14 dias atrás
+    const dailyUsage = usageMetrics.dailyUsage || [];
+    const last7Days = dailyUsage.slice(-7);
+    const previous7Days = dailyUsage.slice(-14, -7);
     
-    const previousMonthUsage = await db.select().from(schema.openaiUsage)
-      .where(and(
-        gte(schema.openaiUsage.timestamp, sixtyDaysAgo),
-        lt(schema.openaiUsage.timestamp, thirtyDaysAgo)
-      ));
-    
-    const previousMonthCost = previousMonthUsage.reduce((sum, usage) => sum + (usage.estimatedCost || 0), 0);
-    const currentMonthCost = usageMetrics.total30Days.cost + upstashCost;
-    const costChange = previousMonthCost > 0 
-      ? ((currentMonthCost - previousMonthCost) / previousMonthCost) * 100
+    const last7DaysAvg = last7Days.length > 0
+      ? last7Days.reduce((sum, day) => sum + day.cost, 0) / last7Days.length
       : 0;
+    const previous7DaysAvg = previous7Days.length > 0
+      ? previous7Days.reduce((sum, day) => sum + day.cost, 0) / previous7Days.length
+      : 0;
+    
+    const costChange = previous7DaysAvg > 0
+      ? ((last7DaysAvg - previous7DaysAvg) / previous7DaysAvg) * 100
+      : 0;
+    
+    const currentMonthCost = usageMetrics.total30Days.cost + upstashCost;
     
     const estimatedCost = {
       total: currentMonthCost,
