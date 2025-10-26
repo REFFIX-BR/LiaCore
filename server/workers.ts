@@ -549,6 +549,98 @@ if (redisConnection) {
         console.log(`⏭️  [Worker] Contexto de múltiplos pontos NÃO injetado - assistente ${conversation.assistantType} não precisa`);
       }
 
+      // 7.6. 🆕 INTERCEPTOR: Verificar se está aguardando seleção de ponto de instalação
+      const { installationPointManager } = await import('./lib/redis-config');
+      const isAwaitingPointSelection = await installationPointManager.isAwaitingSelection(conversationId);
+      
+      if (isAwaitingPointSelection) {
+        console.log(`🎯 [Worker] Conversa aguardando seleção de ponto - processando resposta do cliente`);
+        
+        try {
+          // Recuperar menu do Redis
+          const menu = await installationPointManager.getMenu(conversationId);
+          
+          if (!menu) {
+            console.warn(`⚠️ [Worker] Menu não encontrado (expirou?) - permitindo IA processar normalmente`);
+          } else {
+            // Mapear resposta do cliente para número do ponto
+            const selectedPointNumber = installationPointManager.mapClientResponseToPointNumber(enhancedMessage, menu);
+            
+            if (selectedPointNumber === null) {
+              console.warn(`⚠️ [Worker] Não foi possível mapear "${enhancedMessage}" para um ponto - pedindo esclarecimento`);
+              
+              // Enviar mensagem de esclarecimento
+              await sendWhatsAppMessage(
+                chatId,
+                `Desculpe, não consegui identificar qual endereço você quer. Por favor, responda com o número (1, 2, 3...) ou nome do endereço.`,
+                evolutionInstance
+              );
+              
+              return { processed: true, selectedPoint: false };
+            }
+            
+            console.log(`✅ [Worker] Cliente selecionou ponto ${selectedPointNumber} - consultando boletos filtrados`);
+            
+            // Consultar boletos COM filtro de ponto
+            const { consultaBoletoCliente } = await import('./ai-tools');
+            
+            if (!conversation.clientDocument) {
+              throw new Error('CPF/CNPJ não disponível para consulta');
+            }
+            
+            const boletosResult = await consultaBoletoCliente(
+              conversation.clientDocument,
+              { conversationId },
+              storage,
+              selectedPointNumber // 🎯 Filtrar por ponto selecionado
+            );
+            
+            // Formatar resposta com boletos
+            if (!boletosResult.boletos || boletosResult.boletos.length === 0) {
+              await sendWhatsAppMessage(
+                chatId,
+                `✅ O endereço selecionado está EM DIA - sem boletos pendentes!`,
+                evolutionInstance
+              );
+            } else {
+              // Formatar boletos
+              let mensagem = `📋 *Boletos do endereço selecionado*\n\n`;
+              
+              boletosResult.boletos.forEach((boleto, index) => {
+                mensagem += `📄 *Fatura TR Telecom*${boleto.STATUS?.toUpperCase().includes('VENCIDO') ? ' *(Vencida)*' : ''}\n`;
+                mensagem += `🗓️ *Vencimento:* ${boleto.DATA_VENCIMENTO}\n`;
+                mensagem += `💰 *Valor:* R$ ${boleto.VALOR_TOTAL}\n\n`;
+                mensagem += `📋 *Código de Barras (Linha Digitável):*\n${boleto.CODIGO_BARRA_TRANSACAO}\n\n`;
+                mensagem += `📱 *Para Copiar e Colar (SEM espaços):*\n${boleto.CODIGO_BARRA_TRANSACAO.replace(/\D/g, '')}\n\n`;
+                mensagem += `🔗 *Link para Pagamento:*\n${boleto.link_carne_completo}\n\n`;
+                
+                if (boleto.PIX_TXT) {
+                  mensagem += `💳 *PIX Copia e Cola:*\n${boleto.PIX_TXT}\n\n`;
+                }
+                
+                if (index < boletosResult.boletos.length - 1) {
+                  mensagem += `---\n\n`;
+                }
+              });
+              
+              await sendWhatsAppMessage(chatId, mensagem, evolutionInstance);
+            }
+            
+            // Limpar menu do Redis
+            await installationPointManager.deleteMenu(conversationId);
+            console.log(`🗑️ [Worker] Menu removido do Redis - seleção processada com sucesso`);
+            
+            // RETORNAR sem chamar IA
+            return { processed: true, selectedPoint: true, pointNumber: selectedPointNumber };
+          }
+        } catch (error) {
+          console.error(`❌ [Worker] Erro ao processar seleção de ponto:`, error);
+          // Limpar menu em caso de erro
+          await installationPointManager.deleteMenu(conversationId);
+          // Permitir que IA processe (fallback)
+        }
+      }
+
       // 8. Send message to OpenAI and get response
       const result = await sendMessageAndGetResponse(
         threadId,
