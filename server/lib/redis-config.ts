@@ -322,6 +322,7 @@ export class InstallationPointSelectionManager {
       const value = await redis.get(key);
       const awaiting = value === '1';
       
+      console.log(`🚩 [Boleto Selection] DEBUG - Chave: ${key}, Valor: "${value}", Awaiting: ${awaiting}`);
       console.log(`🚩 [Boleto Selection] Conversa ${conversationId} aguardando seleção: ${awaiting}`);
       return awaiting;
     } catch (error) {
