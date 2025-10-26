@@ -142,11 +142,12 @@ const completeRegionsData = [
   { state: "MG", city: "Chiador", neighborhood: "ÁREA RURAL FLORESTA" },
   { state: "MG", city: "Chiador", neighborhood: "CENTRO" },
   { state: "MG", city: "Chiador", neighborhood: "CHIADOR" },
-  { state: "MG", city: "Chiador", neighborhood: "FAZENDA SANTA FÉ" },
+  { state: "MG", city: "Chiador", neighborhood: "ESTAÇÃO" },
+  { state: "MG", city: "Chiador", neighborhood: "FAZENDA SANTA FE" },
   { state: "MG", city: "Chiador", neighborhood: "FLORESTA" },
-  { state: "MG", city: "Chiador", neighborhood: "PORADA BARGA" },
-  { state: "MG", city: "Chiador", neighborhood: "PERNAMBUCO" },
-  { state: "MG", city: "Chiador", neighborhood: "SAÚDE CHIADOR" },
+  { state: "MG", city: "Chiador", neighborhood: "PARADA BRAGA" },
+  { state: "MG", city: "Chiador", neighborhood: "PENHA LONGA" },
+  { state: "MG", city: "Chiador", neighborhood: "SAPUCAIA DE MINAS" },
   { state: "MG", city: "Chiador", neighborhood: "SITIO PILÕES" },
   
   // AREAL - RJ (10 bairros)
@@ -181,7 +182,7 @@ async function seedCompleteRegions() {
     console.log("  - Santana do Deserto (MG): 8 bairros");
     console.log("  - Paraíba do Sul (RJ): 45 bairros");
     console.log("  - Comendador Levy Gasparian (RJ): 20 bairros");
-    console.log("  - Chiador (MG): 9 bairros");
+    console.log("  - Chiador (MG): 10 bairros");
     console.log("  - Areal (RJ): 9 bairros");
     
     process.exit(0);
