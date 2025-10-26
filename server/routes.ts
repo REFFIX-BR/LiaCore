@@ -8182,7 +8182,13 @@ A resposta deve:
   app.patch("/api/failures/:id", authenticate, async (req, res) => {
     try {
       const { id } = req.params;
-      const updates = req.body;
+      
+      // Converter timestamps de string para Date
+      const updates = {
+        ...req.body,
+        startTime: req.body.startTime ? new Date(req.body.startTime) : undefined,
+        resolutionTime: req.body.resolutionTime ? new Date(req.body.resolutionTime) : undefined,
+      };
 
       const failure = await storage.updateMassiveFailure(id, updates);
 
