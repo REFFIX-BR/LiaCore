@@ -715,3 +715,113 @@ export type UpdatePlan = z.infer<typeof updatePlanSchema>;
 export type Sale = typeof sales.$inferSelect;
 export type InsertSale = z.infer<typeof insertSaleSchema>;
 export type UpdateSale = z.infer<typeof updateSaleSchema>;
+
+// ==================== MÓDULO DE FALHA MASSIVA ====================
+
+// Tabela de Regiões (Estados, Cidades, Bairros)
+export const regions = pgTable("regions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  state: text("state").notNull(), // Estado (ex: "RJ")
+  city: text("city").notNull(), // Cidade (ex: "TRES RIOS")
+  neighborhood: text("neighborhood").notNull(), // Bairro (ex: "CANTAGALO")
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  // Índices para busca rápida por localização
+  stateIdx: index("regions_state_idx").on(table.state),
+  cityIdx: index("regions_city_idx").on(table.city),
+  neighborhoodIdx: index("regions_neighborhood_idx").on(table.neighborhood),
+  // Índice composto para busca completa
+  locationIdx: index("regions_location_idx").on(table.state, table.city, table.neighborhood),
+}));
+
+// Tabela de Falhas Massivas
+export const massiveFailures = pgTable("massive_failures", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // Nome interno da falha
+  status: text("status").notNull().default("scheduled"), // 'scheduled', 'active', 'resolved', 'cancelled'
+  severity: text("severity").notNull().default("medium"), // 'low', 'medium', 'high', 'critical'
+  
+  notificationMessage: text("notification_message").notNull(), // Mensagem enviada ao cliente
+  resolutionMessage: text("resolution_message"), // Mensagem opcional de resolução
+  
+  // Regiões afetadas: Array de IDs de regions OU estrutura JSON livre para regiões customizadas
+  // Formato JSON: { type: 'predefined' | 'custom', regionIds?: string[], custom?: [{state, city, neighborhoods[]}] }
+  affectedRegions: jsonb("affected_regions").notNull(),
+  
+  estimatedResolution: timestamp("estimated_resolution"), // Previsão de normalização
+  autoResolve: boolean("auto_resolve").default(false), // Resolver automaticamente após estimatedResolution
+  
+  startTime: timestamp("start_time").notNull(), // Quando a falha começa/começou
+  endTime: timestamp("end_time"), // Quando a falha foi resolvida
+  
+  createdBy: varchar("created_by").notNull(), // ID do usuário que criou
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  // Índices para queries de falhas ativas e histórico
+  statusIdx: index("massive_failures_status_idx").on(table.status),
+  startTimeIdx: index("massive_failures_start_time_idx").on(table.startTime),
+  createdByIdx: index("massive_failures_created_by_idx").on(table.createdBy),
+}));
+
+// Tabela de Notificações de Falha (rastreamento de quem foi notificado)
+export const failureNotifications = pgTable("failure_notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  failureId: varchar("failure_id").notNull(), // Referência à falha
+  contactId: varchar("contact_id"), // ID do contato (se disponível)
+  conversationId: varchar("conversation_id"), // ID da conversa
+  clientPhone: text("client_phone").notNull(), // Telefone do cliente notificado
+  
+  notificationType: text("notification_type").notNull(), // 'failure' ou 'resolution'
+  messageSent: text("message_sent").notNull(), // Conteúdo da mensagem enviada
+  
+  sentAt: timestamp("sent_at").defaultNow(),
+  wasRead: boolean("was_read").default(false), // Se o cliente leu/respondeu
+  clientResponse: text("client_response"), // Primeira resposta do cliente após notificação
+  respondedAt: timestamp("responded_at"), // Quando o cliente respondeu
+}, (table) => ({
+  // Índices para rastreamento e relatórios
+  failureIdIdx: index("failure_notifications_failure_id_idx").on(table.failureId),
+  contactIdIdx: index("failure_notifications_contact_id_idx").on(table.contactId),
+  conversationIdIdx: index("failure_notifications_conversation_id_idx").on(table.conversationId),
+  clientPhoneIdx: index("failure_notifications_client_phone_idx").on(table.clientPhone),
+  sentAtIdx: index("failure_notifications_sent_at_idx").on(table.sentAt),
+}));
+
+// Zod Schemas
+export const insertRegionSchema = createInsertSchema(regions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMassiveFailureSchema = createInsertSchema(massiveFailures).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  status: z.enum(["scheduled", "active", "resolved", "cancelled"]).default("scheduled"),
+  severity: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+  affectedRegions: z.any(), // Validação customizada no backend
+});
+
+export const updateMassiveFailureSchema = insertMassiveFailureSchema.partial();
+
+export const insertFailureNotificationSchema = createInsertSchema(failureNotifications).omit({
+  id: true,
+  sentAt: true,
+  wasRead: true,
+  respondedAt: true,
+}).extend({
+  notificationType: z.enum(["failure", "resolution"]),
+});
+
+// Types
+export type Region = typeof regions.$inferSelect;
+export type InsertRegion = z.infer<typeof insertRegionSchema>;
+
+export type MassiveFailure = typeof massiveFailures.$inferSelect;
+export type InsertMassiveFailure = z.infer<typeof insertMassiveFailureSchema>;
+export type UpdateMassiveFailure = z.infer<typeof updateMassiveFailureSchema>;
+
+export type FailureNotification = typeof failureNotifications.$inferSelect;
+export type InsertFailureNotification = z.infer<typeof insertFailureNotificationSchema>;
