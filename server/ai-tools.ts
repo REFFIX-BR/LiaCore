@@ -321,9 +321,42 @@ export async function consultaBoletoCliente(
       ponto.boletos.push(boleto);
       ponto.totalBoletos++;
       
-      // Verificar se está vencido
+      // Verificar se está vencido (pela DATA + STATUS)
+      const dataVencimento = boleto.DATA_VENCIMENTO;
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0); // Zerar horas para comparação apenas de data
+      
+      let estaVencido = false;
+      
+      // Tentar parsear data (formato esperado: DD/MM/YYYY)
+      if (dataVencimento) {
+        const partes = dataVencimento.split('/');
+        if (partes.length === 3) {
+          const dia = parseInt(partes[0]);
+          const mes = parseInt(partes[1]) - 1; // Mês em JS é 0-indexed
+          const ano = parseInt(partes[2]);
+          const dataVenc = new Date(ano, mes, dia);
+          dataVenc.setHours(0, 0, 0, 0);
+          
+          // Boleto vencido se data < hoje
+          if (dataVenc < hoje) {
+            estaVencido = true;
+          }
+        }
+      }
+      
+      // Se STATUS já indica VENCIDO, aceitar também
       if (boleto.STATUS?.toUpperCase().includes('VENCIDO')) {
+        estaVencido = true;
+      }
+      
+      if (estaVencido) {
         ponto.totalVencidos++;
+        
+        // DEBUG: Log quando detectar vencimento pela data (API pode ter marcado errado)
+        if (!boleto.STATUS?.toUpperCase().includes('VENCIDO')) {
+          console.warn(`⚠️ [CORREÇÃO STATUS] Boleto ${dataVencimento} marcado como VENCIDO pela data (API STATUS: "${boleto.STATUS}")`);
+        }
       }
       
       // Somar valor (converter de string para número)
