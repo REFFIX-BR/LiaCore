@@ -7992,5 +7992,220 @@ A resposta deve:
     }
   });
 
+  // ==================== MASSIVE FAILURES MODULE ====================
+
+  // GET /api/failures - Listar todas as falhas
+  app.get("/api/failures", authenticate, async (req, res) => {
+    try {
+      const failures = await storage.getAllMassiveFailures();
+      return res.json(failures);
+    } catch (error) {
+      console.error("❌ [Failures] Error fetching failures:", error);
+      return res.status(500).json({ error: "Erro ao buscar falhas" });
+    }
+  });
+
+  // GET /api/failures/active - Listar falhas ativas
+  app.get("/api/failures/active", authenticate, async (req, res) => {
+    try {
+      const failures = await storage.getActiveMassiveFailures();
+      return res.json(failures);
+    } catch (error) {
+      console.error("❌ [Failures] Error fetching active failures:", error);
+      return res.status(500).json({ error: "Erro ao buscar falhas ativas" });
+    }
+  });
+
+  // GET /api/failures/scheduled - Listar falhas agendadas
+  app.get("/api/failures/scheduled", authenticate, async (req, res) => {
+    try {
+      const failures = await storage.getScheduledMassiveFailures();
+      return res.json(failures);
+    } catch (error) {
+      console.error("❌ [Failures] Error fetching scheduled failures:", error);
+      return res.status(500).json({ error: "Erro ao buscar falhas agendadas" });
+    }
+  });
+
+  // GET /api/failures/:id - Obter uma falha específica
+  app.get("/api/failures/:id", authenticate, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const failure = await storage.getMassiveFailure(id);
+      
+      if (!failure) {
+        return res.status(404).json({ error: "Falha não encontrada" });
+      }
+
+      return res.json(failure);
+    } catch (error) {
+      console.error("❌ [Failures] Error fetching failure:", error);
+      return res.status(500).json({ error: "Erro ao buscar falha" });
+    }
+  });
+
+  // POST /api/failures - Criar nova falha
+  app.post("/api/failures", authenticate, async (req, res) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
+      }
+
+      // Adicionar o createdBy ao payload
+      const failureData = {
+        ...req.body,
+        createdBy: userId,
+      };
+
+      const failure = await storage.addMassiveFailure(failureData);
+
+      console.log(`✅ [Failures] Nova falha criada - ID: ${failure.id}, Nome: ${failure.name}, Status: ${failure.status}`);
+
+      return res.status(201).json(failure);
+    } catch (error) {
+      console.error("❌ [Failures] Error creating failure:", error);
+      return res.status(500).json({ error: "Erro ao criar falha" });
+    }
+  });
+
+  // PATCH /api/failures/:id - Atualizar falha
+  app.patch("/api/failures/:id", authenticate, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+
+      const failure = await storage.updateMassiveFailure(id, updates);
+
+      console.log(`✅ [Failures] Falha atualizada - ID: ${id}`);
+
+      return res.json(failure);
+    } catch (error) {
+      console.error("❌ [Failures] Error updating failure:", error);
+      return res.status(500).json({ error: "Erro ao atualizar falha" });
+    }
+  });
+
+  // PATCH /api/failures/:id/status - Atualizar status
+  app.patch("/api/failures/:id/status", authenticate, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      if (!status) {
+        return res.status(400).json({ error: "Status é obrigatório" });
+      }
+
+      const failure = await storage.updateMassiveFailureStatus(id, status);
+
+      console.log(`✅ [Failures] Status atualizado - ID: ${id}, Status: ${status}`);
+
+      return res.json(failure);
+    } catch (error) {
+      console.error("❌ [Failures] Error updating failure status:", error);
+      return res.status(500).json({ error: "Erro ao atualizar status da falha" });
+    }
+  });
+
+  // POST /api/failures/:id/resolve - Resolver falha (com mensagem opcional)
+  app.post("/api/failures/:id/resolve", authenticate, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { resolutionMessage } = req.body;
+
+      const failure = await storage.resolveMassiveFailure(id, resolutionMessage);
+
+      console.log(`✅ [Failures] Falha resolvida - ID: ${id}`);
+
+      return res.json(failure);
+    } catch (error) {
+      console.error("❌ [Failures] Error resolving failure:", error);
+      return res.status(500).json({ error: "Erro ao resolver falha" });
+    }
+  });
+
+  // DELETE /api/failures/:id - Deletar falha
+  app.delete("/api/failures/:id", authenticate, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      await storage.deleteMassiveFailure(id);
+
+      console.log(`✅ [Failures] Falha deletada - ID: ${id}`);
+
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("❌ [Failures] Error deleting failure:", error);
+      return res.status(500).json({ error: "Erro ao deletar falha" });
+    }
+  });
+
+  // GET /api/failures/:id/notifications - Obter notificações de uma falha
+  app.get("/api/failures/:id/notifications", authenticate, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const notifications = await storage.getFailureNotificationsByFailureId(id);
+
+      return res.json(notifications);
+    } catch (error) {
+      console.error("❌ [Failures] Error fetching notifications:", error);
+      return res.status(500).json({ error: "Erro ao buscar notificações" });
+    }
+  });
+
+  // GET /api/regions - Listar todas as regiões
+  app.get("/api/regions", authenticate, async (req, res) => {
+    try {
+      const { state, city, neighborhood } = req.query;
+      
+      const filters: any = {};
+      if (state) filters.state = String(state);
+      if (city) filters.city = String(city);
+      if (neighborhood) filters.neighborhood = String(neighborhood);
+
+      const regions = await storage.getRegionsByFilters(filters);
+      return res.json(regions);
+    } catch (error) {
+      console.error("❌ [Regions] Error fetching regions:", error);
+      return res.status(500).json({ error: "Erro ao buscar regiões" });
+    }
+  });
+
+  // POST /api/regions - Criar nova região
+  app.post("/api/regions", authenticate, async (req, res) => {
+    try {
+      const { state, city, neighborhood } = req.body;
+
+      if (!state || !city || !neighborhood) {
+        return res.status(400).json({ error: "Estado, cidade e bairro são obrigatórios" });
+      }
+
+      const region = await storage.addRegion({ state, city, neighborhood });
+
+      console.log(`✅ [Regions] Nova região criada - ${state}/${city}/${neighborhood}`);
+
+      return res.status(201).json(region);
+    } catch (error) {
+      console.error("❌ [Regions] Error creating region:", error);
+      return res.status(500).json({ error: "Erro ao criar região" });
+    }
+  });
+
+  // DELETE /api/regions/:id - Deletar região
+  app.delete("/api/regions/:id", authenticate, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      await storage.deleteRegion(id);
+
+      console.log(`✅ [Regions] Região deletada - ID: ${id}`);
+
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("❌ [Regions] Error deleting region:", error);
+      return res.status(500).json({ error: "Erro ao deletar região" });
+    }
+  });
+
   return httpServer;
 }

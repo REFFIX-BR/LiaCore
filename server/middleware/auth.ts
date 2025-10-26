@@ -169,3 +169,29 @@ export function requireSalesAccess(
 
   return res.status(403).json({ error: "Acesso restrito a comerciais, supervisores e administradores" });
 }
+
+// Failure Management access: Only Admin and Supervisor
+export function requireFailureManagement(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  if (!req.user) {
+    console.log("❌ [Failure Management] Não autenticado");
+    return res.status(401).json({ error: "Não autenticado" });
+  }
+
+  if (req.user.role !== "ADMIN" && req.user.role !== "SUPERVISOR") {
+    console.log("❌ [Failure Management] Acesso negado", {
+      userId: req.user.userId,
+      role: req.user.role
+    });
+    return res.status(403).json({ error: "Acesso restrito a supervisores e administradores" });
+  }
+
+  console.log("✅ [Failure Management] Acesso permitido", {
+    userId: req.user.userId,
+    role: req.user.role
+  });
+  next();
+}
