@@ -540,10 +540,13 @@ if (redisConnection) {
         // Não falhar o processamento por causa disso
       }
 
-      // 7.5. Injetar contexto de múltiplos pontos (se houver)
-      if (multiplePointsContext) {
+      // 7.5. Injetar contexto de múltiplos pontos APENAS para assistentes especializados
+      // NÃO injetar para Apresentação - ela apenas roteia, não resolve problemas
+      if (multiplePointsContext && (conversation.assistantType === 'financeiro' || conversation.assistantType === 'suporte')) {
         enhancedMessage = enhancedMessage + multiplePointsContext;
-        console.log(`🔀 [Worker] Contexto de múltiplos pontos injetado na mensagem`);
+        console.log(`🔀 [Worker] Contexto de múltiplos pontos injetado na mensagem (assistente: ${conversation.assistantType})`);
+      } else if (multiplePointsContext) {
+        console.log(`⏭️  [Worker] Contexto de múltiplos pontos NÃO injetado - assistente ${conversation.assistantType} não precisa`);
       }
 
       // 8. Send message to OpenAI and get response
