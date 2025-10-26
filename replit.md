@@ -39,15 +39,15 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui` (Radix UI), and 
 
 ### Monitor de Atendimento - Real-Time Supervision Dashboard
 
-The Monitor de Atendimento (Service Monitor) is the real-time supervision center where supervisors track all active conversations. It provides comprehensive visibility into AI and human interactions through a **4-state view mode system** and multi-tab interface.
+The Monitor de Atendimento (Service Monitor) is the real-time supervision center where supervisors track all active conversations. It provides comprehensive visibility into AI and human interactions through a **5-state view mode system**.
 
-#### View Mode System (4 Estados)
+#### View Mode System (5 Estados)
 
-The Monitor features a primary view mode selector that filters the entire conversation list before applying tab/department filters:
+The Monitor features a primary view mode selector that controls all conversation filtering:
 
 **🌐 Todas (All Conversations - Default)**
-- Shows all active and resolved conversations without mode-specific filtering
-- Tabs work with original logic (e.g., "Todas" tab excludes transfer queue)
+- Shows all active and resolved conversations
+- Excludes only the transfer queue (conversations waiting for assignment)
 - **Use Case**: Complete overview of all system activity
 
 **🤖 IA Atendendo (AI Handling)**
@@ -68,84 +68,53 @@ The Monitor features a primary view mode selector that filters the entire conver
 - Excludes AI conversations and unassigned queue
 - **Use Case**: Monitor agent performance and workload
 
-**Filtering Precedence**: View Mode → Tab Filter → Department Filter → Search
-
-**Adaptive Tab Logic**: When a specific view mode is selected (not "Todas"), the status tab filters adapt to avoid contradictions:
-- In "Todas" mode: Tabs use original complex logic
-- In specific modes: Tab "Todas" becomes simple `status = 'active'` (show all within mode)
-
-#### Tab Structure and Functionality
-
-**1. Aba "Todas" (All Active Conversations)**
-- **Purpose**: Displays conversations currently being actively handled
-- **Shows** (when viewMode = "Todas"):
-  - Conversations being answered by AI assistants (before transfer)
-  - Conversations assigned to and being handled by human agents
-- **Excludes**: Conversations waiting in the transfer queue (not yet assigned)
-- **Filter Logic**: Adapts based on viewMode (see above)
-
-**2. Aba "Transferidas" (Transfer Queue)**
-- **Purpose**: Waiting room for conversations transferred to humans but not yet assigned
-- **Shows**: Conversations transferred by AI or supervisors awaiting agent assignment
-- **Flow**: 
-  1. AI detects need for human intervention → transfers → enters this queue
-  2. Agent views conversation in "Transferidas" list
-  3. Agent clicks "Assumir Conversa" (Take Conversation)
-  4. Conversation moves to "Todas" tab as assigned conversation
-- **Filter Logic**: Adapts based on viewMode
-- **Department Filtering**: Agents see only conversations from their assigned departments
-
-**3. Aba "Ouvidoria" (Customer Complaints)**
-- **Purpose**: Critical escalations requiring special attention
-- **Shows**: Serious complaints being handled by the Ouvidoria assistant
-- **Use Case**: Track sensitive cases needing careful management
-
-**4. Aba "Com Alertas" (With Alerts)**
-- **Purpose**: Conversations flagged by the system for immediate attention
-- **Alert Types**:
-  - Negative sentiment detected (frustrated customers)
-  - Extended conversations without resolution
-  - Critical urgency detected
-  - Technical problems identified
-- **Use Case**: Prioritize conversations requiring urgent intervention
-
-**5. Aba "Finalizadas" (Resolved Conversations)**
-- **Purpose**: Historical view of resolved conversations from the last 12 hours
-- **Shows ALL**:
-  - 🤖 Resolved by AI (automated resolution)
-  - 👤 Resolved by agents (human closure)
-  - ⏱️ Auto-closed (inactivity timeout)
-- **Sub-filters**:
-  - "Todas": All 145+ resolved conversations
-  - "Pela IA": Only AI-resolved conversations
-  - "Por Agente": Only agent-resolved conversations
-  - "Automático": Only auto-closed due to inactivity
-- **Filter Logic**: `status = 'resolved' AND lastMessageTime >= (now - 12 hours)`
+**📋 Finalizadas (Resolved Conversations)**
+- Shows **only** resolved conversations from the last 12 hours
+- Filters: `status = 'resolved'`
+- **Sub-filters** (displayed when Finalizadas is selected):
+  - "Todas": All resolved conversations
+  - "🤖 Pela IA": Only AI-resolved conversations
+  - "👤 Por Atendentes": Only agent-resolved conversations
+  - "⏰ Auto-fechadas": Only auto-closed due to inactivity
 - **Use Case**: Quality review, audit trail, performance analysis
 
-#### Conversation Lifecycle Flow
-```
-1. CLIENT SENDS MESSAGE
-   ↓ Appears in "Todas" (AI handling)
+**Filtering Precedence**: View Mode → Department Filter → Search → Resolved Sub-filter (if Finalizadas)
 
-2. AI DETECTS NEED FOR HUMAN
-   ↓ Moves to "Transferidas" (waiting for assignment)
+#### Department Tabs
 
-3. AGENT ASSUMES CONVERSATION
-   ↓ Returns to "Todas" (agent handling)
+After selecting a view mode, conversations can be further filtered by department:
 
-4. AGENT RESOLVES CONVERSATION
-   ↓ Moves to "Finalizadas" (12-hour retention)
-```
-
-#### Department Filters
-Available across all tabs:
+**Available Departments:**
+- **Todos**: All departments (default)
 - **Apresentação**: Initial reception/routing
 - **Financeiro**: Billing and payments
 - **Suporte Técnico**: Internet/technical issues
 - **Comercial**: Sales and plans
 - **Ouvidoria**: Formal complaints
 - **Cancelamento**: Cancellation requests
+
+**Department Filtering Notes:**
+- Applies within the selected view mode
+- Agents see only conversations from their assigned departments in "Aguardando" mode (transfer queue)
+- Supervisors/admins see all conversations across all departments
+- Conversations are automatically tagged with departments based on the AI assistant that handled them
+
+#### Conversation Lifecycle Flow
+```
+1. CLIENT SENDS MESSAGE
+   ↓ Visible in "🤖 IA Atendendo" mode
+
+2. AI DETECTS NEED FOR HUMAN
+   ↓ Visible in "⏳ Aguardando" mode (waiting for assignment)
+
+3. AGENT ASSUMES CONVERSATION
+   ↓ Visible in "👤 Em Atendimento" mode
+
+4. AGENT RESOLVES CONVERSATION
+   ↓ Visible in "📋 Finalizadas" mode (12-hour retention)
+
+Note: "🌐 Todas" mode shows all conversations except those in "Aguardando" queue
+```
 
 #### Technical Implementation
 - **Backend**: `getMonitorConversations()` returns all active + resolved (12h) conversations
