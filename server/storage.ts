@@ -3693,6 +3693,19 @@ export class DbStorage implements IStorage {
   }
 
   async checkActiveFailureForRegion(city: string, neighborhood: string): Promise<any | null> {
+    // Função para normalizar strings: remove espaços extras, acentos e converte para maiúsculas
+    const normalize = (str: string): string => {
+      return str
+        .trim()
+        .replace(/\s+/g, ' ') // Remove espaços extras
+        .normalize('NFD') // Decompõe caracteres acentuados
+        .replace(/[\u0300-\u036f]/g, '') // Remove marcas diacríticas
+        .toUpperCase();
+    };
+
+    const normalizedCity = normalize(city);
+    const normalizedNeighborhood = normalize(neighborhood);
+
     // Busca falhas ativas que afetam a região especificada
     const activeFailures = await db.select()
       .from(schema.massiveFailures)
@@ -3709,8 +3722,8 @@ export class DbStorage implements IStorage {
           .where(inArray(schema.regions.id, affectedRegions.regionIds));
         
         const match = regions.find((r: any) => 
-          r.city.toUpperCase() === city.toUpperCase() && 
-          r.neighborhood.toUpperCase() === neighborhood.toUpperCase()
+          normalize(r.city) === normalizedCity && 
+          normalize(r.neighborhood) === normalizedNeighborhood
         );
         
         if (match) return failure;
@@ -3719,8 +3732,8 @@ export class DbStorage implements IStorage {
       // Se for tipo custom (estrutura JSON livre)
       if (affectedRegions.type === 'custom' && affectedRegions.custom) {
         const match = affectedRegions.custom.find((region: any) => 
-          region.city.toUpperCase() === city.toUpperCase() &&
-          region.neighborhoods.some((n: string) => n.toUpperCase() === neighborhood.toUpperCase())
+          normalize(region.city) === normalizedCity &&
+          region.neighborhoods.some((n: string) => normalize(n) === normalizedNeighborhood)
         );
         
         if (match) return failure;
