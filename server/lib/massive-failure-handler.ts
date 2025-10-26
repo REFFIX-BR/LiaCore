@@ -129,67 +129,118 @@ export async function checkAndNotifyMassiveFailure(
     return { hasMultiplePoints: false, notified: false, needsPointSelection: false };
   }
 
-  // 2. Se houver múltiplos pontos, retornar flag para IA perguntar ao cliente
-  if (points.length > 1) {
-    console.log(`🔀 [Massive Failure] Cliente possui ${points.length} pontos de instalação - requer seleção`);
-    return {
-      hasMultiplePoints: true,
-      points,
-      notified: false,
-      needsPointSelection: true,
-    };
+  // 2. Verificar falhas massivas em TODOS os pontos de instalação
+  const pointsWithFailures: Array<{ point: InstallationPoint; failure: any }> = [];
+  
+  for (const point of points) {
+    const activeFailure = await storage.checkActiveFailureForRegion(point.cidade, point.bairro);
+    if (activeFailure) {
+      console.log(`🚨 [Massive Failure] Falha detectada em ${point.cidade}/${point.bairro}: ${activeFailure.name}`);
+      pointsWithFailures.push({ point, failure: activeFailure });
+    }
   }
 
-  // 3. Apenas 1 ponto - verificar falha automaticamente
-  const singlePoint = points[0];
-  const activeFailure = await storage.checkActiveFailureForRegion(singlePoint.cidade, singlePoint.bairro);
-  
-  if (!activeFailure) {
-    console.log(`✅ [Massive Failure] Nenhuma falha ativa para ${singlePoint.cidade}/${singlePoint.bairro}`);
+  // 3. Se NENHUM ponto tem falha massiva
+  if (pointsWithFailures.length === 0) {
+    console.log(`✅ [Massive Failure] Nenhuma falha ativa nos ${points.length} ponto(s) do cliente`);
+    
+    // Se houver múltiplos pontos sem falhas, ainda retornar flag para IA gerenciar
+    if (points.length > 1) {
+      return {
+        hasMultiplePoints: true,
+        points,
+        notified: false,
+        needsPointSelection: true,
+      };
+    }
+    
     return { hasMultiplePoints: false, notified: false, needsPointSelection: false };
   }
 
-  console.log(`🚨 [Massive Failure] Falha ativa detectada: ${activeFailure.name} - ${activeFailure.description}`);
-  console.log(`📍 [Massive Failure] Região afetada: ${singlePoint.cidade}/${singlePoint.bairro}`);
+  // 4. Há falha(s) massiva(s) em um ou mais pontos
+  console.log(`⚠️ [Massive Failure] ${pointsWithFailures.length} ponto(s) com falha massiva ativa`);
 
-  // 4. Verificar se cliente já foi notificado desta falha
-  const existingNotifications = await storage.getFailureNotificationsByFailureId(activeFailure.id);
-  const alreadyNotified = existingNotifications.some(n => n.clientPhone === clientPhone);
+  // 5. Verificar se cliente já foi notificado de ALGUMA dessas falhas
+  const allFailureIds = pointsWithFailures.map(pf => pf.failure.id);
+  let alreadyNotified = false;
+  
+  for (const failureId of allFailureIds) {
+    const notifications = await storage.getFailureNotificationsByFailureId(failureId);
+    if (notifications.some(n => n.clientPhone === clientPhone)) {
+      alreadyNotified = true;
+      console.log(`⏭️ [Massive Failure] Cliente ${clientPhone} já foi notificado de falha ${failureId}`);
+      break;
+    }
+  }
 
   if (alreadyNotified) {
-    console.log(`⏭️ [Massive Failure] Cliente ${clientPhone} já foi notificado desta falha`);
+    // Ainda retornar múltiplos pontos se aplicável para contexto da IA
+    if (points.length > 1) {
+      return {
+        hasMultiplePoints: true,
+        points,
+        notified: true,
+        needsPointSelection: true,
+      };
+    }
     return { hasMultiplePoints: false, notified: true, needsPointSelection: false };
   }
 
-  // 5. Enviar mensagem de notificação via WhatsApp
+  // 6. Montar mensagem de notificação considerando múltiplos pontos
+  let notificationMessage = '';
+  
+  if (pointsWithFailures.length === 1) {
+    // Apenas 1 ponto com falha
+    const { point, failure } = pointsWithFailures[0];
+    
+    if (points.length > 1) {
+      // Cliente tem múltiplos pontos, mas só 1 está em área de falha
+      notificationMessage = `🚨 *AVISO DE FALHA MASSIVA*\n\n${failure.notificationMessage}\n\n📍 *Endereço afetado:* ${point.bairro}, ${point.cidade}\n${point.endereco}${point.complemento ? ', ' + point.complemento : ''}`;
+    } else {
+      // Cliente tem apenas 1 ponto e está em área de falha
+      notificationMessage = failure.notificationMessage;
+    }
+    
+  } else {
+    // Múltiplos pontos com falhas
+    const affectedAddresses = pointsWithFailures
+      .map(pf => `• ${pf.point.bairro}, ${pf.point.cidade} - ${pf.point.endereco}`)
+      .join('\n');
+    
+    notificationMessage = `🚨 *AVISO DE FALHAS MASSIVAS*\n\nDetectamos falhas massivas em ${pointsWithFailures.length} dos seus endereços:\n\n${affectedAddresses}\n\n${pointsWithFailures[0].failure.notificationMessage}`;
+  }
+
+  // 7. Enviar mensagem de notificação via WhatsApp
   const messageSent = await sendWhatsAppMessage(
     clientPhone,
-    activeFailure.notificationMessage,
+    notificationMessage,
     evolutionInstance
   );
 
   if (!messageSent.success) {
     console.error(`❌ [Massive Failure] Falha ao enviar mensagem de notificação para ${clientPhone}`);
-    return { hasMultiplePoints: false, notified: false, needsPointSelection: false };
+    return { hasMultiplePoints: points.length > 1, points, notified: false, needsPointSelection: points.length > 1 };
   }
 
   console.log(`✅ [Massive Failure] Mensagem de notificação enviada para ${clientPhone}`);
 
-  // 6. Registrar notificação no banco
-  try {
-    await storage.addFailureNotification({
-      failureId: activeFailure.id,
-      conversationId,
-      clientPhone,
-      notificationType: "failure",
-      wasRead: false,
-    });
-    console.log(`📝 [Massive Failure] Notificação registrada no banco`);
-  } catch (error) {
-    console.error("❌ [Massive Failure] Erro ao registrar notificação:", error);
+  // 8. Registrar TODAS as notificações no banco
+  for (const { failure } of pointsWithFailures) {
+    try {
+      await storage.addFailureNotification({
+        failureId: failure.id,
+        conversationId,
+        clientPhone,
+        notificationType: "failure",
+        wasRead: false,
+      });
+      console.log(`📝 [Massive Failure] Notificação registrada para falha ${failure.id}`);
+    } catch (error) {
+      console.error(`❌ [Massive Failure] Erro ao registrar notificação para falha ${failure.id}:`, error);
+    }
   }
 
-  // 7. Transferir conversa para atendimento humano (semi-bloqueio)
+  // 9. Transferir conversa para atendimento humano
   try {
     await storage.updateConversation(conversationId, {
       transferredToHuman: true,
@@ -200,5 +251,10 @@ export async function checkAndNotifyMassiveFailure(
     console.error("❌ [Massive Failure] Erro ao transferir conversa:", error);
   }
 
-  return { hasMultiplePoints: false, notified: true, needsPointSelection: false };
+  return { 
+    hasMultiplePoints: points.length > 1, 
+    points, 
+    notified: true, 
+    needsPointSelection: points.length > 1 
+  };
 }
