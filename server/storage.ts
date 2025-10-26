@@ -2414,32 +2414,61 @@ export class DbStorage implements IStorage {
     const usageMetrics = await getUsageMetrics();
     const upstashCost = await getUpstashCost();
     
+    // Calcular custo do mês anterior (30-60 dias atrás)
+    const previousMonthCost = usageMetrics.total60Days.cost - usageMetrics.total30Days.cost;
+    const currentMonthCost = usageMetrics.total30Days.cost + upstashCost;
+    const costChange = previousMonthCost > 0 
+      ? ((currentMonthCost - previousMonthCost) / previousMonthCost) * 100
+      : 0;
+    
     const estimatedCost = {
-      total: usageMetrics.total30Days.cost + upstashCost,
+      total: currentMonthCost,
       openai: usageMetrics.total30Days.cost,
-      upstash: upstashCost
+      upstash: upstashCost,
+      changePercent: Number(costChange.toFixed(1))
     };
 
-    // Usuários ativos
+    // Usuários ativos hoje vs ontem
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
     const allUsers = await db.select().from(schema.users);
     const activeToday = allUsers.filter(u => 
       u.lastLoginAt && new Date(u.lastLoginAt) > today
     );
+    const activeYesterday = allUsers.filter(u => 
+      u.lastLoginAt && new Date(u.lastLoginAt) > yesterday && new Date(u.lastLoginAt) <= today
+    );
+    
+    const usersChange = activeYesterday.length > 0
+      ? ((activeToday.length - activeYesterday.length) / activeYesterday.length) * 100
+      : 0;
 
     const activeUsers = {
       total: activeToday.length,
       admins: activeToday.filter(u => u.role === 'ADMIN').length,
       supervisors: activeToday.filter(u => u.role === 'SUPERVISOR').length,
-      agents: activeToday.filter(u => u.role === 'AGENT').length
+      agents: activeToday.filter(u => u.role === 'AGENT').length,
+      changePercent: Number(usersChange.toFixed(1))
     };
 
-    // ✅ DADOS REAIS - Eventos de segurança rastreados
+    // ✅ DADOS REAIS - Eventos de segurança rastreados (últimas 24h vs 24h anteriores)
     const { getSecurityStats } = await import('./lib/security-events');
-    const securityStats = await getSecurityStats(30); // últimos 30 dias
+    const securityStats24h = await getSecurityStats(1); // últimas 24h
+    const securityStatsPrevious24h = await getSecurityStats(2); // últimas 48h
+    
+    // Calcular apenas as 24h anteriores (48h total - 24h recentes)
+    const previous24hTotal = securityStatsPrevious24h.total - securityStats24h.total;
+    const previous24hFailedLogins = securityStatsPrevious24h.failedLogins - securityStats24h.failedLogins;
+    
+    const securityChange = previous24hTotal > 0
+      ? ((securityStats24h.total - previous24hTotal) / previous24hTotal) * 100
+      : 0;
     
     const securityEvents = {
-      total: securityStats.total,
-      failedLogins: securityStats.failedLogins
+      total: securityStats24h.total,
+      failedLogins: securityStats24h.failedLogins,
+      changePercent: Number(securityChange.toFixed(1))
     };
 
     // ✅ DADOS REAIS - Mensagens diárias dos últimos 30 dias
