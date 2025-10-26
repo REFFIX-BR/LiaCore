@@ -257,10 +257,9 @@ export default function Monitor() {
       }
       // resolvedSubFilter === "all" -> show all, passesResolvedSubFilter stays true
     } else if (viewMode === "todas") {
-      // Todas: mostra conversas ativas E finalizadas, excluindo fila de espera
-      passesViewModeFilter = conv.status === "active" 
-        ? !(conv.transferredToHuman === true && conv.assignedTo === null) 
-        : conv.status === "resolved";
+      // Todas: mostra apenas conversas ATIVAS, excluindo fila de espera (aguardando)
+      // Conversas finalizadas aparecem APENAS na aba "Finalizadas"
+      passesViewModeFilter = conv.status === "active" && !(conv.transferredToHuman === true && conv.assignedTo === null);
     }
 
     if (activeDepartment !== "all") {
@@ -302,9 +301,9 @@ export default function Monitor() {
           passesResolvedSubFilter = c.autoClosed === true;
         }
       } else if (viewMode === "todas") {
-        passesViewModeFilter = c.status === "active" 
-          ? !(c.transferredToHuman === true && c.assignedTo === null) 
-          : c.status === "resolved";
+        // Todas: mostra apenas conversas ATIVAS, excluindo fila de espera (aguardando)
+        // Conversas finalizadas aparecem APENAS na aba "Finalizadas"
+        passesViewModeFilter = c.status === "active" && !(c.transferredToHuman === true && c.assignedTo === null);
       }
 
       // Department filter
