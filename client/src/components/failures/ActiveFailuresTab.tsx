@@ -180,9 +180,10 @@ export default function ActiveFailuresTab() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        {failure.affectedRegions?.type === 'predefined' 
-                          ? `${failure.affectedRegions.regionIds?.length || 0} regiões`
-                          : `${failure.affectedRegions?.custom?.length || 0} regiões`}
+                        {(() => {
+                          const count = failure.affectedRegions?.custom?.length || 0;
+                          return `${count} ${count === 1 ? 'região' : 'regiões'}`;
+                        })()}
                       </Badge>
                     </TableCell>
                     <TableCell>
