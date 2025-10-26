@@ -346,6 +346,14 @@ export interface IStorage {
   markNotificationAsRead(id: string, clientResponse?: string): Promise<void>;
   getNotifiedClientsForFailure(failureId: string): Promise<string[]>; // Retorna array de telefones notificados
   
+  // Announcements
+  getAllAnnouncements(): Promise<any[]>;
+  getActiveAnnouncements(): Promise<any[]>; // active = true e dentro do período de exibição
+  getAnnouncement(id: string): Promise<any | undefined>;
+  addAnnouncement(announcement: any): Promise<any>;
+  updateAnnouncement(id: string, updates: any): Promise<any>;
+  deleteAnnouncement(id: string): Promise<void>;
+  
   // Massive Failure Metrics
   getMassiveFailureMetrics(): Promise<{
     activeFailures: number;
@@ -1650,6 +1658,31 @@ export class MemStorage implements IStorage {
       failuresBySeverity: { low: 0, medium: 0, high: 0, critical: 0 },
       recentFailures: []
     };
+  }
+
+  // Announcements
+  async getAllAnnouncements(): Promise<any[]> {
+    return [];
+  }
+
+  async getActiveAnnouncements(): Promise<any[]> {
+    return [];
+  }
+
+  async getAnnouncement(id: string): Promise<any | undefined> {
+    return undefined;
+  }
+
+  async addAnnouncement(announcement: any): Promise<any> {
+    return { ...announcement, id: randomUUID(), createdAt: new Date(), updatedAt: new Date() };
+  }
+
+  async updateAnnouncement(id: string, updates: any): Promise<any> {
+    return { ...updates, id };
+  }
+
+  async deleteAnnouncement(id: string): Promise<void> {
+    // Stub - no-op
   }
 }
 
@@ -4033,6 +4066,57 @@ export class DbStorage implements IStorage {
       failuresBySeverity,
       recentFailures,
     };
+  }
+
+  // Announcements
+  async getAllAnnouncements(): Promise<any[]> {
+    return await db.select()
+      .from(schema.announcements)
+      .orderBy(desc(schema.announcements.priority), desc(schema.announcements.createdAt));
+  }
+
+  async getActiveAnnouncements(): Promise<any[]> {
+    const now = new Date();
+    return await db.select()
+      .from(schema.announcements)
+      .where(
+        and(
+          eq(schema.announcements.active, true),
+          lte(schema.announcements.startDate, now), // startDate <= now (já começou)
+          or(
+            isNull(schema.announcements.endDate),
+            gte(schema.announcements.endDate, now) // endDate >= now (ainda não terminou)
+          )
+        )
+      )
+      .orderBy(desc(schema.announcements.priority), desc(schema.announcements.createdAt));
+  }
+
+  async getAnnouncement(id: string): Promise<any | undefined> {
+    const [announcement] = await db.select()
+      .from(schema.announcements)
+      .where(eq(schema.announcements.id, id));
+    return announcement;
+  }
+
+  async addAnnouncement(announcement: any): Promise<any> {
+    const [created] = await db.insert(schema.announcements)
+      .values(announcement)
+      .returning();
+    return created;
+  }
+
+  async updateAnnouncement(id: string, updates: any): Promise<any> {
+    const [updated] = await db.update(schema.announcements)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(schema.announcements.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteAnnouncement(id: string): Promise<void> {
+    await db.delete(schema.announcements)
+      .where(eq(schema.announcements.id, id));
   }
 }
 

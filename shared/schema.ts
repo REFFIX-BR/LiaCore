@@ -788,6 +788,29 @@ export const failureNotifications = pgTable("failure_notifications", {
   sentAtIdx: index("failure_notifications_sent_at_idx").on(table.sentAt),
 }));
 
+// ==================== MÓDULO DE ANÚNCIOS/COMUNICADOS ====================
+
+// Tabela de Anúncios da Empresa
+export const announcements = pgTable("announcements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(), // Título do anúncio
+  message: text("message").notNull(), // Mensagem completa
+  type: text("type").notNull().default("info"), // 'info', 'warning', 'alert', 'success'
+  priority: integer("priority").notNull().default(0), // Prioridade (maior = mais importante)
+  active: boolean("active").notNull().default(true), // Se está ativo
+  
+  startDate: timestamp("start_date").defaultNow(), // Quando começa a exibir
+  endDate: timestamp("end_date"), // Quando para de exibir (opcional)
+  
+  createdBy: varchar("created_by").notNull(), // ID do usuário que criou
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  activeIdx: index("announcements_active_idx").on(table.active),
+  priorityIdx: index("announcements_priority_idx").on(table.priority),
+  startDateIdx: index("announcements_start_date_idx").on(table.startDate),
+}));
+
 // Zod Schemas
 export const insertRegionSchema = createInsertSchema(regions).omit({
   id: true,
@@ -825,3 +848,18 @@ export type UpdateMassiveFailure = z.infer<typeof updateMassiveFailureSchema>;
 
 export type FailureNotification = typeof failureNotifications.$inferSelect;
 export type InsertFailureNotification = z.infer<typeof insertFailureNotificationSchema>;
+
+export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  type: z.enum(["info", "warning", "alert", "success"]).default("info"),
+  priority: z.number().int().min(0).default(0),
+});
+
+export const updateAnnouncementSchema = insertAnnouncementSchema.partial();
+
+export type Announcement = typeof announcements.$inferSelect;
+export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+export type UpdateAnnouncement = z.infer<typeof updateAnnouncementSchema>;

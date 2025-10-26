@@ -8316,13 +8316,100 @@ A resposta deve:
   // GET /api/failures/:id/notifications - Obter notificações de uma falha
   app.get("/api/failures/:id/notifications", authenticate, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id} = req.params;
       const notifications = await storage.getFailureNotificationsByFailureId(id);
 
       return res.json(notifications);
     } catch (error) {
       console.error("❌ [Failures] Error fetching notifications:", error);
       return res.status(500).json({ error: "Erro ao buscar notificações" });
+    }
+  });
+
+  // ==================== ANNOUNCEMENTS ROUTES ====================
+
+  // GET /api/announcements - Listar todos os anúncios
+  app.get("/api/announcements", authenticate, async (req, res) => {
+    try {
+      const announcements = await storage.getAllAnnouncements();
+      return res.json(announcements);
+    } catch (error) {
+      console.error("❌ [Announcements] Error fetching announcements:", error);
+      return res.status(500).json({ error: "Erro ao buscar anúncios" });
+    }
+  });
+
+  // GET /api/announcements/active - Listar apenas anúncios ativos
+  app.get("/api/announcements/active", authenticate, async (req, res) => {
+    try {
+      const announcements = await storage.getActiveAnnouncements();
+      return res.json(announcements);
+    } catch (error) {
+      console.error("❌ [Announcements] Error fetching active announcements:", error);
+      return res.status(500).json({ error: "Erro ao buscar anúncios ativos" });
+    }
+  });
+
+  // POST /api/announcements - Criar novo anúncio
+  app.post("/api/announcements", authenticate, async (req, res) => {
+    try {
+      if (!req.user?.id) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
+      }
+
+      const data = {
+        ...req.body,
+        createdBy: req.user.id,
+        startDate: req.body.startDate ? new Date(req.body.startDate) : new Date(),
+        endDate: req.body.endDate ? new Date(req.body.endDate) : null,
+      };
+
+      const announcement = await storage.addAnnouncement(data);
+
+      console.log(`✅ [Announcements] Novo anúncio criado - ID: ${announcement.id}, Título: ${announcement.title}`);
+
+      return res.status(201).json(announcement);
+    } catch (error) {
+      console.error("❌ [Announcements] Error creating announcement:", error);
+      return res.status(500).json({ error: "Erro ao criar anúncio" });
+    }
+  });
+
+  // PATCH /api/announcements/:id - Atualizar anúncio
+  app.patch("/api/announcements/:id", authenticate, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const updates = {
+        ...req.body,
+        startDate: req.body.startDate ? new Date(req.body.startDate) : undefined,
+        endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
+      };
+
+      const announcement = await storage.updateAnnouncement(id, updates);
+
+      console.log(`✅ [Announcements] Anúncio atualizado - ID: ${id}`);
+
+      return res.json(announcement);
+    } catch (error) {
+      console.error("❌ [Announcements] Error updating announcement:", error);
+      return res.status(500).json({ error: "Erro ao atualizar anúncio" });
+    }
+  });
+
+  // DELETE /api/announcements/:id - Deletar anúncio
+  app.delete("/api/announcements/:id", authenticate, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      await storage.deleteAnnouncement(id);
+
+      console.log(`✅ [Announcements] Anúncio deletado - ID: ${id}`);
+
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("❌ [Announcements] Error deleting announcement:", error);
+      return res.status(500).json({ error: "Erro ao deletar anúncio" });
     }
   });
 
