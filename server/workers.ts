@@ -334,16 +334,18 @@ if (redisConnection) {
       }
 
       // 3.5 MASSIVE FAILURE DETECTION - Check for active failures affecting this client
+      let multiplePointsContext = '';
       try {
-        const wasNotifiedOfFailure = await checkAndNotifyMassiveFailure(
+        const failureResult = await checkAndNotifyMassiveFailure(
           conversationId,
           fromNumber,
           conversation.clientDocument,
-          evolutionInstance,
+          evolutionInstance || 'Principal',
           sendWhatsAppMessage
         );
 
-        if (wasNotifiedOfFailure) {
+        // Se cliente já foi notificado de falha, interromper
+        if (failureResult.notified) {
           console.log(`🚨 [Massive Failure] Cliente notificado de falha massiva - interrompendo processamento normal`);
           
           // Store user message
@@ -367,6 +369,17 @@ if (redisConnection) {
             interceptedByMassiveFailure: true,
             reason: 'massive_failure_active',
           };
+        }
+
+        // Se houver múltiplos pontos, injetar contexto para IA perguntar
+        if (failureResult.needsPointSelection && failureResult.points) {
+          console.log(`🔀 [Massive Failure] Injetando contexto de ${failureResult.points.length} pontos para IA`);
+          
+          const pointsList = failureResult.points
+            .map((p, idx) => `${idx + 1}. **${p.bairro}** - ${p.endereco}${p.complemento ? ', ' + p.complemento : ''} (${p.cidade})`)
+            .join('\n');
+
+          multiplePointsContext = `\n\n---\n**CONTEXTO SISTEMA: Cliente possui ${failureResult.points.length} pontos de instalação:**\n${pointsList}\n\n**INSTRUÇÃO:** Se o cliente relatar problema técnico (internet, conexão, etc), você DEVE perguntar qual desses endereços está com problema antes de prosseguir. Use a função 'selecionar_ponto_instalacao' após a confirmação do cliente.\n---\n`;
         }
       } catch (failureError) {
         console.error(`❌ [Massive Failure] Erro ao verificar falha massiva:`, failureError);
@@ -408,7 +421,7 @@ if (redisConnection) {
         // Se não tiver imageSource válido, buscar base64 do banco de dados
         if (!imageSource) {
           console.log(`📥 [Worker] No imageUrl, fetching from database...`);
-          const messages = await storage.getMessagesByConversation(conversationId);
+          const messages = await storage.getMessagesByConversationId(conversationId);
           const lastMessage = messages[0]; // Mensagem mais recente
           
           if (lastMessage?.imageBase64) {
@@ -525,6 +538,12 @@ if (redisConnection) {
       } catch (docError) {
         console.error(`❌ [Worker] Erro ao detectar/salvar documento:`, docError);
         // Não falhar o processamento por causa disso
+      }
+
+      // 7.5. Injetar contexto de múltiplos pontos (se houver)
+      if (multiplePointsContext) {
+        enhancedMessage = enhancedMessage + multiplePointsContext;
+        console.log(`🔀 [Worker] Contexto de múltiplos pontos injetado na mensagem`);
       }
 
       // 8. Send message to OpenAI and get response

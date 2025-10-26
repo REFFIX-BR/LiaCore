@@ -602,6 +602,72 @@ export async function abrirTicketCRM(
 }
 
 /**
+ * Seleciona o ponto de instalação do cliente (quando possui múltiplos pontos)
+ * @param numeroPonto Número do ponto selecionado (1, 2, 3...)
+ * @param conversationContext Contexto da conversa
+ * @param storage Interface de storage
+ * @returns Confirmação da seleção com dados do ponto
+ */
+export async function selecionarPontoInstalacao(
+  numeroPonto: string,
+  conversationContext: { conversationId: string },
+  storage: IStorage
+): Promise<{ selecionado: boolean; ponto: any; mensagem: string }> {
+  try {
+    // Validação de segurança OBRIGATÓRIA
+    if (!conversationContext || !conversationContext.conversationId) {
+      console.error(`❌ [AI Tool Security] Tentativa de seleção sem contexto de conversa`);
+      throw new Error("Contexto de segurança é obrigatório para seleção de ponto");
+    }
+
+    // Validação: conversa deve existir no banco
+    const conversation = await storage.getConversation(conversationContext.conversationId);
+    if (!conversation) {
+      console.error(`❌ [AI Tool Security] Tentativa de seleção com conversationId inválido`);
+      throw new Error("Conversação não encontrada");
+    }
+
+    console.log(`🏠 [AI Tool] Selecionando ponto ${numeroPonto} para conversa ${conversationContext.conversationId}`);
+
+    // Buscar pontos de instalação do CRM
+    const { fetchClientInstallationPoints } = await import('./lib/massive-failure-handler');
+    
+    if (!conversation.clientDocument) {
+      throw new Error("CPF/CNPJ não disponível para buscar pontos de instalação");
+    }
+
+    const points = await fetchClientInstallationPoints(conversation.clientDocument);
+    
+    if (!points || points.length === 0) {
+      throw new Error("Nenhum ponto de instalação encontrado");
+    }
+
+    // Encontrar o ponto selecionado
+    const selectedPoint = points.find(p => p.numero === numeroPonto);
+    
+    if (!selectedPoint) {
+      throw new Error(`Ponto ${numeroPonto} não encontrado. Pontos disponíveis: ${points.map(p => p.numero).join(', ')}`);
+    }
+
+    // Salvar seleção na conversa
+    await storage.updateConversation(conversationContext.conversationId, {
+      selectedInstallationPoint: selectedPoint
+    });
+
+    console.log(`✅ [AI Tool] Ponto ${numeroPonto} selecionado: ${selectedPoint.cidade}/${selectedPoint.bairro} - ${selectedPoint.endereco}`);
+
+    return {
+      selecionado: true,
+      ponto: selectedPoint,
+      mensagem: `Ponto selecionado: ${selectedPoint.bairro} - ${selectedPoint.endereco}${selectedPoint.complemento ? ', ' + selectedPoint.complemento : ''} (${selectedPoint.cidade})`
+    };
+  } catch (error) {
+    console.error("❌ [AI Tool] Erro ao selecionar ponto:", error);
+    throw error;
+  }
+}
+
+/**
  * Roteia conversa para assistente especializado (NÃO marca como transferido para humano)
  * @param departamento Nome do departamento/assistente especializado
  * @param motivo Motivo do roteamento
@@ -674,6 +740,12 @@ export async function executeAssistantTool(
         throw new Error("Parâmetros 'resumo', 'setor' e 'motivo' são obrigatórios para abrir_ticket_crm");
       }
       return await abrirTicketCRM(args.resumo, args.setor, args.motivo, context, storage);
+
+    case 'selecionar_ponto_instalacao':
+      if (!args.numeroPonto) {
+        throw new Error("Parâmetro 'numeroPonto' é obrigatório para selecionar_ponto_instalacao");
+      }
+      return await selecionarPontoInstalacao(args.numeroPonto, context, storage);
 
     default:
       throw new Error(`Tool não implementada: ${toolName}`);
