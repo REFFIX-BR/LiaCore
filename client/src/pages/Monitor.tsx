@@ -16,10 +16,9 @@ import { useAuth } from "@/lib/auth-context";
 
 export default function Monitor() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState("all");
   const [activeDepartment, setActiveDepartment] = useState("all");
   const [resolvedSubFilter, setResolvedSubFilter] = useState("all"); // all, ai, agent, auto
-  const [viewMode, setViewMode] = useState<"todas" | "ia_atendendo" | "aguardando" | "em_atendimento">("todas"); // NEW: 4 estados
+  const [viewMode, setViewMode] = useState<"todas" | "ia_atendendo" | "aguardando" | "em_atendimento" | "finalizadas">("todas"); // NEW: 5 estados
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [allMessages, setAllMessages] = useState<any[]>([]);
@@ -225,22 +224,13 @@ export default function Monitor() {
     { id: "cancelamento", label: "Cancelamento", value: "cancelamento" },
   ];
 
-  const filters = [
-    { id: "all", label: "Todas" },
-    { id: "transfer", label: "Transferidas" },
-    { id: "ouvidoria", label: "Ouvidoria" },
-    { id: "alerts", label: "Com Alertas" },
-    { id: "resolved", label: "Finalizadas" },
-  ];
-
   const filteredConversations = conversations.filter(conv => {
-    let passesStatusFilter = true;
     let passesDepartmentFilter = true;
     let passesSearchFilter = true;
     let passesResolvedSubFilter = true;
     let passesViewModeFilter = true;
 
-    // FIRST: Apply viewMode filter (4 estados)
+    // Apply viewMode filter (5 estados)
     if (viewMode === "ia_atendendo") {
       // IA Atendendo: conversas ativas sendo atendidas pela IA (não transferidas)
       passesViewModeFilter = conv.status === "active" && !conv.transferredToHuman;
@@ -250,34 +240,9 @@ export default function Monitor() {
     } else if (viewMode === "em_atendimento") {
       // Em Atendimento: transferidas E com atendente atribuído
       passesViewModeFilter = conv.status === "active" && conv.transferredToHuman === true && conv.assignedTo !== null;
-    }
-    // viewMode === "todas" -> show all active/resolved, passesViewModeFilter stays true
-
-    // SECOND: Apply status filter (abas: Todas, Transferidas, Ouvidoria, Alertas, Finalizadas)
-    // When viewMode is not "todas", adapt the logic to avoid contradictions
-    if (activeFilter === "alerts") {
-      passesStatusFilter = alerts.some(alert => alert.conversationId === conv.id);
-    } else if (activeFilter === "all") {
-      // Adapt logic based on viewMode to avoid contradictions
-      if (viewMode === "todas") {
-        // Original behavior: Show active conversations EXCEPT those waiting in transfer queue
-        passesStatusFilter = conv.status === "active" && !(conv.transferredToHuman === true && conv.assignedTo === null);
-      } else {
-        // When viewMode is specific, "Todas" just means "all within this viewMode"
-        passesStatusFilter = conv.status === "active";
-      }
-    } else if (activeFilter === "transfer") {
-      // Only makes sense in "todas" mode or already filtered by viewMode
-      if (viewMode === "todas") {
-        passesStatusFilter = conv.status === "active" && conv.transferredToHuman === true && conv.assignedTo === null;
-      } else {
-        // Already filtered by viewMode, just ensure active
-        passesStatusFilter = conv.status === "active";
-      }
-    } else if (activeFilter === "ouvidoria") {
-      passesStatusFilter = conv.assistantType === "ouvidoria";
-    } else if (activeFilter === "resolved") {
-      passesStatusFilter = conv.status === "resolved";
+    } else if (viewMode === "finalizadas") {
+      // Finalizadas: conversas resolvidas nas últimas 12 horas
+      passesViewModeFilter = conv.status === "resolved";
       
       // Apply sub-filter for resolved conversations
       if (resolvedSubFilter === "ai") {
@@ -291,6 +256,11 @@ export default function Monitor() {
         passesResolvedSubFilter = conv.autoClosed === true;
       }
       // resolvedSubFilter === "all" -> show all, passesResolvedSubFilter stays true
+    } else if (viewMode === "todas") {
+      // Todas: mostra conversas ativas E finalizadas, excluindo fila de espera
+      passesViewModeFilter = conv.status === "active" 
+        ? !(conv.transferredToHuman === true && conv.assignedTo === null) 
+        : conv.status === "resolved";
     }
 
     if (activeDepartment !== "all") {
@@ -304,14 +274,14 @@ export default function Monitor() {
         conv.clientName.toLowerCase().includes(searchLower);
     }
 
-    return passesViewModeFilter && passesStatusFilter && passesDepartmentFilter && passesSearchFilter && passesResolvedSubFilter;
+    return passesViewModeFilter && passesDepartmentFilter && passesSearchFilter && passesResolvedSubFilter;
   });
 
   const getConversationCountByDepartment = (deptValue: string) => {
     return conversations.filter(c => {
       let passesDepartmentFilter = true;
-      let passesStatusFilter = true;
       let passesViewModeFilter = true;
+      let passesResolvedSubFilter = true;
 
       // ViewMode filter
       if (viewMode === "ia_atendendo") {
@@ -320,6 +290,21 @@ export default function Monitor() {
         passesViewModeFilter = c.status === "active" && c.transferredToHuman === true && c.assignedTo === null;
       } else if (viewMode === "em_atendimento") {
         passesViewModeFilter = c.status === "active" && c.transferredToHuman === true && c.assignedTo !== null;
+      } else if (viewMode === "finalizadas") {
+        passesViewModeFilter = c.status === "resolved";
+        
+        // Apply sub-filter for resolved conversations
+        if (resolvedSubFilter === "ai") {
+          passesResolvedSubFilter = !c.resolvedByName && !c.autoClosed;
+        } else if (resolvedSubFilter === "agent") {
+          passesResolvedSubFilter = !!c.resolvedByName && !c.autoClosed;
+        } else if (resolvedSubFilter === "auto") {
+          passesResolvedSubFilter = c.autoClosed === true;
+        }
+      } else if (viewMode === "todas") {
+        passesViewModeFilter = c.status === "active" 
+          ? !(c.transferredToHuman === true && c.assignedTo === null) 
+          : c.status === "resolved";
       }
 
       // Department filter
@@ -327,69 +312,10 @@ export default function Monitor() {
         passesDepartmentFilter = c.assistantType === deptValue;
       }
 
-      // Status filter (adapted to viewMode)
-      if (activeFilter === "alerts") {
-        passesStatusFilter = alerts.some(alert => alert.conversationId === c.id);
-      } else if (activeFilter === "all") {
-        if (viewMode === "todas") {
-          passesStatusFilter = c.status === "active" && !(c.transferredToHuman === true && c.assignedTo === null);
-        } else {
-          passesStatusFilter = c.status === "active";
-        }
-      } else if (activeFilter === "transfer") {
-        if (viewMode === "todas") {
-          passesStatusFilter = c.status === "active" && c.transferredToHuman === true && c.assignedTo === null;
-        } else {
-          passesStatusFilter = c.status === "active";
-        }
-      } else if (activeFilter === "ouvidoria") {
-        passesStatusFilter = c.assistantType === "ouvidoria";
-      } else if (activeFilter === "resolved") {
-        passesStatusFilter = c.status === "resolved";
-      }
-
-      return passesViewModeFilter && passesDepartmentFilter && passesStatusFilter;
+      return passesViewModeFilter && passesDepartmentFilter && passesResolvedSubFilter;
     }).length;
   };
 
-  const getConversationCountByFilter = (filterId: string) => {
-    const filtered = conversations.filter(c => {
-      let passesViewModeFilter = true;
-
-      // Apply viewMode filter
-      if (viewMode === "ia_atendendo") {
-        passesViewModeFilter = c.status === "active" && !c.transferredToHuman;
-      } else if (viewMode === "aguardando") {
-        passesViewModeFilter = c.status === "active" && c.transferredToHuman === true && c.assignedTo === null;
-      } else if (viewMode === "em_atendimento") {
-        passesViewModeFilter = c.status === "active" && c.transferredToHuman === true && c.assignedTo !== null;
-      }
-
-      return passesViewModeFilter;
-    });
-
-    if (filterId === "all") {
-      // Adapt logic based on viewMode
-      if (viewMode === "todas") {
-        return filtered.filter(c => c.status === "active" && !(c.transferredToHuman === true && c.assignedTo === null)).length;
-      } else {
-        return filtered.filter(c => c.status === "active").length;
-      }
-    } else if (filterId === "transfer") {
-      if (viewMode === "todas") {
-        return filtered.filter(c => c.status === "active" && c.transferredToHuman === true && c.assignedTo === null).length;
-      } else {
-        return filtered.filter(c => c.status === "active").length;
-      }
-    } else if (filterId === "ouvidoria") {
-      return filtered.filter(c => c.assistantType === "ouvidoria").length;
-    } else if (filterId === "alerts") {
-      return alerts.filter(alert => filtered.some(c => c.id === alert.conversationId)).length;
-    } else if (filterId === "resolved") {
-      return filtered.filter(c => c.status === "resolved").length;
-    }
-    return 0;
-  };
 
   const getResolvedCountByType = (type: string) => {
     const resolvedConvs = conversations.filter(c => c.status === "resolved");
@@ -675,32 +601,21 @@ export default function Monitor() {
         >
           👤 Em Atendimento
         </Button>
+        <Button
+          variant={viewMode === "finalizadas" ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            setViewMode("finalizadas");
+            setResolvedSubFilter("all"); // Reset sub-filter when entering finalizadas
+          }}
+          data-testid="viewmode-finalizadas"
+          className="gap-2"
+        >
+          📋 Finalizadas
+        </Button>
       </div>
 
-      <div className="flex gap-2">
-        {filters.map((filter) => (
-          <Button
-            key={filter.id}
-            variant={activeFilter === filter.id ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              setActiveFilter(filter.id);
-              if (filter.id === "resolved") {
-                setResolvedSubFilter("all"); // Reset sub-filter when entering resolved
-              }
-            }}
-            data-testid={`filter-${filter.id}`}
-            className="gap-2"
-          >
-            {filter.label}
-            <Badge variant={activeFilter === filter.id ? "secondary" : "outline"} className="ml-1">
-              {getConversationCountByFilter(filter.id)}
-            </Badge>
-          </Button>
-        ))}
-      </div>
-
-      {activeFilter === "resolved" && (
+      {viewMode === "finalizadas" && (
         <div className="flex gap-2 p-3 border rounded-lg bg-muted/30">
           <Button
             variant={resolvedSubFilter === "all" ? "default" : "ghost"}
