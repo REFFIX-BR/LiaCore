@@ -660,6 +660,7 @@ export const sales = pgTable("sales", {
   // Tracking
   pendingItems: text("pending_items").array().default(sql`'{}'::text[]`), // Itens pendentes
   observations: text("observations"), // Observações especiais
+  notes: text("notes"), // Notas internas da equipe comercial
   
   // UTM Parameters (para rastreamento de origem)
   utmSource: text("utm_source"),
