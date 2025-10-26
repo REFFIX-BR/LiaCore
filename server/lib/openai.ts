@@ -1677,7 +1677,7 @@ Fonte: ${fonte}`;
               if (ponto.totalVencidos > 0) {
                 menuFormatado += `   ⚠️ ${ponto.totalVencidos} boleto(s) vencido(s)\n`;
               }
-              menuFormatado += `   💰 Total: R$ ${ponto.valorTotal.toFixed(2)}\n\n`;
+              menuFormatado += `   💰 Total: R$ ${ponto.valorVencido.toFixed(2)}\n\n`;
             });
             
             menuFormatado += `*Qual endereço você deseja consultar?*\nResponda com o *número* (1, 2, 3...) ou o *nome do bairro/rua*.`;
