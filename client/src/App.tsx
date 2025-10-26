@@ -251,8 +251,12 @@ function AppContent() {
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex h-screen w-full">
         <AppSidebar />
-        <div className="flex flex-col flex-1">
-          <header className="flex items-center justify-between p-4 border-b">
+        <div className="flex flex-col flex-1 relative">
+          {/* Banner de anúncios no topo */}
+          <AnnouncementBanner />
+          
+          {/* Header sobreposto ao banner */}
+          <header className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-4">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground">
@@ -279,7 +283,7 @@ function AppContent() {
               </Tooltip>
             </div>
           </header>
-          <AnnouncementBanner />
+          
           <main className="flex-1 overflow-auto p-6">
             <Router />
           </main>
