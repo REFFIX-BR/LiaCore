@@ -307,7 +307,10 @@ export interface IStorage {
   getAllRegions(): Promise<any[]>;
   getRegion(id: string): Promise<any | undefined>;
   getRegionsByFilters(filters: { state?: string; city?: string; neighborhood?: string }): Promise<any[]>;
+  getCities(): Promise<Array<{ city: string; state: string; neighborhoodCount: number }>>;
+  getNeighborhoodsByCity(city: string, state: string): Promise<any[]>;
   addRegion(region: any): Promise<any>;
+  updateRegion(id: string, updates: any): Promise<any>;
   deleteRegion(id: string): Promise<void>;
   
   // Massive Failures
@@ -1529,8 +1532,20 @@ export class MemStorage implements IStorage {
     return [];
   }
 
+  async getCities(): Promise<Array<{ city: string; state: string; neighborhoodCount: number }>> {
+    return [];
+  }
+
+  async getNeighborhoodsByCity(city: string, state: string): Promise<any[]> {
+    return [];
+  }
+
   async addRegion(region: any): Promise<any> {
     return { ...region, id: randomUUID(), createdAt: new Date() };
+  }
+
+  async updateRegion(id: string, updates: any): Promise<any> {
+    return { ...updates, id };
   }
 
   async deleteRegion(id: string): Promise<void> {
@@ -3529,6 +3544,49 @@ export class DbStorage implements IStorage {
       .orderBy(schema.regions.state, schema.regions.city, schema.regions.neighborhood);
   }
 
+  async getCities(): Promise<Array<{ city: string; state: string; neighborhoodCount: number }>> {
+    const regions = await this.getAllRegions();
+    
+    // Agrupar por cidade e contar bairros
+    const cityMap = new Map<string, { state: string; count: number }>();
+    
+    for (const region of regions) {
+      const key = `${region.city}|${region.state}`;
+      if (cityMap.has(key)) {
+        const current = cityMap.get(key)!;
+        cityMap.set(key, { ...current, count: current.count + 1 });
+      } else {
+        cityMap.set(key, { state: region.state, count: 1 });
+      }
+    }
+    
+    // Converter para array
+    const cities = Array.from(cityMap.entries()).map(([key, value]) => {
+      const [city, state] = key.split('|');
+      return {
+        city,
+        state,
+        neighborhoodCount: value.count,
+      };
+    });
+    
+    // Ordenar por estado e cidade
+    return cities.sort((a, b) => {
+      if (a.state !== b.state) return a.state.localeCompare(b.state);
+      return a.city.localeCompare(b.city);
+    });
+  }
+
+  async getNeighborhoodsByCity(city: string, state: string): Promise<any[]> {
+    return await db.select()
+      .from(schema.regions)
+      .where(and(
+        eq(schema.regions.city, city),
+        eq(schema.regions.state, state)
+      ))
+      .orderBy(schema.regions.neighborhood);
+  }
+
   async addRegion(region: any): Promise<any> {
     const [created] = await db.insert(schema.regions)
       .values({
@@ -3537,6 +3595,14 @@ export class DbStorage implements IStorage {
       })
       .returning();
     return created;
+  }
+
+  async updateRegion(id: string, updates: any): Promise<any> {
+    const [updated] = await db.update(schema.regions)
+      .set(updates)
+      .where(eq(schema.regions.id, id))
+      .returning();
+    return updated;
   }
 
   async deleteRegion(id: string): Promise<void> {
