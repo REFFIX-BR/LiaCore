@@ -607,8 +607,19 @@ if (redisConnection) {
               let mensagem = `📋 *Boletos do endereço selecionado*\n\n`;
               
               boletosResult.boletos.forEach((boleto, index) => {
+                // Formatar data de ISO (YYYY-MM-DD) para BR (DD/MM/YYYY)
+                let dataFormatada = boleto.DATA_VENCIMENTO;
+                try {
+                  if (boleto.DATA_VENCIMENTO?.includes('-')) {
+                    const [ano, mes, dia] = boleto.DATA_VENCIMENTO.split('-');
+                    dataFormatada = `${dia}/${mes}/${ano}`;
+                  }
+                } catch (e) {
+                  console.warn(`⚠️ [Worker] Erro ao formatar data: ${boleto.DATA_VENCIMENTO}`);
+                }
+                
                 mensagem += `📄 *Fatura TR Telecom*${boleto.STATUS?.toUpperCase().includes('VENCIDO') ? ' *(Vencida)*' : ''}\n`;
-                mensagem += `🗓️ *Vencimento:* ${boleto.DATA_VENCIMENTO}\n`;
+                mensagem += `🗓️ *Vencimento:* ${dataFormatada}\n`;
                 mensagem += `💰 *Valor:* R$ ${boleto.VALOR_TOTAL}\n\n`;
                 mensagem += `📋 *Código de Barras (Linha Digitável):*\n${boleto.CODIGO_BARRA_TRANSACAO}\n\n`;
                 mensagem += `📱 *Para Copiar e Colar (SEM espaços):*\n${boleto.CODIGO_BARRA_TRANSACAO.replace(/\D/g, '')}\n\n`;
