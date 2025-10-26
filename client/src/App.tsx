@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
+import { AnnouncementBanner } from "@/components/AnnouncementBanner";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
@@ -274,6 +275,7 @@ function AppContent() {
               </Tooltip>
             </div>
           </header>
+          <AnnouncementBanner />
           <main className="flex-1 overflow-auto p-6">
             <Router />
           </main>
