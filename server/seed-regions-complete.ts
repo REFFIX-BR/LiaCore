@@ -117,24 +117,24 @@ const completeRegionsData = [
   { state: "RJ", city: "Paraíba do Sul", neighborhood: "WERNECK / GLORIA" },
   { state: "RJ", city: "Paraíba do Sul", neighborhood: "WERNECK ALVORADA" },
   
-  // LEVY GASPARIAN (COMENDADOR LEVY GASPARIAN) - RJ (18 bairros)
+  // LEVY GASPARIAN (COMENDADOR LEVY GASPARIAN) - RJ (20 bairros)
   { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "AFONSO ARINOS" },
   { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "BAIRRO DAS FLORES" },
   { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "BOCA DA BARRA" },
   { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "CENTRO" },
-  { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "CENTRO / BEIRA-RIO" },
-  { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "COMANDADOR LEVY GASPARIAN" },
-  { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "CONJ. LUIZ BENTO ARSON" },
-  { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "ESTRADA UNIÃO INDUSTRIAL" },
-  { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "FAZENDA BOM FIM" },
+  { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "CENTRO / BEIRA RIO" },
+  { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "COMENDADOR LEVY GASPARIAN" },
+  { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "CONJ. LUIZ BENTO ARGON" },
+  { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "ESTRADA UNIÃO INDÚSTRIA N" },
+  { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "FABRICA" },
   { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "FERNANDES PINHEIRO" },
   { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "FLORES" },
-  { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "FÁBRICA AMAZÔNAS" },
+  { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "FÁBRICA AMAZONAS" },
   { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "GROTÃO" },
-  { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "GROTÃO II" },
+  { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "GULF" },
   { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "GULF / RAIO DO SOL" },
   { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "LUIZ BENTO" },
-  { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "MONT SERRAT / PARABUNA" },
+  { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "MONT SERRAT / PARAIBUNA" },
   { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "RETA" },
   { state: "RJ", city: "Comendador Levy Gasparian", neighborhood: "RETA / FONSECA ALMEIDA" },
   
@@ -180,7 +180,7 @@ async function seedCompleteRegions() {
     console.log("  - Simão Pereira (MG): 14 bairros");
     console.log("  - Santana do Deserto (MG): 8 bairros");
     console.log("  - Paraíba do Sul (RJ): 45 bairros");
-    console.log("  - Comendador Levy Gasparian (RJ): 19 bairros");
+    console.log("  - Comendador Levy Gasparian (RJ): 20 bairros");
     console.log("  - Chiador (MG): 9 bairros");
     console.log("  - Areal (RJ): 9 bairros");
     
