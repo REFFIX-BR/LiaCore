@@ -150,15 +150,15 @@ const completeRegionsData = [
   { state: "MG", city: "Chiador", neighborhood: "SAPUCAIA DE MINAS" },
   { state: "MG", city: "Chiador", neighborhood: "SITIO PILÕES" },
   
-  // AREAL - RJ (10 bairros)
+  // AREAL - RJ (9 bairros)
   { state: "RJ", city: "Areal", neighborhood: "ALBERTO TORRES" },
   { state: "RJ", city: "Areal", neighborhood: "AREAL" },
-  { state: "RJ", city: "Areal", neighborhood: "BAMPOATA" },
-  { state: "RJ", city: "Areal", neighborhood: "BENOMOSTA VISTA DA SERRA" },
+  { state: "RJ", city: "Areal", neighborhood: "BEMPOSTA" },
+  { state: "RJ", city: "Areal", neighborhood: "CONDOMINIO VISTA DA SERRA" },
   { state: "RJ", city: "Areal", neighborhood: "ESTRADA DO MUNDO NOVO" },
   { state: "RJ", city: "Areal", neighborhood: "FAZENDA NOVA" },
-  { state: "RJ", city: "Areal", neighborhood: "HEROBOKINO SILVA" },
-  { state: "RJ", city: "Areal", neighborhood: "PORTÕES" },
+  { state: "RJ", city: "Areal", neighborhood: "HERMOGÊNIO SILVA" },
+  { state: "RJ", city: "Areal", neighborhood: "PORTOES" },
   { state: "RJ", city: "Areal", neighborhood: "VILA VERDE" },
 ];
 
