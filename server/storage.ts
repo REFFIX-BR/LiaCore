@@ -3489,6 +3489,234 @@ export class DbStorage implements IStorage {
     
     return updated;
   }
+
+  // ==================== MASSIVE FAILURES MODULE ====================
+
+  // Regions
+  async getAllRegions(): Promise<any[]> {
+    return await db.select()
+      .from(schema.regions)
+      .orderBy(schema.regions.state, schema.regions.city, schema.regions.neighborhood);
+  }
+
+  async getRegion(id: string): Promise<any | undefined> {
+    const [region] = await db.select()
+      .from(schema.regions)
+      .where(eq(schema.regions.id, id));
+    return region;
+  }
+
+  async getRegionsByFilters(filters: { state?: string; city?: string; neighborhood?: string }): Promise<any[]> {
+    const conditions = [];
+    
+    if (filters.state) {
+      conditions.push(eq(schema.regions.state, filters.state));
+    }
+    if (filters.city) {
+      conditions.push(eq(schema.regions.city, filters.city));
+    }
+    if (filters.neighborhood) {
+      conditions.push(eq(schema.regions.neighborhood, filters.neighborhood));
+    }
+
+    if (conditions.length === 0) {
+      return this.getAllRegions();
+    }
+
+    return await db.select()
+      .from(schema.regions)
+      .where(and(...conditions))
+      .orderBy(schema.regions.state, schema.regions.city, schema.regions.neighborhood);
+  }
+
+  async addRegion(region: any): Promise<any> {
+    const [created] = await db.insert(schema.regions)
+      .values({
+        ...region,
+        createdAt: new Date(),
+      })
+      .returning();
+    return created;
+  }
+
+  async deleteRegion(id: string): Promise<void> {
+    await db.delete(schema.regions).where(eq(schema.regions.id, id));
+  }
+
+  // Massive Failures
+  async getAllMassiveFailures(): Promise<any[]> {
+    return await db.select()
+      .from(schema.massiveFailures)
+      .orderBy(desc(schema.massiveFailures.startTime));
+  }
+
+  async getActiveMassiveFailures(): Promise<any[]> {
+    return await db.select()
+      .from(schema.massiveFailures)
+      .where(eq(schema.massiveFailures.status, 'active'))
+      .orderBy(desc(schema.massiveFailures.startTime));
+  }
+
+  async getScheduledMassiveFailures(): Promise<any[]> {
+    return await db.select()
+      .from(schema.massiveFailures)
+      .where(eq(schema.massiveFailures.status, 'scheduled'))
+      .orderBy(schema.massiveFailures.startTime);
+  }
+
+  async getMassiveFailure(id: string): Promise<any | undefined> {
+    const [failure] = await db.select()
+      .from(schema.massiveFailures)
+      .where(eq(schema.massiveFailures.id, id));
+    return failure;
+  }
+
+  async addMassiveFailure(failure: any): Promise<any> {
+    const [created] = await db.insert(schema.massiveFailures)
+      .values({
+        ...failure,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return created;
+  }
+
+  async updateMassiveFailure(id: string, updates: any): Promise<any> {
+    const [updated] = await db.update(schema.massiveFailures)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.massiveFailures.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateMassiveFailureStatus(id: string, status: string): Promise<any> {
+    const [updated] = await db.update(schema.massiveFailures)
+      .set({
+        status,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.massiveFailures.id, id))
+      .returning();
+    return updated;
+  }
+
+  async resolveMassiveFailure(id: string, resolutionMessage?: string): Promise<any> {
+    const updates: any = {
+      status: 'resolved',
+      endTime: new Date(),
+      updatedAt: new Date(),
+    };
+
+    if (resolutionMessage) {
+      updates.resolutionMessage = resolutionMessage;
+    }
+
+    const [updated] = await db.update(schema.massiveFailures)
+      .set(updates)
+      .where(eq(schema.massiveFailures.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteMassiveFailure(id: string): Promise<void> {
+    await db.delete(schema.massiveFailures).where(eq(schema.massiveFailures.id, id));
+  }
+
+  async checkActiveFailureForRegion(city: string, neighborhood: string): Promise<any | null> {
+    // Busca falhas ativas que afetam a região especificada
+    const activeFailures = await db.select()
+      .from(schema.massiveFailures)
+      .where(eq(schema.massiveFailures.status, 'active'));
+
+    // Para cada falha ativa, verifica se a região do cliente está nas regiões afetadas
+    for (const failure of activeFailures) {
+      const affectedRegions = failure.affectedRegions as any;
+      
+      // Se for tipo predefined (array de IDs de regions)
+      if (affectedRegions.type === 'predefined' && affectedRegions.regionIds) {
+        const regions = await db.select()
+          .from(schema.regions)
+          .where(inArray(schema.regions.id, affectedRegions.regionIds));
+        
+        const match = regions.find((r: any) => 
+          r.city.toUpperCase() === city.toUpperCase() && 
+          r.neighborhood.toUpperCase() === neighborhood.toUpperCase()
+        );
+        
+        if (match) return failure;
+      }
+      
+      // Se for tipo custom (estrutura JSON livre)
+      if (affectedRegions.type === 'custom' && affectedRegions.custom) {
+        const match = affectedRegions.custom.find((region: any) => 
+          region.city.toUpperCase() === city.toUpperCase() &&
+          region.neighborhoods.some((n: string) => n.toUpperCase() === neighborhood.toUpperCase())
+        );
+        
+        if (match) return failure;
+      }
+    }
+
+    return null;
+  }
+
+  // Failure Notifications
+  async addFailureNotification(notification: any): Promise<any> {
+    const [created] = await db.insert(schema.failureNotifications)
+      .values({
+        ...notification,
+        sentAt: new Date(),
+        wasRead: false,
+      })
+      .returning();
+    return created;
+  }
+
+  async getFailureNotificationsByFailureId(failureId: string): Promise<any[]> {
+    return await db.select()
+      .from(schema.failureNotifications)
+      .where(eq(schema.failureNotifications.failureId, failureId))
+      .orderBy(desc(schema.failureNotifications.sentAt));
+  }
+
+  async getFailureNotificationsByClientPhone(clientPhone: string): Promise<any[]> {
+    return await db.select()
+      .from(schema.failureNotifications)
+      .where(eq(schema.failureNotifications.clientPhone, clientPhone))
+      .orderBy(desc(schema.failureNotifications.sentAt));
+  }
+
+  async markNotificationAsRead(id: string, clientResponse?: string): Promise<void> {
+    const updates: any = {
+      wasRead: true,
+      respondedAt: new Date(),
+    };
+
+    if (clientResponse) {
+      updates.clientResponse = clientResponse;
+    }
+
+    await db.update(schema.failureNotifications)
+      .set(updates)
+      .where(eq(schema.failureNotifications.id, id));
+  }
+
+  async getNotifiedClientsForFailure(failureId: string): Promise<string[]> {
+    const notifications = await db.select({ clientPhone: schema.failureNotifications.clientPhone })
+      .from(schema.failureNotifications)
+      .where(
+        and(
+          eq(schema.failureNotifications.failureId, failureId),
+          eq(schema.failureNotifications.notificationType, 'failure')
+        )
+      );
+    
+    return notifications.map(n => n.clientPhone);
+  }
 }
 
 export const storage = new DbStorage();
