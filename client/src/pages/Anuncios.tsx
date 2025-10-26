@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,13 +89,7 @@ export default function Anuncios() {
   // Mutation para criar
   const createMutation = useMutation({
     mutationFn: async (data: AnnouncementFormData) => {
-      const response = await fetch('/api/announcements', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Erro ao criar anúncio');
+      const response = await apiRequest('/api/announcements', 'POST', data);
       return response.json();
     },
     onSuccess: () => {
@@ -119,13 +113,7 @@ export default function Anuncios() {
   // Mutation para atualizar
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<AnnouncementFormData> }) => {
-      const response = await fetch(`/api/announcements/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Erro ao atualizar anúncio');
+      const response = await apiRequest(`/api/announcements/${id}`, 'PATCH', data);
       return response.json();
     },
     onSuccess: () => {
@@ -150,11 +138,7 @@ export default function Anuncios() {
   // Mutation para deletar
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/announcements/${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Erro ao deletar anúncio');
+      const response = await apiRequest(`/api/announcements/${id}`, 'DELETE');
       return response.json();
     },
     onSuccess: () => {

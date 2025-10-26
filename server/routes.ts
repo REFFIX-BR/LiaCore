@@ -8353,13 +8353,13 @@ A resposta deve:
   // POST /api/announcements - Criar novo anúncio
   app.post("/api/announcements", authenticate, async (req, res) => {
     try {
-      if (!req.user?.id) {
+      if (!req.user?.userId) {
         return res.status(401).json({ error: "Usuário não autenticado" });
       }
 
       const data = {
         ...req.body,
-        createdBy: req.user.id,
+        createdBy: req.user.userId,
         startDate: req.body.startDate ? new Date(req.body.startDate) : new Date(),
         endDate: req.body.endDate ? new Date(req.body.endDate) : null,
       };
