@@ -1659,12 +1659,27 @@ Fonte: ${fonte}`;
             
             console.log(`💾 [Boletos] Menu salvo no Redis - aguardando seleção do cliente (TTL: 5min)`);
             
+            // Construir menu formatado para a IA apresentar ao cliente
+            let menuFormatado = `📍 *Encontrei ${pontos.length} endereços cadastrados no seu CPF:*\n\n`;
+            
+            pontos.forEach((ponto, index) => {
+              const numero = index + 1;
+              menuFormatado += `${numero}️⃣ *${ponto.endereco}*\n`;
+              menuFormatado += `   📌 ${ponto.bairro} - ${ponto.cidade}\n`;
+              if (ponto.totalVencidos > 0) {
+                menuFormatado += `   ⚠️ ${ponto.totalVencidos} boleto(s) vencido(s)\n`;
+              }
+              menuFormatado += `   💰 Total: R$ ${ponto.valorTotal.toFixed(2)}\n\n`;
+            });
+            
+            menuFormatado += `*Qual endereço você deseja consultar?*\nResponda com o *número* (1, 2, 3...) ou o *nome do bairro/rua*.`;
+            
             return JSON.stringify({
               status: "MULTIPLOS_PONTOS_DETECTADOS",
-              mensagem: `Cliente possui ${pontos.length} endereços de instalação. É necessário que o cliente escolha qual endereço deseja consultar os boletos.`,
+              mensagem: menuFormatado,
               totalBoletos,
               pontos: pontosFormatados,
-              instrucao_ia: "IMPORTANTE: Apresente os endereços numerados ao cliente de forma clara e pergunte qual número ele deseja consultar. O próximo sistema irá processar automaticamente a escolha."
+              instrucao_ia: "IMPORTANTE: Copie EXATAMENTE a mensagem acima e envie ao cliente. NÃO altere a formatação. Aguarde a resposta do cliente (número ou nome). O sistema processará automaticamente a escolha dele."
             });
           }
           
