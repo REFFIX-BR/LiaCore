@@ -60,12 +60,13 @@ const completeRegionsData = [
   { state: "MG", city: "Simão Pereira", neighborhood: "SITIO PARAISO" },
   { state: "MG", city: "Simão Pereira", neighborhood: "SOUZA AGUIAR" },
   
-  // SANTANA DO DESERTO - MG (7 bairros)
+  // SANTANA DO DESERTO - MG (8 bairros)
   { state: "MG", city: "Santana do Deserto", neighborhood: "BAIRRO DAS FLORES" },
   { state: "MG", city: "Santana do Deserto", neighborhood: "CENTRO" },
-  { state: "MG", city: "Santana do Deserto", neighborhood: "FAZENDA INDIANA" },
+  { state: "MG", city: "Santana do Deserto", neighborhood: "ERICEIRA" },
+  { state: "MG", city: "Santana do Deserto", neighborhood: "NOVA SANTANA" },
   { state: "MG", city: "Santana do Deserto", neighborhood: "SANTANA DO DESERTO" },
-  { state: "MG", city: "Santana do Deserto", neighborhood: "SERAFIM MIGIANO" },
+  { state: "MG", city: "Santana do Deserto", neighborhood: "SERARIA- MIGLIANO" },
   { state: "MG", city: "Santana do Deserto", neighborhood: "SILVEIRA LOBO" },
   { state: "MG", city: "Santana do Deserto", neighborhood: "SOSSEGO" },
   
@@ -178,7 +179,7 @@ async function seedCompleteRegions() {
     console.log("\nResumo por cidade:");
     console.log("  - Três Rios (RJ): 41 bairros");
     console.log("  - Simão Pereira (MG): 14 bairros");
-    console.log("  - Santana do Deserto (MG): 7 bairros");
+    console.log("  - Santana do Deserto (MG): 8 bairros");
     console.log("  - Paraíba do Sul (RJ): 46 bairros");
     console.log("  - Comendador Levy Gasparian (RJ): 19 bairros");
     console.log("  - Chiador (MG): 9 bairros");
