@@ -32,6 +32,7 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, inspir
 **Lead Capture System**: Comprehensive system for capturing and managing incomplete sales prospects.
 **Ephemeral Installation Point Selection System (Boletos)**: Uses Redis ephemeral storage to allow customers with multiple installation points to select an address for each boleto query, bypassing AI processing.
 **Regional Massive Failure System**: Automated detection and notification system for service outages, including visual region selection, automatic client notification via WhatsApp, and intelligent region matching. Supports multiple installation points by injecting context into AI threads and providing a tool for customer selection.
+**Announcements/Communications System**: Centralized system for company-wide announcements with priority-based rotation display. Features include: (1) Banner component that alternates between active announcements and massive failures (5-second rotation), (2) Full CRUD admin interface (restricted to ADMIN/SUPERVISOR roles), (3) Announcement types (info, warning, alert, success) with customizable priority, (4) Active/inactive toggle and date-range scheduling, (5) Persistent PostgreSQL storage with automatic filtering, (6) Visual banner with color-coded styles and smooth fade transitions.
 
 ### System Design Choices
 - **Admin Tools**: Features for mass-closing abandoned conversations, reprocessing stuck messages, and configuration management.
