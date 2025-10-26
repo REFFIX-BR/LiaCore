@@ -129,6 +129,38 @@ Note: "🌐 Todas" mode shows all conversations except those in "Aguardando" que
 - **Worker Concurrency**: Optimized for messages, images, and NPS workers.
 - **API Key Management**: Robust handling of multi-instance Evolution API keys.
 
+## OpenAI Assistant Tool Configuration
+
+**NEW TOOL PENDING REGISTRATION**: The `selecionar_ponto_instalacao` tool is implemented in code but needs to be registered with the OpenAI Assistants via the OpenAI dashboard or API.
+
+**Tool Definition for Registration**:
+```json
+{
+  "type": "function",
+  "function": {
+    "name": "selecionar_ponto_instalacao",
+    "description": "Registra qual ponto de instalação (endereço) o cliente está reportando problema técnico. Use quando o cliente tiver múltiplos pontos de instalação e confirmar qual deles tem o problema.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "numeroPonto": {
+          "type": "number",
+          "description": "Número do ponto de instalação escolhido pelo cliente (1, 2, 3, etc). Corresponde ao número mostrado na lista de endereços apresentada ao cliente."
+        }
+      },
+      "required": ["numeroPonto"]
+    }
+  }
+}
+```
+
+**Registration Steps**:
+1. Access OpenAI Platform → Assistants → Select assistant (Suporte, Apresentação, etc.)
+2. In "Tools" section, click "Add Tool" → "Function"
+3. Paste the JSON definition above
+4. Save changes
+5. Test with a customer that has multiple installation points (e.g., CPF 10441834701)
+
 ## External Dependencies
 
 **Third-Party Services**:
