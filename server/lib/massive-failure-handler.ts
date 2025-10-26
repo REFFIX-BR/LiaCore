@@ -123,7 +123,10 @@ export async function checkAndNotifyMassiveFailure(
 
   // 6. Transferir conversa para atendimento humano (semi-bloqueio)
   try {
-    await storage.transferConversation(conversationId, "suporte");
+    await storage.updateConversation(conversationId, {
+      transferredToHuman: true,
+      department: "support"
+    });
     console.log(`👤 [Massive Failure] Conversa transferida para atendimento humano`);
   } catch (error) {
     console.error("❌ [Massive Failure] Erro ao transferir conversa:", error);
