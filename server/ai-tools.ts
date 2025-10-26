@@ -691,6 +691,7 @@ export async function selecionarPontoInstalacao(
             conversationId: conversationContext.conversationId,
             clientPhone: conversation.clientId || '',
             notificationType: "failure",
+            messageSent: activeFailure.notificationMessage,
             wasRead: false,
           });
           console.log(`📝 [AI Tool] Notificação de falha massiva registrada no banco`);
