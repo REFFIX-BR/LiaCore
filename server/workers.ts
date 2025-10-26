@@ -335,6 +335,8 @@ if (redisConnection) {
 
       // 3.5 MASSIVE FAILURE DETECTION - Check for active failures affecting this client
       try {
+        console.log(`🔍 [DEBUG Massive Failure] Conversation clientDocument: "${conversation.clientDocument}", clientId: "${conversation.clientId}", chatId: "${conversation.chatId}"`);
+        
         const wasNotifiedOfFailure = await checkAndNotifyMassiveFailure(
           conversationId,
           fromNumber,
