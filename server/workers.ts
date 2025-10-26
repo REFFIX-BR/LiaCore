@@ -642,7 +642,7 @@ if (redisConnection) {
       }
 
       // 8. Send message to OpenAI and get response
-      const result = await sendMessageAndGetResponse(
+      let result = await sendMessageAndGetResponse(
         threadId,
         assistantId,
         enhancedMessage,
@@ -690,12 +690,50 @@ if (redisConnection) {
         });
 
         // 🆕 BLOQUEIO: Não enviar mensagem da Apresentação ao rotear
-        // O cliente já entende que foi roteado pelo contexto, e a mensagem de despedida
-        // deixa o cliente esperando uma resposta do novo assistente que nunca vem
         shouldSendPresentationMessage = false;
-        
-        console.log(`ℹ️ [Worker] Roteamento concluído - novo assistente ${result.assistantTarget} processará próximas mensagens`);
         console.log(`🚫 [Worker] Mensagem de despedida bloqueada - evitando confusão do cliente`);
+        
+        // 🔄 NOVO: Fazer o assistente de destino processar a mensagem original IMEDIATAMENTE
+        console.log(`🔄 [Worker] Reprocessando mensagem com novo assistente ${result.assistantTarget}...`);
+        
+        try {
+          // Reprocessar a mensagem original com o novo assistente
+          const { sendMessageAndGetResponse } = await import('./lib/openai');
+          const newAssistantResult = await sendMessageAndGetResponse(
+            threadId,
+            message,  // Mensagem original do cliente
+            result.assistantTarget,  // Novo assistante (ex: financeiro)
+            conversationId,
+            chatId
+          );
+          
+          // Enviar a resposta do novo assistente
+          if (newAssistantResult.response) {
+            const messageSent = await sendWhatsAppMessage(fromNumber, newAssistantResult.response, evolutionInstance);
+            
+            if (messageSent.success) {
+              // Armazenar resposta do novo assistente
+              await storage.createMessage({
+                conversationId,
+                role: 'assistant',
+                content: newAssistantResult.response,
+                functionCall: newAssistantResult.functionCalls && newAssistantResult.functionCalls.length > 0 
+                  ? newAssistantResult.functionCalls[0]
+                  : undefined,
+              });
+              
+              console.log(`✅ [Worker] Novo assistente ${result.assistantTarget} processou e respondeu com sucesso`);
+            } else {
+              console.error(`❌ [Worker] Falha ao enviar resposta do novo assistente`);
+            }
+          }
+          
+          // Atualizar result com os dados do novo assistente para continuar o fluxo normal
+          result = newAssistantResult;
+        } catch (rerouteError) {
+          console.error(`❌ [Worker] Erro ao reprocessar com novo assistente:`, rerouteError);
+          // Manter fluxo normal sem resposta em caso de erro
+        }
       }
 
       if (result.resolved) {
