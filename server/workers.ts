@@ -697,12 +697,20 @@ if (redisConnection) {
         console.log(`🔄 [Worker] Reprocessando mensagem com novo assistente ${result.assistantTarget}...`);
         
         try {
+          // Converter assistantTarget para ID real do assistente
+          const { ASSISTANT_IDS } = await import('./lib/openai');
+          const newAssistantId = ASSISTANT_IDS[result.assistantTarget as keyof typeof ASSISTANT_IDS];
+          
+          if (!newAssistantId) {
+            throw new Error(`Assistant ID não encontrado para tipo: ${result.assistantTarget}`);
+          }
+          
           // Reprocessar a mensagem original com o novo assistente
           const { sendMessageAndGetResponse } = await import('./lib/openai');
           const newAssistantResult = await sendMessageAndGetResponse(
             threadId,
             message,  // Mensagem original do cliente
-            result.assistantTarget,  // Novo assistante (ex: financeiro)
+            newAssistantId,  // ID real do assistente (asst_xxx)
             conversationId,
             chatId
           );
