@@ -3766,6 +3766,51 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     }
   });
 
+  // Get all conversations history (paginated - for historical review)
+  app.get("/api/monitor/conversations/history/all", authenticateWithTracking, async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
+      const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
+      const search = req.query.search as string | undefined;
+
+      const { conversations, total } = await storage.getAllConversationsHistory({ 
+        limit, 
+        offset,
+        search 
+      });
+      
+      const conversationsWithMessages = await Promise.all(
+        conversations.map(async (conv) => {
+          // Optimized: Get only the last 10 messages from database (DESC order - newest first)
+          const recentMessages = await storage.getRecentMessagesByConversationId(conv.id, 10);
+          
+          // Since messages come in DESC order, the first match is the most recent
+          const lastClientMessage = recentMessages
+            .filter(m => m.role === 'user')[0];
+          
+          const lastAIMessage = recentMessages
+            .filter(m => m.role === 'assistant')[0];
+          
+          return {
+            ...conv,
+            lastClientMessage: lastClientMessage?.content || null,
+            lastAIMessage: lastAIMessage?.content || null,
+          };
+        })
+      );
+      
+      return res.json({
+        conversations: conversationsWithMessages,
+        total,
+        limit,
+        offset
+      });
+    } catch (error) {
+      console.error("Monitor history error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Get conversation details
   app.get("/api/monitor/conversations/:id", authenticateWithTracking, async (req, res) => {
     try {

@@ -18,13 +18,18 @@ export default function Monitor() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeDepartment, setActiveDepartment] = useState("all");
   const [resolvedSubFilter, setResolvedSubFilter] = useState("all"); // all, ai, agent, auto
-  const [viewMode, setViewMode] = useState<"todas" | "ia_atendendo" | "aguardando" | "em_atendimento" | "finalizadas">("todas"); // NEW: 5 estados
+  const [viewMode, setViewMode] = useState<"todas" | "ia_atendendo" | "aguardando" | "em_atendimento" | "finalizadas" | "historico_completo">("todas"); // NEW: 6 estados
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [allMessages, setAllMessages] = useState<any[]>([]);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMoreLocal, setHasMoreLocal] = useState(false);
   const [paginatedMessageIds, setPaginatedMessageIds] = useState<Set<string>>(new Set());
+  
+  // Estado de paginação para histórico completo
+  const [historyPage, setHistoryPage] = useState(0);
+  const [historySearch, setHistorySearch] = useState("");
+  const historyLimit = 50;
 
   // Resetar estado ao trocar de conversa
   useEffect(() => {
@@ -40,6 +45,25 @@ export default function Monitor() {
     queryKey: ["/api/monitor/conversations"],
     queryFn: monitorAPI.getConversations,
     refetchInterval: 5000,
+    enabled: viewMode !== "historico_completo",
+  });
+
+  const { data: historyData, isLoading: historyLoading } = useQuery({
+    queryKey: ["/api/monitor/conversations/history/all", historyPage, historySearch],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        limit: historyLimit.toString(),
+        offset: (historyPage * historyLimit).toString(),
+        ...(historySearch && { search: historySearch }),
+      });
+      const response = await fetch(`/api/monitor/conversations/history/all?${params}`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch history");
+      return response.json();
+    },
+    enabled: viewMode === "historico_completo",
+    refetchInterval: false,
   });
 
   const { data: alerts = [] } = useQuery({
@@ -559,7 +583,7 @@ export default function Monitor() {
         </div>
       </div>
 
-      {/* NEW: Seletor de Modo de Visualização (4 Estados) */}
+      {/* NEW: Seletor de Modo de Visualização (6 Estados) */}
       <div className="flex gap-2 p-4 border-2 border-primary/20 rounded-lg bg-muted/30">
         <div className="flex items-center gap-1 text-sm font-medium text-muted-foreground mr-2">
           Modo de Visualização:
@@ -611,6 +635,19 @@ export default function Monitor() {
           className="gap-2"
         >
           📋 Finalizadas
+        </Button>
+        <Button
+          variant={viewMode === "historico_completo" ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            setViewMode("historico_completo");
+            setHistoryPage(0);
+            setHistorySearch("");
+          }}
+          data-testid="viewmode-historico"
+          className="gap-2"
+        >
+          📜 Histórico Completo
         </Button>
       </div>
 
@@ -667,45 +704,153 @@ export default function Monitor() {
         </div>
       )}
 
-      <Tabs value={activeDepartment} onValueChange={setActiveDepartment} className="w-full">
-        <TabsList className="w-full justify-start">
-          {departments.map((dept) => (
-            <TabsTrigger 
-              key={dept.id} 
-              value={dept.value}
-              data-testid={`tab-${dept.id}`}
-            >
-              {dept.label}
-              <Badge variant="secondary" className="ml-2">
-                {getConversationCountByDepartment(dept.value)}
-              </Badge>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        {departments.map((dept) => (
-          <TabsContent key={dept.id} value={dept.value} className="mt-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-semibold">{dept.label}</h2>
-              <Badge variant="outline">
-                {conversationCards.length} conversas
-              </Badge>
+      {viewMode === "historico_completo" ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold text-lg">📜 Histórico Completo de Conversas</h2>
+              <p className="text-sm text-muted-foreground">
+                Todas as conversas do banco de dados (ativas e finalizadas)
+              </p>
             </div>
-            <ScrollArea className="h-[calc(100vh-16rem)]">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 pb-4">
-                {conversationCards.map((conv) => (
-                  <ConversationCard
-                    key={conv.id}
-                    conversation={conv}
-                    isActive={activeConvId === conv.id}
-                    onClick={() => setActiveConvId(conv.id)}
-                  />
-                ))}
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Buscar por ID, cliente, telefone..."
+                value={historySearch}
+                onChange={(e) => {
+                  setHistorySearch(e.target.value);
+                  setHistoryPage(0);
+                }}
+                className="w-80"
+                data-testid="input-history-search"
+              />
+            </div>
+          </div>
+
+          {historyLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="text-muted-foreground">Carregando histórico...</div>
               </div>
-            </ScrollArea>
-          </TabsContent>
-        ))}
-      </Tabs>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <Badge variant="outline">
+                  {historyData?.total || 0} conversas no total
+                </Badge>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setHistoryPage(p => Math.max(0, p - 1))}
+                    disabled={historyPage === 0}
+                    data-testid="button-history-prev"
+                  >
+                    ← Anterior
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Página {historyPage + 1} de {Math.ceil((historyData?.total || 0) / historyLimit)}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setHistoryPage(p => p + 1)}
+                    disabled={!historyData?.conversations || historyData.conversations.length < historyLimit}
+                    data-testid="button-history-next"
+                  >
+                    Próxima →
+                  </Button>
+                </div>
+              </div>
+
+              <ScrollArea className="h-[calc(100vh-20rem)]">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 pb-4">
+                  {(historyData?.conversations || []).map((conv: any) => {
+                    let resolvedBy: "ai" | "agent" | "auto" | null = null;
+                    if (conv.status === "resolved") {
+                      if (conv.autoClosed) {
+                        resolvedBy = "auto";
+                      } else if (conv.resolvedByName) {
+                        resolvedBy = "agent";
+                      } else {
+                        resolvedBy = "ai";
+                      }
+                    }
+
+                    return (
+                      <ConversationCard
+                        key={conv.id}
+                        conversation={{
+                          id: conv.id,
+                          chatId: conv.chatId,
+                          clientName: conv.clientName,
+                          assistant: `LIA ${conv.assistantType.charAt(0).toUpperCase() + conv.assistantType.slice(1)}`,
+                          duration: conv.duration,
+                          lastMessage: conv.lastMessage || "",
+                          lastClientMessage: conv.lastClientMessage || "",
+                          lastAIMessage: conv.lastAIMessage || "",
+                          sentiment: (conv.sentiment || "neutral") as "positive" | "neutral" | "negative",
+                          urgency: (conv.urgency || "normal") as "normal" | "high" | "critical",
+                          hasAlert: false,
+                          transferSuggested: false,
+                          lastMessageTime: new Date(conv.lastMessageTime),
+                          verifiedAt: conv.verifiedAt ? new Date(conv.verifiedAt) : null,
+                          verifiedBy: conv.verifiedBy || null,
+                          resolvedBy,
+                          resolvedByName: conv.resolvedByName || null,
+                        }}
+                        isActive={activeConvId === conv.id}
+                        onClick={() => setActiveConvId(conv.id)}
+                      />
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </>
+          )}
+        </div>
+      ) : (
+        <Tabs value={activeDepartment} onValueChange={setActiveDepartment} className="w-full">
+          <TabsList className="w-full justify-start">
+            {departments.map((dept) => (
+              <TabsTrigger 
+                key={dept.id} 
+                value={dept.value}
+                data-testid={`tab-${dept.id}`}
+              >
+                {dept.label}
+                <Badge variant="secondary" className="ml-2">
+                  {getConversationCountByDepartment(dept.value)}
+                </Badge>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {departments.map((dept) => (
+            <TabsContent key={dept.id} value={dept.value} className="mt-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="font-semibold">{dept.label}</h2>
+                <Badge variant="outline">
+                  {conversationCards.length} conversas
+                </Badge>
+              </div>
+              <ScrollArea className="h-[calc(100vh-16rem)]">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 pb-4">
+                  {conversationCards.map((conv) => (
+                    <ConversationCard
+                      key={conv.id}
+                      conversation={conv}
+                      isActive={activeConvId === conv.id}
+                      onClick={() => setActiveConvId(conv.id)}
+                    />
+                  ))}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          ))}
+        </Tabs>
+      )}
 
       <Dialog open={!!activeConvId} onOpenChange={(open) => !open && setActiveConvId(null)}>
         <DialogContent className="max-w-6xl h-[90vh] flex flex-col">

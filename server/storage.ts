@@ -1761,6 +1761,64 @@ export class DbStorage implements IStorage {
     })) as any;
   }
 
+  async getAllConversationsHistory(options: { 
+    limit?: number; 
+    offset?: number;
+    search?: string;
+  } = {}): Promise<{ conversations: Conversation[]; total: number }> {
+    const { limit = 50, offset = 0, search } = options;
+    
+    let query = db.select({
+      conversation: schema.conversations,
+      resolvedByUser: schema.users,
+      assignedToUser: schema.users
+    })
+      .from(schema.conversations)
+      .leftJoin(schema.users, eq(schema.conversations.resolvedBy, schema.users.id))
+      .$dynamic();
+    
+    // Add search filter if provided
+    if (search && search.trim()) {
+      query = query.where(
+        or(
+          sql`${schema.conversations.chatId} ILIKE ${`%${search}%`}`,
+          sql`${schema.conversations.clientName} ILIKE ${`%${search}%`}`,
+          sql`${schema.conversations.clientPhone} ILIKE ${`%${search}%`}`
+        )
+      );
+    }
+    
+    // Get total count
+    let countQuery = db.select({ count: sql<number>`count(*)` })
+      .from(schema.conversations)
+      .$dynamic();
+    
+    if (search && search.trim()) {
+      countQuery = countQuery.where(
+        or(
+          sql`${schema.conversations.chatId} ILIKE ${`%${search}%`}`,
+          sql`${schema.conversations.clientName} ILIKE ${`%${search}%`}`,
+          sql`${schema.conversations.clientPhone} ILIKE ${`%${search}%`}`
+        )
+      );
+    }
+    
+    const [{ count: total }] = await countQuery;
+    
+    // Get paginated results
+    const results = await query
+      .orderBy(desc(schema.conversations.lastMessageTime))
+      .limit(limit)
+      .offset(offset);
+    
+    const conversations = results.map(r => ({
+      ...r.conversation,
+      resolvedByName: r.resolvedByUser?.fullName || null
+    })) as any;
+    
+    return { conversations, total };
+  }
+
   async getTransferredConversations(userId?: string, role?: string): Promise<Conversation[]> {
     const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
     
