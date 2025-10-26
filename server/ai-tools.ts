@@ -609,7 +609,7 @@ export async function abrirTicketCRM(
  * @returns Confirmação da seleção com dados do ponto
  */
 export async function selecionarPontoInstalacao(
-  numeroPonto: string,
+  numeroPonto: number | string,
   conversationContext: { conversationId: string },
   storage: IStorage
 ): Promise<{ selecionado: boolean; ponto: any; mensagem: string }> {
@@ -627,7 +627,10 @@ export async function selecionarPontoInstalacao(
       throw new Error("Conversação não encontrada");
     }
 
-    console.log(`🏠 [AI Tool] Selecionando ponto ${numeroPonto} para conversa ${conversationContext.conversationId}`);
+    // Converter para string para comparação (IA pode enviar como number)
+    const numeroPontoStr = numeroPonto.toString();
+    
+    console.log(`🏠 [AI Tool] Selecionando ponto ${numeroPontoStr} para conversa ${conversationContext.conversationId}`);
 
     // Buscar pontos de instalação do CRM
     const { fetchClientInstallationPoints } = await import('./lib/massive-failure-handler');
@@ -642,8 +645,8 @@ export async function selecionarPontoInstalacao(
       throw new Error("Nenhum ponto de instalação encontrado");
     }
 
-    // Encontrar o ponto selecionado
-    const selectedPoint = points.find(p => p.numero === numeroPonto);
+    // Encontrar o ponto selecionado (comparar como string)
+    const selectedPoint = points.find(p => p.numero === numeroPontoStr);
     
     if (!selectedPoint) {
       throw new Error(`Ponto ${numeroPonto} não encontrado. Pontos disponíveis: ${points.map(p => p.numero).join(', ')}`);
@@ -654,7 +657,7 @@ export async function selecionarPontoInstalacao(
       selectedInstallationPoint: selectedPoint
     });
 
-    console.log(`✅ [AI Tool] Ponto ${numeroPonto} selecionado: ${selectedPoint.cidade}/${selectedPoint.bairro} - ${selectedPoint.endereco}`);
+    console.log(`✅ [AI Tool] Ponto ${numeroPontoStr} selecionado: ${selectedPoint.cidade}/${selectedPoint.bairro} - ${selectedPoint.endereco}`);
 
     return {
       selecionado: true,
