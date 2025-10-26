@@ -902,8 +902,16 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
           return JSON.stringify(boletosFatura);
         } catch (error) {
           console.error("❌ [AI Tool] Erro ao consultar boletos via consultar_fatura:", error);
+          if (error instanceof Error) {
+            console.error("❌ [AI Tool] Stack trace:", error.stack);
+            console.error("❌ [AI Tool] Tipo de erro:", error.constructor.name);
+          }
+          
+          // IMPORTANTE: Retornar erro ESTRUTURADO para que a IA NUNCA use dados mockados
           return JSON.stringify({
-            error: error instanceof Error ? error.message : "Erro ao consultar boletos"
+            status: "ERRO_API",
+            error: error instanceof Error ? error.message : "Erro ao consultar boletos",
+            instrucao_ia: "ATENÇÃO: A consulta de boletos FALHOU. NÃO invente dados. NÃO use exemplos. Informe ao cliente que houve um problema técnico temporário e peça para tentar novamente em alguns minutos ou ofereça transferir para atendimento humano."
           });
         }
 
@@ -1720,9 +1728,14 @@ Fonte: ${fonte}`;
           console.error("❌ [AI Tool Handler] Erro ao consultar boletos:", error);
           if (error instanceof Error) {
             console.error("❌ [AI Tool Handler] Stack trace:", error.stack);
+            console.error("❌ [AI Tool Handler] Tipo de erro:", error.constructor.name);
           }
+          
+          // IMPORTANTE: Retornar erro ESTRUTURADO para que a IA NUNCA use dados mockados
           return JSON.stringify({
-            error: error instanceof Error ? error.message : "Erro ao consultar boletos"
+            status: "ERRO_API",
+            error: error instanceof Error ? error.message : "Erro ao consultar boletos",
+            instrucao_ia: "ATENÇÃO: A consulta de boletos FALHOU. NÃO invente dados. NÃO use exemplos. Informe ao cliente que houve um problema técnico temporário e peça para tentar novamente em alguns minutos ou ofereça transferir para atendimento humano."
           });
         }
 

@@ -3371,6 +3371,68 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     }
   });
 
+  // DEBUG: Testar API de boletos diretamente
+  app.post("/api/debug/test-boletos", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const { cpf } = req.body;
+      
+      if (!cpf) {
+        return res.status(400).json({ error: "CPF é obrigatório" });
+      }
+      
+      console.log(`🧪 [DEBUG] Testando API de boletos para CPF (mascarado): ${cpf.substring(0, 3)}.***.***-**`);
+      
+      const documentoNormalizado = cpf.replace(/\D/g, '');
+      
+      // Chamar API externa diretamente
+      const startTime = Date.now();
+      const response = await fetch("https://webhook.trtelecom.net/webhook/consulta_boleto", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ documento: documentoNormalizado }),
+      });
+      
+      const duration = Date.now() - startTime;
+      
+      if (!response.ok) {
+        console.error(`❌ [DEBUG] API retornou erro HTTP ${response.status}`);
+        return res.status(response.status).json({
+          success: false,
+          error: `API retornou HTTP ${response.status}: ${response.statusText}`,
+          duration_ms: duration
+        });
+      }
+      
+      const boletos = await response.json();
+      
+      console.log(`✅ [DEBUG] API respondeu em ${duration}ms com ${boletos?.length || 0} boleto(s)`);
+      
+      return res.json({
+        success: true,
+        duration_ms: duration,
+        total_boletos: boletos?.length || 0,
+        boletos: boletos,
+        primeiros_3: boletos?.slice(0, 3).map((b: any) => ({
+          nome: b.NOME,
+          vencimento: b.DATA_VENCIMENTO,
+          valor: b.VALOR_TOTAL,
+          status: b.STATUS,
+          link: b.link_carne_completo?.substring(0, 50) + '...',
+          pix: b.PIX_TXT?.substring(0, 30) + '...'
+        }))
+      });
+    } catch (error) {
+      console.error("❌ [DEBUG] Erro ao testar API de boletos:", error);
+      return res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        tipo_erro: error instanceof Error ? error.constructor.name : typeof error
+      });
+    }
+  });
+
   // ADMIN: Resolver conversas transferidas em lote
   app.post("/api/admin/resolve-transferred-conversations", authenticate, requireAdmin, async (req, res) => {
     try {

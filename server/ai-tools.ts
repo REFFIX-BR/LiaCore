@@ -208,6 +208,8 @@ export async function consultaBoletoCliente(
 
     // Log sem dados sensíveis - apenas operação
     console.log(`📋 [AI Tool] Consultando boletos (conversação: ${conversationContext.conversationId})`);
+    console.log(`🌐 [AI Tool] Endpoint: https://webhook.trtelecom.net/webhook/consulta_boleto`);
+    console.log(`📤 [AI Tool] Enviando requisição para API externa...`);
 
     const boletos = await fetchWithRetry<ConsultaBoletoResult[]>(
       "https://webhook.trtelecom.net/webhook/consulta_boleto",
@@ -215,18 +217,20 @@ export async function consultaBoletoCliente(
       { operationName: "consulta de boletos" }
     );
     
+    console.log(`📥 [AI Tool] Resposta recebida da API externa`);
     console.log(`📋 [AI Tool] ${boletos?.length || 0} boleto(s) retornado(s) pela API`);
     
-    // Log detalhado de cada boleto para análise
+    // Log observability (SEM dados sensíveis - apenas flags e contadores)
     if (boletos && boletos.length > 0) {
-      boletos.forEach((boleto, index) => {
-        console.log(`📋 [AI Tool] Boleto ${index + 1}:`, {
-          vencimento: boleto.DATA_VENCIMENTO,
-          valor: boleto.VALOR_TOTAL,
-          status: boleto.STATUS,
-          nome: boleto.NOME
-        });
-      });
+      const comPIX = boletos.filter(b => !!b.PIX_TXT).length;
+      const comLink = boletos.filter(b => !!b.link_carne_completo).length;
+      const statusCounts = boletos.reduce((acc, b) => {
+        const status = b.STATUS || 'DESCONHECIDO';
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      console.log(`📊 [AI Tool] Observabilidade: ${comPIX} com PIX, ${comLink} com link, Status: ${JSON.stringify(statusCounts)}`);
     }
     
     // FILTRAR: Retornar apenas boletos EM ABERTO ou VENCIDOS (excluir PAGOS)
