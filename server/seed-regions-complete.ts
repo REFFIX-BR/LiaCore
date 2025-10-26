@@ -44,20 +44,21 @@ const completeRegionsData = [
   { state: "RJ", city: "Três Rios", neighborhood: "PURYS DE BAIXO" },
   { state: "RJ", city: "Três Rios", neighborhood: "RUA DIREITA" },
   
-  // SIMÃO PEREIRA - MG (13 bairros)
-  { state: "MG", city: "Simão Pereira", neighborhood: "BALANÇA DO ASSIS" },
+  // SIMÃO PEREIRA - MG (14 bairros)
+  { state: "MG", city: "Simão Pereira", neighborhood: "BALANÇA" },
+  { state: "MG", city: "Simão Pereira", neighborhood: "CABUÍ" },
   { state: "MG", city: "Simão Pereira", neighborhood: "CENTRO" },
-  { state: "MG", city: "Simão Pereira", neighborhood: "ASSENTAMENTO MIRAGEM" },
-  { state: "MG", city: "Simão Pereira", neighborhood: "CONDOMÍNIO FAZENDÍNHAS" },
-  { state: "MG", city: "Simão Pereira", neighborhood: "FAZENDA CABUJI" },
-  { state: "MG", city: "Simão Pereira", neighborhood: "FAZENDA GLEBE" },
+  { state: "MG", city: "Simão Pereira", neighborhood: "CONDOMINIO MIRAGEM" },
+  { state: "MG", city: "Simão Pereira", neighborhood: "CONDOMÍNIO FAZENDINHAS" },
+  { state: "MG", city: "Simão Pereira", neighborhood: "FAZENDA CABUI" },
+  { state: "MG", city: "Simão Pereira", neighborhood: "FAZENDA GULF" },
   { state: "MG", city: "Simão Pereira", neighborhood: "FAZENDINHA" },
-  { state: "MG", city: "Simão Pereira", neighborhood: "MORRINHOS" },
-  { state: "MG", city: "Simão Pereira", neighborhood: "PARABUNA" },
-  { state: "MG", city: "Simão Pereira", neighborhood: "PONTE DA BALANÇA" },
-  { state: "MG", city: "Simão Pereira", neighborhood: "SIMÃO PEREIRA" },
-  { state: "MG", city: "Simão Pereira", neighborhood: "SITIO ANADAI" },
-  { state: "MG", city: "Simão Pereira", neighborhood: "SOUZA AOMAR" },
+  { state: "MG", city: "Simão Pereira", neighborhood: "MONTE SERRAT" },
+  { state: "MG", city: "Simão Pereira", neighborhood: "PARAIBUNA" },
+  { state: "MG", city: "Simão Pereira", neighborhood: "POSTO DA BALANÇA" },
+  { state: "MG", city: "Simão Pereira", neighborhood: "SIMAO PEREIRA" },
+  { state: "MG", city: "Simão Pereira", neighborhood: "SITIO PARAISO" },
+  { state: "MG", city: "Simão Pereira", neighborhood: "SOUZA AGUIAR" },
   
   // SANTANA DO DESERTO - MG (7 bairros)
   { state: "MG", city: "Santana do Deserto", neighborhood: "BAIRRO DAS FLORES" },
@@ -176,7 +177,7 @@ async function seedCompleteRegions() {
     console.log(`📊 Total de registros: ${completeRegionsData.length}`);
     console.log("\nResumo por cidade:");
     console.log("  - Três Rios (RJ): 41 bairros");
-    console.log("  - Simão Pereira (MG): 13 bairros");
+    console.log("  - Simão Pereira (MG): 14 bairros");
     console.log("  - Santana do Deserto (MG): 7 bairros");
     console.log("  - Paraíba do Sul (RJ): 46 bairros");
     console.log("  - Comendador Levy Gasparian (RJ): 19 bairros");
