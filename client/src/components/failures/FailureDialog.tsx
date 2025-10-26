@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { RegionSelector } from "./RegionSelector";
 
 type MassiveFailure = {
   id: string;
@@ -45,8 +46,7 @@ export default function FailureDialog({ open, onOpenChange, failure }: FailureDi
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("active");
   const [notificationMessage, setNotificationMessage] = useState("");
-  const [regionType, setRegionType] = useState("custom");
-  const [customRegions, setCustomRegions] = useState("[]");
+  const [selectedRegions, setSelectedRegions] = useState<Array<{city: string; neighborhoods: string[]}>>([]);
 
   useEffect(() => {
     if (failure) {
@@ -54,15 +54,13 @@ export default function FailureDialog({ open, onOpenChange, failure }: FailureDi
       setDescription(failure.description);
       setStatus(failure.status);
       setNotificationMessage(failure.notificationMessage);
-      setRegionType(failure.affectedRegions?.type || "custom");
-      setCustomRegions(JSON.stringify(failure.affectedRegions?.custom || [], null, 2));
+      setSelectedRegions(failure.affectedRegions?.custom || []);
     } else {
       setName("");
       setDescription("");
       setStatus("active");
       setNotificationMessage("");
-      setRegionType("custom");
-      setCustomRegions("[]");
+      setSelectedRegions([]);
     }
   }, [failure, open]);
 
@@ -115,13 +113,10 @@ export default function FailureDialog({ open, onOpenChange, failure }: FailureDi
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    let parsedRegions;
-    try {
-      parsedRegions = JSON.parse(customRegions);
-    } catch (error) {
+    if (selectedRegions.length === 0) {
       toast({
         title: "Erro",
-        description: "Formato JSON inválido para regiões.",
+        description: "Selecione pelo menos uma região afetada.",
         variant: "destructive",
       });
       return;
@@ -132,8 +127,8 @@ export default function FailureDialog({ open, onOpenChange, failure }: FailureDi
       description,
       status,
       affectedRegions: {
-        type: regionType,
-        custom: parsedRegions,
+        type: "custom",
+        custom: selectedRegions,
       },
       notificationMessage,
       startTime: new Date(),
@@ -212,19 +207,13 @@ export default function FailureDialog({ open, onOpenChange, failure }: FailureDi
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="customRegions">Regiões Afetadas (JSON) *</Label>
-            <Textarea
-              id="customRegions"
-              value={customRegions}
-              onChange={(e) => setCustomRegions(e.target.value)}
-              placeholder='[{"city": "São Paulo", "neighborhoods": ["Centro", "Bela Vista"]}]'
-              required
-              rows={6}
-              className="font-mono text-sm"
-              data-testid="input-regions"
+            <Label>Regiões Afetadas *</Label>
+            <RegionSelector
+              value={selectedRegions}
+              onChange={setSelectedRegions}
             />
             <p className="text-xs text-muted-foreground">
-              Formato: Array de objetos com "city" e "neighborhoods"
+              Selecione as cidades e bairros afetados pela falha
             </p>
           </div>
 
