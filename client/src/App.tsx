@@ -37,6 +37,7 @@ import AgentLogs from "@/pages/AgentLogs";
 import Vendas from "@/pages/vendas";
 import FalhasMassivas from "@/pages/FalhasMassivas";
 import Regioes from "@/pages/Regioes";
+import Anuncios from "@/pages/Anuncios";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -219,6 +220,9 @@ function Router() {
       </Route>
       <Route path="/regioes">
         {() => <AdminSupervisorRoute component={Regioes} />}
+      </Route>
+      <Route path="/anuncios">
+        {() => <AdminSupervisorRoute component={Anuncios} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

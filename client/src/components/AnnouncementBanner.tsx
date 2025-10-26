@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Info, AlertTriangle, AlertCircle, CheckCircle, WifiOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -34,7 +34,6 @@ const ROTATION_INTERVAL = 5000; // 5 segundos
 
 export function AnnouncementBanner() {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [items, setItems] = useState<BannerItem[]>([]);
 
   // Buscar anúncios ativos
   const { data: announcements = [] } = useQuery<Announcement[]>({
@@ -48,8 +47,8 @@ export function AnnouncementBanner() {
     refetchInterval: 30000,
   });
 
-  // Combinar e ordenar itens
-  useEffect(() => {
+  // Combinar e ordenar itens usando useMemo
+  const items = useMemo(() => {
     const combinedItems: BannerItem[] = [
       ...announcements.map(a => ({ type: 'announcement' as const, data: a })),
       ...failures
@@ -70,9 +69,13 @@ export function AnnouncementBanner() {
       return a.type === 'failure' ? -1 : 1;
     });
 
-    setItems(combinedItems);
-    setCurrentIndex(0);
+    return combinedItems;
   }, [announcements, failures]);
+
+  // Resetar índice quando items mudar
+  useEffect(() => {
+    setCurrentIndex(0);
+  }, [items]);
 
   // Rotação automática
   useEffect(() => {

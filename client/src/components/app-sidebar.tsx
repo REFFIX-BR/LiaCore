@@ -40,7 +40,8 @@ import {
   Contact,
   ShoppingBag,
   ShoppingCart,
-  MapPin
+  MapPin,
+  Megaphone
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
@@ -233,6 +234,12 @@ const menuCategories: MenuCategory[] = [
         title: "Regiões",
         url: "/regioes",
         icon: MapPin,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Anúncios",
+        url: "/anuncios",
+        icon: Megaphone,
         roles: ["ADMIN", "SUPERVISOR"],
       },
     ],
