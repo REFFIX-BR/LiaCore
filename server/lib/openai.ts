@@ -1628,7 +1628,7 @@ Fonte: ${fonte}`;
               });
             } else {
               // Cliente JÁ selecionou um ponto - filtrar boletos apenas daquele ponto
-              const pontoSelecionado = conversation.selectedInstallationPoint;
+              const pontoSelecionado = conversation.selectedInstallationPoint as { numero: string; endereco: string; bairro: string; cidade: string };
               const numeroPontoSelecionado = pontoSelecionado.numero;
               
               console.log(`🏠 [Boletos] Cliente já selecionou ponto ${numeroPontoSelecionado} - filtrando boletos`);
