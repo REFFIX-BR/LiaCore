@@ -320,9 +320,13 @@ export class InstallationPointSelectionManager {
     try {
       const key = `awaiting:point:${conversationId}`;
       const value = await redis.get(key);
-      const awaiting = value === '1';
       
-      console.log(`🚩 [Boleto Selection] DEBUG - Chave: ${key}, Valor: "${value}", Awaiting: ${awaiting}`);
+      // CRÍTICO: Converter para string e comparar
+      // Upstash Redis pode retornar number ao invés de string
+      const valueStr = value != null ? String(value) : null;
+      const awaiting = valueStr === '1';
+      
+      console.log(`🚩 [Boleto Selection] DEBUG - Chave: ${key}, Valor bruto: ${JSON.stringify(value)} (tipo: ${typeof value}), Valor string: "${valueStr}", Awaiting: ${awaiting}`);
       console.log(`🚩 [Boleto Selection] Conversa ${conversationId} aguardando seleção: ${awaiting}`);
       return awaiting;
     } catch (error) {
