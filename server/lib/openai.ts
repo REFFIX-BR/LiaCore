@@ -1592,22 +1592,113 @@ Fonte: ${fonte}`;
           
           console.log(`🔍 [AI Tool Handler] Chamando consultaBoletoCliente com documento do banco...`);
           
-          // Chamar diretamente a API real - retorna { boletos, hasMultiplePoints }
-          const { boletos, hasMultiplePoints: temMultiplosPontos } = await consultaBoletoCliente(
+          // Chamar diretamente a API real - pode retornar { boletos, hasMultiplePoints } OU { pontos, hasMultiplePoints }
+          const resultadoBoletos = await consultaBoletoCliente(
             conversation.clientDocument,
             { conversationId },
             storage
           );
           
-          console.log(`✅ [AI Tool Handler] Boletos consultados com sucesso: ${boletos?.length || 0} boleto(s) EM ABERTO, múltiplos pontos: ${temMultiplosPontos}`);
+          // ====================================
+          // TRATAMENTO DE MÚLTIPLOS PONTOS
+          // ====================================
+          if (resultadoBoletos.hasMultiplePoints && resultadoBoletos.pontos) {
+            const { pontos, totalBoletos } = resultadoBoletos;
+            
+            // Verificar se o cliente já selecionou um ponto
+            if (!conversation.selectedInstallationPoint) {
+              // PRIMEIRA VEZ: Cliente ainda não escolheu o endereço
+              console.log(`🏠 [Boletos] Cliente possui ${pontos.length} pontos de instalação - solicitando seleção`);
+              
+              // Formatar pontos para apresentação
+              const pontosFormatados = pontos.map(p => ({
+                numero: p.numero,
+                endereco: `${p.endereco}, ${p.bairro} - ${p.cidade}`,
+                totalBoletos: p.totalBoletos,
+                totalVencidos: p.totalVencidos,
+                valorTotal: `R$ ${p.valorTotal.toFixed(2)}`
+              }));
+              
+              return JSON.stringify({
+                status: "MULTIPLOS_PONTOS_DETECTADOS",
+                mensagem: `Cliente possui ${pontos.length} endereços de instalação. É necessário que o cliente escolha qual endereço deseja consultar os boletos.`,
+                totalBoletos,
+                pontos: pontosFormatados,
+                instrucao_ia: "IMPORTANTE: Apresente os endereços ao cliente e pergunte qual deles ele deseja consultar. Quando o cliente escolher, use a função selecionar_ponto_instalacao com o número do ponto escolhido."
+              });
+            } else {
+              // Cliente JÁ selecionou um ponto - filtrar boletos apenas daquele ponto
+              const pontoSelecionado = conversation.selectedInstallationPoint;
+              const numeroPontoSelecionado = pontoSelecionado.numero;
+              
+              console.log(`🏠 [Boletos] Cliente já selecionou ponto ${numeroPontoSelecionado} - filtrando boletos`);
+              
+              // Encontrar o ponto correspondente
+              const ponto = pontos.find(p => p.numero === numeroPontoSelecionado);
+              
+              if (!ponto) {
+                console.warn(`⚠️ [Boletos] Ponto selecionado ${numeroPontoSelecionado} não encontrado nos resultados`);
+                // Retornar todos os pontos para nova seleção
+                const pontosFormatados = pontos.map(p => ({
+                  numero: p.numero,
+                  endereco: `${p.endereco}, ${p.bairro} - ${p.cidade}`,
+                  totalBoletos: p.totalBoletos,
+                  totalVencidos: p.totalVencidos,
+                  valorTotal: `R$ ${p.valorTotal.toFixed(2)}`
+                }));
+                
+                return JSON.stringify({
+                  status: "MULTIPLOS_PONTOS_DETECTADOS",
+                  mensagem: `O endereço selecionado anteriormente não foi encontrado. Por favor, escolha novamente.`,
+                  totalBoletos,
+                  pontos: pontosFormatados,
+                  instrucao_ia: "Apresente os endereços ao cliente e pergunte qual deles ele deseja consultar."
+                });
+              }
+              
+              // Retornar boletos do ponto selecionado
+              if (!ponto.boletos || ponto.boletos.length === 0) {
+                return JSON.stringify({
+                  status: "EM_DIA",
+                  mensagem: `Endereço selecionado (${ponto.endereco}, ${ponto.bairro}) está EM DIA - sem boletos pendentes.`,
+                  enderecoSelecionado: `${ponto.endereco}, ${ponto.bairro} - ${ponto.cidade}`,
+                  boletos: []
+                });
+              }
+              
+              const boletosFormatados = ponto.boletos.map(boleto => ({
+                vencimento: boleto.DATA_VENCIMENTO,
+                valor: boleto.VALOR_TOTAL,
+                codigo_barras: boleto.CODIGO_BARRA_TRANSACAO,
+                codigo_barras_sem_espacos: boleto.CODIGO_BARRA_TRANSACAO.replace(/\D/g, ''),
+                link_pagamento: boleto.link_carne_completo,
+                pix: boleto.PIX_TXT,
+                status: boleto.STATUS
+              }));
+              
+              return JSON.stringify({
+                status: "COM_DEBITOS",
+                mensagem: `Endereço: ${ponto.endereco}, ${ponto.bairro} - ${ponto.cidade}. ${ponto.totalBoletos} boleto(s) pendente(s).`,
+                enderecoSelecionado: `${ponto.endereco}, ${ponto.bairro} - ${ponto.cidade}`,
+                quantidade_boletos: ponto.totalBoletos,
+                boletos: boletosFormatados
+              });
+            }
+          }
+          
+          // ====================================
+          // PONTO ÚNICO (FLUXO NORMAL)
+          // ====================================
+          const { boletos } = resultadoBoletos;
+          
+          console.log(`✅ [AI Tool Handler] Boletos consultados com sucesso: ${boletos?.length || 0} boleto(s) EM ABERTO`);
           
           // Formatar resposta com mensagem clara para a IA
           if (!boletos || boletos.length === 0) {
             return JSON.stringify({
               status: "EM_DIA",
               mensagem: "Cliente está EM DIA - sem boletos pendentes, vencidos ou em aberto.",
-              boletos: [],
-              temMultiplosPontos
+              boletos: []
             });
           }
           
@@ -1626,8 +1717,7 @@ Fonte: ${fonte}`;
             status: "COM_DEBITOS",
             mensagem: `ATENÇÃO: Cliente possui ${boletos.length} boleto(s) EM ABERTO ou VENCIDOS.`,
             quantidade_boletos: boletos.length,
-            boletos: boletosFormatados,
-            temMultiplosPontos
+            boletos: boletosFormatados
           });
         } catch (error) {
           console.error("❌ [AI Tool Handler] Erro ao consultar boletos:", error);
