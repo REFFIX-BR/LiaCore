@@ -979,6 +979,21 @@ Fonte: ${fonte}`;
         });
 
       case "rotear_para_assistente":
+        // 🆕 BLOQUEIO: Verificar se está aguardando seleção de ponto
+        if (conversationId) {
+          const { installationPointManager } = await import('./redis-config');
+          const isAwaitingSelection = await installationPointManager.isAwaitingSelection(conversationId);
+          
+          if (isAwaitingSelection) {
+            console.warn(`⛔ [Routing] BLOQUEADO - Conversa ${conversationId} está aguardando seleção de ponto de instalação`);
+            return JSON.stringify({
+              roteado: false,
+              bloqueado: true,
+              mensagem: "Aguardando seleção do cliente. Não é possível rotear neste momento.",
+            });
+          }
+        }
+        
         const assistente = args.assistantType || args.assistente || args.departamento || args.department || "Suporte";
         const motivo_roteamento = args.motivo || args.reason || "Roteamento interno";
         

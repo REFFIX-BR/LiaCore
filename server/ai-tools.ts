@@ -693,11 +693,8 @@ export async function selecionarPontoInstalacao(
       throw new Error(`Ponto ${numeroPonto} não encontrado. Pontos disponíveis: ${points.map(p => p.numero).join(', ')}`);
     }
 
-    // Salvar seleção na conversa
-    await storage.updateConversation(conversationContext.conversationId, {
-      selectedInstallationPoint: selectedPoint
-    });
-
+    // 🆕 NOVA ARQUITETURA: NÃO salvar no banco - apenas retornar informações
+    // Seleção é efêmera e gerenciada pelo Redis (consultar_boleto_cliente)
     console.log(`✅ [AI Tool] Ponto ${numeroPontoStr} selecionado: ${selectedPoint.cidade}/${selectedPoint.bairro} - ${selectedPoint.endereco}`);
 
     // ✅ VERIFICAÇÃO AUTOMÁTICA DE FALHA MASSIVA (OPÇÃO C)
