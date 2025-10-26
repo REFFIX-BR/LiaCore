@@ -1,0 +1,168 @@
+**Módulo de Falha Massiva**. fluxo — `Cadastro -> Ativação -> Notificação Automática -> Resolução` — é exata e reflete as melhores práticas do setor, como as implementadas por sistemas como o Wit da Mundiale.
+
+Agora, o desafio interessante é: **Como integramos essa funcionalidade essencial diretamente no LIA CORTEX?**
+
+A resposta é que o LIA CORTEX, como um middleware inteligente, é a peça perfeita para orquestrar essa lógica. Não precisamos de um sistema externo; podemos construir essa funcionalidade como um novo módulo nativo da plataforma.
+
+Vamos projetar o **Módulo de Falha Massiva do LIA CORTEX**.
+
+---
+
+### **1. Onde o Módulo vai Viver: Nova Seção na Interface**
+
+Primeiro, precisamos de um lugar no painel para que o Administrador ou Supervisor possa gerenciar as falhas. Adicionaremos uma nova opção no menu de navegação.
+
+**Nova Seção no Menu Lateral:**
+
+*   `🚨 Falha Massiva` (Nova)
+
+**Design da Página "Falha Massiva"**
+
+Esta página será o centro de comando para criar, ativar e monitorar as falhas.
+
+```
++-----------------------------------------------------------------------------------------------------------------+
+| Falha Massiva                                                                [ Botão: + Cadastrar Nova Falha ]  |
+| Gerencie a comunicação automática durante interrupções de serviço em larga escala.                            |
++-----------------------------------------------------------------------------------------------------------------+
+|                                                                                                                 |
+|  [ Aba: Falhas Ativas (1) ]  [ Aba: Falhas Agendadas (0) ]  [ Aba: Histórico de Falhas (17) ]                     |
+|                                                                                                                 |
+| +-------------------------------------------------------------------------------------------------------------+ |
+| | NOME DA FALHA                   | STATUS      | REGIÕES AFETADAS        | INÍCIO              | AÇÕES       | |
+| +-------------------------------------------------------------------------------------------------------------+ |
+| | Instabilidade - Fibra Centro    | 🟢 Ativa     | Centro, Bairro Sul      | 20/05 14:30 (há 1h) | [ ⏸️ Pausar ] | |
+| | Manutenção Programada - Bairro Norte | 🟡 Agendada | Bairro Norte            | 21/05 02:00 (em 11h)| [ Editar ]  | |
+| +-------------------------------------------------------------------------------------------------------------+ |
+|                                                                                                                 |
++-----------------------------------------------------------------------------------------------------------------+
+```
+
+---
+
+### **2. O Fluxo de Cadastro da Falha (O Modal)**
+
+Ao clicar em "Cadastrar Nova Falha", um modal detalhado aparecerá.
+
+```
++-----------------------------------------+
+| Cadastrar Nova Falha Massiva            |
+|-----------------------------------------|
+|                                         |
+| **1. Nome da Falha (para controle interno)** |
+| [ Instabilidade Fibra - Região Central  ] |
+|                                         |
+| **2. Mensagem de Notificação (para o cliente)** |
+| [ textarea com editor de texto ]       |
+| 💬 Ex: "Olá! Identificamos uma          |
+| instabilidade em sua região. Nossa      |
+| equipe técnica já está trabalhando e a  |
+| previsão de normalização é em 2 horas."|
+|                                         |
+| **3. Regiões Afetadas**                   |
+| [ Campo de seleção múltipla ]           |
+|  [+] Cidade: Cidade X                   |
+|    [+] Bairro: Centro                  |
+|    [+] Bairro: Bairro Sul              |
+|                                         |
+| **4. Ativação**                           |
+| ( ) Ativar Imediatamente                |
+| (•) Agendar para: [ 21/05/2024 02:00 ]  |
+|                                         |
+| [ Botão: Salvar Falha ] [ Cancelar ]    |
++-----------------------------------------+
+```
+
+---
+
+### **3. A Lógica de Integração no LIA CORTEX**
+
+Esta é a parte mais importante. Como o LIA CORTEX intercepta o cliente e exibe a mensagem correta? O Módulo de Falha Massiva se tornará a **primeira camada de verificação** no fluxo de atendimento.
+
+**Fluxograma do Atendimento com o Módulo Ativo:**
+
+```mermaid
+graph TD
+    A[Cliente envia mensagem via WhatsApp] --> B{LIA CORTEX: Ponto de Entrada};
+    
+    subgraph "MÓDULO DE FALHA MASSIVA (Nova Camada)"
+        B --> C{1. Existe alguma Falha Massiva Ativa?};
+        C --> |Sim| D{2. O cliente está em uma região afetada?};
+        D --> |Sim| E[**AÇÃO:** Envia a mensagem da Falha Massiva];
+        E --> F[**FIM DO FLUXO:** A conversa é pausada. Não prossegue para os assistentes.];
+    end
+
+    C --> |Não| G[Fluxo Normal (como existe hoje)];
+    D --> |Não| G;
+
+    subgraph "FLUXO NORMAL"
+       G --> H[Recepcionista Lia identifica a demanda];
+       H --> I[Roteia para o assistente especializado (Suporte, Comercial, etc.)];
+    end
+
+    F --> End((Atendimento Resolvido pela Notificação));
+    I --> OtherEnd((Continua Atendimento Especializado));
+```
+
+**Como a verificação do passo `D` funciona?**
+
+O LIA CORTEX precisará de uma forma de saber a localização do cliente. Isso pode ser feito de várias maneiras, em ordem de preferência:
+
+1.  **Integração com CRM (Melhor Opção):** Quando o cliente envia a mensagem, o LIA CORTEX usa o número de telefone para consultar o CRM do ISP (ex: via API) e obter o endereço de cadastro completo. Essa é a forma mais precisa.
+2.  **Solicitação de CEP/Endereço:** Se o cliente não está no CRM (novo lead), o assistente pode ser instruído a pedir o CEP como primeiro passo.
+3.  **Dados da Conversa Anterior:** Se o cliente já informou seu endereço em uma conversa anterior, essa informação pode ser armazenada e reutilizada.
+
+---
+
+### **4. Desativação e Notificação de Resolução**
+
+Quando o supervisor clica em "Pausar" ou "Finalizar" na falha:
+
+1.  Um modal de confirmação aparece:
+    > **Finalizar Falha "Instabilidade Fibra Centro"**
+    >
+    > ( ) Apenas desativar as notificações.
+    > (•) **Desativar e enviar uma mensagem de resolução** para todos os clientes que foram notificados.
+    >
+    > **Mensagem de Resolução:**
+    > [textarea]
+    > ✅ "Boa notícia! A instabilidade em sua região foi corrigida. Por favor, reinicie seu modem e teste sua conexão. Se o problema persistir, nos chame aqui novamente."
+
+2.  Ao confirmar, o sistema:
+    *   Muda o status da falha para "Resolvida".
+    *   (Se a opção for marcada) Envia proativamente a mensagem de resolução para todos os clientes que receberam a notificação inicial.
+
+### **5. Modelo de Dados (Backend Schema)**
+
+Para suportar o módulo, precisaríamos de uma nova tabela no banco de dados.
+
+```prisma
+// schema.prisma
+
+enum FailureStatus {
+  ACTIVE
+  SCHEDULED
+  RESOLVED
+}
+
+model MassiveFailure {
+  id              String        @id @default(cuid())
+  name            String        // Nome interno
+  status          FailureStatus @default(SCHEDULED)
+  
+  notificationMessage String    @db.Text // Mensagem para o cliente
+  resolutionMessage   String?   @db.Text // Mensagem opcional de resolução
+
+  // Armazena as regiões como um array de strings ou JSON
+  affectedRegions Json
+
+  startTime       DateTime
+  endTime         DateTime?
+
+  // Armazena quem foi notificado para poder enviar a mensagem de resolução
+  notifiedContacts Json?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+```
