@@ -41,7 +41,8 @@ import {
   User,
   FileText,
   Filter,
-  Eye
+  Eye,
+  StickyNote
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -64,6 +65,7 @@ type Sale = {
   city: string;
   state: string;
   observations: string;
+  notes: string;
   conversationId: string;
   createdAt: string;
   updatedAt: string;
@@ -95,6 +97,8 @@ export default function SalesTab() {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState("");
   const [statusObservations, setStatusObservations] = useState("");
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  const [notes, setNotes] = useState("");
 
   // Buscar vendas
   const { data: sales = [], isLoading } = useQuery<Sale[]>({
@@ -121,6 +125,30 @@ export default function SalesTab() {
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o status da venda.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation para atualizar notas
+  const updateNotesMutation = useMutation({
+    mutationFn: async ({ id, notes }: { id: string; notes: string }) => {
+      return await apiRequest(`/api/sales/${id}/notes`, "PATCH", { notes });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
+      setNotesDialogOpen(false);
+      setSelectedSale(null);
+      setNotes("");
+      toast({
+        title: "Notas atualizadas",
+        description: "As notas foram salvas com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar as notas.",
         variant: "destructive",
       });
     },
@@ -157,6 +185,20 @@ export default function SalesTab() {
       id: selectedSale.id,
       status: newStatus,
       observations: statusObservations || undefined,
+    });
+  };
+
+  const handleEditNotes = (sale: Sale) => {
+    setSelectedSale(sale);
+    setNotes(sale.notes || "");
+    setNotesDialogOpen(true);
+  };
+
+  const handleSaveNotes = () => {
+    if (!selectedSale) return;
+    updateNotesMutation.mutate({
+      id: selectedSale.id,
+      notes: notes,
     });
   };
 
@@ -263,13 +305,14 @@ export default function SalesTab() {
                   <TableHead>Status</TableHead>
                   <TableHead>Origem</TableHead>
                   <TableHead>Data</TableHead>
+                  <TableHead>Notas</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredSales.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       <p className="text-muted-foreground">Nenhuma venda encontrada</p>
                     </TableCell>
                   </TableRow>
@@ -315,6 +358,20 @@ export default function SalesTab() {
                         {format(new Date(sale.createdAt), "dd/MM/yyyy HH:mm", {
                           locale: ptBR,
                         })}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditNotes(sale)}
+                          data-testid={`button-notes-${sale.id}`}
+                          className="relative"
+                        >
+                          <StickyNote className={`h-4 w-4 ${sale.notes ? "text-yellow-500" : "text-muted-foreground"}`} />
+                          {sale.notes && (
+                            <span className="absolute -top-1 -right-1 h-2 w-2 bg-yellow-500 rounded-full"></span>
+                          )}
+                        </Button>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -512,6 +569,51 @@ export default function SalesTab() {
               data-testid="button-confirm-status"
             >
               {updateStatusMutation.isPending ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Notas */}
+      <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Notas Internas</DialogTitle>
+            <DialogDescription>
+              Cliente: {selectedSale?.customerName}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Notas do comercial</label>
+              <Textarea
+                placeholder="Digite aqui as informações importantes sobre este lead/oportunidade..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={6}
+                data-testid="textarea-notes"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Utilize este espaço para registrar informações importantes sobre negociações, preferências do cliente, observações técnicas, etc.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setNotesDialogOpen(false)}
+              data-testid="button-cancel-notes"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveNotes}
+              disabled={updateNotesMutation.isPending}
+              data-testid="button-save-notes"
+            >
+              {updateNotesMutation.isPending ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
         </DialogContent>
