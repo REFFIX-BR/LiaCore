@@ -218,6 +218,19 @@ const menuCategories: MenuCategory[] = [
     ],
   },
   {
+    title: "Operações",
+    icon: AlertTriangle,
+    roles: ["ADMIN", "SUPERVISOR"],
+    items: [
+      {
+        title: "Falhas Massivas",
+        url: "/falhas-massivas",
+        icon: AlertTriangle,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+    ],
+  },
+  {
     title: "Administração",
     icon: Cog,
     roles: ["ADMIN", "SUPERVISOR"],
