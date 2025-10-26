@@ -17,6 +17,7 @@ import { AlertTriangle, Plus, CheckCircle, Eye, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import FailureDialog from "./FailureDialog";
+import TimeCounter from "./TimeCounter";
 
 type MassiveFailure = {
   id: string;
@@ -138,12 +139,13 @@ export default function ActiveFailuresTab() {
           {failures.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">Nenhuma falha ativa no momento</p>
           ) : (
-            <Table>
+<Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead>Início</TableHead>
+                  <TableHead>Duração</TableHead>
                   <TableHead>Regiões</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Ações</TableHead>
@@ -153,12 +155,35 @@ export default function ActiveFailuresTab() {
                 {failures.map((failure) => (
                   <TableRow key={failure.id} data-testid={`row-failure-${failure.id}`}>
                     <TableCell className="font-medium">{failure.name}</TableCell>
-                    <TableCell className="max-w-md truncate">{failure.description}</TableCell>
-                    <TableCell>{format(new Date(failure.startTime), "dd/MM/yyyy HH:mm", { locale: ptBR })}</TableCell>
+                    <TableCell className="max-w-md">
+                      <div className="space-y-1">
+                        <p className="text-sm">{failure.description}</p>
+                        {failure.notificationMessage && (
+                          <p className="text-xs text-muted-foreground italic">
+                            "{failure.notificationMessage}"
+                          </p>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
-                      {failure.affectedRegions?.type === 'predefined' 
-                        ? `${failure.affectedRegions.regionIds?.length || 0} regiões`
-                        : `${failure.affectedRegions?.custom?.length || 0} regiões`}
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">
+                          {format(new Date(failure.startTime), "dd/MM/yyyy", { locale: ptBR })}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(failure.startTime), "HH:mm", { locale: ptBR })}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <TimeCounter startTime={failure.startTime} />
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {failure.affectedRegions?.type === 'predefined' 
+                          ? `${failure.affectedRegions.regionIds?.length || 0} regiões`
+                          : `${failure.affectedRegions?.custom?.length || 0} regiões`}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant="destructive">Ativa</Badge>
