@@ -1784,6 +1784,34 @@ Fonte: ${fonte}`;
           });
         }
 
+      case "selecionar_ponto_instalacao":
+        if (!conversationId) {
+          console.error("❌ [AI Tool] selecionar_ponto_instalacao chamada sem conversationId");
+          return JSON.stringify({
+            error: "Contexto de conversa não disponível"
+          });
+        }
+        
+        const { selecionarPontoInstalacao } = await import("../ai-tools");
+        const { storage: storageSelecao } = await import("../storage");
+        
+        try {
+          console.log(`🔀 [AI Tool Handler] Selecionando ponto de instalação para conversação ${conversationId}`);
+          
+          const result = await selecionarPontoInstalacao(
+            args.numeroPonto,
+            { conversationId },
+            storageSelecao
+          );
+          
+          return JSON.stringify(result);
+        } catch (error) {
+          console.error("❌ [Seleção] Erro ao selecionar ponto de instalação:", error);
+          return JSON.stringify({
+            error: "Não foi possível selecionar o ponto de instalação. Tente novamente."
+          });
+        }
+
       default:
         console.error(`❌ [AI Tool] CAIU NO DEFAULT - Função não implementada: "${functionName}"`);
         console.error(`❌ [AI Tool] Funções disponíveis: verificar_conexao, consultar_fatura, consultar_base_de_conhecimento, consultar_boleto_cliente, etc.`);
