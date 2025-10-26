@@ -262,6 +262,13 @@ export async function consultaBoletoCliente(
     });
     
     console.log(`📋 [AI Tool] ${boletosEmAberto.length} boleto(s) EM ABERTO (filtrados de ${boletos.length} totais)`);
+    
+    // DEBUG: Listar TODOS os boletos brutos recebidos da API
+    console.log(`🔍 [DEBUG API] === BOLETOS BRUTOS DA API (${boletos.length} total) ===`);
+    boletos.forEach((b, idx) => {
+      console.log(`🔍 [DEBUG API] Boleto ${idx + 1}: Vencimento=${b.DATA_VENCIMENTO}, Valor="${b.VALOR_TOTAL}", Status="${b.STATUS}", Nome="${b.NOME?.substring(0, 30)}..."`);
+    });
+    console.log(`🔍 [DEBUG API] === FIM BOLETOS BRUTOS ===`);
 
     // ====================================
     // DETECÇÃO DE MÚLTIPLOS PONTOS
@@ -275,7 +282,8 @@ export async function consultaBoletoCliente(
     
     const pontosMap = new Map<string, PontoInfo>();
     
-    boletosEmAberto.forEach(boleto => {
+    boletosEmAberto.forEach((boleto, idx) => {
+      console.log(`🔍 [DEBUG PROCESSO] === Processando boleto EM ABERTO ${idx + 1}/${boletosEmAberto.length} ===`);
       // Tentar extrair número do ponto do início do nome
       const nomeMatch = boleto.NOME?.match(/^(\d+)\s+(.+)$/);
       
