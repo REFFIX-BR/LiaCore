@@ -603,16 +603,28 @@ export async function abrirTicketCRM(
 
 /**
  * Seleciona o ponto de instalação do cliente (quando possui múltiplos pontos)
+ * VERIFICA AUTOMATICAMENTE se há falha massiva ativa na região do ponto selecionado
  * @param numeroPonto Número do ponto selecionado (1, 2, 3...)
  * @param conversationContext Contexto da conversa
  * @param storage Interface de storage
- * @returns Confirmação da seleção com dados do ponto
+ * @returns Confirmação da seleção com dados do ponto + informações de falha massiva (se houver)
  */
 export async function selecionarPontoInstalacao(
   numeroPonto: number | string,
   conversationContext: { conversationId: string },
   storage: IStorage
-): Promise<{ selecionado: boolean; ponto: any; mensagem: string }> {
+): Promise<{ 
+  selecionado: boolean; 
+  ponto: any; 
+  mensagem: string;
+  FALHA_MASSIVA_ATIVA: boolean;
+  falha?: {
+    nome: string;
+    mensagem: string;
+    severidade: string;
+    previsao: string | null;
+  };
+}> {
   try {
     // Validação de segurança OBRIGATÓRIA
     if (!conversationContext || !conversationContext.conversationId) {
@@ -659,10 +671,55 @@ export async function selecionarPontoInstalacao(
 
     console.log(`✅ [AI Tool] Ponto ${numeroPontoStr} selecionado: ${selectedPoint.cidade}/${selectedPoint.bairro} - ${selectedPoint.endereco}`);
 
+    // ✅ VERIFICAÇÃO AUTOMÁTICA DE FALHA MASSIVA (OPÇÃO C)
+    console.log(`🔍 [AI Tool] Verificando falha massiva para região: ${selectedPoint.cidade}/${selectedPoint.bairro}`);
+    const activeFailure = await storage.checkActiveFailureForRegion(selectedPoint.cidade, selectedPoint.bairro);
+    
+    if (activeFailure) {
+      console.log(`🚨 [AI Tool] FALHA MASSIVA ATIVA DETECTADA: ${activeFailure.name}`);
+      console.log(`📍 [AI Tool] Região afetada: ${selectedPoint.cidade}/${selectedPoint.bairro}`);
+      
+      // Verificar se cliente já foi notificado desta falha
+      const existingNotifications = await storage.getFailureNotificationsByFailureId(activeFailure.id);
+      const alreadyNotified = existingNotifications.some(n => n.clientPhone === conversation.clientId);
+      
+      if (!alreadyNotified) {
+        // Registrar notificação no banco
+        try {
+          await storage.addFailureNotification({
+            failureId: activeFailure.id,
+            conversationId: conversationContext.conversationId,
+            clientPhone: conversation.clientId || '',
+            notificationType: "failure",
+            wasRead: false,
+          });
+          console.log(`📝 [AI Tool] Notificação de falha massiva registrada no banco`);
+        } catch (error) {
+          console.error("❌ [AI Tool] Erro ao registrar notificação:", error);
+        }
+      }
+      
+      // Retornar com informações de falha massiva para IA OBRIGATORIAMENTE mencionar
+      return {
+        selecionado: true,
+        ponto: selectedPoint,
+        mensagem: `Ponto selecionado: ${selectedPoint.bairro} - ${selectedPoint.endereco}${selectedPoint.complemento ? ', ' + selectedPoint.complemento : ''} (${selectedPoint.cidade})`,
+        FALHA_MASSIVA_ATIVA: true,
+        falha: {
+          nome: activeFailure.name,
+          mensagem: activeFailure.notificationMessage,
+          severidade: activeFailure.severity,
+          previsao: activeFailure.estimatedResolution || null
+        }
+      };
+    }
+
+    // Sem falha massiva - retorno normal
     return {
       selecionado: true,
       ponto: selectedPoint,
-      mensagem: `Ponto selecionado: ${selectedPoint.bairro} - ${selectedPoint.endereco}${selectedPoint.complemento ? ', ' + selectedPoint.complemento : ''} (${selectedPoint.cidade})`
+      mensagem: `Ponto selecionado: ${selectedPoint.bairro} - ${selectedPoint.endereco}${selectedPoint.complemento ? ', ' + selectedPoint.complemento : ''} (${selectedPoint.cidade})`,
+      FALHA_MASSIVA_ATIVA: false
     };
   } catch (error) {
     console.error("❌ [AI Tool] Erro ao selecionar ponto:", error);
