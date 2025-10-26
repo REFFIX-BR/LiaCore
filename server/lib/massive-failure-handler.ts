@@ -27,13 +27,16 @@ export async function fetchClientRegionFromCRM(cpfCnpj: string): Promise<{ city:
     }
 
     const data = await response.json();
-    console.log(`🔍 [Massive Failure DEBUG] CRM Response:`, JSON.stringify(data));
+    
+    // CRM retorna array de contratos (cliente pode ter múltiplos pontos)
+    // Pegamos o primeiro contrato para obter a região
+    const firstContract = Array.isArray(data) && data.length > 0 ? data[0] : data;
 
-    if (data && data.BAIRRO && data.CIDADE) {
-      console.log(`✅ [Massive Failure] Região obtida do CRM: ${data.CIDADE}/${data.BAIRRO}`);
+    if (firstContract && firstContract.BAIRRO && firstContract.CIDADE) {
+      console.log(`✅ [Massive Failure] Região obtida do CRM: ${firstContract.CIDADE}/${firstContract.BAIRRO}`);
       return {
-        city: data.CIDADE,
-        neighborhood: data.BAIRRO,
+        city: firstContract.CIDADE,
+        neighborhood: firstContract.BAIRRO,
       };
     }
 
