@@ -300,6 +300,7 @@ export interface IStorage {
   getAllSales(): Promise<any[]>; // Returns all sales/leads
   addSale(sale: any): Promise<any>; // Creates a new sale/lead
   updateSaleStatus(id: string, status: string, observations?: string): Promise<any>; // Updates sale status
+  updateSaleNotes(id: string, notes: string): Promise<any>; // Updates sale notes
 }
 
 export class MemStorage implements IStorage {
@@ -1481,6 +1482,11 @@ export class MemStorage implements IStorage {
   async updateSaleStatus(id: string, status: string, observations?: string): Promise<any> {
     // MemStorage stub - just return the sale
     return { id, status, observations };
+  }
+
+  async updateSaleNotes(id: string, notes: string): Promise<any> {
+    // MemStorage stub - just return the sale
+    return { id, notes };
   }
 }
 
@@ -3358,6 +3364,18 @@ export class DbStorage implements IStorage {
     
     const [updated] = await db.update(schema.sales)
       .set(updates)
+      .where(eq(schema.sales.id, id))
+      .returning();
+    
+    return updated;
+  }
+
+  async updateSaleNotes(id: string, notes: string): Promise<any> {
+    const [updated] = await db.update(schema.sales)
+      .set({
+        notes,
+        updatedAt: new Date(),
+      })
       .where(eq(schema.sales.id, id))
       .returning();
     

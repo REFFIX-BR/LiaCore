@@ -7890,6 +7890,7 @@ A resposta deve:
           city: sale.city,
           state: sale.state,
           observations: sale.observations,
+          notes: sale.notes,
           conversationId: sale.conversationId,
           createdAt: sale.createdAt,
           updatedAt: sale.updatedAt
@@ -7921,6 +7922,23 @@ A resposta deve:
     } catch (error) {
       console.error("❌ [Sales] Error updating sale status:", error);
       return res.status(500).json({ error: "Erro ao atualizar status da venda" });
+    }
+  });
+
+  // PATCH /api/sales/:id/notes - Atualiza notas de uma venda
+  app.patch("/api/sales/:id/notes", authenticate, requireSalesAccess, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { notes } = req.body;
+
+      const updated = await storage.updateSaleNotes(id, notes || "");
+
+      console.log(`✅ [Sales] Notas atualizadas - ID: ${id}`);
+
+      return res.json(updated);
+    } catch (error) {
+      console.error("❌ [Sales] Error updating sale notes:", error);
+      return res.status(500).json({ error: "Erro ao atualizar notas da venda" });
     }
   });
 
