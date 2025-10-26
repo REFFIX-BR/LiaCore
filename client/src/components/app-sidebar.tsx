@@ -39,7 +39,8 @@ import {
   AlertTriangle,
   Contact,
   ShoppingBag,
-  ShoppingCart
+  ShoppingCart,
+  MapPin
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
@@ -226,6 +227,12 @@ const menuCategories: MenuCategory[] = [
         title: "Falhas Massivas",
         url: "/falhas-massivas",
         icon: AlertTriangle,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Regiões",
+        url: "/regioes",
+        icon: MapPin,
         roles: ["ADMIN", "SUPERVISOR"],
       },
     ],

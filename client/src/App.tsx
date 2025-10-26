@@ -35,6 +35,7 @@ import LiveLogs from "@/pages/LiveLogs";
 import AgentLogs from "@/pages/AgentLogs";
 import Vendas from "@/pages/vendas";
 import FalhasMassivas from "@/pages/FalhasMassivas";
+import Regioes from "@/pages/Regioes";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -214,6 +215,9 @@ function Router() {
       </Route>
       <Route path="/falhas-massivas">
         {() => <AdminSupervisorRoute component={FalhasMassivas} />}
+      </Route>
+      <Route path="/regioes">
+        {() => <AdminSupervisorRoute component={Regioes} />}
       </Route>
       <Route component={NotFound} />
     </Switch>
