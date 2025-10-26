@@ -1567,6 +1567,7 @@ Fonte: ${fonte}`;
         
         const { consultaBoletoCliente } = await import("../ai-tools");
         const { storage } = await import("../storage");
+        const { installationPointManager } = await import("./redis-config");
         
         try {
           console.log(`🔍 [AI Tool Handler] Iniciando consulta de boletos para conversação ${conversationId}`);
@@ -1600,90 +1601,56 @@ Fonte: ${fonte}`;
           );
           
           // ====================================
-          // TRATAMENTO DE MÚLTIPLOS PONTOS
+          // TRATAMENTO DE MÚLTIPLOS PONTOS (NOVA ARQUITETURA EFÊMERA)
           // ====================================
           if (resultadoBoletos.hasMultiplePoints && resultadoBoletos.pontos) {
             const { pontos, totalBoletos } = resultadoBoletos;
             
-            // Verificar se o cliente já selecionou um ponto
-            if (!conversation.selectedInstallationPoint) {
-              // PRIMEIRA VEZ: Cliente ainda não escolheu o endereço
-              console.log(`🏠 [Boletos] Cliente possui ${pontos.length} pontos de instalação - solicitando seleção`);
-              
-              // Formatar pontos para apresentação
-              const pontosFormatados = pontos.map(p => ({
-                numero: p.numero,
-                endereco: `${p.endereco}, ${p.bairro} - ${p.cidade}`,
-                totalBoletos: p.totalBoletos,
-                totalVencidos: p.totalVencidos,
-                valorTotal: `R$ ${p.valorTotal.toFixed(2)}`
-              }));
-              
-              return JSON.stringify({
-                status: "MULTIPLOS_PONTOS_DETECTADOS",
-                mensagem: `Cliente possui ${pontos.length} endereços de instalação. É necessário que o cliente escolha qual endereço deseja consultar os boletos.`,
-                totalBoletos,
-                pontos: pontosFormatados,
-                instrucao_ia: "IMPORTANTE: Apresente os endereços ao cliente e pergunte qual deles ele deseja consultar. Quando o cliente escolher, use a função selecionar_ponto_instalacao com o número do ponto escolhido."
-              });
-            } else {
-              // Cliente JÁ selecionou um ponto - filtrar boletos apenas daquele ponto
-              const pontoSelecionado = conversation.selectedInstallationPoint as { numero: string; endereco: string; bairro: string; cidade: string };
-              const numeroPontoSelecionado = pontoSelecionado.numero;
-              
-              console.log(`🏠 [Boletos] Cliente já selecionou ponto ${numeroPontoSelecionado} - filtrando boletos`);
-              
-              // Encontrar o ponto correspondente
-              const ponto = pontos.find(p => p.numero === numeroPontoSelecionado);
-              
-              if (!ponto) {
-                console.warn(`⚠️ [Boletos] Ponto selecionado ${numeroPontoSelecionado} não encontrado nos resultados`);
-                // Retornar todos os pontos para nova seleção
-                const pontosFormatados = pontos.map(p => ({
-                  numero: p.numero,
-                  endereco: `${p.endereco}, ${p.bairro} - ${p.cidade}`,
-                  totalBoletos: p.totalBoletos,
-                  totalVencidos: p.totalVencidos,
-                  valorTotal: `R$ ${p.valorTotal.toFixed(2)}`
-                }));
-                
-                return JSON.stringify({
-                  status: "MULTIPLOS_PONTOS_DETECTADOS",
-                  mensagem: `O endereço selecionado anteriormente não foi encontrado. Por favor, escolha novamente.`,
-                  totalBoletos,
-                  pontos: pontosFormatados,
-                  instrucao_ia: "Apresente os endereços ao cliente e pergunte qual deles ele deseja consultar."
-                });
-              }
-              
-              // Retornar boletos do ponto selecionado
-              if (!ponto.boletos || ponto.boletos.length === 0) {
-                return JSON.stringify({
-                  status: "EM_DIA",
-                  mensagem: `Endereço selecionado (${ponto.endereco}, ${ponto.bairro}) está EM DIA - sem boletos pendentes.`,
-                  enderecoSelecionado: `${ponto.endereco}, ${ponto.bairro} - ${ponto.cidade}`,
-                  boletos: []
-                });
-              }
-              
-              const boletosFormatados = ponto.boletos.map(boleto => ({
-                vencimento: boleto.DATA_VENCIMENTO,
-                valor: boleto.VALOR_TOTAL,
-                codigo_barras: boleto.CODIGO_BARRA_TRANSACAO,
-                codigo_barras_sem_espacos: boleto.CODIGO_BARRA_TRANSACAO.replace(/\D/g, ''),
-                link_pagamento: boleto.link_carne_completo,
-                pix: boleto.PIX_TXT,
-                status: boleto.STATUS
-              }));
-              
-              return JSON.stringify({
-                status: "COM_DEBITOS",
-                mensagem: `Endereço: ${ponto.endereco}, ${ponto.bairro} - ${ponto.cidade}. ${ponto.totalBoletos} boleto(s) pendente(s).`,
-                enderecoSelecionado: `${ponto.endereco}, ${ponto.bairro} - ${ponto.cidade}`,
-                quantidade_boletos: ponto.totalBoletos,
-                boletos: boletosFormatados
-              });
-            }
+            console.log(`🏠 [Boletos] Cliente possui ${pontos.length} pontos de instalação - apresentando menu`);
+            
+            // Formatar pontos para apresentação à IA
+            const pontosFormatados = pontos.map(p => ({
+              numero: p.numero,
+              endereco: `${p.endereco}, ${p.bairro} - ${p.cidade}`,
+              totalBoletos: p.totalBoletos,
+              totalVencidos: p.totalVencidos,
+              valorTotal: `R$ ${p.valorTotal.toFixed(2)}`
+            }));
+            
+            // 🆕 NOVA ARQUITETURA: Salvar menu no Redis (efêmero - 5 minutos)
+            // Gerar keywords para cada ponto (para matching textual)
+            const menuItems = pontos.map(p => ({
+              numero: parseInt(p.numero),
+              endereco: p.endereco,
+              bairro: p.bairro,
+              cidade: p.cidade,
+              totalBoletos: p.totalBoletos,
+              totalVencidos: p.totalVencidos,
+              valorTotal: p.valorTotal,
+              keywords: [
+                p.endereco.toLowerCase(),
+                p.bairro.toLowerCase(),
+                p.cidade.toLowerCase(),
+                p.numero
+              ]
+            }));
+            
+            await installationPointManager.saveMenu({
+              conversationId,
+              cpf: conversation.clientDocument,
+              pontos: menuItems,
+              createdAt: Date.now()
+            });
+            
+            console.log(`💾 [Boletos] Menu salvo no Redis - aguardando seleção do cliente (TTL: 5min)`);
+            
+            return JSON.stringify({
+              status: "MULTIPLOS_PONTOS_DETECTADOS",
+              mensagem: `Cliente possui ${pontos.length} endereços de instalação. É necessário que o cliente escolha qual endereço deseja consultar os boletos.`,
+              totalBoletos,
+              pontos: pontosFormatados,
+              instrucao_ia: "IMPORTANTE: Apresente os endereços numerados ao cliente de forma clara e pergunte qual número ele deseja consultar. O próximo sistema irá processar automaticamente a escolha."
+            });
           }
           
           // ====================================

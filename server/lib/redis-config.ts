@@ -203,3 +203,186 @@ export function invalidateAssistantsCache(): void {
   );
   console.log('🗑️ [Cache] Assistants cache invalidated');
 }
+
+// =============================================================================
+// EPHEMERAL INSTALLATION POINT SELECTION SYSTEM
+// =============================================================================
+
+export interface InstallationPointMenuItem {
+  numero: number;
+  endereco: string;
+  bairro: string;
+  cidade: string;
+  login?: string;
+  totalBoletos: number;
+  totalVencidos: number;
+  valorTotal: number;
+  keywords: string[]; // Para matching textual: ['amazonas', 'cariri', '3', 'terceiro']
+}
+
+export interface InstallationPointMenu {
+  conversationId: string;
+  cpf: string;
+  pontos: InstallationPointMenuItem[];
+  createdAt: number;
+}
+
+/**
+ * Sistema efêmero para gerenciar seleção de pontos de instalação
+ * - TTL: 5 minutos (tempo suficiente para cliente escolher)
+ * - Não persiste no banco de dados
+ * - Cada consulta de boleto recomeça do zero
+ */
+export class InstallationPointSelectionManager {
+  private readonly MENU_TTL = 300; // 5 minutos
+  private readonly FLAG_TTL = 300; // 5 minutos
+  
+  /**
+   * Salva menu de pontos de instalação no Redis (efêmero)
+   */
+  async saveMenu(menu: InstallationPointMenu): Promise<void> {
+    try {
+      const key = `menu:boleto:${menu.conversationId}`;
+      await redis.set(key, JSON.stringify(menu), { ex: this.MENU_TTL });
+      
+      // Marca flag indicando que conversa está aguardando seleção
+      await this.setAwaitingSelection(menu.conversationId, true);
+      
+      console.log(`💾 [Boleto Menu] Menu salvo para conversa ${menu.conversationId} (${menu.pontos.length} pontos, TTL: ${this.MENU_TTL}s)`);
+    } catch (error) {
+      console.error(`❌ [Boleto Menu] Erro ao salvar menu:`, error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Recupera menu de pontos de instalação do Redis
+   */
+  async getMenu(conversationId: string): Promise<InstallationPointMenu | null> {
+    try {
+      const key = `menu:boleto:${conversationId}`;
+      const data = await redis.get(key);
+      
+      if (!data) {
+        console.log(`💾 [Boleto Menu] Menu não encontrado para conversa ${conversationId} (expirou ou nunca foi criado)`);
+        return null;
+      }
+      
+      const menu = typeof data === 'string' ? JSON.parse(data) : data;
+      console.log(`💾 [Boleto Menu] Menu recuperado para conversa ${conversationId} (${menu.pontos?.length || 0} pontos)`);
+      return menu;
+    } catch (error) {
+      console.error(`❌ [Boleto Menu] Erro ao recuperar menu:`, error);
+      return null;
+    }
+  }
+  
+  /**
+   * Remove menu do Redis (após processamento ou timeout)
+   */
+  async deleteMenu(conversationId: string): Promise<void> {
+    try {
+      const key = `menu:boleto:${conversationId}`;
+      await redis.del(key);
+      
+      // Remove flag de awaiting selection
+      await this.setAwaitingSelection(conversationId, false);
+      
+      console.log(`🗑️ [Boleto Menu] Menu removido para conversa ${conversationId}`);
+    } catch (error) {
+      console.error(`❌ [Boleto Menu] Erro ao remover menu:`, error);
+    }
+  }
+  
+  /**
+   * Define se conversa está aguardando seleção de ponto
+   */
+  async setAwaitingSelection(conversationId: string, awaiting: boolean): Promise<void> {
+    try {
+      const key = `awaiting:point:${conversationId}`;
+      
+      if (awaiting) {
+        await redis.set(key, '1', { ex: this.FLAG_TTL });
+        console.log(`🚩 [Boleto Selection] Flag ATIVA para conversa ${conversationId} (TTL: ${this.FLAG_TTL}s)`);
+      } else {
+        await redis.del(key);
+        console.log(`🚩 [Boleto Selection] Flag REMOVIDA para conversa ${conversationId}`);
+      }
+    } catch (error) {
+      console.error(`❌ [Boleto Selection] Erro ao definir flag:`, error);
+    }
+  }
+  
+  /**
+   * Verifica se conversa está aguardando seleção de ponto
+   */
+  async isAwaitingSelection(conversationId: string): Promise<boolean> {
+    try {
+      const key = `awaiting:point:${conversationId}`;
+      const value = await redis.get(key);
+      const awaiting = value === '1';
+      
+      console.log(`🚩 [Boleto Selection] Conversa ${conversationId} aguardando seleção: ${awaiting}`);
+      return awaiting;
+    } catch (error) {
+      console.error(`❌ [Boleto Selection] Erro ao verificar flag:`, error);
+      return false;
+    }
+  }
+  
+  /**
+   * Mapeia resposta do cliente (textual ou ordinal) para número do ponto
+   * Exemplos: "3", "terceiro", "amazonas", "cariri" → 3
+   */
+  mapClientResponseToPointNumber(
+    clientMessage: string,
+    menu: InstallationPointMenu
+  ): number | null {
+    const messageLower = clientMessage.toLowerCase().trim();
+    
+    // 1. Tentar número direto: "3", "4"
+    const directNumber = parseInt(messageLower);
+    if (!isNaN(directNumber) && directNumber >= 1 && directNumber <= menu.pontos.length) {
+      const ponto = menu.pontos.find(p => p.numero === directNumber);
+      if (ponto) {
+        console.log(`🎯 [Boleto Mapping] Cliente escolheu ponto ${directNumber} via número direto`);
+        return directNumber;
+      }
+    }
+    
+    // 2. Tentar ordinais por extenso: "primeiro", "segunda", "terceiro"
+    const ordinaisMap: Record<string, number> = {
+      'primeiro': 1, 'primeira': 1,
+      'segundo': 2, 'segunda': 2,
+      'terceiro': 3, 'terceira': 3,
+      'quarto': 4, 'quarta': 4,
+      'quinto': 5, 'quinta': 5
+    };
+    
+    for (const [ordinal, numero] of Object.entries(ordinaisMap)) {
+      if (messageLower.includes(ordinal)) {
+        const ponto = menu.pontos.find(p => p.numero === numero);
+        if (ponto) {
+          console.log(`🎯 [Boleto Mapping] Cliente escolheu ponto ${numero} via ordinal "${ordinal}"`);
+          return numero;
+        }
+      }
+    }
+    
+    // 3. Tentar matching por keywords (endereço, bairro)
+    for (const ponto of menu.pontos) {
+      for (const keyword of ponto.keywords) {
+        if (messageLower.includes(keyword)) {
+          console.log(`🎯 [Boleto Mapping] Cliente escolheu ponto ${ponto.numero} via keyword "${keyword}"`);
+          return ponto.numero;
+        }
+      }
+    }
+    
+    console.log(`❌ [Boleto Mapping] Não foi possível mapear "${clientMessage}" para nenhum ponto`);
+    return null;
+  }
+}
+
+// Instância global para uso em toda a aplicação
+export const installationPointManager = new InstallationPointSelectionManager();

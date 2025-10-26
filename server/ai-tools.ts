@@ -172,12 +172,14 @@ interface AbrirTicketResult {
  * @param documento CPF ou CNPJ do cliente
  * @param conversationContext Contexto OBRIGATÓRIO da conversa para validação de segurança
  * @param storage Interface de storage para validação da conversa
+ * @param selectedPointNumber OPCIONAL - Número do ponto para filtrar boletos (ex: 1, 2, 3)
  * @returns Objeto com boletos e informação sobre múltiplos pontos
  */
 export async function consultaBoletoCliente(
   documento: string,
   conversationContext: { conversationId: string },
-  storage: IStorage
+  storage: IStorage,
+  selectedPointNumber?: number
 ): Promise<ConsultaBoletoResponse> {
   try {
     // Validação de segurança OBRIGATÓRIA: contexto da conversa deve ser fornecido
@@ -329,6 +331,33 @@ export async function consultaBoletoCliente(
         console.log(`📍 [AI Tool] Ponto ${ponto.numero}: ${ponto.endereco}, ${ponto.bairro} - ${ponto.totalBoletos} boleto(s), ${ponto.totalVencidos} vencido(s), Total: R$ ${ponto.valorTotal.toFixed(2)}`);
       });
       
+      // 🆕 NOVA ARQUITETURA: Se selectedPointNumber foi fornecido, filtrar boletos daquele ponto
+      if (selectedPointNumber !== undefined && selectedPointNumber !== null) {
+        console.log(`🎯 [AI Tool] Filtrando boletos do ponto ${selectedPointNumber} (solicitado explicitamente)`);
+        
+        const pontoSelecionado = pontos.find(p => parseInt(p.numero) === selectedPointNumber);
+        
+        if (!pontoSelecionado) {
+          console.warn(`⚠️ [AI Tool] Ponto ${selectedPointNumber} não encontrado. Pontos disponíveis: ${pontos.map(p => p.numero).join(', ')}`);
+          // Retornar menu novamente para nova seleção
+          return {
+            hasMultiplePoints: true,
+            totalBoletos: boletosEmAberto.length,
+            pontos
+          };
+        }
+        
+        console.log(`✅ [AI Tool] Ponto ${selectedPointNumber} encontrado: ${pontoSelecionado.endereco}, ${pontoSelecionado.bairro} - ${pontoSelecionado.totalBoletos} boleto(s)`);
+        
+        // Retornar como ponto único com boletos filtrados
+        return {
+          hasMultiplePoints: false,
+          totalBoletos: pontoSelecionado.totalBoletos,
+          boletos: pontoSelecionado.boletos
+        };
+      }
+      
+      // Sem selectedPointNumber - retornar menu completo
       return {
         hasMultiplePoints: true,
         totalBoletos: boletosEmAberto.length,
