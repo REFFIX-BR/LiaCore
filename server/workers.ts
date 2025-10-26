@@ -602,7 +602,7 @@ if (redisConnection) {
                 `✅ O endereço selecionado está EM DIA - sem boletos pendentes!`,
                 evolutionInstance
               );
-            } else {
+            } else if (boletosResult.boletos && boletosResult.boletos.length > 0) {
               // Formatar boletos
               let mensagem = `📋 *Boletos do endereço selecionado*\n\n`;
               
@@ -689,10 +689,13 @@ if (redisConnection) {
           assistantType: result.assistantTarget,
         });
 
-        // IMPORTANTE: Não enviamos mensagem de boas-vindas ao rotear
-        // O novo assistente tem acesso ao contexto completo da conversa na thread OpenAI
-        // Enviar "Como posso ajudar?" é redundante e confunde o cliente
+        // 🆕 BLOQUEIO: Não enviar mensagem da Apresentação ao rotear
+        // O cliente já entende que foi roteado pelo contexto, e a mensagem de despedida
+        // deixa o cliente esperando uma resposta do novo assistente que nunca vem
+        shouldSendPresentationMessage = false;
+        
         console.log(`ℹ️ [Worker] Roteamento concluído - novo assistente ${result.assistantTarget} processará próximas mensagens`);
+        console.log(`🚫 [Worker] Mensagem de despedida bloqueada - evitando confusão do cliente`);
       }
 
       if (result.resolved) {
