@@ -8187,7 +8187,9 @@ A resposta deve:
       const updates = {
         ...req.body,
         startTime: req.body.startTime ? new Date(req.body.startTime) : undefined,
-        resolutionTime: req.body.resolutionTime ? new Date(req.body.resolutionTime) : undefined,
+        endTime: req.body.endTime ? new Date(req.body.endTime) : undefined,
+        estimatedResolution: req.body.estimatedResolution ? new Date(req.body.estimatedResolution) : undefined,
+        updatedAt: new Date(), // Sempre atualizar timestamp de modificação
       };
 
       const failure = await storage.updateMassiveFailure(id, updates);
