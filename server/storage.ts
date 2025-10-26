@@ -160,9 +160,9 @@ export interface IStorage {
   
   getAdminMetrics(): Promise<{
     systemStatus: { api: boolean; database: boolean; workers: boolean };
-    estimatedCost: { total: number; openai: number; upstash: number };
-    activeUsers: { total: number; admins: number; supervisors: number; agents: number };
-    securityEvents: { total: number; failedLogins: number };
+    estimatedCost: { total: number; openai: number; upstash: number; changePercent: number };
+    activeUsers: { total: number; admins: number; supervisors: number; agents: number; changePercent: number };
+    securityEvents: { total: number; failedLogins: number; changePercent: number };
     dailyMessages: Array<{ date: string; messages: number }>;
     volumeVsSuccess: Array<{ hour: string; volume: number; successRate: number }>;
     massiveFailures: {
@@ -2414,8 +2414,19 @@ export class DbStorage implements IStorage {
     const usageMetrics = await getUsageMetrics();
     const upstashCost = await getUpstashCost();
     
-    // Calcular custo do mês anterior (30-60 dias atrás)
-    const previousMonthCost = usageMetrics.total60Days.cost - usageMetrics.total30Days.cost;
+    // Calcular custo do mês anterior (30-60 dias atrás) diretamente do banco
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+    
+    const previousMonthUsage = await db.select().from(schema.openaiUsage)
+      .where(and(
+        gte(schema.openaiUsage.timestamp, sixtyDaysAgo),
+        lt(schema.openaiUsage.timestamp, thirtyDaysAgo)
+      ));
+    
+    const previousMonthCost = previousMonthUsage.reduce((sum, usage) => sum + (usage.estimatedCost || 0), 0);
     const currentMonthCost = usageMetrics.total30Days.cost + upstashCost;
     const costChange = previousMonthCost > 0 
       ? ((currentMonthCost - previousMonthCost) / previousMonthCost) * 100

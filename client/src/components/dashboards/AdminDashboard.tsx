@@ -50,16 +50,19 @@ interface AdminMetrics {
     total: number;
     openai: number;
     upstash: number;
+    changePercent: number;
   };
   activeUsers: {
     total: number;
     admins: number;
     supervisors: number;
     agents: number;
+    changePercent: number;
   };
   securityEvents: {
     total: number;
     failedLogins: number;
+    changePercent: number;
   };
   dailyMessages: Array<{
     date: string;
@@ -192,11 +195,6 @@ export function AdminDashboard() {
     return status ? "text-green-600" : "text-destructive";
   };
 
-  // Calcular % de mudança (mock)
-  const costChange = 12.5;
-  const usersChange = 8.3;
-  const securityChange = -15.2;
-
   return (
     <div className="space-y-6 pb-8">
       {/* Header */}
@@ -292,16 +290,18 @@ export function AdminDashboard() {
               ${metrics.estimatedCost.total.toFixed(2)}
             </div>
             <div className="flex items-center gap-1 mt-2">
-              {costChange > 0 ? (
+              {metrics.estimatedCost.changePercent > 0 ? (
                 <>
                   <ArrowUpRight className="h-3.5 w-3.5 text-destructive" />
-                  <span className="text-xs font-medium text-destructive">+{costChange}%</span>
+                  <span className="text-xs font-medium text-destructive">+{metrics.estimatedCost.changePercent}%</span>
                 </>
-              ) : (
+              ) : metrics.estimatedCost.changePercent < 0 ? (
                 <>
                   <ArrowDownRight className="h-3.5 w-3.5 text-green-600" />
-                  <span className="text-xs font-medium text-green-600">{costChange}%</span>
+                  <span className="text-xs font-medium text-green-600">{metrics.estimatedCost.changePercent}%</span>
                 </>
+              ) : (
+                <span className="text-xs font-medium text-muted-foreground">0%</span>
               )}
               <span className="text-xs text-muted-foreground">vs. mês anterior</span>
             </div>
@@ -318,18 +318,20 @@ export function AdminDashboard() {
               {metrics.activeUsers.total}
             </div>
             <div className="flex items-center gap-1 mt-2">
-              {usersChange > 0 ? (
+              {metrics.activeUsers.changePercent > 0 ? (
                 <>
                   <ArrowUpRight className="h-3.5 w-3.5 text-green-600" />
-                  <span className="text-xs font-medium text-green-600">+{usersChange}%</span>
+                  <span className="text-xs font-medium text-green-600">+{metrics.activeUsers.changePercent}%</span>
                 </>
-              ) : (
+              ) : metrics.activeUsers.changePercent < 0 ? (
                 <>
                   <ArrowDownRight className="h-3.5 w-3.5 text-destructive" />
-                  <span className="text-xs font-medium text-destructive">{usersChange}%</span>
+                  <span className="text-xs font-medium text-destructive">{metrics.activeUsers.changePercent}%</span>
                 </>
+              ) : (
+                <span className="text-xs font-medium text-muted-foreground">0%</span>
               )}
-              <span className="text-xs text-muted-foreground">hoje</span>
+              <span className="text-xs text-muted-foreground">vs. ontem</span>
             </div>
           </CardContent>
         </Card>
@@ -344,18 +346,20 @@ export function AdminDashboard() {
               {metrics.securityEvents.total}
             </div>
             <div className="flex items-center gap-1 mt-2">
-              {securityChange < 0 ? (
+              {metrics.securityEvents.changePercent < 0 ? (
                 <>
                   <ArrowDownRight className="h-3.5 w-3.5 text-green-600" />
-                  <span className="text-xs font-medium text-green-600">{securityChange}%</span>
+                  <span className="text-xs font-medium text-green-600">{metrics.securityEvents.changePercent}%</span>
                 </>
-              ) : (
+              ) : metrics.securityEvents.changePercent > 0 ? (
                 <>
                   <ArrowUpRight className="h-3.5 w-3.5 text-destructive" />
-                  <span className="text-xs font-medium text-destructive">+{securityChange}%</span>
+                  <span className="text-xs font-medium text-destructive">+{metrics.securityEvents.changePercent}%</span>
                 </>
+              ) : (
+                <span className="text-xs font-medium text-muted-foreground">0%</span>
               )}
-              <span className="text-xs text-muted-foreground">últimas 24h</span>
+              <span className="text-xs text-muted-foreground">vs. 24h anteriores</span>
             </div>
           </CardContent>
         </Card>
