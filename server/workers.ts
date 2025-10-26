@@ -338,7 +338,7 @@ if (redisConnection) {
         const wasNotifiedOfFailure = await checkAndNotifyMassiveFailure(
           conversationId,
           fromNumber,
-          conversation.cpfCnpj,
+          conversation.clientDocument,
           evolutionInstance,
           sendWhatsAppMessage
         );
