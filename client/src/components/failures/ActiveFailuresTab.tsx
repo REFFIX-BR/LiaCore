@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, Plus, CheckCircle, Eye, Trash2 } from "lucide-react";
+import { AlertTriangle, Plus, CheckCircle, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import FailureDialog from "./FailureDialog";
@@ -194,9 +194,9 @@ export default function ActiveFailuresTab() {
                           size="sm"
                           variant="ghost"
                           onClick={() => handleEdit(failure)}
-                          data-testid={`button-view-${failure.id}`}
+                          data-testid={`button-edit-${failure.id}`}
                         >
-                          <Eye className="h-4 w-4" />
+                          <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
                           size="sm"
