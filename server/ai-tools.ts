@@ -267,7 +267,14 @@ export async function consultaBoletoCliente(
     // DEBUG: Listar TODOS os boletos brutos recebidos da API
     console.log(`🔍 [DEBUG API] === BOLETOS BRUTOS DA API (${boletos.length} total) ===`);
     boletos.forEach((b, idx) => {
-      console.log(`🔍 [DEBUG API] Boleto ${idx + 1}: Vencimento=${b.DATA_VENCIMENTO}, Valor="${b.VALOR_TOTAL}", Status="${b.STATUS}", Nome="${b.NOME?.substring(0, 30)}..."`);
+      console.log(`🔍 [DEBUG API] Boleto ${idx + 1}:`);
+      console.log(`   - Vencimento: ${b.DATA_VENCIMENTO}`);
+      console.log(`   - Valor: ${b.VALOR_TOTAL}`);
+      console.log(`   - Status: ${b.STATUS}`);
+      console.log(`   - Nome: ${b.NOME?.substring(0, 40)}`);
+      console.log(`   - RUA: ${b.RUA || 'N/A'}`);
+      console.log(`   - BAIRRO: ${b.BAIRRO || 'N/A'}`);
+      console.log(`   - CIDADE: ${b.CIDADE || 'N/A'}`);
     });
     console.log(`🔍 [DEBUG API] === FIM BOLETOS BRUTOS ===`);
 
