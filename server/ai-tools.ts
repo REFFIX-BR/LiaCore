@@ -112,6 +112,7 @@ interface PontoInfo {
   totalBoletos: number;
   totalVencidos: number;
   valorTotal: number;
+  valorVencido: number;  // Valor total apenas dos boletos vencidos
 }
 
 interface ConsultaBoletoResponse {
@@ -311,7 +312,8 @@ export async function consultaBoletoCliente(
           boletos: [],
           totalBoletos: 0,
           totalVencidos: 0,
-          valorTotal: 0
+          valorTotal: 0,
+          valorVencido: 0
         });
       }
       
@@ -328,14 +330,32 @@ export async function consultaBoletoCliente(
       
       let estaVencido = false;
       
-      // Tentar parsear data (formato esperado: DD/MM/YYYY)
+      // Tentar parsear data (aceita DD/MM/YYYY ou YYYY-MM-DD)
       if (dataVencimento) {
-        const partes = dataVencimento.split('/');
-        if (partes.length === 3) {
-          const dia = parseInt(partes[0]);
-          const mes = parseInt(partes[1]) - 1; // Mês em JS é 0-indexed
-          const ano = parseInt(partes[2]);
-          const dataVenc = new Date(ano, mes, dia);
+        let dataVenc: Date | null = null;
+        
+        // Tentar formato ISO: YYYY-MM-DD (retornado pela API)
+        if (dataVencimento.includes('-')) {
+          const partes = dataVencimento.split('-');
+          if (partes.length === 3) {
+            const ano = parseInt(partes[0]);
+            const mes = parseInt(partes[1]) - 1; // Mês em JS é 0-indexed
+            const dia = parseInt(partes[2]);
+            dataVenc = new Date(ano, mes, dia);
+          }
+        } 
+        // Tentar formato BR: DD/MM/YYYY (fallback)
+        else if (dataVencimento.includes('/')) {
+          const partes = dataVencimento.split('/');
+          if (partes.length === 3) {
+            const dia = parseInt(partes[0]);
+            const mes = parseInt(partes[1]) - 1; // Mês em JS é 0-indexed
+            const ano = parseInt(partes[2]);
+            dataVenc = new Date(ano, mes, dia);
+          }
+        }
+        
+        if (dataVenc) {
           dataVenc.setHours(0, 0, 0, 0);
           
           // Boleto vencido se data < hoje
@@ -364,9 +384,15 @@ export async function consultaBoletoCliente(
       console.log(`🔍 [DEBUG VALOR] Ponto ${pontoNumero} - Valor bruto da API: "${boleto.VALOR_TOTAL}"`);
       
       const valor = parseFloat(boleto.VALOR_TOTAL.replace(',', '.')) || 0;
-      console.log(`🔍 [DEBUG VALOR] Ponto ${pontoNumero} - Após conversão: ${valor}`);
+      console.log(`🔍 [DEBUG VALOR] Ponto ${pontoNumero} - Após conversão: ${valor}, Vencido: ${estaVencido}`);
       
+      // Sempre somar no total geral
       ponto.valorTotal += valor;
+      
+      // Se vencido, somar também no total de vencidos
+      if (estaVencido) {
+        ponto.valorVencido += valor;
+      }
     });
     
     const pontos = Array.from(pontosMap.values()).sort((a, b) => 
@@ -378,7 +404,7 @@ export async function consultaBoletoCliente(
     if (hasMultiplePoints) {
       console.log(`📍 [AI Tool] MÚLTIPLOS PONTOS DETECTADOS: ${pontos.length} pontos`);
       pontos.forEach(ponto => {
-        console.log(`📍 [AI Tool] Ponto ${ponto.numero}: ${ponto.endereco}, ${ponto.bairro} - ${ponto.totalBoletos} boleto(s), ${ponto.totalVencidos} vencido(s), Total: R$ ${ponto.valorTotal.toFixed(2)}`);
+        console.log(`📍 [AI Tool] Ponto ${ponto.numero}: ${ponto.endereco}, ${ponto.bairro} - ${ponto.totalBoletos} boleto(s), ${ponto.totalVencidos} vencido(s), Vencidos: R$ ${ponto.valorVencido.toFixed(2)}, Total: R$ ${ponto.valorTotal.toFixed(2)}`);
       });
       
       // 🆕 NOVA ARQUITETURA: Se selectedPointNumber foi fornecido, filtrar boletos daquele ponto
