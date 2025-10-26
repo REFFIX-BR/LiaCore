@@ -136,7 +136,7 @@ export default function FailureDialog({ open, onOpenChange, failure }: FailureDi
         custom: parsedRegions,
       },
       notificationMessage,
-      startTime: new Date().toISOString(),
+      startTime: new Date(),
     };
 
     if (failure) {

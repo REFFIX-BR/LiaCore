@@ -8052,10 +8052,12 @@ A resposta deve:
         return res.status(401).json({ error: "Usuário não autenticado" });
       }
 
-      // Adicionar o createdBy ao payload
+      // Converter timestamps de string para Date
       const failureData = {
         ...req.body,
         createdBy: userId,
+        startTime: req.body.startTime ? new Date(req.body.startTime) : new Date(),
+        resolutionTime: req.body.resolutionTime ? new Date(req.body.resolutionTime) : null,
       };
 
       const failure = await storage.addMassiveFailure(failureData);
