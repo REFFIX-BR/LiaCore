@@ -2,46 +2,46 @@ import { db } from "./db";
 import { regions } from "@shared/schema";
 
 const completeRegionsData = [
-  // TRÊS RIOS - RJ (73 bairros)
-  { state: "RJ", city: "Três Rios", neighborhood: "ALTO ROQUE" },
-  { state: "RJ", city: "Três Rios", neighborhood: "BELA VISTA" },
-  { state: "RJ", city: "Três Rios", neighborhood: "BONFIM" },
+  // TRÊS RIOS - RJ (41 bairros)
+  { state: "RJ", city: "Três Rios", neighborhood: "ALTO PURIS" },
+  { state: "RJ", city: "Três Rios", neighborhood: "ATAULFO" },
+  { state: "RJ", city: "Três Rios", neighborhood: "BAIXO PURYS" },
   { state: "RJ", city: "Três Rios", neighborhood: "BARÃO DE ANGRA" },
-  { state: "RJ", city: "Três Rios", neighborhood: "BARBOSA" },
-  { state: "RJ", city: "Três Rios", neighborhood: "BORDES FRANCO" },
-  { state: "RJ", city: "Três Rios", neighborhood: "BARROSA" },
-  { state: "RJ", city: "Três Rios", neighborhood: "BOA VISTA" },
+  { state: "RJ", city: "Três Rios", neighborhood: "BARRINHA" },
+  { state: "RJ", city: "Três Rios", neighborhood: "BARROS FRANCO" },
+  { state: "RJ", city: "Três Rios", neighborhood: "BEMPOSTA" },
+  { state: "RJ", city: "Três Rios", neighborhood: "BOA UNIÃO" },
   { state: "RJ", city: "Três Rios", neighborhood: "BOA VISTA/RUA DIREITA" },
-  { state: "RJ", city: "Três Rios", neighborhood: "CAIXA D'ÁGUA" },
+  { state: "RJ", city: "Três Rios", neighborhood: "CAIXA DAGUA" },
   { state: "RJ", city: "Três Rios", neighborhood: "CANTAGALO" },
-  { state: "RJ", city: "Três Rios", neighborhood: "CABRIFI / VILA ISABEL" },
+  { state: "RJ", city: "Três Rios", neighborhood: "CARIRI / VILA ISABEL" },
   { state: "RJ", city: "Três Rios", neighborhood: "CENTRO" },
   { state: "RJ", city: "Três Rios", neighborhood: "CIDADE NOVA" },
-  { state: "RJ", city: "Três Rios", neighborhood: "GRAMA EM NEPOSTA" },
+  { state: "RJ", city: "Três Rios", neighborhood: "GRAMA BEMPOSTA" },
   { state: "RJ", city: "Três Rios", neighborhood: "HABITAT" },
   { state: "RJ", city: "Três Rios", neighborhood: "HABITAT NOVO" },
-  { state: "RJ", city: "Três Rios", neighborhood: "HERNANI DO SILVA" },
+  { state: "RJ", city: "Três Rios", neighborhood: "HEMOGENIO SILVA" },
   { state: "RJ", city: "Três Rios", neighborhood: "JAQUEIRA / VILA ISABEL" },
   { state: "RJ", city: "Três Rios", neighborhood: "JARDIM GLORIA" },
   { state: "RJ", city: "Três Rios", neighborhood: "JARDIM PRIMAVERA" },
   { state: "RJ", city: "Três Rios", neighborhood: "LADEIRA DAS PALMEIRAS" },
-  { state: "RJ", city: "Três Rios", neighborhood: "MONTE VERDE" },
+  { state: "RJ", city: "Três Rios", neighborhood: "MIRANTE SUL" },
   { state: "RJ", city: "Três Rios", neighborhood: "MONTE CASTELO" },
   { state: "RJ", city: "Três Rios", neighborhood: "MORADA DO SOL" },
-  { state: "RJ", city: "Três Rios", neighborhood: "MORRO DA CTR" },
-  { state: "RJ", city: "Três Rios", neighborhood: "MORRO DOS CATUDOS" },
-  { state: "RJ", city: "Três Rios", neighborhood: "NOVA BRASÍLIA" },
+  { state: "RJ", city: "Três Rios", neighborhood: "MORRO DA CTB" },
+  { state: "RJ", city: "Três Rios", neighborhood: "MORRO DOS CAETANOS" },
+  { state: "RJ", city: "Três Rios", neighborhood: "MOURA BRASIL" },
   { state: "RJ", city: "Três Rios", neighborhood: "NOVA NITERÓI" },
-  { state: "RJ", city: "Três Rios", neighborhood: "PALMETAL / VILA ISABEL" },
+  { state: "RJ", city: "Três Rios", neighborhood: "PALMITAL / VILA ISABEL" },
   { state: "RJ", city: "Três Rios", neighborhood: "PARK DOS IPÊS / VILA PARA" },
   { state: "RJ", city: "Três Rios", neighborhood: "PATIO DAS ESTAÇÃO" },
-  { state: "RJ", city: "Três Rios", neighborhood: "PEDREIRAS" },
+  { state: "RJ", city: "Três Rios", neighborhood: "PEDREIRA" },
   { state: "RJ", city: "Três Rios", neighborhood: "PILÕES" },
-  { state: "RJ", city: "Três Rios", neighborhood: "PONTE DAS GARÇAS" },
+  { state: "RJ", city: "Três Rios", neighborhood: "PONTE DAS GRAÇAS" },
   { state: "RJ", city: "Três Rios", neighborhood: "PONTO AZUL" },
   { state: "RJ", city: "Três Rios", neighborhood: "PORTÃO VERMELHO" },
-  { state: "RJ", city: "Três Rios", neighborhood: "PRAIA BRAVA" },
-  { state: "RJ", city: "Três Rios", neighborhood: "PUNTA DE BAIXO" },
+  { state: "RJ", city: "Três Rios", neighborhood: "PURYS" },
+  { state: "RJ", city: "Três Rios", neighborhood: "PURYS DE BAIXO" },
   { state: "RJ", city: "Três Rios", neighborhood: "RUA DIREITA" },
   
   // SIMÃO PEREIRA - MG (13 bairros)
@@ -175,7 +175,7 @@ async function seedCompleteRegions() {
     console.log("\n✅ Seed completo executado com sucesso!");
     console.log(`📊 Total de registros: ${completeRegionsData.length}`);
     console.log("\nResumo por cidade:");
-    console.log("  - Três Rios (RJ): 40 bairros");
+    console.log("  - Três Rios (RJ): 41 bairros");
     console.log("  - Simão Pereira (MG): 13 bairros");
     console.log("  - Santana do Deserto (MG): 7 bairros");
     console.log("  - Paraíba do Sul (RJ): 46 bairros");
