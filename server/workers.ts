@@ -45,6 +45,7 @@ try {
 import { sendMessageAndGetResponse } from './lib/openai';
 import { analyzeImageWithVision } from './lib/vision';
 import { storage } from './storage';
+import { checkAndNotifyMassiveFailure } from './lib/massive-failure-handler';
 
 // Helper function to send WhatsApp message
 async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?: string): Promise<{success: boolean, whatsappMessageId?: string, remoteJid?: string}> {
@@ -330,6 +331,46 @@ if (redisConnection) {
           handledByHuman: true,
           reason: 'conversation_transferred_to_human',
         };
+      }
+
+      // 3.5 MASSIVE FAILURE DETECTION - Check for active failures affecting this client
+      try {
+        const wasNotifiedOfFailure = await checkAndNotifyMassiveFailure(
+          conversationId,
+          fromNumber,
+          conversation.cpfCnpj,
+          evolutionInstance,
+          sendWhatsAppMessage
+        );
+
+        if (wasNotifiedOfFailure) {
+          console.log(`🚨 [Massive Failure] Cliente notificado de falha massiva - interrompendo processamento normal`);
+          
+          // Store user message
+          await storage.createMessage({
+            conversationId,
+            role: 'user',
+            content: message,
+          });
+
+          // Mark job as processed
+          await markJobProcessed(idempotencyKey!);
+
+          prodLogger.info('worker', 'Message intercepted by massive failure', {
+            conversationId,
+            fromNumber,
+            reason: 'massive_failure_detected',
+          });
+
+          return {
+            success: true,
+            interceptedByMassiveFailure: true,
+            reason: 'massive_failure_active',
+          };
+        }
+      } catch (failureError) {
+        console.error(`❌ [Massive Failure] Erro ao verificar falha massiva:`, failureError);
+        // Não falhar o processamento por causa disso - continuar normalmente
       }
 
       let enhancedMessage = message;
