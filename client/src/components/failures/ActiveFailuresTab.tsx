@@ -181,8 +181,10 @@ export default function ActiveFailuresTab() {
                     <TableCell>
                       <Badge variant="outline">
                         {(() => {
-                          const count = failure.affectedRegions?.custom?.length || 0;
-                          return `${count} ${count === 1 ? 'região' : 'regiões'}`;
+                          // Contar total de bairros em todas as cidades
+                          const totalNeighborhoods = (failure.affectedRegions?.custom || [])
+                            .reduce((sum: number, region: any) => sum + (region.neighborhoods?.length || 0), 0);
+                          return `${totalNeighborhoods} ${totalNeighborhoods === 1 ? 'bairro' : 'bairros'}`;
                         })()}
                       </Badge>
                     </TableCell>
