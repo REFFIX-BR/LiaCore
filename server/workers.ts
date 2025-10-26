@@ -709,10 +709,10 @@ if (redisConnection) {
           const { sendMessageAndGetResponse } = await import('./lib/openai');
           const newAssistantResult = await sendMessageAndGetResponse(
             threadId,
-            message,  // Mensagem original do cliente
             newAssistantId,  // ID real do assistente (asst_xxx)
-            conversationId,
-            chatId
+            message,  // Mensagem original do cliente
+            chatId,
+            conversationId
           );
           
           // Enviar a resposta do novo assistente
