@@ -1654,7 +1654,7 @@ export class MemStorage implements IStorage {
 }
 
 import { db } from "./db";
-import { eq, desc, and, or, gte, lte, lt, isNotNull, isNull, not, sql, inArray } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, lt, isNotNull, isNull, not, sql, inArray, ilike } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { trainingSessions } from "@shared/schema";
 
@@ -1779,11 +1779,12 @@ export class DbStorage implements IStorage {
     
     // Add search filter if provided
     if (search && search.trim()) {
+      const searchPattern = `%${search}%`;
       query = query.where(
         or(
-          sql`${schema.conversations.chatId} ILIKE ${`%${search}%`}`,
-          sql`${schema.conversations.clientName} ILIKE ${`%${search}%`}`,
-          sql`${schema.conversations.clientPhone} ILIKE ${`%${search}%`}`
+          ilike(schema.conversations.chatId, searchPattern),
+          ilike(schema.conversations.clientName, searchPattern),
+          ilike(schema.conversations.clientId, searchPattern)
         )
       );
     }
@@ -1794,11 +1795,12 @@ export class DbStorage implements IStorage {
       .$dynamic();
     
     if (search && search.trim()) {
+      const searchPattern = `%${search}%`;
       countQuery = countQuery.where(
         or(
-          sql`${schema.conversations.chatId} ILIKE ${`%${search}%`}`,
-          sql`${schema.conversations.clientName} ILIKE ${`%${search}%`}`,
-          sql`${schema.conversations.clientPhone} ILIKE ${`%${search}%`}`
+          ilike(schema.conversations.chatId, searchPattern),
+          ilike(schema.conversations.clientName, searchPattern),
+          ilike(schema.conversations.clientId, searchPattern)
         )
       );
     }
