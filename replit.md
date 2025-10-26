@@ -130,6 +130,15 @@ Note: "🌐 Todas" mode shows all conversations except those in "Aguardando" que
 - **Worker Concurrency**: Optimized for messages, images, and NPS workers.
 - **API Key Management**: Robust handling of multi-instance Evolution API keys.
 
+### Security & Compliance
+**LGPD/GDPR-Compliant Logging (Oct 2025)**:
+- All production logs comply with data protection regulations
+- **NO Personal/Financial Data in Logs**: Names, CPF/CNPJ, PIX codes, payment links, amounts, due dates are NEVER logged
+- **Aggregate Metrics Only**: Logs show only non-identifying counts (total boletos, PIX count, link count, status distribution)
+- **Debug Endpoint Protected**: `/api/debug/test-boletos` restricted to admin role, masks CPF in logs
+- **Structured Error Handling**: Errors returned to AI assistants contain no sensitive data, only actionable guidance
+- **Audit Trail**: Full compliance review documented in `CORRECAO_BOLETOS_MOCKADOS.md`
+
 ## OpenAI Assistant Tool Configuration
 
 **NEW TOOL PENDING REGISTRATION**: The `selecionar_ponto_instalacao` tool is implemented in code but needs to be registered with the OpenAI Assistants via the OpenAI dashboard or API.
