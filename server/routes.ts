@@ -8193,6 +8193,51 @@ A resposta deve:
     }
   });
 
+  // GET /api/regions/cities - Listar todas as cidades com contagem de bairros
+  app.get("/api/regions/cities", authenticate, async (req, res) => {
+    try {
+      const cities = await storage.getCities();
+      return res.json(cities);
+    } catch (error) {
+      console.error("❌ [Regions] Error fetching cities:", error);
+      return res.status(500).json({ error: "Erro ao buscar cidades" });
+    }
+  });
+
+  // GET /api/regions/neighborhoods/:city/:state - Listar bairros de uma cidade
+  app.get("/api/regions/neighborhoods/:city/:state", authenticate, async (req, res) => {
+    try {
+      const { city, state } = req.params;
+      const neighborhoods = await storage.getNeighborhoodsByCity(city, state);
+      return res.json(neighborhoods);
+    } catch (error) {
+      console.error("❌ [Regions] Error fetching neighborhoods:", error);
+      return res.status(500).json({ error: "Erro ao buscar bairros" });
+    }
+  });
+
+  // PATCH /api/regions/:id - Atualizar região
+  app.patch("/api/regions/:id", authenticate, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { state, city, neighborhood } = req.body;
+
+      const updates: any = {};
+      if (state) updates.state = state;
+      if (city) updates.city = city;
+      if (neighborhood) updates.neighborhood = neighborhood;
+
+      const updated = await storage.updateRegion(id, updates);
+
+      console.log(`✅ [Regions] Região atualizada - ID: ${id}`);
+
+      return res.json(updated);
+    } catch (error) {
+      console.error("❌ [Regions] Error updating region:", error);
+      return res.status(500).json({ error: "Erro ao atualizar região" });
+    }
+  });
+
   // DELETE /api/regions/:id - Deletar região
   app.delete("/api/regions/:id", authenticate, async (req, res) => {
     try {
