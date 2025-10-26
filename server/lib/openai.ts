@@ -1650,6 +1650,7 @@ Fonte: ${fonte}`;
               totalBoletos: p.totalBoletos,
               totalVencidos: p.totalVencidos,
               valorTotal: p.valorTotal,
+              valorMensalidade: p.valorMensalidade,
               keywords: [
                 p.endereco.toLowerCase(),
                 p.bairro.toLowerCase(),
@@ -1674,10 +1675,14 @@ Fonte: ${fonte}`;
               const numero = index + 1;
               menuFormatado += `${numero}️⃣ *${ponto.endereco}*\n`;
               menuFormatado += `   📌 ${ponto.bairro} - ${ponto.cidade}\n`;
+              menuFormatado += `   📦 Mensalidade: R$ ${ponto.valorMensalidade.toFixed(2)}\n`;
               if (ponto.totalVencidos > 0) {
                 menuFormatado += `   ⚠️ ${ponto.totalVencidos} boleto(s) vencido(s)\n`;
+                menuFormatado += `   💰 Total vencido: R$ ${ponto.valorVencido.toFixed(2)}\n`;
+              } else {
+                menuFormatado += `   ✅ Em dia\n`;
               }
-              menuFormatado += `   💰 Total: R$ ${ponto.valorVencido.toFixed(2)}\n\n`;
+              menuFormatado += `\n`;
             });
             
             menuFormatado += `*Qual endereço você deseja consultar?*\nResponda com o *número* (1, 2, 3...) ou o *nome do bairro/rua*.`;

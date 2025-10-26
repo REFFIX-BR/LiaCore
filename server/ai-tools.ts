@@ -113,6 +113,7 @@ interface PontoInfo {
   totalVencidos: number;
   valorTotal: number;
   valorVencido: number;  // Valor total apenas dos boletos vencidos
+  valorMensalidade: number;  // Valor mensal da instalação (para identificação)
 }
 
 interface ConsultaBoletoResponse {
@@ -310,6 +311,9 @@ export async function consultaBoletoCliente(
       
       // Criar ou recuperar informações do ponto
       if (!pontosMap.has(pontoNumero)) {
+        // Extrair valor da mensalidade do primeiro boleto (todos boletos do mesmo ponto têm o mesmo valor)
+        const valorMensalidade = parseFloat(boleto.VALOR_TOTAL.replace(',', '.')) || 0;
+        
         pontosMap.set(pontoNumero, {
           numero: pontoNumero,
           nome: nomeCliente,
@@ -320,7 +324,8 @@ export async function consultaBoletoCliente(
           totalBoletos: 0,
           totalVencidos: 0,
           valorTotal: 0,
-          valorVencido: 0
+          valorVencido: 0,
+          valorMensalidade: valorMensalidade
         });
       }
       

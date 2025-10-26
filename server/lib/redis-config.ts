@@ -217,6 +217,7 @@ export interface InstallationPointMenuItem {
   totalBoletos: number;
   totalVencidos: number;
   valorTotal: number;
+  valorMensalidade: number; // Valor mensal da instalação (ajuda a identificar diferentes pontos)
   keywords: string[]; // Para matching textual: ['amazonas', 'cariri', '3', 'terceiro']
 }
 
