@@ -319,7 +319,12 @@ export async function consultaBoletoCliente(
       }
       
       // Somar valor (converter de string para número)
+      // DEBUG: Ver valor BRUTO da API
+      console.log(`🔍 [DEBUG VALOR] Ponto ${pontoNumero} - Valor bruto da API: "${boleto.VALOR_TOTAL}"`);
+      
       const valor = parseFloat(boleto.VALOR_TOTAL.replace(',', '.')) || 0;
+      console.log(`🔍 [DEBUG VALOR] Ponto ${pontoNumero} - Após conversão: ${valor}`);
+      
       ponto.valorTotal += valor;
     });
     
