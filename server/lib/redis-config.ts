@@ -340,13 +340,16 @@ export class InstallationPointSelectionManager {
   ): number | null {
     const messageLower = clientMessage.toLowerCase().trim();
     
-    // 1. Tentar número direto: "3", "4"
+    // 1. Tentar número direto: "1", "2", "3" (ÍNDICE do menu apresentado)
     const directNumber = parseInt(messageLower);
     if (!isNaN(directNumber) && directNumber >= 1 && directNumber <= menu.pontos.length) {
-      const ponto = menu.pontos.find(p => p.numero === directNumber);
+      // CORREÇÃO CRÍTICA: Cliente escolhe pelo ÍNDICE do menu (1º, 2º, 3º item)
+      // Não pelo número literal do ponto (que pode ser 1, 3, 4 conforme API)
+      const pontoIndex = directNumber - 1; // Converter para índice do array (0-based)
+      const ponto = menu.pontos[pontoIndex];
       if (ponto) {
-        console.log(`🎯 [Boleto Mapping] Cliente escolheu ponto ${directNumber} via número direto`);
-        return directNumber;
+        console.log(`🎯 [Boleto Mapping] Cliente escolheu ${directNumber}º item do menu → ponto número ${ponto.numero}`);
+        return ponto.numero; // Retornar o número REAL do ponto (ex: 4)
       }
     }
     
@@ -361,10 +364,12 @@ export class InstallationPointSelectionManager {
     
     for (const [ordinal, numero] of Object.entries(ordinaisMap)) {
       if (messageLower.includes(ordinal)) {
-        const ponto = menu.pontos.find(p => p.numero === numero);
+        // CORREÇÃO CRÍTICA: Ordinal também se refere ao ÍNDICE do menu
+        const pontoIndex = numero - 1; // Converter para índice do array
+        const ponto = menu.pontos[pontoIndex];
         if (ponto) {
-          console.log(`🎯 [Boleto Mapping] Cliente escolheu ponto ${numero} via ordinal "${ordinal}"`);
-          return numero;
+          console.log(`🎯 [Boleto Mapping] Cliente escolheu ${numero}º item via ordinal "${ordinal}" → ponto número ${ponto.numero}`);
+          return ponto.numero; // Retornar o número REAL do ponto
         }
       }
     }
