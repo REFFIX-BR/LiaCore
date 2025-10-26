@@ -70,6 +70,25 @@ interface AdminMetrics {
     volume: number;
     successRate: number;
   }>;
+  massiveFailures: {
+    activeFailures: number;
+    totalNotifications: number;
+    uniqueClientsNotified: number;
+    failuresBySeverity: {
+      low: number;
+      medium: number;
+      high: number;
+      critical: number;
+    };
+    recentFailures: Array<{
+      id: string;
+      title: string;
+      severity: string;
+      affectedRegions: number;
+      notifiedClients: number;
+      createdAt: Date;
+    }>;
+  };
 }
 
 export function AdminDashboard() {
@@ -355,6 +374,126 @@ export function AdminDashboard() {
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Massive Failures Metrics - Grid 3 colunas */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <AlertTriangle className="h-5 w-5 text-destructive" />
+          <h2 className="text-xl font-semibold">Falhas Massivas</h2>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="hover-elevate" data-testid="card-active-failures">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Falhas Ativas</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-destructive" data-testid="text-active-failures">
+                {metrics.massiveFailures.activeFailures}
+              </div>
+              <div className="flex items-center gap-1 mt-2">
+                <span className="text-xs text-muted-foreground">
+                  {metrics.massiveFailures.failuresBySeverity.critical} crítica(s), {metrics.massiveFailures.failuresBySeverity.high} alta(s)
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover-elevate" data-testid="card-total-notifications">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Notificações Enviadas</CardTitle>
+              <Zap className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold" data-testid="text-total-notifications">
+                {metrics.massiveFailures.totalNotifications}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Últimos 30 dias
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover-elevate" data-testid="card-unique-clients">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Clientes Notificados</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold" data-testid="text-unique-clients">
+                {metrics.massiveFailures.uniqueClientsNotified}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Clientes únicos
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent Failures Table */}
+        {metrics.massiveFailures.recentFailures.length > 0 && (
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle>Últimas Falhas Registradas</CardTitle>
+              <CardDescription>As 5 falhas mais recentes no sistema</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Título</TableHead>
+                    <TableHead>Severidade</TableHead>
+                    <TableHead className="text-center">Regiões</TableHead>
+                    <TableHead className="text-center">Notificados</TableHead>
+                    <TableHead className="text-right">Criada em</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {metrics.massiveFailures.recentFailures.map((failure) => {
+                    const getSeverityBadge = (severity: string) => {
+                      const variants: Record<string, { variant: "default" | "destructive" | "outline" | "secondary"; label: string }> = {
+                        critical: { variant: "destructive", label: "Crítica" },
+                        high: { variant: "destructive", label: "Alta" },
+                        medium: { variant: "secondary", label: "Média" },
+                        low: { variant: "outline", label: "Baixa" },
+                      };
+                      const config = variants[severity] || variants.low;
+                      return <Badge variant={config.variant} data-testid={`badge-severity-${failure.id}`}>{config.label}</Badge>;
+                    };
+
+                    return (
+                      <TableRow key={failure.id} data-testid={`row-failure-${failure.id}`}>
+                        <TableCell className="font-medium" data-testid={`text-title-${failure.id}`}>
+                          {failure.title}
+                        </TableCell>
+                        <TableCell>
+                          {getSeverityBadge(failure.severity)}
+                        </TableCell>
+                        <TableCell className="text-center" data-testid={`text-regions-${failure.id}`}>
+                          {failure.affectedRegions}
+                        </TableCell>
+                        <TableCell className="text-center" data-testid={`text-notified-${failure.id}`}>
+                          {failure.notifiedClients}
+                        </TableCell>
+                        <TableCell className="text-right text-sm text-muted-foreground" data-testid={`text-date-${failure.id}`}>
+                          {new Date(failure.createdAt).toLocaleDateString('pt-BR', { 
+                            day: '2-digit', 
+                            month: 'short', 
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Admin Actions */}

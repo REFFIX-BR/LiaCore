@@ -165,6 +165,20 @@ export interface IStorage {
     securityEvents: { total: number; failedLogins: number };
     dailyMessages: Array<{ date: string; messages: number }>;
     volumeVsSuccess: Array<{ hour: string; volume: number; successRate: number }>;
+    massiveFailures: {
+      activeFailures: number;
+      totalNotifications: number;
+      uniqueClientsNotified: number;
+      failuresBySeverity: { low: number; medium: number; high: number; critical: number };
+      recentFailures: Array<{
+        id: string;
+        title: string;
+        severity: string;
+        affectedRegions: number;
+        notifiedClients: number;
+        createdAt: Date;
+      }>;
+    };
   }>;
 
   // Agent Status Monitor
@@ -331,6 +345,22 @@ export interface IStorage {
   getFailureNotificationsByClientPhone(clientPhone: string): Promise<any[]>;
   markNotificationAsRead(id: string, clientResponse?: string): Promise<void>;
   getNotifiedClientsForFailure(failureId: string): Promise<string[]>; // Retorna array de telefones notificados
+  
+  // Massive Failure Metrics
+  getMassiveFailureMetrics(): Promise<{
+    activeFailures: number;
+    totalNotifications: number;
+    uniqueClientsNotified: number;
+    failuresBySeverity: { low: number; medium: number; high: number; critical: number };
+    recentFailures: Array<{
+      id: string;
+      title: string;
+      severity: string;
+      affectedRegions: number;
+      notifiedClients: number;
+      createdAt: Date;
+    }>;
+  }>;
 }
 
 export class MemStorage implements IStorage {
@@ -1611,6 +1641,16 @@ export class MemStorage implements IStorage {
   async getNotifiedClientsForFailure(failureId: string): Promise<string[]> {
     return [];
   }
+
+  async getMassiveFailureMetrics() {
+    return {
+      activeFailures: 0,
+      totalNotifications: 0,
+      uniqueClientsNotified: 0,
+      failuresBySeverity: { low: 0, medium: 0, high: 0, critical: 0 },
+      recentFailures: []
+    };
+  }
 }
 
 import { db } from "./db";
@@ -2346,7 +2386,7 @@ export class DbStorage implements IStorage {
 
   async getAdminMetrics() {
     // ✅ CACHE INTELIGENTE - Cacheia métricas por 60 segundos
-    const cacheKey = 'admin:metrics:v1';
+    const cacheKey = 'admin:metrics:v2';
     const cached = localCache.get<any>(cacheKey, 60 * 1000); // 60 segundos
     
     if (cached) {
@@ -2408,13 +2448,17 @@ export class DbStorage implements IStorage {
     // ✅ DADOS REAIS - Volume vs Taxa de Sucesso (últimas 24h)
     const volumeVsSuccess = await this.calculateVolumeVsSuccess();
 
+    // ✅ DADOS REAIS - Métricas de Falhas Massivas
+    const massiveFailures = await this.getMassiveFailureMetrics();
+
     const metrics = {
       systemStatus,
       estimatedCost,
       activeUsers,
       securityEvents,
       dailyMessages,
-      volumeVsSuccess
+      volumeVsSuccess,
+      massiveFailures
     };
 
     // ✅ Armazena no cache por 60 segundos
@@ -3795,6 +3839,100 @@ export class DbStorage implements IStorage {
       );
     
     return notifications.map(n => n.clientPhone);
+  }
+
+  async getMassiveFailureMetrics() {
+    // Buscar falhas ativas
+    const activeFailures = await db.select()
+      .from(schema.massiveFailures)
+      .where(eq(schema.massiveFailures.status, 'active'));
+
+    // Contar notificações (últimos 30 dias)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const notifications = await db.select()
+      .from(schema.failureNotifications)
+      .where(
+        and(
+          eq(schema.failureNotifications.notificationType, 'failure'),
+          gte(schema.failureNotifications.sentAt, thirtyDaysAgo)
+        )
+      );
+
+    // Clientes únicos notificados
+    const uniqueClients = new Set(notifications.map(n => n.clientPhone)).size;
+
+    // Falhas por severidade
+    const failuresBySeverity = {
+      low: activeFailures.filter(f => f.severity === 'low').length,
+      medium: activeFailures.filter(f => f.severity === 'medium').length,
+      high: activeFailures.filter(f => f.severity === 'high').length,
+      critical: activeFailures.filter(f => f.severity === 'critical').length,
+    };
+
+    // Últimas 5 falhas criadas (ativas ou resolvidas recentemente)
+    const recentFailuresData = await db.select()
+      .from(schema.massiveFailures)
+      .orderBy(desc(schema.massiveFailures.createdAt))
+      .limit(5);
+
+    // Buscar todas as notificações das falhas recentes de uma vez
+    const failureIds = recentFailuresData.map(f => f.id);
+    const allFailureNotifications = failureIds.length > 0
+      ? await db.select()
+          .from(schema.failureNotifications)
+          .where(
+            and(
+              inArray(schema.failureNotifications.failureId, failureIds),
+              eq(schema.failureNotifications.notificationType, 'failure')
+            )
+          )
+      : [];
+
+    // Mapear notificações por failureId
+    const notificationsByFailure = allFailureNotifications.reduce((acc, notif) => {
+      if (!acc[notif.failureId]) {
+        acc[notif.failureId] = 0;
+      }
+      acc[notif.failureId]++;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Para cada falha, calcular regiões afetadas e clientes notificados
+    const recentFailures = recentFailuresData.map((failure) => {
+      // Calcular regiões afetadas a partir do JSON affectedRegions
+      let affectedRegionsCount = 0;
+      try {
+        const regions = failure.affectedRegions as any;
+        if (regions?.type === 'predefined' && Array.isArray(regions.regionIds)) {
+          affectedRegionsCount = regions.regionIds.length;
+        } else if (regions?.type === 'custom' && Array.isArray(regions.custom)) {
+          affectedRegionsCount = regions.custom.reduce((sum: number, region: any) => {
+            return sum + (Array.isArray(region.neighborhoods) ? region.neighborhoods.length : 0);
+          }, 0);
+        }
+      } catch (e) {
+        affectedRegionsCount = 0;
+      }
+
+      return {
+        id: failure.id,
+        title: failure.name,
+        severity: failure.severity,
+        affectedRegions: affectedRegionsCount,
+        notifiedClients: notificationsByFailure[failure.id] || 0,
+        createdAt: failure.createdAt || new Date(),
+      };
+    });
+
+    return {
+      activeFailures: activeFailures.length,
+      totalNotifications: notifications.length,
+      uniqueClientsNotified: uniqueClients,
+      failuresBySeverity,
+      recentFailures,
+    };
   }
 }
 
