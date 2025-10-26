@@ -301,6 +301,33 @@ export interface IStorage {
   addSale(sale: any): Promise<any>; // Creates a new sale/lead
   updateSaleStatus(id: string, status: string, observations?: string): Promise<any>; // Updates sale status
   updateSaleNotes(id: string, notes: string): Promise<any>; // Updates sale notes
+
+  // Massive Failures Module
+  // Regions
+  getAllRegions(): Promise<any[]>;
+  getRegion(id: string): Promise<any | undefined>;
+  getRegionsByFilters(filters: { state?: string; city?: string; neighborhood?: string }): Promise<any[]>;
+  addRegion(region: any): Promise<any>;
+  deleteRegion(id: string): Promise<void>;
+  
+  // Massive Failures
+  getAllMassiveFailures(): Promise<any[]>;
+  getActiveMassiveFailures(): Promise<any[]>; // Status = 'active'
+  getScheduledMassiveFailures(): Promise<any[]>; // Status = 'scheduled'
+  getMassiveFailure(id: string): Promise<any | undefined>;
+  addMassiveFailure(failure: any): Promise<any>;
+  updateMassiveFailure(id: string, updates: any): Promise<any>;
+  updateMassiveFailureStatus(id: string, status: string): Promise<any>;
+  resolveMassiveFailure(id: string, resolutionMessage?: string): Promise<any>;
+  deleteMassiveFailure(id: string): Promise<void>;
+  checkActiveFailureForRegion(city: string, neighborhood: string): Promise<any | null>; // Verifica se há falha ativa para determinada região
+  
+  // Failure Notifications
+  addFailureNotification(notification: any): Promise<any>;
+  getFailureNotificationsByFailureId(failureId: string): Promise<any[]>;
+  getFailureNotificationsByClientPhone(clientPhone: string): Promise<any[]>;
+  markNotificationAsRead(id: string, clientResponse?: string): Promise<void>;
+  getNotifiedClientsForFailure(failureId: string): Promise<string[]>; // Retorna array de telefones notificados
 }
 
 export class MemStorage implements IStorage {
@@ -1487,6 +1514,87 @@ export class MemStorage implements IStorage {
   async updateSaleNotes(id: string, notes: string): Promise<any> {
     // MemStorage stub - just return the sale
     return { id, notes };
+  }
+
+  // Massive Failures Module - MemStorage Stubs
+  async getAllRegions(): Promise<any[]> {
+    return [];
+  }
+
+  async getRegion(id: string): Promise<any | undefined> {
+    return undefined;
+  }
+
+  async getRegionsByFilters(filters: { state?: string; city?: string; neighborhood?: string }): Promise<any[]> {
+    return [];
+  }
+
+  async addRegion(region: any): Promise<any> {
+    return { ...region, id: randomUUID(), createdAt: new Date() };
+  }
+
+  async deleteRegion(id: string): Promise<void> {
+    // Stub - no-op
+  }
+
+  async getAllMassiveFailures(): Promise<any[]> {
+    return [];
+  }
+
+  async getActiveMassiveFailures(): Promise<any[]> {
+    return [];
+  }
+
+  async getScheduledMassiveFailures(): Promise<any[]> {
+    return [];
+  }
+
+  async getMassiveFailure(id: string): Promise<any | undefined> {
+    return undefined;
+  }
+
+  async addMassiveFailure(failure: any): Promise<any> {
+    return { ...failure, id: randomUUID(), createdAt: new Date(), updatedAt: new Date() };
+  }
+
+  async updateMassiveFailure(id: string, updates: any): Promise<any> {
+    return { ...updates, id, updatedAt: new Date() };
+  }
+
+  async updateMassiveFailureStatus(id: string, status: string): Promise<any> {
+    return { id, status, updatedAt: new Date() };
+  }
+
+  async resolveMassiveFailure(id: string, resolutionMessage?: string): Promise<any> {
+    return { id, status: 'resolved', resolutionMessage, endTime: new Date() };
+  }
+
+  async deleteMassiveFailure(id: string): Promise<void> {
+    // Stub - no-op
+  }
+
+  async checkActiveFailureForRegion(city: string, neighborhood: string): Promise<any | null> {
+    return null;
+  }
+
+  async addFailureNotification(notification: any): Promise<any> {
+    return { ...notification, id: randomUUID(), sentAt: new Date(), wasRead: false };
+  }
+
+  async getFailureNotificationsByFailureId(failureId: string): Promise<any[]> {
+    return [];
+  }
+
+  async getFailureNotificationsByClientPhone(clientPhone: string): Promise<any[]> {
+    return [];
+  }
+
+  async markNotificationAsRead(id: string, clientResponse?: string): Promise<void> {
+    // Stub - no-op
+  }
+
+  async getNotifiedClientsForFailure(failureId: string): Promise<string[]> {
+    return [];
   }
 }
 
