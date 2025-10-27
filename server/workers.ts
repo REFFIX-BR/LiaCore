@@ -49,8 +49,8 @@ import { checkAndNotifyMassiveFailure } from './lib/massive-failure-handler';
 
 // Helper function to send WhatsApp message
 async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?: string): Promise<{success: boolean, whatsappMessageId?: string, remoteJid?: string}> {
-  // Fallback: instance → ENV → 'Principal' (para evitar falha silenciosa)
-  const evolutionInstance = instance || process.env.EVOLUTION_API_INSTANCE || 'Principal';
+  // Fallback: instance → ENV → 'Leads' (NUNCA usar Principal - apenas Leads ou Cobranca)
+  const evolutionInstance = instance || process.env.EVOLUTION_API_INSTANCE || 'Leads';
   
   if (!instance) {
     console.log(`⚠️ [WhatsApp] Instância não fornecida, usando fallback: ${evolutionInstance}`);

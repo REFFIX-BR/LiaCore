@@ -7449,7 +7449,7 @@ A resposta deve:
 
       if (!conversation) {
         // Determine evolutionInstance and department: use last conversation's values or defaults
-        let evolutionInstance = 'Principal'; // Default
+        let evolutionInstance = 'Leads'; // Default: NUNCA usar Principal - apenas Leads ou Cobranca
         let department = 'support'; // Default: support instead of general (so it appears in Transferidas)
         let assistantType = 'suporte'; // Default: suporte assistant
         
