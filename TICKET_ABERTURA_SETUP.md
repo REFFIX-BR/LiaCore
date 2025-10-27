@@ -247,6 +247,11 @@ abrir_ticket_crm({
 })
 ```
 
+**📱 Observação:** O sistema adiciona automaticamente o número de telefone no início do resumo:
+```
+[WhatsApp: 5522997074180] Cliente Marcio Zebende enviou comprovante...
+```
+
 **PASSO 4 - IA confirma:**
 > "Ticket registrado! ✅
 > Protocolo: 2510262344641789
@@ -281,6 +286,7 @@ abrir_ticket_crm({
 
 **No CRM:**
 - Status: **ABERTO** (aguardando verificação manual)
+- Resumo inclui: **[WhatsApp: número]** para rastreabilidade
 - Atendente poderá verificar o comprovante
 - Atendente dará baixa manual após confirmação
 

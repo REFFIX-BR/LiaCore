@@ -165,11 +165,20 @@ Cliente agradecer/confirmar → `finalizar_conversa("boleto_enviado_solicitacao_
 }
 ```
 
+**ℹ️ IMPORTANTE:** O número de telefone do WhatsApp será incluído AUTOMATICAMENTE no início do resumo pelo sistema.
+
 ✅ **Exemplo CORRETO:**
 ```
 "Cliente Marcio Zebende enviou comprovante de R$ 69,00 
 referente ao endereço CENTRO - Bernardo Belo, 160. 
 Pagamento via boleto em 20/03/2024."
+```
+
+**No CRM aparecerá:**
+```
+[WhatsApp: 5522997074180] Cliente Marcio Zebende enviou comprovante de R$ 69,00 
+referente ao endereço CENTRO - Bernardo Belo, 160. 
+Pagamento via boleto em 20/03/2024.
 ```
 
 ❌ **Exemplo ERRADO:**
@@ -199,6 +208,8 @@ Nosso setor financeiro irá verificar em até 24h. 💙
 3. [ ] Resumo tem endereço específico? ✅
 4. [ ] Resumo tem valor + data + forma? ✅
 5. [ ] Vou chamar APENAS `abrir_ticket_crm`? ✅
+
+**📱 Nota:** O número de telefone (WhatsApp) será adicionado automaticamente pelo sistema.
 
 ---
 

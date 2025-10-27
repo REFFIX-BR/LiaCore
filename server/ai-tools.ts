@@ -696,13 +696,22 @@ export async function abrirTicketCRM(
       throw new Error(validacao.erro);
     }
 
-    console.log(`🎫 [AI Tool] Abrindo ticket no CRM (conversação: ${conversationContext.conversationId}, setor: ${setor}, motivo: ${motivo})`);
+    // Extrair número de telefone do chatId (ex: "whatsapp_5522997074180" ou "5522997074180")
+    let phoneNumber = conversation.chatId;
+    if (phoneNumber.startsWith('whatsapp_')) {
+      phoneNumber = phoneNumber.replace('whatsapp_', '');
+    }
+    
+    // Incluir número de telefone no resumo para rastreabilidade
+    const resumoComTelefone = `[WhatsApp: ${phoneNumber}] ${resumo}`;
+
+    console.log(`🎫 [AI Tool] Abrindo ticket no CRM (conversação: ${conversationContext.conversationId}, setor: ${setor}, motivo: ${motivo}, telefone: ${phoneNumber})`);
 
     const resultado = await fetchWithRetry<AbrirTicketResult[]>(
       "https://webhook.trtelecom.net/webhook/abrir_ticket",
       {
         documento: conversation.clientDocument,
-        resumo: resumo,
+        resumo: resumoComTelefone,
         setor: setor.toUpperCase(),
         motivo: motivo.toUpperCase(),
         finalizar: "N"  // "N" = ticket fica ABERTO para verificação manual do atendente
