@@ -388,9 +388,9 @@ export default function Conversations() {
       </Card>
 
       {/* Área de chats - Split Screen */}
-      <div className="flex-1 flex flex-col gap-3">
+      <div className="flex-1 flex flex-col gap-3 overflow-hidden">
         {/* Seletor de Layout */}
-        <Card className="p-3">
+        <Card className="p-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-muted-foreground">Modo de Visualização:</span>
@@ -417,7 +417,7 @@ export default function Conversations() {
         </Card>
 
         {/* Conversas */}
-        <div className="flex-1 flex gap-4">
+        <div className="flex-1 flex gap-4 min-h-0">
           {activeConversation1 ? (
             <>
               {/* Primeiro Chat */}
