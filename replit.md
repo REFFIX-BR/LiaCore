@@ -44,3 +44,14 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui`, and Tailwind CS
 - `express`: Web server framework.
 - `react-hook-form`, `zod`: Form handling and validation.
 - `tailwindcss`: CSS framework.
+
+## Recent Updates (Oct 27, 2025)
+
+### Assistant Instructions Improvements
+**Bug #2 - Function Simulation Fix**: ✅ RESOLVED - Critical bug where assistants wrote function calls as literal text visible to customers (e.g., `*[EXECUTO: rotear_para_assistente(...)]*`) instead of executing via OpenAI Function Calling. Added comprehensive anti-simulation rules to Apresentação and Suporte assistants. Files: `COPIAR_COLAR_APRESENTACAO_OPENAI.md`, `COPIAR_COLAR_SUPORTE_OPENAI.md`.
+
+**Suporte Technical Messaging Simplification**: Removed technical jargon ("IP está ativo, sem bloqueios financeiros") from customer-facing messages. Now uses simple language: "Vejo que sua conexão está offline. Já tentou reiniciar o modem?".
+
+**Suporte Multiple Points Fix**: Fixed premature conversation finalization when customers with multiple installation points select an address. Assistant now ALWAYS verifies connection after selection before providing diagnosis. Real case: Monica (whatsapp_5524992949880).
+
+**Suporte Massive Failure Detection**: ✅ NEW - Added mandatory 5-step verification sequence: (1) statusIP check → Financeiro, (2) **massiva check → inform regional outage**, (3) os_aberta check → acknowledge existing ticket, (4) individual diagnosis, (5) advanced troubleshooting. When `massiva: true` detected, assistant informs customer about regional problem and stops individual troubleshooting.
