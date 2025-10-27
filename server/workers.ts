@@ -716,12 +716,31 @@ if (redisConnection) {
             throw new Error(`Assistant ID não encontrado para tipo: ${result.assistantTarget}`);
           }
           
-          // Reprocessar a mensagem original com o novo assistente
+          // 🆕 INJETAR CONTEXTO DO ROTEAMENTO: Construir mensagem contextualizada
+          // Em vez de enviar apenas "2", vamos enviar o motivo completo do roteamento
+          let contextualizedMessage = message;
+          
+          if (result.routingReason && result.routingReason.trim().length > 0) {
+            // Se há um motivo de roteamento, usá-lo como contexto principal
+            contextualizedMessage = `${result.routingReason}`;
+            
+            // Preservar mensagem original se contiver informação relevante (não apenas números de seleção)
+            const isSimpleSelection = /^[0-9]{1,2}$/.test(message.trim()); // Apenas 1-2 dígitos
+            if (!isSimpleSelection && message.trim().length > 2) {
+              contextualizedMessage += `\n\nObservação adicional do cliente: ${message}`;
+            }
+            
+            console.log(`🔀 [Worker] Contexto injetado para ${result.assistantTarget}: "${contextualizedMessage}"`);
+          } else {
+            console.log(`⚠️ [Worker] Sem motivo de roteamento - usando mensagem original: "${message}"`);
+          }
+          
+          // Reprocessar com mensagem contextualizada
           const { sendMessageAndGetResponse } = await import('./lib/openai');
           const newAssistantResult = await sendMessageAndGetResponse(
             threadId,
             newAssistantId,  // ID real do assistente (asst_xxx)
-            message,  // Mensagem original do cliente
+            contextualizedMessage,  // 🆕 Mensagem contextualizada com motivo do roteamento
             chatId,
             conversationId
           );
