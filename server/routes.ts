@@ -1208,6 +1208,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? result.response 
         : ((result.response as any)?.response || JSON.stringify(result.response));
       
+      // ⚠️ VALIDAÇÃO ANTI-MENTIRA: Detectar quando assistente diz que vai rotear mas não executa a função
+      if (conversation.assistantType === "apresentacao" && !result.transferred) {
+        // Normalizar resposta: remover acentos, pontuação e converter para minúsculas
+        const normalizeText = (text: string) => {
+          return text
+            .toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove acentos
+            .replace(/[^\w\s]/g, " ") // Remove pontuação
+            .replace(/\s+/g, " ") // Normaliza espaços
+            .trim();
+        };
+        
+        const normalizedResponse = normalizeText(responseText);
+        
+        // Lista expandida incluindo todas as variantes verbais possíveis
+        const routingKeywords = [
+          // Presente
+          "encaminhando", "transferindo", "passando", "direcionando", "roteando",
+          // Futuro
+          "vou encaminhar", "vou transferir", "vou rotear", "vou passar", "vou direcionar",
+          "irei encaminhar", "irei transferir", "irei passar", "vou direciona lo",
+          "encaminharei", "transferirei", "passarei", "direcionarei",
+          // Progressivo
+          "estou encaminhando", "estou transferindo", "estou passando",
+          // Passado (mais comum em respostas falsas!)
+          "encaminhei", "transferi", "passei", "direcionei", "roteei",
+          "ja encaminhei", "ja transferi", "ja passei", "acabei de encaminhar",
+          // Variantes informais
+          "vou passar pra", "vou mandar pra", "passando pra",
+          "mandando pra", "transferindo pra", "encaminhando pra",
+          "direciono agora", "passo agora", "transf erindo",
+        ];
+        
+        const matchedKeyword = routingKeywords.find(keyword => normalizedResponse.includes(keyword));
+        const isFakeRouting = !!matchedKeyword;
+        
+        // Log de telemetria para frases suspeitas mesmo se não houver match exato
+        const suspiciousPatterns = ["para o", "pro ", "pra ", "suporte", "financeiro", "comercial", "atendimento"];
+        const hasSuspiciousPattern = suspiciousPatterns.some(p => normalizedResponse.includes(p));
+        
+        if (!isFakeRouting && hasSuspiciousPattern && normalizedResponse.length > 50) {
+          console.warn(`⚠️ [ANTI-MENTIRA] Frase suspeita NÃO detectada (pode ser nova variante):`);
+          console.warn(`⚠️ [ANTI-MENTIRA] "${responseText.substring(0, 150)}"`);
+        }
+        
+        if (isFakeRouting) {
+          console.error("🚨 [ANTI-MENTIRA] CRÍTICO: Apresentação disse que ia rotear mas NÃO chamou a função!");
+          console.error(`🚨 [ANTI-MENTIRA] Conversa: ${conversation.id}, Cliente: ${conversation.clientName}`);
+          console.error(`🚨 [ANTI-MENTIRA] Keyword detectada: "${matchedKeyword}"`);
+          console.error(`🚨 [ANTI-MENTIRA] Resposta: ${responseText.substring(0, 200)}`);
+          console.error(`🚨 [ANTI-MENTIRA] result.transferred: ${result.transferred}`);
+          
+          // Detectar para qual assistente deveria ter roteado baseado em múltiplas fontes
+          let targetAssistant = "suporte"; // fallback padrão
+          
+          // 1º: Verificar se já existe um problema detectado no metadata
+          const metadata = conversation.metadata as any;
+          if (metadata?.problemaDetectado?.type) {
+            const problemType = metadata.problemaDetectado.type;
+            const problemTypeMap: Record<string, string> = {
+              "conectividade": "suporte",
+              "velocidade": "suporte",
+              "técnico": "suporte",
+              "financeiro": "financeiro",
+              "pagamento": "financeiro",
+              "comercial": "comercial",
+              "venda": "comercial",
+            };
+            
+            if (problemTypeMap[problemType]) {
+              targetAssistant = problemTypeMap[problemType];
+              console.log(`🎯 [ANTI-MENTIRA] Usando problema detectado do metadata: ${problemType} → ${targetAssistant}`);
+            }
+          }
+          
+          // 2º: Se não há metadata, usar keywords da mensagem do cliente E do histórico recente
+          if (targetAssistant === "suporte") {
+            const problemKeywords = {
+              suporte: ["internet", "conexão", "lento", "oscilando", "caiu", "não funciona", "problema técnico", "travando", "sem sinal"],
+              financeiro: ["boleto", "pagamento", "fatura", "cobrança", "vencimento", "pagar", "segunda via", "comprovante"],
+              comercial: ["contratar", "plano", "upgrade", "mudança de plano", "novo plano", "quanto custa", "assinar"],
+            };
+            
+            const lastMessage = processedMessage.toLowerCase();
+            const previousMessage = conversation.lastMessage?.toLowerCase() || "";
+            const combinedContext = `${lastMessage} ${previousMessage}`;
+            
+            for (const [assistant, keywords] of Object.entries(problemKeywords)) {
+              if (keywords.some(kw => combinedContext.includes(kw))) {
+                targetAssistant = assistant;
+                console.log(`🎯 [ANTI-MENTIRA] Detectado por keywords: ${keywords.find(kw => combinedContext.includes(kw))} → ${targetAssistant}`);
+                break;
+              }
+            }
+          }
+          
+          console.log(`🔧 [ANTI-MENTIRA] Forçando roteamento manual para: ${targetAssistant}`);
+          
+          // Forçar o roteamento manualmente
+          const { ASSISTANT_IDS, ASSISTANT_TO_DEPARTMENT } = await import("./lib/openai");
+          const newAssistantId = ASSISTANT_IDS[targetAssistant as keyof typeof ASSISTANT_IDS];
+          const newDepartment = ASSISTANT_TO_DEPARTMENT[targetAssistant] || "general";
+          
+          const updatedMetadata = {
+            ...(typeof conversation.metadata === 'object' && conversation.metadata !== null ? conversation.metadata : {}),
+            routing: {
+              assistantType: targetAssistant,
+              assistantId: newAssistantId,
+              confidence: 1.0,
+              routedBy: "anti_mentira_system",
+              routedAt: new Date().toISOString(),
+              originalResponse: responseText, // Salvar resposta problemática
+            },
+          };
+          
+          await storage.updateConversation(conversation.id, {
+            assistantType: targetAssistant,
+            department: newDepartment,
+            lastMessage: message,
+            lastMessageTime: new Date(),
+            duration: (conversation.duration || 0) + 30,
+            sentiment,
+            urgency,
+            metadata: updatedMetadata,
+          });
+          
+          // Criar ação de supervisor para rastreamento
+          await storage.createSupervisorAction({
+            conversationId: conversation.id,
+            action: "note",
+            notes: `⚠️ ANTI-MENTIRA: Sistema detectou resposta falsa e forçou roteamento para ${targetAssistant}`,
+            createdBy: "Sistema Anti-Mentira",
+          });
+          
+          console.log(`✅ [ANTI-MENTIRA] Roteamento forçado aplicado para ${targetAssistant}`);
+          
+          // Marcar como transferred para que o fluxo normal continue
+          result.transferred = true;
+          result.transferredTo = targetAssistant;
+        }
+      }
+      
       await storage.createMessage({
         conversationId: conversation.id,
         role: "assistant",
