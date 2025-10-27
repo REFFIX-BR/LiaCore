@@ -260,6 +260,7 @@ interface StatusConexaoResult {
   onu_run_state: string;
   onu_last_down_cause: string;
   massiva: boolean;
+  hasMultiplePoints?: boolean;  // true: múltiplos endereços, false/undefined: mesmo endereço
 }
 
 interface DesbloqueioResult {
@@ -657,6 +658,29 @@ export async function consultaStatusConexao(
       }
       
       console.log(`✅ [AI Tool] Verificação de massivas concluída`);
+      
+      // ✅ DETECTAR SE SÃO MÚLTIPLOS PONTOS (endereços diferentes) ou MÚLTIPLAS CONEXÕES (mesmo endereço)
+      if (conexoes.length > 1) {
+        const enderecos = new Set<string>();
+        
+        for (const conexao of conexoes) {
+          const enderecoKey = `${normalizeLocationName(conexao.CIDADE || '')}|${normalizeLocationName(conexao.BAIRRO || '')}|${normalizeLocationName(conexao.ENDERECO || '')}`;
+          enderecos.add(enderecoKey);
+        }
+        
+        const hasMultipleAddresses = enderecos.size > 1;
+        
+        if (hasMultipleAddresses) {
+          console.log(`🏠 [AI Tool] MÚLTIPLOS PONTOS detectados: ${enderecos.size} endereços diferentes`);
+        } else {
+          console.log(`🔗 [AI Tool] Múltiplas conexões no MESMO endereço (${conexoes.length} logins PPPoE)`);
+        }
+        
+        // Adicionar flag indicando se são pontos diferentes
+        for (const conexao of conexoes) {
+          conexao.hasMultiplePoints = hasMultipleAddresses;
+        }
+      }
     }
 
     return conexoes;
