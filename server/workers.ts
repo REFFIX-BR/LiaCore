@@ -47,10 +47,32 @@ import { analyzeImageWithVision } from './lib/vision';
 import { storage } from './storage';
 import { checkAndNotifyMassiveFailure } from './lib/massive-failure-handler';
 
+// Helper function to validate and normalize Evolution API instance
+// CRITICAL: ONLY "Leads" or "Cobranca" are allowed - NEVER "Principal"
+function validateEvolutionInstance(instance?: string): string {
+  const allowedInstances = ['Leads', 'Cobranca'];
+  
+  if (!instance) {
+    return 'Leads'; // Default
+  }
+  
+  // Normalize case
+  const normalized = instance.charAt(0).toUpperCase() + instance.slice(1).toLowerCase();
+  
+  if (allowedInstances.includes(normalized)) {
+    return normalized;
+  }
+  
+  // If invalid instance (including "Principal"), force to Leads
+  console.warn(`⚠️ [Evolution] Invalid instance "${instance}" - forcing to "Leads" (allowed: ${allowedInstances.join(', ')})`);
+  return 'Leads';
+}
+
 // Helper function to send WhatsApp message
 async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?: string): Promise<{success: boolean, whatsappMessageId?: string, remoteJid?: string}> {
-  // Fallback: instance → ENV → 'Leads' (NUNCA usar Principal - apenas Leads ou Cobranca)
-  const evolutionInstance = instance || process.env.EVOLUTION_API_INSTANCE || 'Leads';
+  // CRITICAL: Validate instance - ONLY "Leads" or "Cobranca" allowed
+  const rawInstance = instance || process.env.EVOLUTION_API_INSTANCE || 'Leads';
+  const evolutionInstance = validateEvolutionInstance(rawInstance);
   
   if (!instance) {
     console.log(`⚠️ [WhatsApp] Instância não fornecida, usando fallback: ${evolutionInstance}`);
@@ -206,7 +228,10 @@ if (redisConnection) {
   messageProcessingWorker = new Worker<MessageProcessingJob>(
     QUEUE_NAMES.MESSAGE_PROCESSING,
     async (job: Job<MessageProcessingJob>) => {
-      const { chatId, conversationId, message, fromNumber, hasImage, imageUrl, evolutionInstance, clientName, messageId } = job.data;
+      const { chatId, conversationId, message, fromNumber, hasImage, imageUrl, evolutionInstance: rawEvolutionInstance, clientName, messageId } = job.data;
+      
+      // CRITICAL: Validate Evolution instance - ONLY "Leads" or "Cobranca" allowed
+      const evolutionInstance = validateEvolutionInstance(rawEvolutionInstance);
 
       // Check idempotency
       const idempotencyKey = messageId || job.id;
@@ -988,7 +1013,10 @@ Por favor, responda apenas com um número de 0 a 10.
   inactivityFollowupWorker = new Worker<InactivityFollowupJob>(
     QUEUE_NAMES.INACTIVITY_FOLLOWUP,
     async (job: Job<InactivityFollowupJob>) => {
-      const { conversationId, chatId, clientId, clientName, evolutionInstance, lastClientMessageTime } = job.data;
+      const { conversationId, chatId, clientId, clientName, evolutionInstance: rawEvolutionInstance, lastClientMessageTime } = job.data;
+      
+      // CRITICAL: Validate Evolution instance - ONLY "Leads" or "Cobranca" allowed
+      const evolutionInstance = validateEvolutionInstance(rawEvolutionInstance);
 
       // Check idempotency
       if (await isJobProcessed(job.id!)) {
@@ -1096,7 +1124,10 @@ Por favor, responda apenas com um número de 0 a 10.
   autoClosureWorker = new Worker<AutoClosureJob>(
     QUEUE_NAMES.AUTO_CLOSURE,
     async (job: Job<AutoClosureJob>) => {
-      const { conversationId, chatId, clientId, clientName, evolutionInstance, followupSentAt } = job.data;
+      const { conversationId, chatId, clientId, clientName, evolutionInstance: rawEvolutionInstance, followupSentAt } = job.data;
+      
+      // CRITICAL: Validate Evolution instance - ONLY "Leads" or "Cobranca" allowed
+      const evolutionInstance = validateEvolutionInstance(rawEvolutionInstance);
 
       // Check idempotency
       if (await isJobProcessed(job.id!)) {

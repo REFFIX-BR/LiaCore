@@ -29,6 +29,27 @@ function normalizeEvolutionUrl(url?: string): string {
   return normalized;
 }
 
+// Helper function to validate and normalize Evolution API instance
+// CRITICAL: ONLY "Leads" or "Cobranca" are allowed - NEVER "Principal"
+function validateEvolutionInstance(instance?: string | null): string {
+  const allowedInstances = ['Leads', 'Cobranca'];
+  
+  if (!instance) {
+    return 'Leads'; // Default
+  }
+  
+  // Normalize case
+  const normalized = instance.charAt(0).toUpperCase() + instance.slice(1).toLowerCase();
+  
+  if (allowedInstances.includes(normalized)) {
+    return normalized;
+  }
+  
+  // If invalid instance (including "Principal"), force to Leads
+  console.warn(`⚠️ [Evolution] Invalid instance "${instance}" - forcing to "Leads" (allowed: ${allowedInstances.join(', ')})`);
+  return 'Leads';
+}
+
 // Evolution API configuration
 const EVOLUTION_CONFIG = {
   apiUrl: normalizeEvolutionUrl(process.env.EVOLUTION_API_URL),
@@ -239,8 +260,9 @@ async function sendWhatsAppMessage(
   text: string, 
   instanceName?: string
 ): Promise<{ success: boolean; whatsappMessageId?: string; remoteJid?: string }> {
-  // Use instance específica da conversa ou fallback para env var
-  const instance = instanceName || EVOLUTION_CONFIG.instance;
+  // CRITICAL: Validate instance - ONLY "Leads" or "Cobranca" allowed
+  const rawInstance = instanceName || EVOLUTION_CONFIG.instance;
+  const instance = validateEvolutionInstance(rawInstance);
   const apiKey = getEvolutionApiKey(instance);
   
   if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
