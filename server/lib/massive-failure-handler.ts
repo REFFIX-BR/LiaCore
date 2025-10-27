@@ -295,16 +295,8 @@ export async function checkAndNotifyMassiveFailure(
     }
   }
 
-  // 9. Transferir conversa para atendimento humano
-  try {
-    await storage.updateConversation(conversationId, {
-      transferredToHuman: true,
-      department: "support"
-    });
-    console.log(`👤 [Massive Failure] Conversa transferida para atendimento humano`);
-  } catch (error) {
-    console.error("❌ [Massive Failure] Erro ao transferir conversa:", error);
-  }
+  // 9. IA continua o atendimento após notificar sobre a falha massiva
+  console.log(`🤖 [Massive Failure] Cliente notificado - IA continua o atendimento`);
 
   return { 
     hasMultiplePoints: points.length > 1, 

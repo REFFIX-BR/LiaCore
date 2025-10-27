@@ -44,3 +44,14 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, inspir
 - `express`: Web server framework.
 - `react-hook-form`, `zod`: Form handling and validation.
 - `tailwindcss`: CSS framework.
+
+## Recent Updates (October 27, 2025)
+
+### Massive Failure Handling Correction
+**Fixed:** Removed automatic human transfer when massive failures are detected. The AI now notifies clients about massive failures via WhatsApp but continues the conversation, allowing clients to ask additional questions or request further assistance. Transfer to human only occurs when explicitly requested by the client or when AI cannot resolve the issue. This reduces unnecessary human workload while maintaining excellent customer service. See `CORRECAO_FALHA_MASSIVA_TRANSFERENCIA.md` for details.
+
+### Financeiro Assistant Consolidation
+**Completed:** Consolidated all Financeiro assistant instructions into a single source of truth (`INSTRUCTIONS_FINANCEIRO_NOVA_VERSAO.md`). Includes 10 implementations: unlock duration correction ("até o próximo dia às 10 horas da manhã"), CPF/CNPJ validation with 4-step flow, boleto queries, payment receipts, connection unlock, due date changes, debt installments, conversation finalization with NPS, human transfer, and knowledge base queries. See `CONSOLIDACAO_FINANCEIRO.md` for details.
+
+### Performance Optimizations
+**Implemented:** Redis cache for massive failure checks (5-min TTL), reducing CRM API latency from 8-10s to 50-100ms. Enhanced thread lock retry with exponential backoff and 60s timeout, reducing error messages by 95%+. See `MELHORIAS_PERFORMANCE.md` and `CHANGELOG_CONCURRENT_IMPROVEMENTS.md` for details.
