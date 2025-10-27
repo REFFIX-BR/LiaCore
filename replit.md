@@ -10,6 +10,8 @@ Preferred communication style: Simple, everyday language.
 ### UI/UX Decisions
 The frontend is built with React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, drawing inspiration from Carbon Design System and Linear for a modern aesthetic with dark/light mode support. `Wouter` manages client-side routing. Key UI features include color-coded wait time indicators, an enhanced complaint description interface, dialogs for private notes, dedicated UIs for new contact creation, conversation reopening, and activity logs. Sales and plans management systems provide dashboards with KPIs, tables, and CRUD interfaces. The chat interface supports message pagination with intelligent auto-scroll, auto-focus textarea, and inline PDF visualization.
 
+**Conversation Layout Modes**: The agent conversation interface features a flexible layout selector that allows attendants to toggle between single-box mode (1 caixa) for rapid conversation switching and dual-box mode (2 caixas) for handling two conversations simultaneously. The preference is persisted in localStorage for each user.
+
 ### Technical Implementations
 **Frontend**: Utilizes TanStack Query for server state management.
 **Backend**: Powered by Node.js and Express.js (TypeScript), integrating GPT-5 for routing, OpenAI Assistants API, Upstash Vector for RAG, Upstash Redis for managing conversation threads, and PostgreSQL via Drizzle ORM.
@@ -55,3 +57,9 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui`, and Tailwind CS
 **Suporte Multiple Points Fix**: Fixed premature conversation finalization when customers with multiple installation points select an address. Assistant now ALWAYS verifies connection after selection before providing diagnosis. Real case: Monica (whatsapp_5524992949880).
 
 **Suporte Massive Failure Detection**: ✅ NEW - Added mandatory 5-step verification sequence: (1) statusIP check → Financeiro, (2) **massiva check → inform regional outage**, (3) os_aberta check → acknowledge existing ticket, (4) individual diagnosis, (5) advanced troubleshooting. When `massiva: true` detected, assistant informs customer about regional problem and stops individual troubleshooting.
+
+### Conversation Interface Enhancement
+**Layout Mode Selector** (Oct 27, 2025): Added flexible conversation layout system in agent interface (`/conversas`) allowing attendants to toggle between:
+- **1 Caixa Mode**: Single conversation view with rapid switching - ideal for focused attention and quick transitions between clients
+- **2 Caixas Mode**: Dual split-screen view supporting up to 2 simultaneous conversations - ideal for multitasking
+The preference is automatically saved in localStorage and persists across sessions. UI includes toggle selector with icons (LayoutGrid for single, Columns2 for dual) and contextual help text. File: `client/src/pages/Conversations.tsx`.

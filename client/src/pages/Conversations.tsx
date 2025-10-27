@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth-context";
-import { Circle, CheckCircle2, Search, X } from "lucide-react";
+import { Circle, CheckCircle2, Search, X, LayoutGrid, Columns2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 // Função para calcular cor do indicador baseado no tempo de espera
 function getWaitTimeIndicator(lastMessageTime: Date): { color: string; label: string } {
@@ -78,7 +79,16 @@ export default function Conversations() {
   const [activeIds, setActiveIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<"transferred" | "assigned">("transferred");
   const [searchQuery, setSearchQuery] = useState("");
+  const [layoutMode, setLayoutMode] = useState<"single" | "dual">(() => {
+    const saved = localStorage.getItem("conversationsLayoutMode");
+    return (saved === "single" || saved === "dual") ? saved : "dual";
+  });
   const { user, isAgent } = useAuth();
+
+  // Salvar preferência de layout no localStorage
+  useEffect(() => {
+    localStorage.setItem("conversationsLayoutMode", layoutMode);
+  }, [layoutMode]);
 
   // Query conversas transferidas
   const { data: transferredConversations = [], isLoading: transferredLoading } = useQuery<Conversation[]>({
@@ -109,12 +119,27 @@ export default function Conversations() {
       return;
     }
 
+    // Modo single: apenas uma conversa por vez
+    if (layoutMode === "single") {
+      setActiveIds([id]);
+      return;
+    }
+
+    // Modo dual: até duas conversas
     if (activeIds.length < 2) {
       setActiveIds([...activeIds, id]);
     } else {
       setActiveIds([activeIds[0], id]);
     }
   };
+
+  // Ajustar conversas ao mudar o modo de layout
+  useEffect(() => {
+    if (layoutMode === "single" && activeIds.length > 1) {
+      // Manter apenas a primeira conversa ao mudar para modo single
+      setActiveIds([activeIds[0]]);
+    }
+  }, [layoutMode]);
 
   // Função para fechar conversa
   const handleCloseConversation = (id: string) => {
@@ -363,42 +388,76 @@ export default function Conversations() {
       </Card>
 
       {/* Área de chats - Split Screen */}
-      <div className="flex-1 flex gap-4">
-        {activeConversation1 ? (
-          <>
-            {/* Primeiro Chat */}
-            <div className={activeConversation2 ? "flex-1" : "flex-1"}>
-              <ChatPanel
-                conversation={activeConversation1}
-                onClose={() => handleCloseConversation(activeConversation1.id)}
-                showCloseButton={true}
-              />
+      <div className="flex-1 flex flex-col gap-3">
+        {/* Seletor de Layout */}
+        <Card className="p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground">Modo de Visualização:</span>
+              <ToggleGroup 
+                type="single" 
+                value={layoutMode}
+                onValueChange={(value) => value && setLayoutMode(value as "single" | "dual")}
+                data-testid="layout-mode-selector"
+              >
+                <ToggleGroupItem value="single" aria-label="Uma caixa" data-testid="layout-mode-single">
+                  <LayoutGrid className="h-4 w-4 mr-2" />
+                  1 Caixa
+                </ToggleGroupItem>
+                <ToggleGroupItem value="dual" aria-label="Duas caixas" data-testid="layout-mode-dual">
+                  <Columns2 className="h-4 w-4 mr-2" />
+                  2 Caixas
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
+            <div className="text-xs text-muted-foreground">
+              {layoutMode === "single" ? "Troca rápida entre conversas" : "Até 2 conversas simultâneas"}
+            </div>
+          </div>
+        </Card>
 
-            {/* Segundo Chat (se existir) */}
-            {activeConversation2 && (
-              <div className="flex-1">
+        {/* Conversas */}
+        <div className="flex-1 flex gap-4">
+          {activeConversation1 ? (
+            <>
+              {/* Primeiro Chat */}
+              <div className={activeConversation2 && layoutMode === "dual" ? "flex-1" : "flex-1"}>
                 <ChatPanel
-                  conversation={activeConversation2}
-                  onClose={() => handleCloseConversation(activeConversation2.id)}
+                  conversation={activeConversation1}
+                  onClose={() => handleCloseConversation(activeConversation1.id)}
                   showCloseButton={true}
                 />
               </div>
-            )}
-          </>
-        ) : (
-          <Card className="flex-1 flex items-center justify-center">
-            <div className="text-center space-y-2">
-              <h3 className="font-semibold">Selecione uma conversa</h3>
-              <p className="text-sm text-muted-foreground">
-                Escolha uma ou duas conversas para atender simultaneamente
-              </p>
-              <p className="text-xs text-muted-foreground">
-                💡 Dica: Selecione uma segunda conversa para dividir a tela
-              </p>
-            </div>
-          </Card>
-        )}
+
+              {/* Segundo Chat (apenas no modo dual) */}
+              {activeConversation2 && layoutMode === "dual" && (
+                <div className="flex-1">
+                  <ChatPanel
+                    conversation={activeConversation2}
+                    onClose={() => handleCloseConversation(activeConversation2.id)}
+                    showCloseButton={true}
+                  />
+                </div>
+              )}
+            </>
+          ) : (
+            <Card className="flex-1 flex items-center justify-center">
+              <div className="text-center space-y-2">
+                <h3 className="font-semibold">Selecione uma conversa</h3>
+                <p className="text-sm text-muted-foreground">
+                  {layoutMode === "single" 
+                    ? "Escolha uma conversa para atender (modo 1 caixa)" 
+                    : "Escolha uma ou duas conversas para atender simultaneamente"}
+                </p>
+                {layoutMode === "dual" && (
+                  <p className="text-xs text-muted-foreground">
+                    Dica: Selecione uma segunda conversa para dividir a tela
+                  </p>
+                )}
+              </div>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );
