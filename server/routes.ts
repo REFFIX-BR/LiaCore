@@ -94,7 +94,9 @@ function getEvolutionApiUrl(instanceName?: string): string {
 
 // Helper function to send WhatsApp image via Evolution API
 async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, caption?: string, instanceName?: string): Promise<boolean> {
-  const instance = instanceName || EVOLUTION_CONFIG.instance;
+  // CRITICAL: Validate instance - ONLY "Leads" or "Cobranca" allowed
+  const rawInstance = instanceName || EVOLUTION_CONFIG.instance;
+  const instance = validateEvolutionInstance(rawInstance);
   const apiKey = getEvolutionApiKey(instance);
   
   if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
@@ -154,7 +156,9 @@ async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, capti
 
 // Helper function to send WhatsApp PDF/document via Evolution API
 async function sendWhatsAppDocument(phoneNumber: string, pdfBase64: string, fileName?: string, caption?: string, instanceName?: string): Promise<boolean> {
-  const instance = instanceName || EVOLUTION_CONFIG.instance;
+  // CRITICAL: Validate instance - ONLY "Leads" or "Cobranca" allowed
+  const rawInstance = instanceName || EVOLUTION_CONFIG.instance;
+  const instance = validateEvolutionInstance(rawInstance);
   const apiKey = getEvolutionApiKey(instance);
   
   console.log(`🔍 [PDF Debug] sendWhatsAppDocument chamada:`, {
@@ -336,7 +340,9 @@ async function deleteWhatsAppMessage(
   remoteJid: string, 
   instanceName?: string
 ): Promise<boolean> {
-  const instance = instanceName || EVOLUTION_CONFIG.instance;
+  // CRITICAL: Validate instance - ONLY "Leads" or "Cobranca" allowed
+  const rawInstance = instanceName || EVOLUTION_CONFIG.instance;
+  const instance = validateEvolutionInstance(rawInstance);
   const apiKey = getEvolutionApiKey(instance);
   
   if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
@@ -1650,7 +1656,10 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     }
     
     try {
-      const { event: rawEvent, instance, data } = req.body;
+      const { event: rawEvent, instance: rawInstance, data } = req.body;
+      
+      // CRITICAL: Validate instance - ONLY "Leads" or "Cobranca" allowed
+      const instance = validateEvolutionInstance(rawInstance);
 
       // DEBUG: Log completo do payload recebido
       console.log(`🔍 [Evolution DEBUG] Payload completo:`, JSON.stringify(req.body, null, 2));
@@ -7673,7 +7682,8 @@ A resposta deve:
 
       // Get Evolution API configuration
       const evolutionUrl = process.env.EVOLUTION_API_URL;
-      const instance = group.evolutionInstance || 'Leads';
+      // CRITICAL: Validate instance - ONLY "Leads" or "Cobranca" allowed
+      const instance = validateEvolutionInstance(group.evolutionInstance || 'Leads');
 
       if (!evolutionUrl) {
         return res.status(500).json({ error: "Evolution API not configured" });
