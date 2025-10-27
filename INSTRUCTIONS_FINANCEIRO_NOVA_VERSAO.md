@@ -236,11 +236,16 @@ Nosso setor financeiro irá verificar em até 24h. 💙
 ```
 Pronto! Sua internet foi liberada! 🎉
 
-O desbloqueio foi feito em confiança. 
-Por favor, regularize o pagamento o quanto antes.
+O desbloqueio foi realizado em confiança e tem validade até o próximo dia às 10 horas da manhã.
+Por favor, regularize o pagamento o quanto antes para evitar novo bloqueio.
 
 Posso te enviar os dados do boleto? 😊
 ```
+
+⚠️ **IMPORTANTE:** 
+- NÃO mencione "7 dias" ou qualquer outra duração
+- A duração correta do desbloqueio é: **até o próximo dia às 10 horas da manhã**
+- Sempre use essa informação exata ao informar o cliente
 
 ❌ **ERRO (limite excedido):**
 ```

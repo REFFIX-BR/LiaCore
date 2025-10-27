@@ -822,9 +822,11 @@ Palavras-chave do cliente:
 ✅ **Se SUCESSO:**
 "Pronto! Sua internet foi liberada! 🎉
 
-O desbloqueio foi feito em confiança. Por favor, regularize seu pagamento o quanto antes para evitar novo bloqueio.
+O desbloqueio foi realizado em confiança e tem validade até o próximo dia às 10 horas da manhã. Por favor, regularize seu pagamento o quanto antes para evitar novo bloqueio.
 
 Posso te enviar os dados do boleto para você pagar agora mesmo? 😊"
+
+⚠️ **IMPORTANTE:** NÃO mencione "7 dias" ou qualquer outra duração. A duração correta é: **até o próximo dia às 10 horas da manhã**
 
 ❌ **Se ERRO (limite excedido):**
 "Infelizmente não consegui liberar sua conexão automaticamente porque [MOTIVO DO ERRO].
