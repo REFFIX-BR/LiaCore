@@ -5143,9 +5143,13 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
           ? (resolvedConversations / totalConversations) * 100 
           : 0;
         
-        // Duração média
+        // Duração média (calculada pelo tempo real entre createdAt e lastMessageTime)
         const avgDuration = totalConversations > 0
-          ? conversations.reduce((sum: number, c: Conversation) => sum + (c.duration || 0), 0) / totalConversations
+          ? conversations.reduce((sum: number, c: Conversation) => {
+              if (!c.createdAt || !c.lastMessageTime) return sum;
+              const durationInSeconds = Math.floor((c.lastMessageTime.getTime() - c.createdAt.getTime()) / 1000);
+              return sum + durationInSeconds;
+            }, 0) / totalConversations
           : 0;
         
         // Sentimento médio
