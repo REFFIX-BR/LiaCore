@@ -60,6 +60,8 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui`, and Tailwind CS
 
 **AI Transfer to Human Rule** (Oct 27, 2025): ✅ ADDED - Explicit instructions across all assistants (Suporte, Apresentação, Financeiro, Comercial) to transfer to human agent when unable to resolve customer issues. Rule enforces: "When AI cannot resolve after trying standard solutions, or customer is frustrated/dissatisfied, IMMEDIATELY transfer to human agent using transferir_para_humano function." This ensures customers are never left without resolution. Files: `COPIAR_COLAR_SUPORTE_OPENAI.md`, `COPIAR_COLAR_APRESENTACAO_OPENAI.md`, `GUIA_ATUALIZACAO_ASSISTENTES_OPENAI.md`.
 
+**Automatic Massive Failure Detection in Connection Check** (Oct 27, 2025): ✅ ADDED - Enhanced `consultaStatusConexao` function to automatically verify if customer's region has an active massive failure (regional outage) when checking connection status. Function now queries the database for active failures in customer's CIDADE/BAIRRO and populates the `massiva: boolean` field in the response. This ensures AI assistants receive accurate massive failure information in STEP 2 of the diagnostic flow, preventing unnecessary individual troubleshooting during regional outages. File: `server/ai-tools.ts`.
+
 ### Conversation Interface Enhancement
 **Layout Mode Selector** (Oct 27, 2025): Added flexible conversation layout system in agent interface (`/conversas`) allowing attendants to toggle between:
 - **1 Caixa Mode**: Single conversation view with rapid switching - ideal for focused attention and quick transitions between clients

@@ -21,6 +21,23 @@
 import type { IStorage } from "./storage";
 
 /**
+ * Normaliza nome de cidade/bairro para comparação consistente
+ * Remove acentos, converte para uppercase, remove espaços extras
+ * @param text Texto a normalizar
+ * @returns Texto normalizado
+ */
+function normalizeLocationName(text: string): string {
+  if (!text) return '';
+  
+  return text
+    .normalize('NFD') // Decompõe caracteres acentuados
+    .replace(/[\u0300-\u036f]/g, '') // Remove marcas diacríticas (acentos)
+    .toUpperCase() // Converte para maiúsculas
+    .trim() // Remove espaços nas pontas
+    .replace(/\s+/g, ' '); // Normaliza múltiplos espaços para um único
+}
+
+/**
  * Helper genérico para fazer chamadas HTTP com retry automático e timeout
  * @param url URL do endpoint
  * @param body Corpo da requisição
@@ -610,6 +627,37 @@ export async function consultaStatusConexao(
     );
     
     console.log(`📋 [AI Tool] ${conexoes?.length || 0} conexão(ões) encontrada(s)`);
+
+    // ✅ VERIFICAR FALHA MASSIVA para cada conexão retornada
+    if (conexoes && conexoes.length > 0) {
+      console.log(`🔍 [AI Tool] Verificando falhas massivas para ${conexoes.length} conexão(ões)...`);
+      
+      for (const conexao of conexoes) {
+        if (conexao.CIDADE && conexao.BAIRRO) {
+          // Normalizar cidade e bairro para comparação consistente
+          const cidadeNormalizada = normalizeLocationName(conexao.CIDADE);
+          const bairroNormalizado = normalizeLocationName(conexao.BAIRRO);
+          
+          console.log(`🔍 [AI Tool] Verificando massiva: "${conexao.CIDADE}"/"${conexao.BAIRRO}" → "${cidadeNormalizada}"/"${bairroNormalizado}"`);
+          
+          const activeFailure = await storage.checkActiveFailureForRegion(cidadeNormalizada, bairroNormalizado);
+          
+          if (activeFailure) {
+            console.log(`🚨 [AI Tool] FALHA MASSIVA DETECTADA: ${activeFailure.name} em ${conexao.CIDADE}/${conexao.BAIRRO}`);
+            conexao.massiva = true;
+          } else {
+            console.log(`✅ [AI Tool] Sem massiva em ${conexao.CIDADE}/${conexao.BAIRRO}`);
+            conexao.massiva = false;
+          }
+        } else {
+          // Se não tem CIDADE/BAIRRO, assume que não tem massiva
+          console.log(`⚠️ [AI Tool] Conexão sem CIDADE/BAIRRO - assumindo sem massiva`);
+          conexao.massiva = false;
+        }
+      }
+      
+      console.log(`✅ [AI Tool] Verificação de massivas concluída`);
+    }
 
     return conexoes;
   } catch (error) {
