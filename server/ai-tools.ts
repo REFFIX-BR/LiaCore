@@ -660,6 +660,7 @@ function validarSetorMotivo(setor: string, motivo: string): { valido: boolean; e
  * @param motivo Motivo do atendimento (deve ser compatível com o setor)
  * @param conversationContext Contexto OBRIGATÓRIO da conversa para validação de segurança
  * @param storage Interface de storage para validação da conversa
+ * @param comprovante_url Link opcional do comprovante/imagem enviado pelo cliente (S3)
  * @returns Protocolo do ticket criado
  */
 export async function abrirTicketCRM(
@@ -667,7 +668,8 @@ export async function abrirTicketCRM(
   setor: string,
   motivo: string,
   conversationContext: { conversationId: string },
-  storage: IStorage
+  storage: IStorage,
+  comprovante_url?: string
 ): Promise<AbrirTicketResult> {
   try {
     // Validação de segurança OBRIGATÓRIA
@@ -702,8 +704,13 @@ export async function abrirTicketCRM(
       phoneNumber = phoneNumber.replace('whatsapp_', '');
     }
     
-    // Incluir número de telefone no resumo para rastreabilidade
-    const resumoComTelefone = `[WhatsApp: ${phoneNumber}] ${resumo}`;
+    // Montar resumo com telefone e link do comprovante (se disponível)
+    let resumoCompleto = `[WhatsApp: ${phoneNumber}] ${resumo}`;
+    
+    if (comprovante_url) {
+      resumoCompleto += `\n\n📎 Comprovante: ${comprovante_url}`;
+      console.log(`📎 [AI Tool] Link do comprovante incluído no ticket`);
+    }
 
     console.log(`🎫 [AI Tool] Abrindo ticket no CRM (conversação: ${conversationContext.conversationId}, setor: ${setor}, motivo: ${motivo}, telefone: ${phoneNumber})`);
 
@@ -711,7 +718,7 @@ export async function abrirTicketCRM(
       "https://webhook.trtelecom.net/webhook/abrir_ticket",
       {
         documento: conversation.clientDocument,
-        resumo: resumoComTelefone,
+        resumo: resumoCompleto,
         setor: setor.toUpperCase(),
         motivo: motivo.toUpperCase(),
         finalizar: "N"  // "N" = ticket fica ABERTO para verificação manual do atendente
@@ -724,6 +731,19 @@ export async function abrirTicketCRM(
     const protocolo = ticket?.data?.[0]?.resposta?.[0]?.protocolo || 'ERRO';
     
     console.log(`📋 [AI Tool] Ticket criado com sucesso - Protocolo: ${protocolo}`);
+    
+    // LIMPAR metadata após usar o link do comprovante (evitar reutilização em tickets futuros)
+    if (comprovante_url) {
+      const currentMetadata = conversation.metadata || {};
+      await storage.updateConversation(conversationContext.conversationId, {
+        metadata: {
+          ...currentMetadata,
+          lastImageUrl: null, // Limpar para evitar reutilização
+          lastImageProcessedAt: null
+        }
+      });
+      console.log(`🧹 [AI Tool] Metadata do comprovante limpo após criar ticket`);
+    }
 
     return ticket;
   } catch (error) {
@@ -928,7 +948,42 @@ export async function executeAssistantTool(
       if (!args.resumo || !args.setor || !args.motivo) {
         throw new Error("Parâmetros 'resumo', 'setor' e 'motivo' são obrigatórios para abrir_ticket_crm");
       }
-      return await abrirTicketCRM(args.resumo, args.setor, args.motivo, context, storage);
+      // Recuperar imageUrl do metadata (se disponível E recente)
+      const conversation = await storage.getConversation(context.conversationId);
+      const metadata = conversation?.metadata as any;
+      let imageUrl = metadata?.lastImageUrl;
+      
+      // VALIDAÇÃO DE FRESHNESS: só usar link se foi processado recentemente (últimos 5 minutos)
+      if (imageUrl) {
+        // CRÍTICO: Ignorar metadata legado sem timestamp (conversas antigas)
+        if (!metadata?.lastImageProcessedAt) {
+          console.log(`⚠️ [AI Tool Security] imageUrl ignorado - metadata legado sem timestamp`);
+          imageUrl = null; // Ignorar e limpar metadata legado
+          
+          // Limpar metadata legado para evitar repetição deste log
+          await storage.updateConversation(context.conversationId, {
+            metadata: {
+              ...metadata,
+              lastImageUrl: null,
+              lastImageProcessedAt: null
+            }
+          });
+        } else {
+          // Verificar se foi processado recentemente
+          const processedAt = new Date(metadata.lastImageProcessedAt);
+          const now = new Date();
+          const minutesAgo = (now.getTime() - processedAt.getTime()) / (1000 * 60);
+          
+          if (minutesAgo > 5) {
+            console.log(`⚠️ [AI Tool Security] imageUrl ignorado - processado há ${minutesAgo.toFixed(1)} minutos (limite: 5 min)`);
+            imageUrl = null; // Ignorar link antigo
+          } else {
+            console.log(`✅ [AI Tool Security] imageUrl validado - processado há ${minutesAgo.toFixed(1)} minutos`);
+          }
+        }
+      }
+      
+      return await abrirTicketCRM(args.resumo, args.setor, args.motivo, context, storage, imageUrl);
 
     case 'selecionar_ponto_instalacao':
       if (!args.numeroPonto) {

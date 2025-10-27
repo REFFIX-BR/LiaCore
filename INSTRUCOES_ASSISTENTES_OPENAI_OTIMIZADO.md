@@ -767,7 +767,9 @@ Cliente agradecer/confirmar → `finalizar_conversa("boleto_enviado_solicitacao_
 }
 ```
 
-**ℹ️ IMPORTANTE:** O número de telefone do WhatsApp será incluído AUTOMATICAMENTE no início do resumo pelo sistema.
+**ℹ️ IMPORTANTE:** O sistema adiciona AUTOMATICAMENTE:
+- ✅ **Número de telefone** (WhatsApp) no início do resumo
+- ✅ **Link do comprovante** (se cliente enviou imagem/PDF)
 
 ✅ **Exemplo CORRETO:**
 ```
@@ -781,6 +783,8 @@ Pagamento via boleto em 20/03/2024."
 [WhatsApp: 5522997074180] Cliente Marcio Zebende enviou comprovante de R$ 69,00 
 referente ao endereço CENTRO - Bernardo Belo, 160. 
 Pagamento via boleto em 20/03/2024.
+
+📎 Comprovante: https://s3.trtelecom.net/evolution/evolution-api/...
 ```
 
 ❌ **Exemplo ERRADO:**
@@ -811,7 +815,7 @@ Nosso setor financeiro irá verificar em até 24h. 💙
 4. [ ] Resumo tem valor + data + forma? ✅
 5. [ ] Vou chamar APENAS `abrir_ticket_crm`? ✅
 
-**📱 Nota:** O número de telefone (WhatsApp) será adicionado automaticamente pelo sistema.
+**📱 Nota:** O número de telefone (WhatsApp) e link do comprovante (se enviado) serão adicionados automaticamente pelo sistema.
 
 ## 🔓 FLUXO: DESBLOQUEIO DE CONEXÃO
 

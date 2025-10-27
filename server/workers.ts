@@ -480,6 +480,19 @@ if (redisConnection) {
               : `[Imagem enviada - ${visionResult}]`;
               
             console.log(`✅ [Worker] Vision analysis completed successfully`);
+            
+            // Salvar imageUrl original (S3) no metadata da conversa para uso posterior
+            if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
+              const currentMetadata = conversation.metadata || {};
+              await storage.updateConversation(conversationId, {
+                metadata: {
+                  ...currentMetadata,
+                  lastImageUrl: imageUrl,
+                  lastImageProcessedAt: new Date().toISOString()
+                }
+              });
+              console.log(`📎 [Worker] Link da imagem salvo no metadata para acesso futuro`);
+            }
           }
         }
       }
