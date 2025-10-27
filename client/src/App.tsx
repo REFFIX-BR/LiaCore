@@ -2,15 +2,13 @@ import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/lib/theme-provider";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
-import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
 import { AnnouncementBanner } from "@/components/AnnouncementBanner";
+import { UserMenu } from "@/components/UserMenu";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
@@ -258,30 +256,7 @@ function AppContent() {
           {/* Header sobreposto ao banner */}
           <header className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-4">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">
-                {user.fullName} (
-                {user.role === "ADMIN" ? "Administrador" : user.role === "SUPERVISOR" ? "Supervisor" : "Atendente"}
-                )
-              </span>
-              <ThemeToggle />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={logout}
-                    data-testid="button-logout"
-                    aria-label="Sair"
-                  >
-                    <LogOut className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Sair</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
+            <UserMenu />
           </header>
           
           <main className="flex-1 overflow-auto p-6">
