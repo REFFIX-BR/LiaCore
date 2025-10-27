@@ -23,6 +23,7 @@ POST https://webhook.trtelecom.net/webhook/abrir_ticket
 - ✅ Retry automático com circuit breaker
 - ✅ Logging completo sem exposição de dados sensíveis (LGPD/GDPR)
 - ✅ Handler registrado em `server/lib/openai.ts`
+- ✅ **Tickets criados com status ABERTO** (finalizar: "N") para verificação manual do atendente
 
 ---
 
@@ -250,7 +251,12 @@ transferir_para_humano({
 **IA responde ao cliente:**
 > "Recebi seu comprovante de pagamento! ✅ Ticket registrado com sucesso.  
 > **Protocolo: 2510271534789012**  
-> Nosso setor financeiro irá confirmar o pagamento em até 24 horas e sua conexão será liberada automaticamente. 💙"
+> Nosso setor financeiro irá verificar seu comprovante e atualizar seu cadastro em breve. 💙"
+
+**No CRM:**
+- Status: **ABERTO** (aguardando verificação manual)
+- Atendente poderá verificar o comprovante
+- Atendente dará baixa manual após confirmação
 
 ---
 

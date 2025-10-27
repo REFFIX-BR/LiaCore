@@ -705,7 +705,7 @@ export async function abrirTicketCRM(
         resumo: resumo,
         setor: setor.toUpperCase(),
         motivo: motivo.toUpperCase(),
-        finalizar: "S"
+        finalizar: "N"  // "N" = ticket fica ABERTO para verificação manual do atendente
       },
       { operationName: "abertura de ticket no CRM" }
     );
