@@ -119,8 +119,10 @@ export async function fetchClientInstallationPoints(cpfCnpj: string): Promise<In
     // 1. Tentar obter do cache
     const cached = await redis.get(cacheKey);
     if (cached) {
-      console.log(`💾 [Massive Failure Cache] Cache HIT para CPF ${cpfCnpj} - ${JSON.parse(cached as string).length} pontos`);
-      return JSON.parse(cached as string);
+      // Upstash Redis pode retornar string ou objeto já parseado
+      const points = typeof cached === 'string' ? JSON.parse(cached) : cached;
+      console.log(`💾 [Massive Failure Cache] Cache HIT para CPF ${cpfCnpj} - ${points.length} pontos`);
+      return points;
     }
 
     // 2. Cache MISS - buscar do CRM
