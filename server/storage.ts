@@ -3908,20 +3908,42 @@ export class DbStorage implements IStorage {
           .from(schema.regions)
           .where(inArray(schema.regions.id, affectedRegions.regionIds));
         
-        const match = regions.find((r: any) => 
-          normalize(r.city) === normalizedCity && 
-          normalize(r.neighborhood) === normalizedNeighborhood
-        );
+        // Match parcial: verifica se alguma região contém o bairro do cliente
+        const match = regions.find((r: any) => {
+          if (normalize(r.city) !== normalizedCity) return false;
+          
+          const normalizedRegionNeighborhood = normalize(r.neighborhood);
+          
+          // Evitar falsos positivos: ambos os bairros devem ter conteúdo
+          if (!normalizedNeighborhood || !normalizedRegionNeighborhood) return false;
+          if (normalizedNeighborhood.length === 0 || normalizedRegionNeighborhood.length === 0) return false;
+          
+          return normalizedRegionNeighborhood.includes(normalizedNeighborhood) || 
+                 normalizedNeighborhood.includes(normalizedRegionNeighborhood);
+        });
         
         if (match) return failure;
       }
       
       // Se for tipo custom (estrutura JSON livre)
       if (affectedRegions.type === 'custom' && affectedRegions.custom) {
-        const match = affectedRegions.custom.find((region: any) => 
-          normalize(region.city) === normalizedCity &&
-          region.neighborhoods.some((n: string) => normalize(n) === normalizedNeighborhood)
-        );
+        const match = affectedRegions.custom.find((region: any) => {
+          if (normalize(region.city) !== normalizedCity) return false;
+          
+          // Match parcial: verifica se algum bairro cadastrado contém o bairro do cliente
+          // ou se o bairro do cliente contém algum bairro cadastrado
+          // Exemplo: "PARK DOS IPES / VILA PARAISO" contém "VILA PARAISO"
+          return region.neighborhoods.some((n: string) => {
+            const normalizedN = normalize(n);
+            
+            // Evitar falsos positivos: ambos os bairros devem ter conteúdo
+            if (!normalizedNeighborhood || !normalizedN) return false;
+            if (normalizedNeighborhood.length === 0 || normalizedN.length === 0) return false;
+            
+            return normalizedN.includes(normalizedNeighborhood) || 
+                   normalizedNeighborhood.includes(normalizedN);
+          });
+        });
         
         if (match) return failure;
       }
