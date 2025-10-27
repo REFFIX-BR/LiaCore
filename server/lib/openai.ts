@@ -1808,6 +1808,86 @@ Fonte: ${fonte}`;
           });
         }
 
+      case "abrir_ticket_crm":
+        if (!conversationId) {
+          console.error("❌ [AI Tool] abrir_ticket_crm chamada sem conversationId");
+          return JSON.stringify({
+            error: "Contexto de conversa não disponível"
+          });
+        }
+        
+        const { abrirTicketCRM } = await import("../ai-tools");
+        const { storage: storageTicket } = await import("../storage");
+        
+        try {
+          console.log(`🎫 [AI Tool Handler] Iniciando abertura de ticket para conversação ${conversationId}`);
+          
+          // Validação de argumentos obrigatórios
+          const resumoTicket = args.resumo || args.summary;
+          const setorTicket = args.setor || args.department;
+          const motivoTicket = args.motivo || args.reason;
+          
+          if (!resumoTicket || !setorTicket || !motivoTicket) {
+            console.error("❌ [AI Tool] Argumentos obrigatórios faltando:", { resumo: !!resumoTicket, setor: !!setorTicket, motivo: !!motivoTicket });
+            return JSON.stringify({
+              error: "Parâmetros obrigatórios faltando. É necessário: resumo, setor e motivo."
+            });
+          }
+          
+          // Buscar conversa no banco
+          const conversationTicket = await storageTicket.getConversation(conversationId);
+          
+          if (!conversationTicket) {
+            console.error("❌ [AI Tool] Conversa não encontrada:", conversationId);
+            return JSON.stringify({
+              error: "Conversa não encontrada"
+            });
+          }
+          
+          console.log(`🎫 [AI Tool Handler] Conversa encontrada. clientDocument: ${conversationTicket.clientDocument ? 'SIM' : 'NÃO'}`);
+          
+          if (!conversationTicket.clientDocument) {
+            console.warn("⚠️ [AI Tool] Cliente ainda não forneceu CPF/CNPJ");
+            return JSON.stringify({
+              error: "Para abrir um ticket, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
+            });
+          }
+          
+          console.log(`🎫 [AI Tool Handler] Chamando abrirTicketCRM...`, { setor: setorTicket, motivo: motivoTicket });
+          
+          // Chamar função de abertura de ticket
+          const resultado = await abrirTicketCRM(
+            resumoTicket,
+            setorTicket,
+            motivoTicket,
+            { conversationId },
+            storageTicket
+          );
+          
+          // Extrair protocolo da resposta
+          const protocolo = resultado?.data?.[0]?.resposta?.[0]?.protocolo || 'ERRO_SEM_PROTOCOLO';
+          
+          console.log(`✅ [AI Tool Handler] Ticket aberto com sucesso - Protocolo: ${protocolo}`);
+          
+          return JSON.stringify({
+            success: true,
+            protocolo: protocolo,
+            setor: setorTicket.toUpperCase(),
+            motivo: motivoTicket.toUpperCase(),
+            mensagem: `Ticket aberto com sucesso! Protocolo: ${protocolo}. O setor ${setorTicket.toUpperCase()} irá processar seu atendimento.`,
+            detalhes: resultado
+          });
+        } catch (error) {
+          console.error("❌ [AI Tool Handler] Erro ao abrir ticket:", error);
+          if (error instanceof Error) {
+            console.error("❌ [AI Tool Handler] Stack trace:", error.stack);
+          }
+          return JSON.stringify({
+            error: error instanceof Error ? error.message : "Erro ao abrir ticket no CRM",
+            instrucao_ia: "Não foi possível abrir o ticket automaticamente. Por favor, informe ao cliente que houve um problema técnico e transfira para atendimento humano."
+          });
+        }
+
       case "priorizar_atendimento_tecnico":
         if (!conversationId) {
           console.error("❌ [AI Tool] priorizar_atendimento_tecnico chamada sem conversationId");
