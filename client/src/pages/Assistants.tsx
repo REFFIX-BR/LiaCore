@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -63,30 +63,37 @@ export default function Assistants() {
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>();
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>();
 
-  // Calcular datas com base no filtro
-  const getDateRange = () => {
+  // Memoizar datas para evitar loop infinito de refetch
+  const dateRange = useMemo(() => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     switch (periodFilter) {
       case 'today':
+        // Usar apenas a data sem hora para evitar mudanças constantes
+        const endOfToday = new Date(today);
+        endOfToday.setHours(23, 59, 59, 999);
         return {
           startDate: today.toISOString(),
-          endDate: now.toISOString()
+          endDate: endOfToday.toISOString()
         };
       case 'week':
         const weekAgo = new Date(today);
         weekAgo.setDate(weekAgo.getDate() - 7);
+        const endOfWeek = new Date();
+        endOfWeek.setHours(23, 59, 59, 999);
         return {
           startDate: weekAgo.toISOString(),
-          endDate: now.toISOString()
+          endDate: endOfWeek.toISOString()
         };
       case 'month':
         const monthAgo = new Date(today);
         monthAgo.setMonth(monthAgo.getMonth() - 1);
+        const endOfMonth = new Date();
+        endOfMonth.setHours(23, 59, 59, 999);
         return {
           startDate: monthAgo.toISOString(),
-          endDate: now.toISOString()
+          endDate: endOfMonth.toISOString()
         };
       case 'custom':
         if (customStartDate && customEndDate) {
@@ -99,9 +106,7 @@ export default function Assistants() {
       default:
         return {};
     }
-  };
-
-  const dateRange = getDateRange();
+  }, [periodFilter, customStartDate, customEndDate]);
   const queryParams = new URLSearchParams();
   if (dateRange.startDate) queryParams.set('startDate', dateRange.startDate);
   if (dateRange.endDate) queryParams.set('endDate', dateRange.endDate);
