@@ -61,6 +61,7 @@ export default function Contacts() {
     document: "",
     assignedTo: "",
     department: "",
+    evolutionInstance: "Leads", // Padrão: Leads
   });
   const [editContactData, setEditContactData] = useState({
     name: "",
@@ -127,6 +128,7 @@ export default function Contacts() {
         document: "",
         department: "",
         assignedTo: "",
+        evolutionInstance: "Leads",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations/transferred"] });
@@ -554,6 +556,29 @@ export default function Contacts() {
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
                 Selecione o departamento responsável por esta conversa
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="evolutionInstance">Instância do WhatsApp *</Label>
+              <Select
+                value={newContactData.evolutionInstance}
+                onValueChange={(value) => setNewContactData({ ...newContactData, evolutionInstance: value })}
+              >
+                <SelectTrigger data-testid="select-evolution-instance">
+                  <SelectValue placeholder="Selecione a instância" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Leads" data-testid="instance-leads">
+                    📱 Leads (Padrão)
+                  </SelectItem>
+                  <SelectItem value="Cobranca" data-testid="instance-cobranca">
+                    💰 Cobrança
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Escolha qual instância do WhatsApp será usada para este contato
               </p>
             </div>
 
