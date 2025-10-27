@@ -136,6 +136,17 @@ async function sendWhatsAppDocument(phoneNumber: string, pdfBase64: string, file
   const instance = instanceName || EVOLUTION_CONFIG.instance;
   const apiKey = getEvolutionApiKey(instance);
   
+  console.log(`🔍 [PDF Debug] sendWhatsAppDocument chamada:`, {
+    phoneNumber,
+    fileName,
+    caption: caption?.substring(0, 50),
+    instance,
+    hasApiKey: !!apiKey,
+    hasApiUrl: !!EVOLUTION_CONFIG.apiUrl,
+    pdfBase64Length: pdfBase64?.length,
+    pdfBase64Preview: pdfBase64?.substring(0, 50)
+  });
+  
   if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
     console.error("❌ [Evolution] Credenciais não configuradas para envio de documento");
     return false;
@@ -150,6 +161,8 @@ async function sendWhatsAppDocument(phoneNumber: string, pdfBase64: string, file
       normalizedNumber = phoneNumber.split('@')[0];
     }
     
+    console.log(`📞 [PDF Debug] Número normalizado: ${phoneNumber} → ${normalizedNumber}`);
+    
     // Ensure URL has protocol
     let baseUrl = EVOLUTION_CONFIG.apiUrl.trim();
     if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
@@ -162,7 +175,28 @@ async function sendWhatsAppDocument(phoneNumber: string, pdfBase64: string, file
       cleanBase64 = pdfBase64.split('base64,')[1];
     }
     
+    console.log(`🧹 [PDF Debug] Base64 limpo - tamanho: ${cleanBase64.length} caracteres`);
+    
     const url = `${baseUrl}/message/sendMedia/${instance}`;
+    console.log(`🌐 [PDF Debug] URL da API: ${url}`);
+    
+    const payload = {
+      number: normalizedNumber,
+      mediatype: "document",
+      mimetype: "application/pdf",
+      media: cleanBase64,
+      fileName: fileName || "documento.pdf",
+      caption: caption || "",
+    };
+    
+    console.log(`📦 [PDF Debug] Payload (sem base64):`, {
+      number: payload.number,
+      mediatype: payload.mediatype,
+      mimetype: payload.mimetype,
+      fileName: payload.fileName,
+      caption: payload.caption,
+      mediaLength: payload.media.length
+    });
     
     const response = await fetch(url, {
       method: "POST",
@@ -170,20 +204,27 @@ async function sendWhatsAppDocument(phoneNumber: string, pdfBase64: string, file
         "Content-Type": "application/json",
         apikey: apiKey,
       },
-      body: JSON.stringify({
-        number: normalizedNumber,
-        mediatype: "document",
-        mimetype: "application/pdf",
-        media: cleanBase64,
-        fileName: fileName || "documento.pdf",
-        caption: caption || "",
-      }),
+      body: JSON.stringify(payload),
+    });
+
+    console.log(`📡 [PDF Debug] Resposta da API:`, {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
     });
 
     if (!response.ok) {
-      throw new Error(`Evolution API error: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`❌ [PDF Debug] Erro da Evolution API:`, {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText
+      });
+      throw new Error(`Evolution API error: ${response.statusText} - ${errorText}`);
     }
 
+    const responseData = await response.json();
+    console.log(`✅ [PDF Debug] Resposta completa da API:`, responseData);
     console.log(`✅ [Evolution] Documento PDF enviado com sucesso para ${normalizedNumber}`);
     return true;
   } catch (error) {
