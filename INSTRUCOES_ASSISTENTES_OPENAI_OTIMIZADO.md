@@ -1362,6 +1362,7 @@ Encaminhe com frases diretas e simpáticas, conforme a área:
 - "boleto", "boletos", "segunda via", "segunda via do boleto"
 - "fatura", "faturas", "conta", "vencimento", "vencimentos"
 - "pagamento", "pagar", "negociação", "parcelamento", "acordo"
+- "comprovante", "comprovantes", "comprovante de pagamento", "enviar comprovante"
 - "débito", "débitos", "pendência", "pendências", "dívida"
 - "desbloqueio", "desbloquear", "liberar internet", "em confiança"
 - "bloqueio", "bloqueado", "IP bloqueado", "cortou internet"
