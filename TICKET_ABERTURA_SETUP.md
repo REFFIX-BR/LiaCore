@@ -198,34 +198,60 @@ O sistema captura automaticamente o CPF/CNPJ da conversa - você NÃO precisa pe
 
 ## 🎯 Workflow: Comprovante de Pagamento → Ticket
 
-### Cenário Real
+### Cenário 1: Cliente com ÚNICO endereço
 
 **Cliente envia:**
-- Imagem de comprovante de pagamento
-- Mensagem: "Enviei o comprovante"
+- Imagem de comprovante de pagamento de R$ 150,00
 
-**Fluxo Esperado:**
-
-1. **GPT-4o Vision** analisa a imagem automaticamente
-2. **Assistente FINANCEIRO** detecta: "comprovante de pagamento recebido"
-3. **Assistente decide** entre duas opções:
-
-**Opção A - Abertura Automática de Ticket:**
+**Fluxo:**
+1. GPT-4o Vision analisa a imagem
+2. IA detecta: "1 ponto de instalação"
+3. IA abre ticket DIRETO:
 ```javascript
 abrir_ticket_crm({
-  "resumo": "Cliente Maria Silva enviou comprovante de pagamento de R$ 150,00 via Pix em 27/10/2025. Valor referente à fatura de outubro/2025. Aguardando confirmação bancária.",
+  "resumo": "Cliente João Silva enviou comprovante de pagamento de R$ 150,00 via Pix em 27/10/2025.",
+  "setor": "FINANCEIRO",
+  "motivo": "INFORMAR PAGAMENTO"
+})
+```
+4. IA responde: "Ticket registrado! Protocolo: XXX..."
+
+---
+
+### Cenário 2: Cliente com MÚLTIPLOS endereços ⚠️
+
+**Cliente envia:**
+- Imagem de comprovante de pagamento de R$ 69,00
+
+**Fluxo:**
+
+**PASSO 1 - IA pergunta qual endereço:**
+> "Recebi seu comprovante de R$ 69,00! 
+> 
+> Confirme qual endereço corresponde a este pagamento:
+> 1. CENTRO - Bernardo Belo, 160 (R$ 69,90)
+> 2. PILÕES - Santa Efigênia, 352 (R$ 120,00)
+> 3. PILÕES - Santa Efigênia, 350 (CANCELADO)
+>
+> Qual destes?"
+
+**PASSO 2 - Cliente confirma:**
+> "1" ou "primeiro" ou "centro"
+
+**PASSO 3 - IA abre ticket COM ENDEREÇO:**
+```javascript
+abrir_ticket_crm({
+  "resumo": "Cliente Marcio Zebende enviou comprovante de R$ 69,00 referente ao endereço CENTRO - Bernardo Belo, 160. Pagamento em 06/03/2024 via boleto.",
   "setor": "FINANCEIRO",
   "motivo": "INFORMAR PAGAMENTO"
 })
 ```
 
-**Opção B - Transferência para Humano:**
-```javascript
-transferir_para_humano({
-  "departamento": "financeiro",
-  "motivo": "Verificação de comprovante de pagamento recebido do cliente"
-})
-```
+**PASSO 4 - IA confirma:**
+> "Ticket registrado! ✅
+> Protocolo: 2510262344641789
+> Endereço: CENTRO - Bernardo Belo, 160
+> Nosso setor irá verificar em breve! 💙"
 
 ---
 
