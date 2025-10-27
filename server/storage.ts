@@ -154,7 +154,7 @@ export interface IStorage {
     resolvedByAI: number;
     transferredToHuman: number;
     successRate: number;
-    avgSentiment: number;
+    avgSentiment: string;
     avgNPS: number;
   }>>;
   
@@ -2450,9 +2450,19 @@ export class DbStorage implements IStorage {
         if (c.sentiment === 'negative') return sum - 1;
         return sum;
       }, 0);
-      const avgSentiment = conversationsWithSentiment.length > 0
+      const avgSentimentValue = conversationsWithSentiment.length > 0
         ? sentimentScore / conversationsWithSentiment.length
         : 0;
+      
+      // Converter número para string baseado em thresholds
+      let avgSentiment: string;
+      if (avgSentimentValue > 0.2) {
+        avgSentiment = 'positive';
+      } else if (avgSentimentValue < -0.2) {
+        avgSentiment = 'negative';
+      } else {
+        avgSentiment = 'neutral';
+      }
 
       // NPS médio deste assistente
       const feedbacks = await db.select().from(schema.satisfactionFeedback)
