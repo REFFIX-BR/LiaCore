@@ -46,12 +46,12 @@ POST https://webhook.trtelecom.net/webhook/abrir_ticket
 
 ### Passo 2: Configurar a Função
 
-**Nome da Função:**
+**1. Nome da Função** (obrigatório):
 ```
 abrir_ticket_crm
 ```
 
-**Descrição da Função:**
+**2. Descrição** (obrigatório):
 ```
 Abre um ticket no sistema CRM para registrar formalmente o atendimento do cliente. 
 
@@ -68,38 +68,44 @@ NÃO USE para:
 O sistema captura automaticamente o CPF/CNPJ da conversa - você NÃO precisa pedir novamente.
 ```
 
-**Schema JSON:**
+**3. Parameters (Schema JSON completo)**:
 ```json
 {
-  "type": "object",
-  "properties": {
-    "resumo": {
-      "type": "string",
-      "description": "Resumo COMPLETO e CLARO do atendimento incluindo: (1) Nome do cliente, (2) Problema/solicitação relatada, (3) Resolução aplicada ou ação tomada. Exemplo: 'Cliente João solicitou desbloqueio. Verificado pagamento de R$ 150,00 referente à fatura 10/2025. Conexão desbloqueada com sucesso.'"
+  "name": "abrir_ticket_crm",
+  "description": "Abre um ticket no sistema CRM para registrar formalmente o atendimento do cliente.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "resumo": {
+        "type": "string",
+        "description": "Resumo COMPLETO e CLARO do atendimento incluindo: (1) Nome do cliente, (2) Problema/solicitação relatada, (3) Resolução aplicada ou ação tomada. Exemplo: 'Cliente João solicitou desbloqueio. Verificado pagamento de R$ 150,00 referente à fatura 10/2025. Conexão desbloqueada com sucesso.'"
+      },
+      "setor": {
+        "type": "string",
+        "description": "Setor responsável. Valores válidos: ADMINISTRAÇÃO, SUPORTE, FINANCEIRO, COMERCIAL, RECEPÇÃO, COBRANÇA, TÉCNICO, OUVIDORIA, LOCAÇÃO",
+        "enum": [
+          "ADMINISTRAÇÃO",
+          "SUPORTE",
+          "FINANCEIRO",
+          "COMERCIAL",
+          "RECEPÇÃO",
+          "COBRANÇA",
+          "TÉCNICO",
+          "OUVIDORIA",
+          "LOCAÇÃO"
+        ]
+      },
+      "motivo": {
+        "type": "string",
+        "description": "Motivo do atendimento COMPATÍVEL com o setor escolhido. Consulte a lista de combinações válidas na documentação interna. Exemplos para FINANCEIRO: INFORMAR PAGAMENTO, DESBLOQUEIO, PAGAMENTO. Para SUPORTE: SEM CONEXÃO, SEM INTERNET, LENTIDÃO."
+      }
     },
-    "setor": {
-      "type": "string",
-      "description": "Setor responsável. Valores válidos: ADMINISTRAÇÃO, SUPORTE, FINANCEIRO, COMERCIAL, RECEPÇÃO, COBRANÇA, TÉCNICO, OUVIDORIA, LOCAÇÃO",
-      "enum": [
-        "ADMINISTRAÇÃO",
-        "SUPORTE",
-        "FINANCEIRO",
-        "COMERCIAL",
-        "RECEPÇÃO",
-        "COBRANÇA",
-        "TÉCNICO",
-        "OUVIDORIA",
-        "LOCAÇÃO"
-      ]
-    },
-    "motivo": {
-      "type": "string",
-      "description": "Motivo do atendimento COMPATÍVEL com o setor escolhido. Consulte a lista de combinações válidas na documentação interna. Exemplos para FINANCEIRO: INFORMAR PAGAMENTO, DESBLOQUEIO, PAGAMENTO. Para SUPORTE: SEM CONEXÃO, SEM INTERNET, LENTIDÃO."
-    }
-  },
-  "required": ["resumo", "setor", "motivo"]
+    "required": ["resumo", "setor", "motivo"]
+  }
 }
 ```
+
+> **💡 Dica:** No OpenAI Platform, você pode copiar e colar o schema JSON completo acima diretamente no campo "Parameters" após preencher Nome e Descrição.
 
 ---
 
