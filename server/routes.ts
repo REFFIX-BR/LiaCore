@@ -5663,6 +5663,14 @@ A resposta deve:
       const { content, suggestionId, wasEdited, supervisorName, imageBase64, audioBase64, audioMimeType, pdfBase64, pdfName } = req.body;
 
       console.log(`📬 [Supervisor] send-message endpoint called - conversationId: ${id}, supervisor: ${supervisorName}`);
+      console.log(`📦 [Supervisor] Payload recebido:`, {
+        hasContent: !!content,
+        hasImage: !!imageBase64,
+        hasAudio: !!audioBase64,
+        hasPdf: !!pdfBase64,
+        pdfName,
+        pdfSize: pdfBase64 ? `${(pdfBase64.length / 1024).toFixed(2)} KB` : 'N/A'
+      });
 
       const conversation = await storage.getConversation(id);
       if (!conversation) {

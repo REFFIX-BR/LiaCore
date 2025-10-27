@@ -323,6 +323,16 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
   // Enviar mensagem
   const sendMutation = useMutation({
     mutationFn: async ({ content, suggestionId, wasEdited, imageBase64, audioBase64, audioMimeType, pdfBase64, pdfName }: { content: string; suggestionId?: string | null; wasEdited?: boolean; imageBase64?: string; audioBase64?: string; audioMimeType?: string; pdfBase64?: string; pdfName?: string }) => {
+      console.log(`🚀 [Mutation] Enviando mensagem:`, {
+        conversationId: conversation.id,
+        hasContent: !!content,
+        hasImage: !!imageBase64,
+        hasAudio: !!audioBase64,
+        hasPdf: !!pdfBase64,
+        pdfName,
+        pdfSize: pdfBase64 ? `${(pdfBase64.length / 1024).toFixed(2)} KB` : 'N/A'
+      });
+
       const response = await apiRequest(
         `/api/conversations/${conversation.id}/send-message`, 
         "POST",
@@ -338,6 +348,12 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
           pdfName
         }
       );
+      
+      console.log(`✅ [Mutation] Resposta recebida:`, {
+        status: response.status,
+        statusText: response.statusText
+      });
+      
       return response.json();
     },
     onSuccess: (data) => {
