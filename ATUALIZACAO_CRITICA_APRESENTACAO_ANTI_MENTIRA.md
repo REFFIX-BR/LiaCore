@@ -8,17 +8,36 @@
 
 ---
 
-## 🔍 PROBLEMA IDENTIFICADO
+## 🔍 PROBLEMAS IDENTIFICADOS
 
-O assistente Apresentação está **MENTINDO** para clientes ao invés de executar as funções reais:
+O assistente Apresentação apresenta **DOIS** bugs críticos:
 
-### Caso Real Documentado:
-- **Cliente**: Compras Zapiranga (5524992673287)
+### 🐛 Bug #1: "Mentira" - Diz que vai rotear mas não executa
+
+**Caso Real**: Compras Zapiranga (5524992673287)
 - **Conversa ID**: `d0c40f8c-2c4d-4e15-ba9c-fc994927ca95`
 - **Problema**: Cliente reportou "Estamos sem internet"
 - **Resposta da IA**: ✅ "Beleza! **Estou encaminhando** seu atendimento para o suporte"
 - **Realidade**: ❌ **NÃO executou** a função `rotear_para_assistente()`
 - **Resultado**: Cliente ficou esperando ("ok", "fico no aguardo") sem ser atendido
+
+### 🐛 Bug #2: ESCREVE o código da função visível para o cliente (MAIS GRAVE!)
+
+**Caso Real**: Luciano Melo (5524993221350)
+- **Conversa ID**: `4c31ae8b-37dd-408f-92d0-082f95d1e825`
+- **Problema**: Cliente reportou "Minha internet ainda continua fora"
+- **Resposta da IA enviada ao WhatsApp**: 
+  ```
+  Entendi! Vou encaminhar seu atendimento para o suporte novamente 
+  para que eles possam resolver isso pra você. 👍
+  
+  Obrigada por entrar em contato! 💙
+  
+  *[EXECUTO: rotear_para_assistente("suporte", "Cliente reporta que a internet continua fora")]*
+  ```
+- **Realidade**: ❌ Cliente recebeu CÓDIGO TÉCNICO visível no WhatsApp!
+- **Função chamada?**: ❌ NÃO - function_call = NULL no banco
+- **Resultado**: Cliente confuso + não foi roteado
 
 ### Evidências Técnicas:
 ```sql
@@ -42,8 +61,9 @@ Foi implementado um sistema **Anti-Mentira** que:
 3. **Força** o roteamento manual baseado no contexto
 4. **Registra** a ocorrência em supervisor actions
 
-### Palavras-chave detectadas (lista expandida):
+### Palavras-chave detectadas (lista expandida + Bug #2):
 
+**🚨 SIMULAÇÃO DE CÓDIGO (Bug #2 - MAIS CRÍTICO)**: executo rotear, executo transferir, executo finalizar, executo abrir_ticket, executo consultar  
 **Presente**: encaminhando, transferindo, passando, direcionando, roteando  
 **Futuro**: vou encaminhar, vou transferir, vou rotear, vou passar, vou direcionar, irei encaminhar, irei transferir, irei passar  
 **Progressivo**: estou encaminhando, estou transferindo, estou passando  

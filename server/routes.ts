@@ -1224,6 +1224,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Lista expandida incluindo todas as variantes verbais possíveis
         const routingKeywords = [
+          // 🚨 CRÍTICO: Detectar quando assistente escreve o código da função ao invés de executar
+          "executo rotear", "executo transferir", "executo finalizar", 
+          "executo abrir_ticket", "executo consultar",
           // Presente
           "encaminhando", "transferindo", "passando", "direcionando", "roteando",
           // Futuro
