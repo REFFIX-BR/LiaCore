@@ -254,7 +254,7 @@ function AppContent() {
           <AnnouncementBanner />
           
           {/* Header sobreposto ao banner */}
-          <header className="absolute top-2 left-2 right-2 z-50 flex items-center justify-between">
+          <header className="absolute top-1 left-1 right-1 z-50 flex items-center justify-between">
             <SidebarTrigger data-testid="button-sidebar-toggle" className="mr-2" />
             <UserMenu />
           </header>
