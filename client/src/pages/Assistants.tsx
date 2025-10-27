@@ -116,14 +116,19 @@ export default function Assistants() {
   const isQueryEnabled = periodFilter !== 'custom' || Boolean(customStartDate && customEndDate);
 
   const { data: stats, isLoading, error } = useQuery<AssistantStats>({
-    queryKey: ['/api/assistants/metrics', periodFilter, dateRange.startDate, dateRange.endDate],
+    queryKey: ['/api/assistants/metrics', periodFilter, dateRange.startDate || null, dateRange.endDate || null],
     queryFn: async (): Promise<AssistantStats> => {
-      const response = await fetch(apiUrl);
-      if (!response.ok) throw new Error('Erro ao carregar métricas');
+      const response = await fetch(apiUrl, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error(`Erro ao carregar métricas: ${response.status}`);
+      }
       return response.json();
     },
     enabled: isQueryEnabled,
     refetchInterval: 30000, // Atualiza a cada 30s
+    retry: false,
   });
 
   const assistantConfig = [

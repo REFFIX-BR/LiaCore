@@ -123,7 +123,9 @@ export default function AgentReports() {
         params.append("agentId", selectedAgent);
       }
 
-      const res = await fetch(`/api/reports/agents?${params}`);
+      const res = await fetch(`/api/reports/agents?${params}`, {
+        credentials: "include"
+      });
       if (!res.ok) throw new Error("Failed to fetch reports");
       return res.json();
     }
