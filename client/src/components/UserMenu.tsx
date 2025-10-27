@@ -41,19 +41,15 @@ export function UserMenu() {
       <DropdownMenuTrigger asChild>
         <Button 
           variant="ghost" 
-          className="flex items-center gap-2 hover-elevate"
+          size="icon"
+          className="rounded-full hover-elevate"
           data-testid="button-user-menu"
         >
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+          <Avatar className="h-9 w-9">
+            <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
               {initials}
             </AvatarFallback>
           </Avatar>
-          <div className="hidden md:flex flex-col items-start">
-            <span className="text-sm font-medium leading-none">{user.fullName}</span>
-            <span className="text-xs text-muted-foreground">{roleLabel}</span>
-          </div>
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
