@@ -89,6 +89,101 @@ async function fetchWithRetry<T>(
   throw new Error(errorMessage, { cause: lastError });
 }
 
+/**
+ * Valida CPF ou CNPJ usando algoritmo de dígitos verificadores
+ * @param documento CPF (11 dígitos) ou CNPJ (14 dígitos) sem formatação
+ * @returns Objeto com resultado da validação
+ */
+export function validarCpfCnpj(documento: string): {
+  valido: boolean;
+  tipo: 'CPF' | 'CNPJ' | 'INVALIDO';
+  motivo?: string;
+} {
+  // Remove formatação (pontos, traços, barras)
+  const docLimpo = documento.replace(/[^\d]/g, '');
+
+  // Valida CPF (11 dígitos)
+  if (docLimpo.length === 11) {
+    // Rejeita sequências conhecidas
+    if (/^(\d)\1{10}$/.test(docLimpo)) {
+      return { valido: false, tipo: 'CPF', motivo: 'CPF é uma sequência repetida (ex: 111.111.111-11)' };
+    }
+
+    // Calcula primeiro dígito verificador
+    let soma = 0;
+    for (let i = 0; i < 9; i++) {
+      soma += parseInt(docLimpo.charAt(i)) * (10 - i);
+    }
+    let resto = soma % 11;
+    const digito1 = resto < 2 ? 0 : 11 - resto;
+
+    // Calcula segundo dígito verificador
+    soma = 0;
+    for (let i = 0; i < 10; i++) {
+      soma += parseInt(docLimpo.charAt(i)) * (11 - i);
+    }
+    resto = soma % 11;
+    const digito2 = resto < 2 ? 0 : 11 - resto;
+
+    // Verifica se dígitos calculados conferem
+    if (parseInt(docLimpo.charAt(9)) !== digito1 || parseInt(docLimpo.charAt(10)) !== digito2) {
+      return { valido: false, tipo: 'CPF', motivo: 'CPF inválido - dígitos verificadores incorretos' };
+    }
+
+    return { valido: true, tipo: 'CPF' };
+  }
+
+  // Valida CNPJ (14 dígitos)
+  if (docLimpo.length === 14) {
+    // Rejeita sequências conhecidas
+    if (/^(\d)\1{13}$/.test(docLimpo)) {
+      return { valido: false, tipo: 'CNPJ', motivo: 'CNPJ é uma sequência repetida' };
+    }
+
+    // Calcula primeiro dígito verificador
+    let tamanho = docLimpo.length - 2;
+    let numeros = docLimpo.substring(0, tamanho);
+    const digitos = docLimpo.substring(tamanho);
+    let soma = 0;
+    let pos = tamanho - 7;
+
+    for (let i = tamanho; i >= 1; i--) {
+      soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+      if (pos < 2) pos = 9;
+    }
+
+    let resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    if (resultado !== parseInt(digitos.charAt(0))) {
+      return { valido: false, tipo: 'CNPJ', motivo: 'CNPJ inválido - dígitos verificadores incorretos' };
+    }
+
+    // Calcula segundo dígito verificador
+    tamanho = tamanho + 1;
+    numeros = docLimpo.substring(0, tamanho);
+    soma = 0;
+    pos = tamanho - 7;
+
+    for (let i = tamanho; i >= 1; i--) {
+      soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+      if (pos < 2) pos = 9;
+    }
+
+    resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    if (resultado !== parseInt(digitos.charAt(1))) {
+      return { valido: false, tipo: 'CNPJ', motivo: 'CNPJ inválido - dígitos verificadores incorretos' };
+    }
+
+    return { valido: true, tipo: 'CNPJ' };
+  }
+
+  // Tamanho inválido
+  return {
+    valido: false,
+    tipo: 'INVALIDO',
+    motivo: `Documento deve ter 11 dígitos (CPF) ou 14 dígitos (CNPJ). Recebido: ${docLimpo.length} dígitos.`
+  };
+}
+
 interface ConsultaBoletoResult {
   NOME?: string;
   CIDADE?: string;
@@ -990,6 +1085,12 @@ export async function executeAssistantTool(
         throw new Error("Parâmetro 'numeroPonto' é obrigatório para selecionar_ponto_instalacao");
       }
       return await selecionarPontoInstalacao(args.numeroPonto, context, storage);
+
+    case 'validar_cpf_cnpj':
+      if (!args.documento) {
+        throw new Error("Parâmetro 'documento' é obrigatório para validar_cpf_cnpj");
+      }
+      return validarCpfCnpj(args.documento);
 
     default:
       throw new Error(`Tool não implementada: ${toolName}`);
