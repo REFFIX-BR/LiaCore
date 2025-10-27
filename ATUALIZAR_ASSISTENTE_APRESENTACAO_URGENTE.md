@@ -40,25 +40,22 @@ No campo "Instructions", procure pela seção:
 - "débito", "débitos", "pendência", "pendências", "dívida"
 ```
 
-### 4. Adicione a Nova Linha
+### 4. Substitua as Palavras-chave do FINANCEIRO
 
-**ADICIONE esta linha após "acordo":**
-
-```
-- "comprovante", "comprovantes", "comprovante de pagamento", "enviar comprovante"
-```
-
-**Ficará assim:**
+**SUBSTITUA** a seção de palavras-chave do cliente por esta versão **COMPLETA E ATUALIZADA**:
 
 ```
 **Palavras-chave do cliente:**
 - "boleto", "boletos", "segunda via", "segunda via do boleto"
 - "fatura", "faturas", "conta", "vencimento", "vencimentos"
-- "pagamento", "pagar", "negociação", "parcelamento", "acordo"
-- "comprovante", "comprovantes", "comprovante de pagamento", "enviar comprovante"
-- "débito", "débitos", "pendência", "pendências", "dívida"
+- "pagamento", "pagar", "paguei", "já paguei", "efetuei pagamento", "realizei pagamento"
+- "comprovante", "comprovantes", "comprovante de pagamento", "enviar comprovante", "mandar comprovante"
+- "negociação", "parcelamento", "acordo", "renegociar"
+- "débito", "débitos", "pendência", "pendências", "dívida", "atrasado", "em atraso"
 - "desbloqueio", "desbloquear", "liberar internet", "em confiança"
-- "bloqueio", "bloqueado", "IP bloqueado", "cortou internet"
+- "bloqueio", "bloqueado", "IP bloqueado", "cortou internet", "cortaram"
+- "religamento", "religar", "reativar internet", "liberação", "voltar internet"
+- "redução de velocidade", "internet lenta por inadimplência"
 ```
 
 ### 5. Salve

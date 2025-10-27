@@ -1361,12 +1361,13 @@ Encaminhe com frases diretas e simpáticas, conforme a área:
 **Palavras-chave do cliente:**
 - "boleto", "boletos", "segunda via", "segunda via do boleto"
 - "fatura", "faturas", "conta", "vencimento", "vencimentos"
-- "pagamento", "pagar", "negociação", "parcelamento", "acordo"
-- "comprovante", "comprovantes", "comprovante de pagamento", "enviar comprovante"
-- "débito", "débitos", "pendência", "pendências", "dívida"
+- "pagamento", "pagar", "paguei", "já paguei", "efetuei pagamento", "realizei pagamento"
+- "comprovante", "comprovantes", "comprovante de pagamento", "enviar comprovante", "mandar comprovante"
+- "negociação", "parcelamento", "acordo", "renegociar"
+- "débito", "débitos", "pendência", "pendências", "dívida", "atrasado", "em atraso"
 - "desbloqueio", "desbloquear", "liberar internet", "em confiança"
-- "bloqueio", "bloqueado", "IP bloqueado", "cortou internet"
-- "religamento", "religar", "reativar internet", "liberação"
+- "bloqueio", "bloqueado", "IP bloqueado", "cortou internet", "cortaram"
+- "religamento", "religar", "reativar internet", "liberação", "voltar internet"
 - "redução de velocidade", "internet lenta por inadimplência"
 
 **Exemplos:** boletos, faturas, pagamentos, negociações, desbloqueios, religamento
