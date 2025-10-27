@@ -179,14 +179,23 @@ export default function ActiveFailuresTab() {
                       <TimeCounter startTime={failure.startTime} />
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">
+                      <div className="max-w-xs">
                         {(() => {
-                          // Contar total de bairros em todas as cidades
-                          const totalNeighborhoods = (failure.affectedRegions?.custom || [])
-                            .reduce((sum: number, region: any) => sum + (region.neighborhoods?.length || 0), 0);
-                          return `${totalNeighborhoods} ${totalNeighborhoods === 1 ? 'bairro' : 'bairros'}`;
+                          // Extrair nomes dos bairros
+                          const neighborhoods: string[] = [];
+                          (failure.affectedRegions?.custom || []).forEach((region: any) => {
+                            if (Array.isArray(region.neighborhoods)) {
+                              region.neighborhoods.forEach((n: string) => neighborhoods.push(n));
+                            }
+                          });
+                          const text = neighborhoods.length > 0 ? neighborhoods.join(', ') : 'Sem bairros';
+                          return (
+                            <Badge variant="outline" className="text-xs whitespace-normal h-auto py-1">
+                              {text}
+                            </Badge>
+                          );
                         })()}
-                      </Badge>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="destructive">Ativa</Badge>

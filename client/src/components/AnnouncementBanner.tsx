@@ -216,25 +216,29 @@ function FailureContent({ failure }: { failure: MassiveFailure }) {
 
   const style = config[failure.severity];
 
-  // Calcular número de regiões afetadas
-  const getAffectedRegionsCount = () => {
+  // Extrair nomes dos bairros afetados
+  const getAffectedNeighborhoods = () => {
     try {
       const regions = failure.affectedRegions;
-      if (regions?.type === 'predefined' && Array.isArray(regions.regionIds)) {
-        return regions.regionIds.length;
-      }
       if (regions?.type === 'custom' && Array.isArray(regions.custom)) {
-        return regions.custom.reduce((sum: number, region: any) => {
-          return sum + (Array.isArray(region.neighborhoods) ? region.neighborhoods.length : 0);
-        }, 0);
+        const neighborhoods: string[] = [];
+        regions.custom.forEach((region: any) => {
+          if (Array.isArray(region.neighborhoods)) {
+            region.neighborhoods.forEach((n: string) => neighborhoods.push(n));
+          }
+        });
+        return neighborhoods;
       }
-      return 0;
+      return [];
     } catch {
-      return 0;
+      return [];
     }
   };
 
-  const affectedCount = getAffectedRegionsCount();
+  const neighborhoods = getAffectedNeighborhoods();
+  const neighborhoodText = neighborhoods.length > 0 
+    ? neighborhoods.join(', ') 
+    : 'Sem bairros especificados';
 
   return (
     <div 
@@ -248,7 +252,7 @@ function FailureContent({ failure }: { failure: MassiveFailure }) {
             ⚠️ Falha Massiva em Andamento
           </p>
           <p className={`${style.text} text-sm opacity-90`}>
-            {failure.name} • {failure.description} • {affectedCount} {affectedCount === 1 ? 'região afetada' : 'regiões afetadas'}
+            {failure.name} • {failure.description} • {neighborhoodText}
           </p>
         </div>
       </div>
