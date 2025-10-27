@@ -1853,15 +1853,50 @@ Fonte: ${fonte}`;
             });
           }
           
-          console.log(`🎫 [AI Tool Handler] Chamando abrirTicketCRM...`, { setor: setorTicket, motivo: motivoTicket });
+          // Recuperar imageUrl do metadata (se disponível E recente)
+          const metadata = conversationTicket?.metadata as any;
+          let imageUrl = metadata?.lastImageUrl;
           
-          // Chamar função de abertura de ticket
+          // VALIDAÇÃO DE FRESHNESS: só usar link se foi processado recentemente (últimos 5 minutos)
+          if (imageUrl) {
+            // CRÍTICO: Ignorar metadata legado sem timestamp (conversas antigas)
+            if (!metadata?.lastImageProcessedAt) {
+              console.log(`⚠️ [AI Tool Security] imageUrl ignorado - metadata legado sem timestamp`);
+              imageUrl = null; // Ignorar e limpar metadata legado
+              
+              // Limpar metadata legado
+              await storageTicket.updateConversation(conversationId, {
+                metadata: {
+                  ...metadata,
+                  lastImageUrl: null,
+                  lastImageProcessedAt: null
+                }
+              });
+            } else {
+              // Verificar se foi processado recentemente
+              const processedAt = new Date(metadata.lastImageProcessedAt);
+              const now = new Date();
+              const minutesAgo = (now.getTime() - processedAt.getTime()) / (1000 * 60);
+              
+              if (minutesAgo > 5) {
+                console.log(`⚠️ [AI Tool Security] imageUrl ignorado - processado há ${minutesAgo.toFixed(1)} minutos (limite: 5 min)`);
+                imageUrl = null; // Ignorar link antigo
+              } else {
+                console.log(`✅ [AI Tool Security] imageUrl validado - processado há ${minutesAgo.toFixed(1)} minutos`);
+              }
+            }
+          }
+          
+          console.log(`🎫 [AI Tool Handler] Chamando abrirTicketCRM...`, { setor: setorTicket, motivo: motivoTicket, comprovanteUrl: imageUrl ? 'SIM' : 'NÃO' });
+          
+          // Chamar função de abertura de ticket COM link do comprovante
           const resultado = await abrirTicketCRM(
             resumoTicket,
             setorTicket,
             motivoTicket,
             { conversationId },
-            storageTicket
+            storageTicket,
+            imageUrl  // ← AGORA PASSA O LINK DO COMPROVANTE!
           );
           
           // Extrair protocolo da resposta
