@@ -241,10 +241,11 @@ export async function createThread(): Promise<string> {
 }
 
 // Thread lock helper usando Redis para evitar concorrência
-async function acquireThreadLock(threadId: string, timeoutMs: number = 30000): Promise<{ acquired: boolean; lockValue?: string }> {
+async function acquireThreadLock(threadId: string, timeoutMs: number = 60000): Promise<{ acquired: boolean; lockValue?: string }> {
   const lockKey = `thread-lock:${threadId}`;
   const lockValue = `lock-${Date.now()}-${Math.random()}`;
   const maxWaitTime = Date.now() + timeoutMs;
+  let attempts = 0;
   
   while (Date.now() < maxWaitTime) {
     try {
@@ -252,19 +253,26 @@ async function acquireThreadLock(threadId: string, timeoutMs: number = 30000): P
       const acquired = await redisConnection.set(lockKey, lockValue, 'EX', 120, 'NX');
       
       if (acquired === 'OK') {
-        console.log(`🔒 [OpenAI] Lock acquired for thread ${threadId} with value ${lockValue}`);
+        console.log(`🔒 [OpenAI] Lock acquired for thread ${threadId} with value ${lockValue} (attempt ${attempts + 1})`);
         return { acquired: true, lockValue };
       }
       
-      // Se não conseguiu, aguarda 100ms e tenta novamente
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Exponential backoff: 100ms, 200ms, 400ms, 800ms, 1600ms, max 2000ms
+      attempts++;
+      const backoffTime = Math.min(100 * Math.pow(2, attempts - 1), 2000);
+      
+      if (attempts % 10 === 0) {
+        console.log(`⏳ [OpenAI] Aguardando lock para thread ${threadId} (tentativa ${attempts})...`);
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, backoffTime));
     } catch (error) {
       console.error(`❌ [OpenAI] Error acquiring lock for thread ${threadId}:`, error);
       return { acquired: false };
     }
   }
   
-  console.warn(`⏰ [OpenAI] Lock timeout for thread ${threadId} after ${timeoutMs}ms`);
+  console.warn(`⏰ [OpenAI] Lock timeout para thread ${threadId} após ${timeoutMs}ms (${attempts} tentativas)`);
   return { acquired: false };
 }
 

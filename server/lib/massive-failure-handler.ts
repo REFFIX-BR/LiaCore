@@ -1,4 +1,5 @@
 import { storage } from "../storage";
+import { redis } from "./redis-config";
 
 /**
  * Interface para representar um ponto de instalação
@@ -15,11 +16,10 @@ export interface InstallationPoint {
 }
 
 /**
- * Consulta a API CRM para obter informações de pontos de instalação do cliente
- * @param cpfCnpj - CPF/CNPJ do cliente
- * @returns Array de pontos de instalação ou null se não encontrado
+ * PRIVATE: Consulta a API CRM (sem cache) para obter informações de pontos de instalação
+ * Use `fetchClientInstallationPoints` com cache ao invés dessa função
  */
-export async function fetchClientInstallationPoints(cpfCnpj: string): Promise<InstallationPoint[] | null> {
+async function fetchClientInstallationPointsFromCRM(cpfCnpj: string): Promise<InstallationPoint[] | null> {
   const CRM_API_URL = "https://webhook.trtelecom.net/webhook/consultar/cliente/infoscontrato";
   
   if (!cpfCnpj) {
@@ -98,6 +98,46 @@ export async function fetchClientInstallationPoints(cpfCnpj: string): Promise<In
   } catch (error) {
     console.error("❌ [Massive Failure] Erro ao consultar CRM:", error);
     return null;
+  }
+}
+
+/**
+ * Consulta pontos de instalação do cliente com CACHE de 5 minutos
+ * Evita consultas repetidas ao CRM durante o mesmo atendimento
+ * @param cpfCnpj - CPF/CNPJ do cliente
+ * @returns Array de pontos de instalação ou null se não encontrado
+ */
+export async function fetchClientInstallationPoints(cpfCnpj: string): Promise<InstallationPoint[] | null> {
+  if (!cpfCnpj) {
+    return null;
+  }
+
+  const cacheKey = `massive:points:${cpfCnpj}`;
+  const CACHE_TTL = 300; // 5 minutos
+
+  try {
+    // 1. Tentar obter do cache
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      console.log(`💾 [Massive Failure Cache] Cache HIT para CPF ${cpfCnpj} - ${JSON.parse(cached as string).length} pontos`);
+      return JSON.parse(cached as string);
+    }
+
+    // 2. Cache MISS - buscar do CRM
+    console.log(`🔍 [Massive Failure Cache] Cache MISS para CPF ${cpfCnpj} - consultando CRM...`);
+    const points = await fetchClientInstallationPointsFromCRM(cpfCnpj);
+
+    // 3. Armazenar no cache se encontrou pontos
+    if (points && points.length > 0) {
+      await redis.set(cacheKey, JSON.stringify(points), { ex: CACHE_TTL });
+      console.log(`💾 [Massive Failure Cache] Pontos armazenados no cache (TTL: ${CACHE_TTL}s)`);
+    }
+
+    return points;
+  } catch (error) {
+    console.error("❌ [Massive Failure Cache] Erro no sistema de cache:", error);
+    // Fallback: tentar buscar direto do CRM se cache falhar
+    return await fetchClientInstallationPointsFromCRM(cpfCnpj);
   }
 }
 
