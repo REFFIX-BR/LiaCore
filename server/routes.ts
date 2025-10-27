@@ -33,7 +33,7 @@ function normalizeEvolutionUrl(url?: string): string {
 const EVOLUTION_CONFIG = {
   apiUrl: normalizeEvolutionUrl(process.env.EVOLUTION_API_URL),
   apiKey: process.env.EVOLUTION_API_KEY,
-  instance: "Principal", // Force "Principal" instance (WhatsApp Business - most stable)
+  instance: "Leads", // Default instance: NUNCA usar Principal - apenas Leads ou Cobranca
 };
 
 // Log configuration at startup
@@ -7383,6 +7383,7 @@ A resposta deve:
         transferReason: 'Novo contato criado via painel - aguardando mensagem manual do atendente',
         transferredAt: new Date(),
         assignedTo: assignedTo === 'none' || !assignedTo ? null : assignedTo, // null = "Transferidas", specific ID = "Atribuídas"
+        evolutionInstance: evolutionInstance || 'Leads', // NUNCA usar Principal - apenas Leads ou Cobranca
         metadata: { 
           createdFromContact: true, 
           createdBy: req.user?.userId,
@@ -7650,7 +7651,7 @@ A resposta deve:
 
       // Get Evolution API configuration
       const evolutionUrl = process.env.EVOLUTION_API_URL;
-      const instance = group.evolutionInstance || 'Principal';
+      const instance = group.evolutionInstance || 'Leads';
 
       if (!evolutionUrl) {
         return res.status(500).json({ error: "Evolution API not configured" });
@@ -8304,7 +8305,7 @@ A resposta deve:
                 ? await storage.getConversation(notification.conversationId)
                 : null;
               
-              const evolutionInstance = conversation?.evolutionInstance || 'Principal';
+              const evolutionInstance = conversation?.evolutionInstance || 'Leads';
               
               // Enviar mensagem via WhatsApp
               await sendWhatsAppMessage(notification.clientPhone, messageText, evolutionInstance);

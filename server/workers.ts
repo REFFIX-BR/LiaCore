@@ -340,7 +340,7 @@ if (redisConnection) {
           conversationId,
           fromNumber,
           conversation.clientDocument,
-          evolutionInstance || 'Principal',
+          evolutionInstance || 'Leads',
           sendWhatsAppMessage
         );
 
