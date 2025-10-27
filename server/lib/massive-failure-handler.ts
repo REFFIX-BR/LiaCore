@@ -36,11 +36,24 @@ export async function fetchClientInstallationPoints(cpfCnpj: string): Promise<In
     });
 
     if (!response.ok) {
-      console.error(`❌ [Massive Failure] CRM API error: ${response.statusText}`);
+      console.error(`❌ [Massive Failure] CRM API error: ${response.status} ${response.statusText}`);
       return null;
     }
 
-    const data = await response.json();
+    // Verificar se a resposta tem conteúdo antes de tentar fazer parse
+    const text = await response.text();
+    if (!text || text.trim() === '') {
+      console.log(`⚠️ [Massive Failure] CRM retornou resposta vazia para CPF/CNPJ ${cpfCnpj}`);
+      return null;
+    }
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (parseError) {
+      console.error(`❌ [Massive Failure] Erro ao fazer parse do JSON. Resposta: "${text.substring(0, 200)}"`);
+      return null;
+    }
     
     // CRM retorna array de contratos (cliente pode ter múltiplos pontos)
     const contracts = Array.isArray(data) ? data : [data];
