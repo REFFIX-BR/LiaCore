@@ -149,11 +149,12 @@ export default function Contacts() {
     onSuccess: () => {
       toast({
         title: "Conversa reaberta",
-        description: "A conversa foi movida para 'Transferidas'. Você pode enviar mensagens agora.",
+        description: "A conversa foi movida para 'Aguardando'. Você pode enviar mensagens agora.",
       });
       setIsReopenDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations/transferred"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations"] });
     },
     onError: (error: any) => {
       toast({
