@@ -1732,8 +1732,7 @@ Fonte: ${fonte}`;
           }));
           
           return JSON.stringify({
-            status: "COM_DEBITOS",
-            mensagem: "Cliente possui boletos em aberto ou vencidos.",
+            status: "success",
             boletos: boletosFormatados
           });
         } catch (error) {
