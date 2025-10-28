@@ -4120,7 +4120,7 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
       // Transferência manual vai para a aba "Conversas" (transferredToHuman = true)
       // Atualiza department para que a conversa apareça corretamente na lista de transferidas
       await storage.updateConversation(conversationId, {
-        status: "active",
+        status: "transferred",
         transferredToHuman: true,
         department: mappedDepartment,
         transferReason: `Transferência manual: ${notes}`,
