@@ -9091,13 +9091,27 @@ A resposta deve:
 
       // 3. Sync to OpenAI Assistants API
       console.log(`🔄 [Prompts] Syncing ${template.assistantType} to OpenAI...`);
+      let syncError: string | null = null;
       try {
         const { updateAssistantPrompt } = await import("./lib/openai");
         await updateAssistantPrompt(template.assistantType, draft.draftContent);
         console.log(`✅ [Prompts] Successfully synced ${template.assistantType} to OpenAI`);
-      } catch (syncError) {
-        console.error(`⚠️ [Prompts] Failed to sync to OpenAI (continuing anyway):`, syncError);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        syncError = errorMessage;
+        console.error(`⚠️ [Prompts] Failed to sync to OpenAI (continuing anyway):`, error);
         // Don't fail the publish if OpenAI sync fails - the version is already created
+        // Save error for UI display
+        await storage.updatePromptTemplate(id, {
+          lastSyncError: errorMessage,
+        });
+      }
+      
+      // If sync succeeded, clear any previous error
+      if (!syncError) {
+        await storage.updatePromptTemplate(id, {
+          lastSyncError: null,
+        });
       }
 
       // 4. Clear assistant cache to force reload

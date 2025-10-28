@@ -900,6 +900,7 @@ export const promptTemplates = pgTable("prompt_templates", {
   version: text("version").notNull().default("1.0.0"), // Semantic versioning (major.minor.patch)
   tokenCount: integer("token_count").default(0), // Contagem de tokens (para validação)
   lastSyncedAt: timestamp("last_synced_at"), // Última vez que foi sincronizado com OpenAI
+  lastSyncError: text("last_sync_error"), // Último erro de sincronização (null se sucesso)
   createdBy: varchar("created_by").notNull(), // User ID who created
   updatedBy: varchar("updated_by"), // User ID who last updated
   createdAt: timestamp("created_at").defaultNow(),

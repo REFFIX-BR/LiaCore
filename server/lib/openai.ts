@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { z } from "zod";
 import { assistantCache, redisConnection } from "./redis-config";
 import { agentLogger } from "./agent-logger";
 import { trackTokenUsage } from "./openai-usage";
@@ -2337,6 +2338,32 @@ Responda APENAS com JSON válido:
  * AI Prompt Analysis Service
  * Uses GPT-4 to analyze assistant prompts and provide improvement suggestions
  */
+
+// Zod schema for AI analysis validation
+const promptAnalysisRecommendationSchema = z.object({
+  category: z.enum(['clarity', 'structure', 'tone', 'instructions', 'edge_cases', 'compliance']),
+  priority: z.enum(['high', 'medium', 'low']),
+  suggestion: z.string(),
+  example: z.string().optional(),
+});
+
+const promptAnalysisOptimizationSchema = z.object({
+  title: z.string(),
+  before: z.string(),
+  after: z.string(),
+  rationale: z.string(),
+});
+
+const promptAnalysisResultSchema = z.object({
+  analysis: z.string(),
+  score: z.number().min(0).max(100),
+  strengths: z.array(z.string()).default([]),
+  weaknesses: z.array(z.string()).default([]),
+  recommendations: z.array(promptAnalysisRecommendationSchema).default([]),
+  optimizations: z.array(promptAnalysisOptimizationSchema).default([]),
+  estimatedTokenCount: z.number().default(0),
+});
+
 export interface PromptAnalysisResult {
   analysis: string;
   score: number; // 0-100
@@ -2424,7 +2451,7 @@ Forneça uma análise honesta, construtiva e acionável. Se o prompt já está e
       })
     );
 
-    const result = JSON.parse(response.choices[0].message.content?.trim() || "{}");
+    const rawResult = JSON.parse(response.choices[0].message.content?.trim() || "{}");
     
     // Track token usage
     if (response.usage) {
@@ -2435,9 +2462,12 @@ Forneça uma análise honesta, construtiva e acionável. Se o prompt já está e
       );
     }
 
-    console.log(`✅ [Prompt Analysis] Completed for ${assistantType} (score: ${result.score}/100)`);
+    // Validate and sanitize result with Zod
+    const validatedResult = promptAnalysisResultSchema.parse(rawResult);
+
+    console.log(`✅ [Prompt Analysis] Completed for ${assistantType} (score: ${validatedResult.score}/100)`);
     
-    return result as PromptAnalysisResult;
+    return validatedResult;
   } catch (error) {
     console.error("❌ [Prompt Analysis] Error:", error);
     throw new Error("Erro ao analisar prompt com IA");

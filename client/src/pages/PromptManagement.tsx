@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { 
   FileText, 
@@ -40,6 +41,7 @@ interface PromptTemplate {
   version: string;
   tokenCount: number;
   lastSyncedAt: Date | null;
+  lastSyncError: string | null;
   hasDraft?: boolean;
   draftLastEditedAt?: Date;
   draftLastEditedBy?: string;
@@ -286,9 +288,26 @@ export default function PromptManagement() {
                     <h1 className="text-xl font-semibold">
                       {assistantNames[currentPrompt.assistantType]}
                     </h1>
-                    <p className="text-sm text-muted-foreground">
-                      Versão {currentPrompt.version} • {currentPrompt.tokenCount} tokens
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-muted-foreground">
+                        Versão {currentPrompt.version} • {currentPrompt.tokenCount} tokens
+                      </p>
+                      {currentPrompt.lastSyncError && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="destructive" className="h-5 text-xs cursor-help" data-testid="badge-sync-error">
+                                <AlertCircle className="w-3 h-3 mr-1" />
+                                Erro de Sincronização
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-sm">
+                              <p className="text-xs">{currentPrompt.lastSyncError}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
                   </div>
                 </div>
 

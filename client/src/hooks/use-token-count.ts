@@ -1,26 +1,40 @@
 import { useState, useEffect } from "react";
-import { Tiktoken, getEncoding } from "js-tiktoken";
+import type { Tiktoken } from "js-tiktoken";
 
 let encoder: Tiktoken | null = null;
+let encoderPromise: Promise<Tiktoken> | null = null;
 
 /**
- * Get or initialize the tiktoken encoder
+ * Get or initialize the tiktoken encoder (lazy-loaded)
  */
-function getEncoder(): Tiktoken {
-  if (!encoder) {
-    // Use cl100k_base encoding (used by GPT-4, GPT-3.5-turbo)
-    encoder = getEncoding("cl100k_base");
+async function getEncoder(): Promise<Tiktoken> {
+  if (encoder) {
+    return encoder;
   }
-  return encoder;
+
+  // If already loading, wait for it
+  if (encoderPromise) {
+    return encoderPromise;
+  }
+
+  // Lazy load the encoding (code-splitting optimization)
+  encoderPromise = import("js-tiktoken").then((module) => {
+    // Use cl100k_base encoding (used by GPT-4, GPT-3.5-turbo)
+    encoder = module.getEncoding("cl100k_base");
+    encoderPromise = null; // Clear promise after loading
+    return encoder;
+  });
+
+  return encoderPromise;
 }
 
 /**
- * Count tokens in a text string
+ * Count tokens in a text string (async)
  */
-export function countTokens(text: string): number {
+export async function countTokens(text: string): Promise<number> {
   if (!text) return 0;
   try {
-    const enc = getEncoder();
+    const enc = await getEncoder();
     const tokens = enc.encode(text);
     return tokens.length;
   } catch (error) {
@@ -44,8 +58,8 @@ export function useTokenCount(text: string): {
     setIsLoading(true);
     
     // Debounce to avoid too many calculations
-    const timeoutId = setTimeout(() => {
-      const tokenCount = countTokens(text);
+    const timeoutId = setTimeout(async () => {
+      const tokenCount = await countTokens(text);
       setCount(tokenCount);
       setIsLoading(false);
     }, 300);
