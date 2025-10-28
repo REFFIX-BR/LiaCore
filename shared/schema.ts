@@ -868,3 +868,113 @@ export const updateAnnouncementSchema = insertAnnouncementSchema.partial();
 export type Announcement = typeof announcements.$inferSelect;
 export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 export type UpdateAnnouncement = z.infer<typeof updateAnnouncementSchema>;
+
+// ========================
+// PROMPT MANAGEMENT SYSTEM
+// ========================
+
+// Assistant Type enum (matches the 6 assistants)
+export const AssistantType = {
+  APRESENTACAO: "apresentacao",
+  COMERCIAL: "comercial",
+  SUPORTE: "suporte",
+  FINANCEIRO: "financeiro",
+  OUVIDORIA: "ouvidoria",
+  CANCELAMENTO: "cancelamento",
+} as const;
+
+// Prompt Status enum
+export const PromptStatus = {
+  ACTIVE: "active",
+  ARCHIVED: "archived",
+} as const;
+
+// Prompt Templates - Main table storing current prompts for each assistant
+export const promptTemplates = pgTable("prompt_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  assistantId: text("assistant_id").notNull().unique(), // OpenAI Assistant ID (ex: asst_oY50Ec5BKQzIzWcnYEo2meFc)
+  assistantType: text("assistant_type").notNull(), // 'apresentacao', 'comercial', etc
+  title: text("title").notNull(), // Ex: "Prompt do Assistente de Suporte"
+  content: text("content").notNull(), // O prompt completo
+  status: text("status").notNull().default("active"), // 'active' or 'archived'
+  version: text("version").notNull().default("1.0.0"), // Semantic versioning (major.minor.patch)
+  tokenCount: integer("token_count").default(0), // Contagem de tokens (para validação)
+  lastSyncedAt: timestamp("last_synced_at"), // Última vez que foi sincronizado com OpenAI
+  createdBy: varchar("created_by").notNull(), // User ID who created
+  updatedBy: varchar("updated_by"), // User ID who last updated
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  assistantTypeIdx: index("prompt_templates_assistant_type_idx").on(table.assistantType),
+  statusIdx: index("prompt_templates_status_idx").on(table.status),
+}));
+
+// Prompt Versions - Immutable version history (snapshot-based)
+export const promptVersions = pgTable("prompt_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  promptId: varchar("prompt_id").notNull(), // Reference to promptTemplates.id
+  content: text("content").notNull(), // Snapshot do prompt nesta versão
+  version: text("version").notNull(), // Semantic versioning (ex: 2.3.1)
+  versionNotes: text("version_notes"), // Notas da versão (ex: "Melhorou tom de voz")
+  tokenCount: integer("token_count").default(0),
+  aiSuggestions: jsonb("ai_suggestions"), // Sugestões da IA que geraram esta versão
+  createdBy: varchar("created_by").notNull(), // User ID who created this version
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  promptIdIdx: index("prompt_versions_prompt_id_idx").on(table.promptId),
+  createdAtIdx: index("prompt_versions_created_at_idx").on(table.createdAt),
+}));
+
+// Prompt Drafts - Work-in-progress edits (not yet published)
+export const promptDrafts = pgTable("prompt_drafts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  promptId: varchar("prompt_id").notNull().unique(), // One draft per prompt
+  draftContent: text("draft_content").notNull(), // O rascunho sendo editado
+  aiSuggestions: jsonb("ai_suggestions"), // Últimas sugestões da IA
+  tokenCount: integer("token_count").default(0),
+  lastEditedBy: varchar("last_edited_by").notNull(), // User ID who last edited
+  lastEditedAt: timestamp("last_edited_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  promptIdIdx: index("prompt_drafts_prompt_id_idx").on(table.promptId),
+}));
+
+// Insert Schemas
+export const insertPromptTemplateSchema = createInsertSchema(promptTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  assistantType: z.enum(["apresentacao", "comercial", "suporte", "financeiro", "ouvidoria", "cancelamento"]),
+  status: z.enum(["active", "archived"]).default("active"),
+  version: z.string().regex(/^\d+\.\d+\.\d+$/).default("1.0.0"), // Semantic version pattern
+});
+
+export const updatePromptTemplateSchema = insertPromptTemplateSchema.partial();
+
+export const insertPromptVersionSchema = createInsertSchema(promptVersions).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  version: z.string().regex(/^\d+\.\d+\.\d+$/), // Semantic version pattern
+});
+
+export const insertPromptDraftSchema = createInsertSchema(promptDrafts).omit({
+  id: true,
+  createdAt: true,
+  lastEditedAt: true,
+});
+
+export const updatePromptDraftSchema = insertPromptDraftSchema.partial();
+
+// Types
+export type PromptTemplate = typeof promptTemplates.$inferSelect;
+export type InsertPromptTemplate = z.infer<typeof insertPromptTemplateSchema>;
+export type UpdatePromptTemplate = z.infer<typeof updatePromptTemplateSchema>;
+
+export type PromptVersion = typeof promptVersions.$inferSelect;
+export type InsertPromptVersion = z.infer<typeof insertPromptVersionSchema>;
+
+export type PromptDraft = typeof promptDrafts.$inferSelect;
+export type InsertPromptDraft = z.infer<typeof insertPromptDraftSchema>;
+export type UpdatePromptDraft = z.infer<typeof updatePromptDraftSchema>;
