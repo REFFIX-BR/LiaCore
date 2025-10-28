@@ -1733,8 +1733,7 @@ Fonte: ${fonte}`;
           
           return JSON.stringify({
             status: "COM_DEBITOS",
-            mensagem: `ATENÇÃO: Cliente possui ${boletos.length} boleto(s) EM ABERTO ou VENCIDOS.`,
-            quantidade_boletos: boletos.length,
+            mensagem: "Cliente possui boletos em aberto ou vencidos.",
             boletos: boletosFormatados
           });
         } catch (error) {
