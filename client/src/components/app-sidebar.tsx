@@ -196,6 +196,12 @@ const menuCategories: MenuCategory[] = [
         roles: ["ADMIN", "SUPERVISOR"],
       },
       {
+        title: "Gerenciamento de Prompts",
+        url: "/prompts",
+        icon: FileText,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
         title: "Evolução dos Agentes",
         url: "/evolution",
         icon: TrendingUp,

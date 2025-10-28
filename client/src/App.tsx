@@ -36,6 +36,7 @@ import Vendas from "@/pages/vendas";
 import FalhasMassivas from "@/pages/FalhasMassivas";
 import Regioes from "@/pages/Regioes";
 import Anuncios from "@/pages/Anuncios";
+import PromptManagement from "@/pages/PromptManagement";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -176,6 +177,9 @@ function Router() {
       </Route>
       <Route path="/knowledge">
         {() => <ProtectedRoute component={Knowledge} />}
+      </Route>
+      <Route path="/prompts">
+        {() => <AdminSupervisorRoute component={PromptManagement} />}
       </Route>
       <Route path="/evolution">
         {() => <ProtectedRoute component={AgentEvolution} />}
