@@ -3838,7 +3838,42 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     }
   });
 
-  // ADMIN: Fechar conversas abandonadas e enviar NPS
+  // ADMIN: Limpar cache de instruções dos assistants (útil quando atualizar prompts no OpenAI Dashboard)
+  app.post("/api/admin/clear-assistant-cache", authenticate, requireAdmin, async (req, res) => {
+    try {
+      console.log("🗑️ [Admin] Clearing assistant instructions cache...");
+      
+      // Import the assistantCache from redis-config
+      const { assistantCache } = await import("./lib/redis-config");
+      
+      // Clear cache for all assistant types
+      const assistantTypes = ['apresentacao', 'comercial', 'financeiro', 'suporte', 'ouvidoria', 'cancelamento'];
+      
+      for (const type of assistantTypes) {
+        const cacheKey = `instructions:${type}`;
+        await assistantCache.delete(cacheKey);
+        console.log(`🗑️ [Admin] Cleared cache for ${type}`);
+      }
+      
+      // Also invalidate by tags
+      await assistantCache.invalidateByTag('assistant-config');
+      
+      console.log("✅ [Admin] Assistant instructions cache cleared successfully");
+      
+      res.json({ 
+        success: true, 
+        message: "Cache de instruções dos assistants limpo com sucesso. As novas instruções do OpenAI Dashboard serão carregadas na próxima interação.",
+        clearedAssistants: assistantTypes
+      });
+    } catch (error) {
+      console.error("❌ [Admin] Error clearing assistant cache:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Erro ao limpar cache dos assistants" 
+      });
+    }
+  });
+
   app.post("/api/admin/close-abandoned-conversations", authenticate, requireAdmin, async (req, res) => {
     try {
       const { minMinutesInactive = 30 } = req.body;
