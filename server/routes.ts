@@ -8891,5 +8891,292 @@ A resposta deve:
     }
   });
 
+  // ===================================
+  // PROMPT MANAGEMENT SYSTEM ENDPOINTS
+  // ===================================
+
+  // GET /api/prompts - List all prompt templates
+  app.get("/api/prompts", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const templates = await storage.getAllPromptTemplates();
+      
+      // Include draft status for each template
+      const templatesWithDrafts = await Promise.all(
+        templates.map(async (template) => {
+          const draft = await storage.getPromptDraft(template.id);
+          return {
+            ...template,
+            hasDraft: !!draft,
+            draftLastEditedAt: draft?.lastEditedAt,
+            draftLastEditedBy: draft?.lastEditedBy,
+          };
+        })
+      );
+
+      return res.json(templatesWithDrafts);
+    } catch (error) {
+      console.error("❌ [Prompts] Error fetching prompt templates:", error);
+      return res.status(500).json({ error: "Erro ao buscar prompts" });
+    }
+  });
+
+  // GET /api/prompts/:assistantType - Get prompt by assistant type
+  app.get("/api/prompts/:assistantType", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { assistantType } = req.params;
+      
+      const template = await storage.getPromptTemplateByAssistantType(assistantType);
+      
+      if (!template) {
+        return res.status(404).json({ error: "Prompt não encontrado para este assistente" });
+      }
+
+      // Get draft if exists
+      const draft = await storage.getPromptDraft(template.id);
+      
+      // Get version history
+      const versions = await storage.getPromptVersionsByPromptId(template.id);
+
+      return res.json({
+        ...template,
+        draft,
+        versions,
+      });
+    } catch (error) {
+      console.error("❌ [Prompts] Error fetching prompt:", error);
+      return res.status(500).json({ error: "Erro ao buscar prompt" });
+    }
+  });
+
+  // POST /api/prompts/:id/draft - Create or update draft
+  app.post("/api/prompts/:id/draft", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { draftContent } = req.body;
+      const userId = (req as any).user?.id;
+
+      if (!draftContent) {
+        return res.status(400).json({ error: "draftContent é obrigatório" });
+      }
+
+      // Check if template exists
+      const template = await storage.getPromptTemplate(id);
+      if (!template) {
+        return res.status(404).json({ error: "Prompt template não encontrado" });
+      }
+
+      // Check if draft already exists
+      const existingDraft = await storage.getPromptDraft(id);
+      
+      let draft;
+      if (existingDraft) {
+        // Update existing draft
+        draft = await storage.updatePromptDraft(id, {
+          draftContent,
+          lastEditedBy: userId,
+        });
+      } else {
+        // Create new draft
+        draft = await storage.createPromptDraft({
+          promptId: id,
+          draftContent,
+          lastEditedBy: userId,
+          tokenCount: 0, // TODO: Calculate token count
+        });
+      }
+
+      console.log(`✅ [Prompts] Draft ${existingDraft ? 'updated' : 'created'} for prompt ${id}`);
+      
+      return res.json(draft);
+    } catch (error) {
+      console.error("❌ [Prompts] Error saving draft:", error);
+      return res.status(500).json({ error: "Erro ao salvar rascunho" });
+    }
+  });
+
+  // POST /api/prompts/:id/ai-review - Request AI suggestions for draft
+  app.post("/api/prompts/:id/ai-review", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { context } = req.body; // Optional context from user (e.g., "Cliente reclama de promessas vazias")
+
+      // Get template and draft
+      const template = await storage.getPromptTemplate(id);
+      if (!template) {
+        return res.status(404).json({ error: "Prompt template não encontrado" });
+      }
+
+      const draft = await storage.getPromptDraft(id);
+      if (!draft) {
+        return res.status(404).json({ error: "Rascunho não encontrado. Crie um rascunho primeiro." });
+      }
+
+      // TODO: Call AI service to analyze and suggest improvements
+      // For now, return a placeholder
+      const suggestions = {
+        analysis: "Análise do prompt em desenvolvimento...",
+        recommendations: [],
+        optimizations: [],
+      };
+
+      // Update draft with AI suggestions
+      const updatedDraft = await storage.updatePromptDraft(id, {
+        aiSuggestions: suggestions,
+      });
+
+      console.log(`✅ [Prompts] AI review completed for prompt ${id}`);
+      
+      return res.json({
+        draft: updatedDraft,
+        suggestions,
+      });
+    } catch (error) {
+      console.error("❌ [Prompts] Error requesting AI review:", error);
+      return res.status(500).json({ error: "Erro ao solicitar análise da IA" });
+    }
+  });
+
+  // POST /api/prompts/:id/publish - Publish draft as new version and sync to OpenAI
+  app.post("/api/prompts/:id/publish", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { versionNotes, versionBump = "patch" } = req.body; // versionBump: 'major' | 'minor' | 'patch'
+      const userId = (req as any).user?.id;
+
+      // Get template and draft
+      const template = await storage.getPromptTemplate(id);
+      if (!template) {
+        return res.status(404).json({ error: "Prompt template não encontrado" });
+      }
+
+      const draft = await storage.getPromptDraft(id);
+      if (!draft) {
+        return res.status(404).json({ error: "Nenhum rascunho para publicar" });
+      }
+
+      // Calculate new version number
+      const currentVersion = template.version.split('.').map(Number);
+      let newVersion: string;
+      
+      if (versionBump === 'major') {
+        newVersion = `${currentVersion[0] + 1}.0.0`;
+      } else if (versionBump === 'minor') {
+        newVersion = `${currentVersion[0]}.${currentVersion[1] + 1}.0`;
+      } else {
+        newVersion = `${currentVersion[0]}.${currentVersion[1]}.${currentVersion[2] + 1}`;
+      }
+
+      // 1. Create version snapshot
+      await storage.createPromptVersion({
+        promptId: id,
+        content: draft.draftContent,
+        version: newVersion,
+        versionNotes,
+        tokenCount: draft.tokenCount,
+        aiSuggestions: draft.aiSuggestions as any,
+        createdBy: userId,
+      });
+
+      // 2. Update template with new content
+      const updatedTemplate = await storage.updatePromptTemplate(id, {
+        content: draft.draftContent,
+        version: newVersion,
+        tokenCount: draft.tokenCount,
+        updatedBy: userId,
+        lastSyncedAt: new Date(),
+      });
+
+      // 3. TODO: Sync to OpenAI Assistants API
+      // const { updateAssistantInstructions } = await import("./lib/openai");
+      // await updateAssistantInstructions(template.assistantId, draft.draftContent);
+
+      // 4. Clear assistant cache to force reload
+      const { assistantCache } = await import("./lib/redis-config");
+      const cacheKey = `instructions:${template.assistantType}`;
+      await assistantCache.delete(cacheKey);
+      await assistantCache.invalidateByTag('assistant-config');
+
+      // 5. Delete draft
+      await storage.deletePromptDraft(id);
+
+      console.log(`✅ [Prompts] Published version ${newVersion} for prompt ${id}`);
+      
+      return res.json({
+        success: true,
+        message: `Versão ${newVersion} publicada com sucesso`,
+        template: updatedTemplate,
+        version: newVersion,
+      });
+    } catch (error) {
+      console.error("❌ [Prompts] Error publishing prompt:", error);
+      return res.status(500).json({ error: "Erro ao publicar prompt" });
+    }
+  });
+
+  // GET /api/prompts/:id/versions - Get version history
+  app.get("/api/prompts/:id/versions", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const versions = await storage.getPromptVersionsByPromptId(id);
+      
+      return res.json(versions);
+    } catch (error) {
+      console.error("❌ [Prompts] Error fetching versions:", error);
+      return res.status(500).json({ error: "Erro ao buscar histórico de versões" });
+    }
+  });
+
+  // POST /api/prompts/:id/restore/:versionId - Restore a previous version
+  app.post("/api/prompts/:id/restore/:versionId", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id, versionId } = req.params;
+      const userId = (req as any).user?.id;
+
+      // Get the version to restore
+      const version = await storage.getPromptVersion(versionId);
+      if (!version || version.promptId !== id) {
+        return res.status(404).json({ error: "Versão não encontrada" });
+      }
+
+      // Get current template
+      const template = await storage.getPromptTemplate(id);
+      if (!template) {
+        return res.status(404).json({ error: "Prompt template não encontrado" });
+      }
+
+      // Create or update draft with version content
+      const existingDraft = await storage.getPromptDraft(id);
+      
+      if (existingDraft) {
+        await storage.updatePromptDraft(id, {
+          draftContent: version.content,
+          lastEditedBy: userId,
+          aiSuggestions: version.aiSuggestions as any,
+          tokenCount: version.tokenCount,
+        });
+      } else {
+        await storage.createPromptDraft({
+          promptId: id,
+          draftContent: version.content,
+          lastEditedBy: userId,
+          aiSuggestions: version.aiSuggestions as any,
+          tokenCount: version.tokenCount,
+        });
+      }
+
+      console.log(`✅ [Prompts] Restored version ${version.version} to draft for prompt ${id}`);
+      
+      return res.json({
+        success: true,
+        message: `Versão ${version.version} restaurada como rascunho`,
+        version,
+      });
+    } catch (error) {
+      console.error("❌ [Prompts] Error restoring version:", error);
+      return res.status(500).json({ error: "Erro ao restaurar versão" });
+    }
+  });
+
   return httpServer;
 }
