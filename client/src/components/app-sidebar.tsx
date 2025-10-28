@@ -41,7 +41,9 @@ import {
   ShoppingBag,
   ShoppingCart,
   MapPin,
-  Megaphone
+  Megaphone,
+  Wrench,
+  Target
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
@@ -74,19 +76,6 @@ const menuCategories: MenuCategory[] = [
         icon: LayoutDashboard,
         roles: ["ADMIN", "SUPERVISOR", "AGENT"],
       },
-    ],
-  },
-  {
-    title: "Monitoramento",
-    icon: Eye,
-    roles: ["ADMIN", "SUPERVISOR"],
-    items: [
-      {
-        title: "Monitor Supervisor",
-        url: "/monitor",
-        icon: MonitorIcon,
-        roles: ["ADMIN", "SUPERVISOR"],
-      },
       {
         title: "Dashboard de Atendentes",
         url: "/agent-monitor",
@@ -94,32 +83,8 @@ const menuCategories: MenuCategory[] = [
         roles: ["ADMIN", "SUPERVISOR"],
       },
       {
-        title: "Relatórios de Atendentes",
-        url: "/agent-reports",
-        icon: FileText,
-        roles: ["ADMIN", "SUPERVISOR"],
-      },
-      {
-        title: "Logs de Atividade",
-        url: "/activity-logs",
-        icon: History,
-        roles: ["ADMIN", "SUPERVISOR"],
-      },
-      {
-        title: "Monitor Webhook",
-        url: "/webhook-monitor",
-        icon: Wifi,
-        roles: ["ADMIN"],
-      },
-      {
-        title: "Logs em Tempo Real",
-        url: "/live-logs",
-        icon: Activity,
-        roles: ["ADMIN", "SUPERVISOR"],
-      },
-      {
-        title: "Logs dos Agentes IA",
-        url: "/agent-logs",
+        title: "Assistentes",
+        url: "/assistants",
         icon: Brain,
         roles: ["ADMIN", "SUPERVISOR"],
       },
@@ -131,16 +96,22 @@ const menuCategories: MenuCategory[] = [
     roles: ["ADMIN", "SUPERVISOR", "AGENT"],
     items: [
       {
-        title: "Test Chat",
-        url: "/test-chat",
-        icon: TestTube2,
-        roles: ["ADMIN", "SUPERVISOR"],
-      },
-      {
         title: "Conversas",
         url: "/conversations",
         icon: MessageSquare,
         roles: ["ADMIN", "SUPERVISOR", "AGENT"],
+      },
+      {
+        title: "Monitor Supervisor",
+        url: "/monitor",
+        icon: MonitorIcon,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Grupos WhatsApp",
+        url: "/groups",
+        icon: UsersIcon,
+        roles: ["ADMIN", "SUPERVISOR"],
       },
       {
         title: "Contatos",
@@ -148,10 +119,67 @@ const menuCategories: MenuCategory[] = [
         icon: Contact,
         roles: ["ADMIN", "SUPERVISOR", "AGENT"],
       },
+    ],
+  },
+  {
+    title: "Qualidade",
+    icon: Target,
+    roles: ["ADMIN", "SUPERVISOR"],
+    items: [
       {
-        title: "Grupos WhatsApp",
-        url: "/groups",
-        icon: UsersIcon,
+        title: "Ouvidoria",
+        url: "/ouvidoria",
+        icon: AlertTriangle,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Feedbacks NPS",
+        url: "/feedbacks",
+        icon: Star,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Análises",
+        url: "/metrics",
+        icon: BarChart3,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Métricas",
+        url: "/metrics",
+        icon: Activity,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+    ],
+  },
+  {
+    title: "Vendas",
+    icon: ShoppingBag,
+    roles: ["ADMIN", "SUPERVISOR"],
+    items: [
+      {
+        title: "Gestão de Vendas",
+        url: "/vendas",
+        icon: ShoppingCart,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+    ],
+  },
+  {
+    title: "Operações",
+    icon: Cog,
+    roles: ["ADMIN", "SUPERVISOR"],
+    items: [
+      {
+        title: "Falhas Massivas",
+        url: "/falhas-massivas",
+        icon: AlertTriangle,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Regiões",
+        url: "/regioes",
+        icon: MapPin,
         roles: ["ADMIN", "SUPERVISOR"],
       },
     ],
@@ -173,93 +201,73 @@ const menuCategories: MenuCategory[] = [
         icon: TrendingUp,
         roles: ["ADMIN", "SUPERVISOR"],
       },
-      {
-        title: "Assistentes",
-        url: "/assistants",
-        icon: Brain,
-        roles: ["ADMIN", "SUPERVISOR"],
-      },
     ],
   },
   {
-    title: "Análises",
-    icon: BarChart3,
+    title: "Ferramentas",
+    icon: Wrench,
     roles: ["ADMIN", "SUPERVISOR"],
     items: [
-      {
-        title: "Métricas",
-        url: "/metrics",
-        icon: Activity,
-        roles: ["ADMIN", "SUPERVISOR"],
-      },
-      {
-        title: "Feedbacks NPS",
-        url: "/feedbacks",
-        icon: Star,
-        roles: ["ADMIN", "SUPERVISOR"],
-      },
-      {
-        title: "Ouvidoria",
-        url: "/ouvidoria",
-        icon: AlertTriangle,
-        roles: ["ADMIN", "SUPERVISOR"],
-      },
-    ],
-  },
-  {
-    title: "Vendas",
-    icon: ShoppingBag,
-    roles: ["ADMIN", "SUPERVISOR"],
-    items: [
-      {
-        title: "Gestão de Vendas",
-        url: "/vendas",
-        icon: ShoppingCart,
-        roles: ["ADMIN", "SUPERVISOR"],
-      },
-    ],
-  },
-  {
-    title: "Operações",
-    icon: AlertTriangle,
-    roles: ["ADMIN", "SUPERVISOR"],
-    items: [
-      {
-        title: "Falhas Massivas",
-        url: "/falhas-massivas",
-        icon: AlertTriangle,
-        roles: ["ADMIN", "SUPERVISOR"],
-      },
-      {
-        title: "Regiões",
-        url: "/regioes",
-        icon: MapPin,
-        roles: ["ADMIN", "SUPERVISOR"],
-      },
       {
         title: "Anúncios",
         url: "/anuncios",
         icon: Megaphone,
         roles: ["ADMIN", "SUPERVISOR"],
       },
+      {
+        title: "Relatórios de Atendentes",
+        url: "/agent-reports",
+        icon: FileText,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Logs de Atividade",
+        url: "/activity-logs",
+        icon: History,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Logs em Tempo Real",
+        url: "/live-logs",
+        icon: Activity,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Logs dos Agentes IA",
+        url: "/agent-logs",
+        icon: Brain,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Monitor Webhook",
+        url: "/webhook-monitor",
+        icon: Wifi,
+        roles: ["ADMIN"],
+      },
+      {
+        title: "Test Chat",
+        url: "/test-chat",
+        icon: TestTube2,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
     ],
   },
   {
     title: "Administração",
-    icon: Cog,
+    icon: Settings,
     roles: ["ADMIN", "SUPERVISOR"],
     items: [
       {
         title: "Usuários",
         url: "/users",
         icon: UsersIcon,
-        roles: ["ADMIN"],
+        roles: ["ADMIN", "SUPERVISOR"],
       },
       {
         title: "Solicitações de Registro",
         url: "/registration-requests",
         icon: UserPlus,
-        roles: ["ADMIN", "SUPERVISOR"],
+        roles: ["ADMIN"],
       },
       {
         title: "Configurações",
@@ -335,13 +343,13 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar>
-      <SidebarHeader className="border-b p-4">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <Brain className="h-5 w-5 text-primary-foreground" />
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <div className="flex items-center gap-2 px-2 py-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Brain className="h-4 w-4" />
           </div>
-          <div>
+          <div className="flex flex-col">
             <h2 className="font-bold text-base">LIA CORTEX</h2>
             <p className="text-xs text-muted-foreground">AI Orchestrator</p>
           </div>
@@ -400,7 +408,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       
-      <SidebarFooter className="border-t p-4">
+      <SidebarFooter className="border-t px-3 py-2">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <div className="h-2 w-2 rounded-full bg-chart-2" />
           Sistema Online
