@@ -78,12 +78,44 @@ export function RegionSelector({ value, onChange }: RegionSelectorProps) {
     return cityRegion?.neighborhoods.includes(neighborhood) || false;
   };
 
+  const isEntireCitySelected = (city: string) => {
+    const cityRegion = value.find(r => r.city === city);
+    return cityRegion?.neighborhoods.length === 0;
+  };
+
+  const toggleEntireCity = (city: string) => {
+    const newValue = value.filter(r => r.city !== city);
+    
+    if (!isEntireCitySelected(city)) {
+      // Marcar cidade inteira (sem bairros)
+      newValue.push({
+        city,
+        neighborhoods: [],
+      });
+    }
+    
+    onChange(newValue);
+  };
+
   const toggleNeighborhood = (city: string, neighborhood: string) => {
     const newValue = [...value];
     const cityIndex = newValue.findIndex(r => r.city === city);
 
     if (cityIndex >= 0) {
       const neighborhoods = newValue[cityIndex].neighborhoods;
+      
+      // Se cidade inteira estava selecionada, desmarcar primeiro
+      if (neighborhoods.length === 0) {
+        newValue.splice(cityIndex, 1);
+        // Adicionar apenas este bairro
+        newValue.push({
+          city,
+          neighborhoods: [neighborhood],
+        });
+        onChange(newValue);
+        return;
+      }
+      
       const neighborhoodIndex = neighborhoods.indexOf(neighborhood);
 
       if (neighborhoodIndex >= 0) {
@@ -173,7 +205,20 @@ export function RegionSelector({ value, onChange }: RegionSelectorProps) {
 
                     <CollapsibleContent>
                       <div className="p-3 border-t bg-muted/30">
-                        <div className="flex gap-2 mb-3">
+                        <div className="flex gap-2 mb-3 flex-wrap">
+                          <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-md">
+                            <Checkbox
+                              id={`entire-${cityKey}`}
+                              checked={isEntireCitySelected(city.city)}
+                              onCheckedChange={() => toggleEntireCity(city.city)}
+                            />
+                            <Label
+                              htmlFor={`entire-${cityKey}`}
+                              className="text-sm font-medium cursor-pointer"
+                            >
+                              🏙️ Cidade Inteira (todos os bairros)
+                            </Label>
+                          </div>
                           <Button
                             type="button"
                             size="sm"
@@ -185,6 +230,7 @@ export function RegionSelector({ value, onChange }: RegionSelectorProps) {
                                 neighborhoods.map(n => n.neighborhood)
                               );
                             }}
+                            disabled={isEntireCitySelected(city.city)}
                           >
                             Selecionar Todos
                           </Button>
@@ -201,25 +247,33 @@ export function RegionSelector({ value, onChange }: RegionSelectorProps) {
                           </Button>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2">
-                          {neighborhoods.map((region) => (
-                            <div key={region.id} className="flex items-center gap-2">
-                              <Checkbox
-                                id={region.id}
-                                checked={isNeighborhoodSelected(city.city, region.neighborhood)}
-                                onCheckedChange={() =>
-                                  toggleNeighborhood(city.city, region.neighborhood)
-                                }
-                              />
-                              <Label
-                                htmlFor={region.id}
-                                className="text-sm cursor-pointer"
-                              >
-                                {region.neighborhood}
-                              </Label>
-                            </div>
-                          ))}
-                        </div>
+                        {!isEntireCitySelected(city.city) && (
+                          <div className="grid grid-cols-2 gap-2">
+                            {neighborhoods.map((region) => (
+                              <div key={region.id} className="flex items-center gap-2">
+                                <Checkbox
+                                  id={region.id}
+                                  checked={isNeighborhoodSelected(city.city, region.neighborhood)}
+                                  onCheckedChange={() =>
+                                    toggleNeighborhood(city.city, region.neighborhood)
+                                  }
+                                />
+                                <Label
+                                  htmlFor={region.id}
+                                  className="text-sm cursor-pointer"
+                                >
+                                  {region.neighborhood}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {isEntireCitySelected(city.city) && (
+                          <p className="text-xs text-muted-foreground italic">
+                            Esta falha afetará TODOS os bairros de {city.city}
+                          </p>
+                        )}
                       </div>
                     </CollapsibleContent>
                   </div>
@@ -231,9 +285,20 @@ export function RegionSelector({ value, onChange }: RegionSelectorProps) {
       </ScrollArea>
 
       {value.length > 0 && (
-        <div className="text-xs text-muted-foreground">
-          {value.length} {value.length === 1 ? "cidade selecionada" : "cidades selecionadas"} •{" "}
-          {value.reduce((sum, r) => sum + r.neighborhoods.length, 0)} bairros afetados
+        <div className="text-xs text-muted-foreground space-y-1">
+          <div>
+            {value.length} {value.length === 1 ? "cidade selecionada" : "cidades selecionadas"}
+          </div>
+          {value.some(r => r.neighborhoods.length === 0) && (
+            <div className="flex items-center gap-1 text-primary font-medium">
+              🏙️ Inclui {value.filter(r => r.neighborhoods.length === 0).length} cidade(s) inteira(s)
+            </div>
+          )}
+          {value.some(r => r.neighborhoods.length > 0) && (
+            <div>
+              {value.reduce((sum, r) => sum + r.neighborhoods.length, 0)} bairros específicos
+            </div>
+          )}
         </div>
       )}
     </div>

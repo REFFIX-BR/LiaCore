@@ -121,6 +121,20 @@ export default function FailureDialog({ open, onOpenChange, failure }: FailureDi
       });
       return;
     }
+    
+    // Verificar se há pelo menos uma região válida (cidade inteira OU bairros específicos)
+    const hasValidRegions = selectedRegions.some(r => 
+      r.neighborhoods.length === 0 || r.neighborhoods.length > 0
+    );
+    
+    if (!hasValidRegions) {
+      toast({
+        title: "Erro",
+        description: "Configure corretamente as regiões afetadas.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const data = {
       name,
@@ -213,7 +227,7 @@ export default function FailureDialog({ open, onOpenChange, failure }: FailureDi
               onChange={setSelectedRegions}
             />
             <p className="text-xs text-muted-foreground">
-              Selecione as cidades e bairros afetados pela falha
+              Selecione cidades inteiras (para falhas gerais) ou bairros específicos (para falhas localizadas)
             </p>
           </div>
 

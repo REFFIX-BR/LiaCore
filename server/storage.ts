@@ -3914,9 +3914,14 @@ export class DbStorage implements IStorage {
           
           const normalizedRegionNeighborhood = normalize(r.neighborhood);
           
+          // 🆕 FALHA GERAL DE CIDADE: Se região não especifica bairro, afeta cidade inteira
+          if (!normalizedRegionNeighborhood || normalizedRegionNeighborhood.length === 0) {
+            console.log(`🏙️ [Massive Failure] Falha geral detectada: "${failure.name}" afeta toda cidade ${r.city}`);
+            return true; // Match por cidade apenas
+          }
+          
           // Evitar falsos positivos: ambos os bairros devem ter conteúdo
-          if (!normalizedNeighborhood || !normalizedRegionNeighborhood) return false;
-          if (normalizedNeighborhood.length === 0 || normalizedRegionNeighborhood.length === 0) return false;
+          if (!normalizedNeighborhood || normalizedNeighborhood.length === 0) return false;
           
           return normalizedRegionNeighborhood.includes(normalizedNeighborhood) || 
                  normalizedNeighborhood.includes(normalizedRegionNeighborhood);
@@ -3929,6 +3934,12 @@ export class DbStorage implements IStorage {
       if (affectedRegions.type === 'custom' && affectedRegions.custom) {
         const match = affectedRegions.custom.find((region: any) => {
           if (normalize(region.city) !== normalizedCity) return false;
+          
+          // 🆕 FALHA GERAL DE CIDADE: Se não especifica bairros ou array vazio, afeta cidade inteira
+          if (!region.neighborhoods || region.neighborhoods.length === 0) {
+            console.log(`🏙️ [Massive Failure] Falha geral detectada: "${failure.name}" afeta toda cidade ${region.city}`);
+            return true; // Match por cidade apenas
+          }
           
           // Match parcial: verifica se algum bairro cadastrado contém o bairro do cliente
           // ou se o bairro do cliente contém algum bairro cadastrado

@@ -179,20 +179,36 @@ export default function ActiveFailuresTab() {
                       <TimeCounter startTime={failure.startTime} />
                     </TableCell>
                     <TableCell>
-                      <div className="max-w-xs">
+                      <div className="max-w-xs space-y-1">
                         {(() => {
-                          // Extrair nomes dos bairros
-                          const neighborhoods: string[] = [];
-                          (failure.affectedRegions?.custom || []).forEach((region: any) => {
-                            if (Array.isArray(region.neighborhoods)) {
-                              region.neighborhoods.forEach((n: string) => neighborhoods.push(n));
+                          const regions = failure.affectedRegions?.custom || [];
+                          const entireCities = regions.filter((r: any) => r.neighborhoods.length === 0);
+                          const specificNeighborhoods: string[] = [];
+                          
+                          regions.forEach((region: any) => {
+                            if (Array.isArray(region.neighborhoods) && region.neighborhoods.length > 0) {
+                              region.neighborhoods.forEach((n: string) => specificNeighborhoods.push(n));
                             }
                           });
-                          const text = neighborhoods.length > 0 ? neighborhoods.join(', ') : 'Sem bairros';
+                          
                           return (
-                            <Badge variant="outline" className="text-xs whitespace-normal h-auto py-1">
-                              {text}
-                            </Badge>
+                            <>
+                              {entireCities.length > 0 && (
+                                <Badge variant="default" className="text-xs whitespace-normal h-auto py-1">
+                                  🏙️ {entireCities.map((c: any) => c.city).join(', ')} (cidades inteiras)
+                                </Badge>
+                              )}
+                              {specificNeighborhoods.length > 0 && (
+                                <Badge variant="outline" className="text-xs whitespace-normal h-auto py-1">
+                                  {specificNeighborhoods.join(', ')}
+                                </Badge>
+                              )}
+                              {entireCities.length === 0 && specificNeighborhoods.length === 0 && (
+                                <Badge variant="outline" className="text-xs">
+                                  Sem regiões
+                                </Badge>
+                              )}
+                            </>
                           );
                         })()}
                       </div>
