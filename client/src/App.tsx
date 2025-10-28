@@ -213,6 +213,9 @@ function Router() {
       <Route path="/groups">
         {() => <ProtectedRoute component={Groups} />}
       </Route>
+      <Route path="/grupos">
+        {() => <ProtectedRoute component={Groups} />}
+      </Route>
       <Route path="/falhas-massivas">
         {() => <AdminSupervisorRoute component={FalhasMassivas} />}
       </Route>
