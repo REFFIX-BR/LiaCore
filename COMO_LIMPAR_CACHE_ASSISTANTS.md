@@ -59,11 +59,22 @@ curl -X POST http://localhost:5000/api/admin/clear-assistant-cache \
 
 ---
 
-### 🎯 Como Usar (Opção 3: Direto no Console do Navegador)
+### 🎯 Como Usar (Opção 3: Direto no Console do Navegador) ⭐ RECOMENDADO
 
-1. Faça login como **ADMIN** no sistema
-2. Abra o **Console do navegador** (F12 → Console)
-3. Cole e execute:
+**⚠️ IMPORTANTE: Execute no console DA APLICAÇÃO, NÃO no console do Replit.com!**
+
+1. **Abra a aplicação** no navegador:
+   - URL: `https://[seu-projeto].replit.app` ou
+   - Clique no botão "Webview" no Replit
+
+2. **Faça login como ADMIN** no sistema
+
+3. **Abra o Console do navegador**:
+   - Pressione **F12** (Windows/Linux) ou **Cmd+Option+J** (Mac)
+   - Vá para a aba **Console**
+   - ✅ Certifique-se que a URL na barra de endereços é a da sua aplicação (termina com `.replit.app`)
+
+4. **Cole e execute este código**:
 
 ```javascript
 fetch('/api/admin/clear-assistant-cache', {
@@ -75,6 +86,29 @@ fetch('/api/admin/clear-assistant-cache', {
 .then(data => console.log('✅ Cache limpo:', data))
 .catch(err => console.error('❌ Erro:', err));
 ```
+
+**Resposta esperada:**
+```json
+{
+  "success": true,
+  "message": "Cache de instruções dos assistants limpo com sucesso...",
+  "clearedAssistants": ["apresentacao", "comercial", "financeiro", "suporte", "ouvidoria", "cancelamento"]
+}
+```
+
+**Possíveis erros:**
+
+❌ **Erro: 403 Forbidden**
+- **Causa**: Você não está logado como ADMIN
+- **Solução**: Faça logout e login novamente com credenciais de ADMIN
+
+❌ **Erro: "POST https://replit.com/api/admin/clear-assistant-cache 403"**
+- **Causa**: Você está no console ERRADO (console do replit.com)
+- **Solução**: Abra a aplicação (`.replit.app`) e execute lá
+
+❌ **Erro: "Não autenticado"**
+- **Causa**: Sessão expirada
+- **Solução**: Faça login novamente
 
 ---
 
