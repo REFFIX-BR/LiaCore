@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Users, ToggleLeft, ToggleRight, MessageSquare, Clock, Send, Bot, User as UserIcon, Sparkles, Loader2 } from "lucide-react";
+import { Search, Users, ToggleLeft, ToggleRight, MessageSquare, Clock, Send, Bot, User as UserIcon, Sparkles, Loader2, Paperclip, X, Image as ImageIcon, FileText, Mic } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth-context";
@@ -65,6 +65,10 @@ export default function Groups() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasLoadedOlder, setHasLoadedOlder] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [caption, setCaption] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast} = useToast();
@@ -279,6 +283,32 @@ export default function Groups() {
     },
   });
 
+  // Mutation to send media
+  const sendMediaMutation = useMutation({
+    mutationFn: async (data: { groupId: string; mediaBase64: string; mediaType: 'image' | 'document' | 'audio'; caption?: string; fileName?: string }) => {
+      return await apiRequest(`/api/groups/${data.groupId}/send-media`, "POST", data);
+    },
+    onSuccess: () => {
+      setAttachedFile(null);
+      setFilePreview(null);
+      setCaption("");
+      setMessageText("");
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", selectedGroup?.id, "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      toast({
+        title: "Mídia Enviada",
+        description: "Mídia enviada com sucesso para o grupo",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao enviar mídia",
+        description: error.message || "Ocorreu um erro ao enviar a mídia",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Auto-scroll to bottom when messages change (only for new messages, not when loading older)
   useEffect(() => {
     if (!hasLoadedOlder) {
@@ -310,7 +340,99 @@ export default function Groups() {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      if (attachedFile) {
+        handleSendMedia();
+      } else {
+        handleSendMessage();
+      }
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de arquivo
+    const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const validDocTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const validAudioTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/m4a'];
+
+    if (![...validImageTypes, ...validDocTypes, ...validAudioTypes].includes(file.type)) {
+      toast({
+        title: "Tipo de arquivo inválido",
+        description: "Envie imagens (JPG, PNG, GIF, WebP), documentos (PDF, DOC, DOCX) ou áudio (MP3, WAV, OGG, M4A)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Limitar tamanho: 10MB para imagens/documentos, 16MB para áudio
+    const maxSize = validAudioTypes.includes(file.type) ? 16 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast({
+        title: "Arquivo muito grande",
+        description: `O arquivo deve ter no máximo ${maxSize / 1024 / 1024}MB`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAttachedFile(file);
+
+    // Criar preview para imagens
+    if (validImageTypes.includes(file.type)) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFilePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setFilePreview(null);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setAttachedFile(null);
+    setFilePreview(null);
+    setCaption("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleSendMedia = async () => {
+    if (!selectedGroup || !attachedFile) return;
+
+    try {
+      // Converter arquivo para base64
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = (reader.result as string).split(',')[1]; // Remove "data:image/png;base64," prefix
+        
+        // Determinar tipo de mídia
+        let mediaType: 'image' | 'document' | 'audio' = 'document';
+        if (attachedFile.type.startsWith('image/')) {
+          mediaType = 'image';
+        } else if (attachedFile.type.startsWith('audio/')) {
+          mediaType = 'audio';
+        }
+
+        sendMediaMutation.mutate({
+          groupId: selectedGroup.id,
+          mediaBase64: base64,
+          mediaType,
+          caption: caption || undefined,
+          fileName: attachedFile.name,
+        });
+      };
+      reader.readAsDataURL(attachedFile);
+    } catch (error) {
+      console.error("Error converting file to base64:", error);
+      toast({
+        title: "Erro ao processar arquivo",
+        description: "Não foi possível processar o arquivo selecionado",
+        variant: "destructive",
+      });
     }
   };
 
@@ -534,25 +656,99 @@ export default function Groups() {
                   </Button>
                 )}
 
+                {/* File attachment preview */}
+                {attachedFile && (
+                  <div className="border rounded-lg p-3 bg-muted/50">
+                    <div className="flex items-start gap-3">
+                      {/* Preview */}
+                      <div className="flex-shrink-0">
+                        {filePreview ? (
+                          <img src={filePreview} alt="Preview" className="w-16 h-16 rounded object-cover" />
+                        ) : attachedFile.type.startsWith('audio/') ? (
+                          <div className="w-16 h-16 rounded bg-primary/10 flex items-center justify-center">
+                            <Mic className="h-6 w-6 text-primary" />
+                          </div>
+                        ) : (
+                          <div className="w-16 h-16 rounded bg-primary/10 flex items-center justify-center">
+                            <FileText className="h-6 w-6 text-primary" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* File info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{attachedFile.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(attachedFile.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                        <Input
+                          placeholder="Legenda (opcional)..."
+                          value={caption}
+                          onChange={(e) => setCaption(e.target.value)}
+                          className="mt-2 h-8"
+                          data-testid="input-media-caption"
+                        />
+                      </div>
+
+                      {/* Remove button */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleRemoveFile}
+                        className="flex-shrink-0"
+                        data-testid="button-remove-attachment"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-2">
+                  {/* Hidden file input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,application/pdf,.doc,.docx,audio/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    data-testid="input-file-upload"
+                  />
+
+                  {/* Attach button */}
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={sendMessageMutation.isPending || sendMediaMutation.isPending}
+                    className="flex-shrink-0"
+                    data-testid="button-attach-file"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </Button>
+
                   <Textarea
-                    placeholder="Escrever mensagem para o grupo..."
+                    placeholder={attachedFile ? "Enviar mídia..." : "Escrever mensagem para o grupo..."}
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                     onKeyDown={handleKeyPress}
-                    disabled={sendMessageMutation.isPending}
+                    disabled={sendMessageMutation.isPending || sendMediaMutation.isPending}
                     className="resize-none"
                     rows={2}
                     data-testid="input-group-message"
                   />
                   <Button
-                    onClick={handleSendMessage}
-                    disabled={!messageText.trim() || sendMessageMutation.isPending}
+                    onClick={attachedFile ? handleSendMedia : handleSendMessage}
+                    disabled={attachedFile ? sendMediaMutation.isPending : (!messageText.trim() || sendMessageMutation.isPending)}
                     size="icon"
                     className="flex-shrink-0"
                     data-testid="button-send-message"
                   >
-                    <Send className="h-4 w-4" />
+                    {sendMessageMutation.isPending || sendMediaMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </div>

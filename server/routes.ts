@@ -8025,7 +8025,8 @@ A resposta deve:
         sendBy: 'supervisor',
         assistant: 'supervisor',
         imageBase64: mediaType === 'image' ? mediaBase64 : undefined,
-        documentBase64: mediaType === 'document' ? mediaBase64 : undefined,
+        pdfBase64: mediaType === 'document' ? mediaBase64 : undefined,
+        pdfName: mediaType === 'document' ? (fileName || 'document.pdf') : undefined,
         audioBase64: mediaType === 'audio' ? mediaBase64 : undefined,
       });
 
