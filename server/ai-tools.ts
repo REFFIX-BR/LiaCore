@@ -1044,6 +1044,91 @@ export async function selecionarPontoInstalacao(
 }
 
 /**
+ * Registra reclamação, elogio ou sugestão no painel de Ouvidoria
+ * @param tipo Tipo do registro ('reclamacao', 'elogio', 'sugestao')
+ * @param descricao Descrição completa do relato
+ * @param conversationContext Contexto da conversa
+ * @param storage Interface de storage
+ * @returns ID do registro criado (protocolo)
+ */
+export async function registrarReclamacaoOuvidoria(
+  tipo: string,
+  descricao: string,
+  conversationContext: { conversationId: string },
+  storage: IStorage
+): Promise<{ protocolo: string; tipo: string; registrado: boolean }> {
+  try {
+    // Validação de segurança OBRIGATÓRIA
+    if (!conversationContext || !conversationContext.conversationId) {
+      console.error(`❌ [AI Tool Security] Tentativa de registrar ouvidoria sem contexto de conversa`);
+      throw new Error("Contexto de segurança é obrigatório para registrar ouvidoria");
+    }
+
+    // Validação: conversa deve existir no banco
+    const conversation = await storage.getConversation(conversationContext.conversationId);
+    if (!conversation) {
+      console.error(`❌ [AI Tool Security] Tentativa de registrar ouvidoria com conversationId inválido`);
+      throw new Error("Conversa não encontrada - contexto de segurança inválido");
+    }
+
+    // CRÍTICO: clientDocument deve existir OBRIGATORIAMENTE
+    if (!conversation.clientDocument) {
+      console.error(`❌ [AI Tool Security] Tentativa de registrar ouvidoria sem documento do cliente armazenado`);
+      throw new Error("Não é possível registrar na ouvidoria sem o CPF ou CNPJ do cliente. Por favor, solicite o documento ao cliente primeiro.");
+    }
+
+    // Validar tipo de registro
+    const tipoNormalizado = tipo.toLowerCase();
+    if (!['reclamacao', 'elogio', 'sugestao'].includes(tipoNormalizado)) {
+      throw new Error(`Tipo de ouvidoria inválido: ${tipo}. Tipos válidos: reclamacao, elogio, sugestao`);
+    }
+
+    // Mapear tipo para complaintType da tabela
+    let complaintType: 'atendimento' | 'produto' | 'tecnico' | 'comercial' | 'financeiro' | 'outro';
+    let severity: 'baixa' | 'media' | 'alta' | 'critica';
+    
+    if (tipoNormalizado === 'reclamacao') {
+      complaintType = 'atendimento'; // Tipo padrão para reclamações de ouvidoria
+      severity = 'alta'; // Reclamações têm alta prioridade
+    } else if (tipoNormalizado === 'elogio') {
+      complaintType = 'atendimento';
+      severity = 'baixa'; // Elogios têm baixa prioridade
+    } else { // sugestao
+      complaintType = 'outro';
+      severity = 'media'; // Sugestões têm média prioridade
+    }
+
+    console.log(`📝 [Ouvidoria] Registrando ${tipoNormalizado} (conv: ${conversationContext.conversationId})`);
+
+    // Criar registro na tabela complaints
+    const complaint = await storage.createComplaint({
+      conversationId: conversationContext.conversationId,
+      complaintType,
+      severity,
+      description: descricao,
+      status: 'novo',
+      metadata: {
+        tipoOuvidoria: tipoNormalizado,
+        clientDocument: conversation.clientDocument,
+        clientName: conversation.clientName || 'Não informado',
+        chatId: conversation.chatId
+      }
+    });
+
+    console.log(`✅ [Ouvidoria] Registro criado com sucesso - ID: ${complaint.id}`);
+
+    return {
+      protocolo: complaint.id,
+      tipo: tipoNormalizado,
+      registrado: true
+    };
+  } catch (error) {
+    console.error("❌ [Ouvidoria] Erro ao registrar:", error);
+    throw error;
+  }
+}
+
+/**
  * Roteia conversa para assistente especializado (NÃO marca como transferido para humano)
  * @param departamento Nome do departamento/assistente especializado
  * @param motivo Motivo do roteamento
@@ -1091,6 +1176,12 @@ export async function executeAssistantTool(
         throw new Error("Parâmetro 'documento' é obrigatório para consulta_boleto_cliente");
       }
       return await consultaBoletoCliente(args.documento, context, storage);
+
+    case 'registrar_reclamacao_ouvidoria':
+      if (!args.tipo || !args.descricao) {
+        throw new Error("Parâmetros 'tipo' e 'descricao' são obrigatórios para registrar_reclamacao_ouvidoria");
+      }
+      return await registrarReclamacaoOuvidoria(args.tipo, args.descricao, context, storage);
 
     case 'rotear_para_assistente':
       if (!args.departamento || !args.motivo) {
