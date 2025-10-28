@@ -65,11 +65,38 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, inspir
 - All 5 assistants (Suporte, Financeiro, Ouvidoria, Comercial, Cancelamento) need URGENT instruction updates
 - Must add explicit rules: "NEVER promise actions without executing them via Function Calling"
 - Must clarify WHEN to use each tool: `abrir_ticket_crm` vs `transferir_para_humano` vs `rotear_para_assistente`
-- Ouvidoria needs DUAL execution: FIRST `abrir_ticket_crm` (register complaint), THEN `transferir_para_humano` (escalate to supervisor)
+- Ouvidoria needs DUAL execution: FIRST `registrar_reclamacao_ouvidoria` (register in internal panel), THEN `transferir_para_humano` (escalate to supervisor)
 
 **Documentation:** See `CORRECAO_URGENTE_IA_PROMETENDO_SEM_EXECUTAR.md` for complete correction instructions with examples for each assistant.
 
 **Status:** 🔴 CRITICAL - Requires immediate OpenAI Dashboard configuration updates
+
+---
+
+### ✅ Ouvidoria Dual-System Architecture Fix
+**Implemented:** Created new function `registrar_reclamacao_ouvidoria` to correctly register complaints in the internal Ouvidoria panel (complaints table), separate from the external CRM system.
+
+**Problem Identified:**
+- Ouvidoria was using `abrir_ticket_crm` which registers in EXTERNAL CRM only
+- Internal Ouvidoria panel (complaints table) was NOT being populated
+- Two separate systems exist: External CRM + Internal Ouvidoria panel
+
+**Solution:**
+- New function `registrar_reclamacao_ouvidoria` (server/ai-tools.ts lines 1054-1129)
+- Registers directly in complaints table with proper metadata
+- Returns protocol ID for client confirmation
+- Maps types correctly: reclamacao→alta severity, elogio→baixa, sugestao→media
+- Validates CPF/CNPJ is stored before allowing registration
+
+**Correct Ouvidoria Flow:**
+1. FIRST: `registrar_reclamacao_ouvidoria(tipo, descricao)` - Creates record in internal panel
+2. SECOND: `transferir_para_humano("Ouvidoria", "Protocolo X")` - Escalates to supervisor
+
+**Documentation:**
+- `PROMPT_OUVIDORIA_ATUALIZADO.md` - Complete ready-to-paste prompt for OpenAI Dashboard
+- `CORRECAO_URGENTE_IA_PROMETENDO_SEM_EXECUTAR.md` - Updated with correct tool usage
+
+**Status:** ✅ Code implemented and validated - Ready for OpenAI Dashboard configuration
 
 ---
 
