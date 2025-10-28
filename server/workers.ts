@@ -823,21 +823,92 @@ if (redisConnection) {
 
       // 9. Send response back to customer (apenas se não houve roteamento)
       if (shouldSendPresentationMessage) {
-        const messageSent = await sendWhatsAppMessage(fromNumber, result.response, evolutionInstance);
+        // 🚨 FILTRO DE EMERGÊNCIA: Detectar se IA escreveu código de função ao invés de executar
+        const debugPatterns = [
+          /\*\[EXECUTO:/i,
+          /\[EXECUTO:/i,
+          /\[use rotear_para_assistente/i,
+          /\[use transferir_para_humano/i,
+          /\[chama função/i,
+          /rotear_para_assistente\(/i,
+        ];
         
-        if (!messageSent.success) {
-          throw new Error('Failed to send WhatsApp message - Evolution API error');
-        }
+        const hasDebugCode = debugPatterns.some(pattern => pattern.test(result.response));
+        
+        if (hasDebugCode) {
+          console.error(`🚨🚨🚨 [CRITICAL BUG] IA ESCREVEU CÓDIGO AO INVÉS DE EXECUTAR!`);
+          console.error(`🚨 Resposta com debug: ${result.response.substring(0, 200)}...`);
+          console.error(`🚨 ConversationId: ${conversationId}, AssistantType: ${conversation.assistantType}`);
+          
+          // Tentar extrair assistente de destino da mensagem
+          const routeMatch = result.response.match(/rotear_para_assistente\(['"](.*?)['"]|EXECUTO:.*?["'](.*?)["']/i);
+          const targetAssistant = routeMatch ? (routeMatch[1] || routeMatch[2]) : null;
+          
+          if (targetAssistant && ['financeiro', 'suporte', 'comercial', 'ouvidoria', 'cancelamento'].includes(targetAssistant.toLowerCase())) {
+            console.error(`🔧 [EMERGENCY FIX] Roteando automaticamente para: ${targetAssistant}`);
+            
+            // Forçar roteamento automático
+            await storage.updateConversation(conversationId, {
+              assistantType: targetAssistant.toLowerCase(),
+              metadata: {
+                ...(conversation.metadata || {}),
+                emergency_routing: true,
+                emergency_routing_at: new Date().toISOString(),
+                emergency_routing_reason: 'IA escreveu código ao invés de executar Function Calling',
+                blocked_debug_message: result.response,
+              }
+            });
+            
+            // Enviar mensagem limpa ao cliente
+            const cleanMessage = "Entendi! Estou encaminhando você para o setor correto que vai te ajudar melhor. Aguarde um instante! 😊";
+            await sendWhatsAppMessage(fromNumber, cleanMessage, evolutionInstance);
+            
+            await storage.createMessage({
+              conversationId,
+              role: 'assistant',
+              content: cleanMessage,
+              functionCall: undefined,
+            });
+            
+            console.error(`✅ [EMERGENCY FIX] Mensagem de debug bloqueada e roteamento forçado`);
+          } else {
+            // Se não conseguiu extrair destino, enviar mensagem de erro genérica
+            console.error(`❌ [EMERGENCY FIX] Não conseguiu extrair assistente de destino - enviando mensagem de erro`);
+            const errorMessage = "Desculpe, houve um probleminha técnico. Vou te transferir para um atendente humano, tudo bem? 😊";
+            await sendWhatsAppMessage(fromNumber, errorMessage, evolutionInstance);
+            
+            await storage.createMessage({
+              conversationId,
+              role: 'assistant',
+              content: errorMessage,
+              functionCall: undefined,
+            });
+            
+            // Transferir para humano
+            await storage.updateConversation(conversationId, {
+              transferredToHuman: true,
+              transferredAt: new Date(),
+              transferReason: 'Erro crítico: IA escreveu código ao invés de executar',
+            });
+          }
+        } else {
+          // Fluxo normal - mensagem está limpa
+          const messageSent = await sendWhatsAppMessage(fromNumber, result.response, evolutionInstance);
+          
+          if (!messageSent.success) {
+            throw new Error('Failed to send WhatsApp message - Evolution API error');
+          }
 
-        // 10. Store AI response (only if message was sent successfully)
-        await storage.createMessage({
-          conversationId,
-          role: 'assistant',
-          content: result.response,
-          functionCall: result.functionCalls && result.functionCalls.length > 0 
-            ? result.functionCalls[0] // Store first function call (most relevant)
-            : undefined,
-        });
+          // 10. Store AI response (only if message was sent successfully)
+          await storage.createMessage({
+            conversationId,
+            role: 'assistant',
+            content: result.response,
+            functionCall: result.functionCalls && result.functionCalls.length > 0 
+              ? result.functionCalls[0] // Store first function call (most relevant)
+              : undefined,
+          });
+        }
       } else {
         console.log(`⏩ [Worker] Skipping presentation message - routing already handled`);
       }
