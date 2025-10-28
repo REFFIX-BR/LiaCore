@@ -42,7 +42,15 @@ import {
   type InsertGroup,
   type UpdateGroup,
   type PrivateNote,
-  type InsertPrivateNote
+  type InsertPrivateNote,
+  type PromptTemplate,
+  type InsertPromptTemplate,
+  type UpdatePromptTemplate,
+  type PromptVersion,
+  type InsertPromptVersion,
+  type PromptDraft,
+  type InsertPromptDraft,
+  type UpdatePromptDraft
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { localCache } from "./lib/redis-cache";
@@ -369,6 +377,26 @@ export interface IStorage {
       createdAt: Date;
     }>;
   }>;
+
+  // Prompt Management System
+  // Prompt Templates
+  getAllPromptTemplates(): Promise<PromptTemplate[]>;
+  getPromptTemplate(id: string): Promise<PromptTemplate | undefined>;
+  getPromptTemplateByAssistantId(assistantId: string): Promise<PromptTemplate | undefined>;
+  getPromptTemplateByAssistantType(assistantType: string): Promise<PromptTemplate | undefined>;
+  createPromptTemplate(template: InsertPromptTemplate): Promise<PromptTemplate>;
+  updatePromptTemplate(id: string, updates: UpdatePromptTemplate): Promise<PromptTemplate>;
+  
+  // Prompt Versions
+  getPromptVersionsByPromptId(promptId: string): Promise<PromptVersion[]>;
+  getPromptVersion(id: string): Promise<PromptVersion | undefined>;
+  createPromptVersion(version: InsertPromptVersion): Promise<PromptVersion>;
+  
+  // Prompt Drafts
+  getPromptDraft(promptId: string): Promise<PromptDraft | undefined>;
+  createPromptDraft(draft: InsertPromptDraft): Promise<PromptDraft>;
+  updatePromptDraft(promptId: string, updates: UpdatePromptDraft): Promise<PromptDraft>;
+  deletePromptDraft(promptId: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -4160,6 +4188,104 @@ export class DbStorage implements IStorage {
   async deleteAnnouncement(id: string): Promise<void> {
     await db.delete(schema.announcements)
       .where(eq(schema.announcements.id, id));
+  }
+
+  // ========================
+  // PROMPT MANAGEMENT SYSTEM
+  // ========================
+
+  // Prompt Templates
+  async getAllPromptTemplates(): Promise<PromptTemplate[]> {
+    return await db.select()
+      .from(schema.promptTemplates)
+      .where(eq(schema.promptTemplates.status, "active"))
+      .orderBy(schema.promptTemplates.assistantType);
+  }
+
+  async getPromptTemplate(id: string): Promise<PromptTemplate | undefined> {
+    const [template] = await db.select()
+      .from(schema.promptTemplates)
+      .where(eq(schema.promptTemplates.id, id));
+    return template;
+  }
+
+  async getPromptTemplateByAssistantId(assistantId: string): Promise<PromptTemplate | undefined> {
+    const [template] = await db.select()
+      .from(schema.promptTemplates)
+      .where(eq(schema.promptTemplates.assistantId, assistantId));
+    return template;
+  }
+
+  async getPromptTemplateByAssistantType(assistantType: string): Promise<PromptTemplate | undefined> {
+    const [template] = await db.select()
+      .from(schema.promptTemplates)
+      .where(eq(schema.promptTemplates.assistantType, assistantType));
+    return template;
+  }
+
+  async createPromptTemplate(template: InsertPromptTemplate): Promise<PromptTemplate> {
+    const [created] = await db.insert(schema.promptTemplates)
+      .values(template)
+      .returning();
+    return created;
+  }
+
+  async updatePromptTemplate(id: string, updates: UpdatePromptTemplate): Promise<PromptTemplate> {
+    const [updated] = await db.update(schema.promptTemplates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(schema.promptTemplates.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Prompt Versions
+  async getPromptVersionsByPromptId(promptId: string): Promise<PromptVersion[]> {
+    return await db.select()
+      .from(schema.promptVersions)
+      .where(eq(schema.promptVersions.promptId, promptId))
+      .orderBy(desc(schema.promptVersions.createdAt));
+  }
+
+  async getPromptVersion(id: string): Promise<PromptVersion | undefined> {
+    const [version] = await db.select()
+      .from(schema.promptVersions)
+      .where(eq(schema.promptVersions.id, id));
+    return version;
+  }
+
+  async createPromptVersion(version: InsertPromptVersion): Promise<PromptVersion> {
+    const [created] = await db.insert(schema.promptVersions)
+      .values(version)
+      .returning();
+    return created;
+  }
+
+  // Prompt Drafts
+  async getPromptDraft(promptId: string): Promise<PromptDraft | undefined> {
+    const [draft] = await db.select()
+      .from(schema.promptDrafts)
+      .where(eq(schema.promptDrafts.promptId, promptId));
+    return draft;
+  }
+
+  async createPromptDraft(draft: InsertPromptDraft): Promise<PromptDraft> {
+    const [created] = await db.insert(schema.promptDrafts)
+      .values(draft)
+      .returning();
+    return created;
+  }
+
+  async updatePromptDraft(promptId: string, updates: UpdatePromptDraft): Promise<PromptDraft> {
+    const [updated] = await db.update(schema.promptDrafts)
+      .set({ ...updates, lastEditedAt: new Date() })
+      .where(eq(schema.promptDrafts.promptId, promptId))
+      .returning();
+    return updated;
+  }
+
+  async deletePromptDraft(promptId: string): Promise<void> {
+    await db.delete(schema.promptDrafts)
+      .where(eq(schema.promptDrafts.promptId, promptId));
   }
 }
 
