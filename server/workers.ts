@@ -206,26 +206,22 @@ export async function sendWhatsAppMedia(
     };
 
     if (mediaType === 'image') {
-      body.mediaMessage = {
-        mediatype: 'image',
-        media: mediaBase64,
-      };
-      if (caption) {
-        body.mediaMessage.caption = caption;
-      }
+      body.mediatype = 'image';
+      body.mimetype = 'image/jpeg';
+      body.media = mediaBase64;
+      if (fileName) body.fileName = fileName;
+      if (caption) body.caption = caption;
     } else if (mediaType === 'document') {
-      body.mediaMessage = {
-        mediatype: 'document',
-        media: mediaBase64,
-        fileName: fileName || 'document.pdf',
-      };
-      if (caption) {
-        body.mediaMessage.caption = caption;
-      }
+      body.mediatype = 'document';
+      body.mimetype = 'application/pdf';
+      body.media = mediaBase64;
+      body.fileName = fileName || 'document.pdf';
+      if (caption) body.caption = caption;
     } else if (mediaType === 'audio') {
-      body.audioMessage = {
-        audio: mediaBase64,
-      };
+      body.mediatype = 'audio';
+      body.mimetype = 'audio/mpeg';
+      body.media = mediaBase64;
+      if (fileName) body.fileName = fileName;
     }
     
     const response = await fetch(fullUrl, {
