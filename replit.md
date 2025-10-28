@@ -1,19 +1,19 @@
 # LIA CORTEX - AI Orchestration Platform
 
 ## Overview
-LIA CORTEX is an enterprise-grade AI middleware orchestration platform for TR Telecom's customer service. It automates Q&A and actions through specialized AI assistants using OpenAI's Assistants API and a RAG knowledge base. The platform features a real-time supervisor monitoring dashboard and an autonomous continuous learning system, aiming to enhance customer service efficiency and satisfaction in the telecommunications sector.
+LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed for TR Telecom's customer service. It automates Q&A and actions using specialized AI assistants powered by OpenAI's Assistants API and a RAG knowledge base. The platform features a real-time supervisor monitoring dashboard and an autonomous continuous learning system, aiming to enhance customer service efficiency and satisfaction in the telecommunications sector through advanced AI orchestration.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 ### UI/UX Decisions
-The frontend uses React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, inspired by Carbon Design System and Linear, supporting dark/light modes. `Wouter` handles routing. Features include color-coded wait times, enhanced complaint descriptions, private note dialogs, new contact creation, conversation reopening, and activity logs. Sales and plans management offer dashboards with KPIs and CRUD interfaces. The chat interface has message pagination, auto-scroll, auto-focus textarea, and inline PDF viewing. The agent conversation interface offers flexible layout modes (single-box for focus, dual-box for multitasking), with preferences persisted in `localStorage`.
+The frontend is built with React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, drawing inspiration from Carbon Design System and Linear, supporting both dark and light modes. Key features include color-coded wait times, enhanced complaint descriptions, private note dialogs, new contact creation, conversation reopening, and activity logs. Sales and plans management offer dashboards with KPIs and CRUD interfaces. The chat interface includes message pagination, auto-scroll, auto-focus textarea, and inline PDF viewing. The agent conversation interface provides flexible layout modes (single-box for focus, dual-box for multitasking), with preferences persisted in `localStorage`.
 
 ### Technical Implementations
-**Frontend**: Uses TanStack Query for server state.
-**Backend**: Node.js and Express.js (TypeScript), integrates GPT-5 for routing, OpenAI Assistants API, Upstash Vector for RAG, Upstash Redis for conversation threads, and PostgreSQL via Drizzle ORM.
-**Queue System**: BullMQ with Redis TLS for asynchronous processing, retries, and webhooks.
+**Frontend**: Utilizes TanStack Query for server state management.
+**Backend**: Developed with Node.js and Express.js (TypeScript), integrating GPT-5 for routing, OpenAI Assistants API, Upstash Vector for RAG, Upstash Redis for conversation threads, and PostgreSQL via Drizzle ORM.
+**Queue System**: Employs BullMQ with Redis TLS for asynchronous processing, retries, and webhooks.
 **AI & Knowledge Management**: Orchestrates six AI roles using OpenAI Assistants API and a "Receptionist-First" routing model. A dual-layer RAG architecture with Upstash Vector supports specific knowledge bases. Custom function calling enables verification, knowledge queries, invoice lookups, scheduling, sales operations, and automated CRM ticket creation. Automated systems include document detection, "Boleto Consultation," "PPPoE Connection Status," "Unlock/Unblock," HTTP Resilience, GPT-4o Vision, PDF text extraction, and OpenAI Whisper. Conversation intelligence provides real-time sentiment analysis, urgency detection, problem identification, and automatic persistence of CPF/CNPJ. The system preserves full context during assistant routing and automatically creates CRM tickets for payments or service requests, with robust validation and LGPD compliance.
 **Real-Time Monitoring**: The Supervisor Dashboard offers KPIs, live queues, alerts, transcripts, human intervention controls, and a Live Logs System with a 6-state view, including a "Histórico Completo" for auditing.
 **Continuous Learning System**: A GPT-4 agent suggests prompt improvements.
@@ -24,9 +24,10 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, inspir
 **Announcements/Communications System**: Centralized system for company-wide announcements with priority-based rotation, full CRUD admin interface, and visual banners.
 
 ### System Design Choices
-- **Admin Tools**: Features for mass-closing abandoned conversations, reprocessing stuck messages, and configuration management.
-- **Media Handling**: Supervisors can download WhatsApp images and PDFs, with inline PDF viewing.
-- **Security & Compliance**: LGPD/GDPR-compliant logging, protected debug endpoints, and structured error handling.
+- **Admin Tools**: Includes features for mass-closing abandoned conversations, reprocessing stuck messages, and configuration management.
+- **Media Handling**: Supervisors can download WhatsApp images and PDFs, with inline PDF viewing capabilities.
+- **Security & Compliance**: Implements LGPD/GDPR-compliant logging, protected debug endpoints, and structured error handling.
+- **Failure Detection**: Enhanced massive failure detection supports city-wide outages in addition to neighborhood-specific incidents.
 
 ## External Dependencies
 
@@ -44,121 +45,3 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, inspir
 - `express`: Web server framework.
 - `react-hook-form`, `zod`: Form handling and validation.
 - `tailwindcss`: CSS framework.
-
-## Recent Updates (October 28, 2025)
-
-### ✅ WhatsApp Group Media Sending Feature - COMPLETED
-**Implemented:** Full support for sending media (images, documents, audio) to WhatsApp groups via Evolution API. Supervisors can now attach files directly in the Groups interface with preview, caption support, and automatic delivery via WhatsApp.
-
-**Technical Implementation:**
-- **Backend (server/workers.ts):** New `sendWhatsAppMedia()` function handles media delivery via Evolution API `/message/sendMedia/{instance}` endpoint with base64 conversion. Payload structure corrected to send properties at root level (not nested in mediaMessage).
-- **API (server/routes.ts):** New endpoint `POST /api/groups/:id/send-media` with validation for mediaType (image | document | audio), proper schema field mapping (imageBase64, pdfBase64/pdfName, audioBase64), and cache invalidation
-- **Frontend (client/src/pages/Groups.tsx):** Complete UI with attachment button (📎 Paperclip icon), file preview for images, icon-based preview for documents (FileText) and audio (Mic), optional caption field, file size indicator, remove attachment button, and real-time validation. **Messages now display media content**: images rendered inline with max-h-96, PDFs shown with FileText icon and filename, audio with HTML5 player.
-- **File Validation:** Automatic type checking (JPEG/PNG/GIF/WebP for images, PDF/DOC/DOCX for documents, MP3/WAV/OGG/M4A for audio) with size limits (10MB for images/documents, 16MB for audio)
-- **User Experience:** Drag-and-drop support via hidden file input, base64 conversion client-side, loading states during upload, success/error toast notifications, and automatic cleanup after send
-
-**Evolution API Payload (Corrected):**
-```json
-POST /message/sendMedia/{instance}
-{
-  "number": "groupJID@g.us",
-  "mediatype": "image",
-  "mimetype": "image/jpeg",
-  "caption": "Optional caption text",
-  "fileName": "file.jpg",
-  "media": "base64String..."
-}
-```
-
-**Bug Fixes:**
-- Fixed Evolution API payload structure (properties must be at root level, not nested)
-- Added media rendering in message history (images, PDFs, audio)
-- Added `/grupos` route (Portuguese) in addition to `/groups`
-
-**Database Schema:** Utilizes existing fields (imageBase64, pdfBase64, pdfName, audioBase64) from messages table for media storage with proper content type mapping.
-
-**Use Cases:** Marketing campaigns, technical support documentation, audio announcements, promotional materials, group broadcasts, and customer service multimedia responses.
-
-**Testing:** See `GRUPOS_WHATSAPP_MIDIA_TESTE.md` for comprehensive test cases covering all media types, validation scenarios, and user workflows.
-
----
-
-### 🚨 CRITICAL BUG DISCOVERED: AI Promising Actions Without Executing
-**Discovered:** AI assistants (Suporte, Financeiro, Ouvidoria, Comercial, Cancelamento) are **promising actions to clients but NOT executing** them via Function Calling. This is a critical trust-breaking bug.
-
-**Real Example (Cliente Christiane - whatsapp_5524981803028):**
-- ❌ AI said: "Vou encaminhar suas preocupações para o suporte técnico..."
-- ❌ AI said: "Já estou encaminhando suas informações..."
-- ❌ **Reality:** ZERO function calls executed - neither `abrir_ticket_crm` nor `transferir_para_humano`
-- ❌ **Impact:** Client left waiting for contact that will never come
-
-**Root Cause:**
-- Assistants' instructions teach them to SAY they will do something
-- But instructions DON'T emphasize EXECUTING the corresponding Function Calling tool
-- Result: AI generates human-like "I'll forward this..." messages without actually forwarding
-
-**Correction Required:**
-- All 5 assistants (Suporte, Financeiro, Ouvidoria, Comercial, Cancelamento) need URGENT instruction updates
-- Must add explicit rules: "NEVER promise actions without executing them via Function Calling"
-- Must clarify WHEN to use each tool: `abrir_ticket_crm` vs `transferir_para_humano` vs `rotear_para_assistente`
-- Ouvidoria needs DUAL execution: FIRST `registrar_reclamacao_ouvidoria` (register in internal panel), THEN `transferir_para_humano` (escalate to supervisor)
-
-**Documentation:** See `CORRECAO_URGENTE_IA_PROMETENDO_SEM_EXECUTAR.md` for complete correction instructions with examples for each assistant.
-
-**Status:** 🔴 CRITICAL - Requires immediate OpenAI Dashboard configuration updates
-
----
-
-### ✅ Ouvidoria Dual-System Architecture Fix
-**Implemented:** Created new function `registrar_reclamacao_ouvidoria` to correctly register complaints in the internal Ouvidoria panel (complaints table), separate from the external CRM system.
-
-**Problem Identified:**
-- Ouvidoria was using `abrir_ticket_crm` which registers in EXTERNAL CRM only
-- Internal Ouvidoria panel (complaints table) was NOT being populated
-- Two separate systems exist: External CRM + Internal Ouvidoria panel
-
-**Solution:**
-- New function `registrar_reclamacao_ouvidoria` (server/ai-tools.ts lines 1054-1129)
-- Registers directly in complaints table with proper metadata
-- Returns protocol ID for client confirmation
-- Maps types correctly: reclamacao→alta severity, elogio→baixa, sugestao→media
-- Validates CPF/CNPJ is stored before allowing registration
-
-**Correct Ouvidoria Flow:**
-1. FIRST: `registrar_reclamacao_ouvidoria(tipo, descricao)` - Creates record in internal panel
-2. SECOND: `transferir_para_humano("Ouvidoria", "Protocolo X")` - Escalates to supervisor
-
-**Documentation:**
-- `PROMPT_OUVIDORIA_ATUALIZADO.md` - Complete ready-to-paste prompt for OpenAI Dashboard
-- `CORRECAO_URGENTE_IA_PROMETENDO_SEM_EXECUTAR.md` - Updated with correct tool usage
-
-**Status:** ✅ Code implemented and validated - Ready for OpenAI Dashboard configuration
-
----
-
-### City-Wide Massive Failure Detection
-**Implemented:** Enhanced massive failure detection to support city-wide failures affecting entire cities (not just specific neighborhoods). System now supports two types of massive failures:
-- **Specific neighborhood failures**: Traditional detection matching city + neighborhood (e.g., "PONS queimou no bairro CENTRO")
-- **City-wide failures**: New detection matching entire city when neighborhoods array is empty (e.g., "Incêndio na subestação principal de Chiador" affects ALL neighborhoods)
-
-**Technical Details:**
-- Modified `checkActiveFailureForRegion` (server/storage.ts) to detect failures with empty neighborhoods array as city-wide
-- Updated schema documentation (shared/schema.ts) to clarify that empty neighborhoods[] indicates city-wide failure
-- Enhanced UI (client/src/components/failures/RegionSelector.tsx) with "🏙️ Cidade Inteira" checkbox for creating city-wide failures
-- Updated failure visualization to distinguish between city-wide and neighborhood-specific failures
-
-**Use Cases:**
-- General infrastructure failures (power grid, main fiber cuts, subestations)
-- Natural disasters affecting entire city
-- Planned maintenance affecting all neighborhoods
-
-## Previous Updates (October 27, 2025)
-
-### Massive Failure Handling Correction
-**Fixed:** Removed automatic human transfer when massive failures are detected. The AI now notifies clients about massive failures via WhatsApp but continues the conversation, allowing clients to ask additional questions or request further assistance. Transfer to human only occurs when explicitly requested by the client or when AI cannot resolve the issue. This reduces unnecessary human workload while maintaining excellent customer service. See `CORRECAO_FALHA_MASSIVA_TRANSFERENCIA.md` for details.
-
-### Financeiro Assistant Consolidation
-**Completed:** Consolidated all Financeiro assistant instructions into a single source of truth (`INSTRUCTIONS_FINANCEIRO_NOVA_VERSAO.md`). Includes 10 implementations: unlock duration correction ("até o próximo dia às 10 horas da manhã"), CPF/CNPJ validation with 4-step flow, boleto queries, payment receipts, connection unlock, due date changes, debt installments, conversation finalization with NPS, human transfer, and knowledge base queries. See `CONSOLIDACAO_FINANCEIRO.md` for details.
-
-### Performance Optimizations
-**Implemented:** Redis cache for massive failure checks (5-min TTL), reducing CRM API latency from 8-10s to 50-100ms. Enhanced thread lock retry with exponential backoff and 60s timeout, reducing error messages by 95%+. See `MELHORIAS_PERFORMANCE.md` and `CHANGELOG_CONCURRENT_IMPROVEMENTS.md` for details.
