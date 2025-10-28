@@ -6,6 +6,11 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Documentation
+- **[docs/README.md](docs/README.md)**: Índice principal da documentação
+- **[docs/GUIA_RAPIDO_USUARIO.md](docs/GUIA_RAPIDO_USUARIO.md)**: Guia prático para admins/supervisores (não técnico)
+- **[docs/PROMPT_MANAGEMENT_GUIDE.md](docs/PROMPT_MANAGEMENT_GUIDE.md)**: Documentação técnica completa do sistema de gerenciamento de prompts
+
 ## System Architecture
 ### UI/UX Decisions
 The frontend is built with React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, drawing inspiration from Carbon Design System and Linear, supporting both dark and light modes. Key features include color-coded wait times, enhanced complaint descriptions, private note dialogs, new contact creation, conversation reopening, and activity logs. Sales and plans management offer dashboards with KPIs and CRUD interfaces. The chat interface includes message pagination, auto-scroll, auto-focus textarea, and inline PDF viewing. The agent conversation interface provides flexible layout modes (single-box for focus, dual-box for multitasking), with preferences persisted in `localStorage`.
