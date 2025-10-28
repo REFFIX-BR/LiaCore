@@ -8953,7 +8953,7 @@ A resposta deve:
     try {
       const { id } = req.params;
       const { draftContent } = req.body;
-      const userId = (req as any).user?.id;
+      const userId = req.user!.userId;
 
       if (!draftContent) {
         return res.status(400).json({ error: "draftContent é obrigatório" });
@@ -9041,7 +9041,7 @@ A resposta deve:
     try {
       const { id } = req.params;
       const { versionNotes, versionBump = "patch" } = req.body; // versionBump: 'major' | 'minor' | 'patch'
-      const userId = (req as any).user?.id;
+      const userId = req.user!.userId;
 
       // Get template and draft
       const template = await storage.getPromptTemplate(id);
@@ -9131,7 +9131,7 @@ A resposta deve:
   app.post("/api/prompts/:id/restore/:versionId", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
       const { id, versionId } = req.params;
-      const userId = (req as any).user?.id;
+      const userId = req.user!.userId;
 
       // Get the version to restore
       const version = await storage.getPromptVersion(versionId);

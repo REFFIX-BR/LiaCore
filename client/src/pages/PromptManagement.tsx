@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +34,7 @@ interface PromptTemplate {
   id: string;
   assistantType: AssistantType;
   assistantId: string;
-  name: string;
+  title: string;
   content: string;
   version: string;
   tokenCount: number;
@@ -106,14 +106,14 @@ export default function PromptManagement() {
 
   const currentPrompt = promptDetails as PromptTemplate & { draft?: PromptDraft; versions?: PromptVersion[] };
 
-  // Update draft content when prompt changes
-  useState(() => {
+  // Sync draft content when prompt changes
+  useEffect(() => {
     if (currentPrompt?.draft) {
       setDraftContent(currentPrompt.draft.draftContent);
     } else if (currentPrompt?.content) {
       setDraftContent(currentPrompt.content);
     }
-  });
+  }, [currentPrompt?.id, currentPrompt?.draft, currentPrompt?.content]);
 
   // Save draft mutation
   const saveDraftMutation = useMutation({
