@@ -47,6 +47,32 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, inspir
 
 ## Recent Updates (October 28, 2025)
 
+### 🚨 CRITICAL BUG DISCOVERED: AI Promising Actions Without Executing
+**Discovered:** AI assistants (Suporte, Financeiro, Ouvidoria, Comercial, Cancelamento) are **promising actions to clients but NOT executing** them via Function Calling. This is a critical trust-breaking bug.
+
+**Real Example (Cliente Christiane - whatsapp_5524981803028):**
+- ❌ AI said: "Vou encaminhar suas preocupações para o suporte técnico..."
+- ❌ AI said: "Já estou encaminhando suas informações..."
+- ❌ **Reality:** ZERO function calls executed - neither `abrir_ticket_crm` nor `transferir_para_humano`
+- ❌ **Impact:** Client left waiting for contact that will never come
+
+**Root Cause:**
+- Assistants' instructions teach them to SAY they will do something
+- But instructions DON'T emphasize EXECUTING the corresponding Function Calling tool
+- Result: AI generates human-like "I'll forward this..." messages without actually forwarding
+
+**Correction Required:**
+- All 5 assistants (Suporte, Financeiro, Ouvidoria, Comercial, Cancelamento) need URGENT instruction updates
+- Must add explicit rules: "NEVER promise actions without executing them via Function Calling"
+- Must clarify WHEN to use each tool: `abrir_ticket_crm` vs `transferir_para_humano` vs `rotear_para_assistente`
+- Ouvidoria needs DUAL execution: FIRST `abrir_ticket_crm` (register complaint), THEN `transferir_para_humano` (escalate to supervisor)
+
+**Documentation:** See `CORRECAO_URGENTE_IA_PROMETENDO_SEM_EXECUTAR.md` for complete correction instructions with examples for each assistant.
+
+**Status:** 🔴 CRITICAL - Requires immediate OpenAI Dashboard configuration updates
+
+---
+
 ### City-Wide Massive Failure Detection
 **Implemented:** Enhanced massive failure detection to support city-wide failures affecting entire cities (not just specific neighborhoods). System now supports two types of massive failures:
 - **Specific neighborhood failures**: Traditional detection matching city + neighborhood (e.g., "PONS queimou no bairro CENTRO")
