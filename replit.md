@@ -45,7 +45,25 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, inspir
 - `react-hook-form`, `zod`: Form handling and validation.
 - `tailwindcss`: CSS framework.
 
-## Recent Updates (October 27, 2025)
+## Recent Updates (October 28, 2025)
+
+### City-Wide Massive Failure Detection
+**Implemented:** Enhanced massive failure detection to support city-wide failures affecting entire cities (not just specific neighborhoods). System now supports two types of massive failures:
+- **Specific neighborhood failures**: Traditional detection matching city + neighborhood (e.g., "PONS queimou no bairro CENTRO")
+- **City-wide failures**: New detection matching entire city when neighborhoods array is empty (e.g., "Incêndio na subestação principal de Chiador" affects ALL neighborhoods)
+
+**Technical Details:**
+- Modified `checkActiveFailureForRegion` (server/storage.ts) to detect failures with empty neighborhoods array as city-wide
+- Updated schema documentation (shared/schema.ts) to clarify that empty neighborhoods[] indicates city-wide failure
+- Enhanced UI (client/src/components/failures/RegionSelector.tsx) with "🏙️ Cidade Inteira" checkbox for creating city-wide failures
+- Updated failure visualization to distinguish between city-wide and neighborhood-specific failures
+
+**Use Cases:**
+- General infrastructure failures (power grid, main fiber cuts, subestations)
+- Natural disasters affecting entire city
+- Planned maintenance affecting all neighborhoods
+
+## Previous Updates (October 27, 2025)
 
 ### Massive Failure Handling Correction
 **Fixed:** Removed automatic human transfer when massive failures are detected. The AI now notifies clients about massive failures via WhatsApp but continues the conversation, allowing clients to ask additional questions or request further assistance. Transfer to human only occurs when explicitly requested by the client or when AI cannot resolve the issue. This reduces unnecessary human workload while maintaining excellent customer service. See `CORRECAO_FALHA_MASSIVA_TRANSFERENCIA.md` for details.
