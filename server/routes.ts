@@ -7941,6 +7941,118 @@ A resposta deve:
     }
   });
 
+  // Send media to group (images, documents, audio)
+  app.post("/api/groups/:id/send-media", authenticate, async (req, res) => {
+    try {
+      const { mediaBase64, mediaType, caption, fileName } = req.body;
+
+      if (!mediaBase64 || typeof mediaBase64 !== 'string') {
+        return res.status(400).json({ error: "Media base64 is required" });
+      }
+
+      if (!mediaType || !['image', 'document', 'audio'].includes(mediaType)) {
+        return res.status(400).json({ error: "Invalid media type. Must be 'image', 'document', or 'audio'" });
+      }
+
+      const group = await storage.getGroup(req.params.id);
+
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      // CRITICAL: Validate instance - ONLY "Leads" or "Cobranca" allowed
+      const instance = validateEvolutionInstance(group.evolutionInstance || 'Leads');
+
+      console.log(`📤 [Groups] Sending ${mediaType} to group ${group.name}`);
+
+      // Import sendWhatsAppMedia from workers
+      const { sendWhatsAppMedia } = await import("./workers");
+
+      // Send media via Evolution API
+      const result = await sendWhatsAppMedia(
+        group.groupId, // Group ID (ex: 120899938475839@g.us)
+        mediaBase64,
+        mediaType as 'image' | 'document' | 'audio',
+        caption,
+        fileName,
+        instance
+      );
+
+      if (!result.success) {
+        console.error(`❌ [Groups] Failed to send ${mediaType} to group ${group.name}`);
+        return res.status(500).json({ error: `Failed to send ${mediaType} to WhatsApp` });
+      }
+
+      // Save media message to database
+      const chatId = `whatsapp_${group.groupId}`;
+      let conversation = await storage.getConversationByChatId(chatId);
+
+      // Create conversation if it doesn't exist
+      if (!conversation) {
+        const { createThread } = await import("./lib/openai");
+        const { storeConversationThread } = await import("./lib/upstash");
+        const { ASSISTANT_IDS, ASSISTANT_TO_DEPARTMENT } = await import("./lib/openai");
+        
+        const threadId = await createThread();
+        await storeConversationThread(chatId, threadId);
+
+        conversation = await storage.createConversation({
+          chatId,
+          clientName: group.name,
+          clientId: group.groupId,
+          threadId,
+          assistantType: "apresentacao",
+          department: ASSISTANT_TO_DEPARTMENT["apresentacao"] || "general",
+          status: "active",
+          sentiment: "neutral",
+          urgency: "normal",
+          duration: 0,
+          lastMessage: caption || `[${mediaType}]`,
+          evolutionInstance: instance,
+          metadata: { 
+            source: 'supervisor_group_media',
+            groupId: group.id,
+          },
+        });
+      }
+
+      // Save the media message
+      const messageContent = caption || `[${mediaType.toUpperCase()}]`;
+      const messageRecord = await storage.createMessage({
+        conversationId: conversation.id,
+        role: 'assistant',
+        content: messageContent,
+        sendBy: 'supervisor',
+        assistant: 'supervisor',
+        imageBase64: mediaType === 'image' ? mediaBase64 : undefined,
+        documentBase64: mediaType === 'document' ? mediaBase64 : undefined,
+        audioBase64: mediaType === 'audio' ? mediaBase64 : undefined,
+      });
+
+      // Update conversation last message
+      await storage.updateConversation(conversation.id, {
+        lastMessage: messageContent,
+        lastMessageTime: new Date(),
+      });
+
+      // Update group last message
+      await storage.updateGroup(group.id, {
+        lastMessage: messageContent.substring(0, 100),
+        lastMessageTime: new Date(),
+      });
+
+      console.log(`✅ [Groups] ${mediaType} sent successfully to group ${group.name}`);
+      return res.json({ 
+        success: true, 
+        message: messageRecord,
+        mediaType,
+      });
+    } catch (error) {
+      console.error("❌ [Groups] Error sending media:", error);
+      return res.status(500).json({ error: "Error sending media to group" });
+    }
+  });
+
   // AI suggest response for group based on context
   app.post("/api/groups/:id/suggest-response", authenticate, async (req, res) => {
     try {

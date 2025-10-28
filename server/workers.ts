@@ -144,6 +144,119 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?:
   }
 }
 
+// Helper function to send WhatsApp media (images, documents, audio)
+export async function sendWhatsAppMedia(
+  phoneNumber: string, 
+  mediaBase64: string, 
+  mediaType: 'image' | 'document' | 'audio',
+  caption?: string,
+  fileName?: string,
+  instance?: string
+): Promise<{success: boolean, whatsappMessageId?: string, remoteJid?: string}> {
+  // CRITICAL: Validate instance - ONLY "Leads" or "Cobranca" allowed
+  const rawInstance = instance || process.env.EVOLUTION_API_INSTANCE || 'Leads';
+  const evolutionInstance = validateEvolutionInstance(rawInstance);
+  
+  if (!instance) {
+    console.log(`⚠️ [WhatsApp Media] Instância não fornecida, usando fallback: ${evolutionInstance}`);
+  }
+  
+  // Tenta API key e URL específicos da instância primeiro, senão usa global (converter para MAIÚSCULAS)
+  const apiKey = evolutionInstance 
+    ? (process.env[`EVOLUTION_API_KEY_${evolutionInstance.toUpperCase()}`] || process.env.EVOLUTION_API_KEY)
+    : process.env.EVOLUTION_API_KEY;
+  
+  let baseUrl = evolutionInstance
+    ? (process.env[`EVOLUTION_API_URL_${evolutionInstance.toUpperCase()}`] || process.env.EVOLUTION_API_URL)
+    : process.env.EVOLUTION_API_URL;
+
+  if (!evolutionInstance || !apiKey || !baseUrl) {
+    console.error('❌ Evolution API config missing for media', { 
+      evolutionInstance, 
+      hasApiKey: !!apiKey, 
+      baseUrl,
+      triedKey: `EVOLUTION_API_KEY_${evolutionInstance}`,
+      triedUrl: `EVOLUTION_API_URL_${evolutionInstance}`
+    });
+    return {success: false};
+  }
+
+  // Sanitize and validate URL
+  baseUrl = baseUrl.trim();
+  
+  if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+    baseUrl = `https://${baseUrl}`;
+    console.log(`⚠️  [WhatsApp Media] URL sem protocolo detectada, adicionando https://: ${baseUrl}`);
+  }
+  
+  baseUrl = baseUrl.replace(/\/$/, '');
+
+  try {
+    // Define endpoint baseado no tipo de mídia
+    const endpoint = mediaType === 'image' ? 'sendMedia' : 
+                     mediaType === 'document' ? 'sendMedia' :
+                     'sendWhatsAppAudio';
+    
+    const fullUrl = `${baseUrl}/message/${endpoint}/${evolutionInstance}`;
+    console.log(`📤 [WhatsApp Media] Sending ${mediaType} to: ${phoneNumber} via ${fullUrl}`);
+    
+    // Preparar body baseado no tipo
+    const body: any = {
+      number: phoneNumber,
+    };
+
+    if (mediaType === 'image') {
+      body.mediaMessage = {
+        mediatype: 'image',
+        media: mediaBase64,
+      };
+      if (caption) {
+        body.mediaMessage.caption = caption;
+      }
+    } else if (mediaType === 'document') {
+      body.mediaMessage = {
+        mediatype: 'document',
+        media: mediaBase64,
+        fileName: fileName || 'document.pdf',
+      };
+      if (caption) {
+        body.mediaMessage.caption = caption;
+      }
+    } else if (mediaType === 'audio') {
+      body.audioMessage = {
+        audio: mediaBase64,
+      };
+    }
+    
+    const response = await fetch(fullUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': apiKey,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Evolution API error: ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json() as any;
+    
+    console.log(`✅ [WhatsApp Media] ${mediaType} sent successfully to ${phoneNumber}`);
+    
+    return {
+      success: true,
+      whatsappMessageId: data?.key?.id || undefined,
+      remoteJid: data?.key?.remoteJid || undefined,
+    };
+  } catch (error) {
+    console.error(`❌ Error sending WhatsApp ${mediaType}:`, error);
+    return {success: false};
+  }
+}
+
 // Idempotency helper
 async function isJobProcessed(jobId: string): Promise<boolean> {
   if (!redisConnection) return false;
