@@ -51,24 +51,29 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, inspir
 **Implemented:** Full support for sending media (images, documents, audio) to WhatsApp groups via Evolution API. Supervisors can now attach files directly in the Groups interface with preview, caption support, and automatic delivery via WhatsApp.
 
 **Technical Implementation:**
-- **Backend (server/workers.ts):** New `sendWhatsAppMedia()` function handles media delivery via Evolution API `/message/sendMedia/{instance}` endpoint with base64 conversion
+- **Backend (server/workers.ts):** New `sendWhatsAppMedia()` function handles media delivery via Evolution API `/message/sendMedia/{instance}` endpoint with base64 conversion. Payload structure corrected to send properties at root level (not nested in mediaMessage).
 - **API (server/routes.ts):** New endpoint `POST /api/groups/:id/send-media` with validation for mediaType (image | document | audio), proper schema field mapping (imageBase64, pdfBase64/pdfName, audioBase64), and cache invalidation
-- **Frontend (client/src/pages/Groups.tsx):** Complete UI with attachment button (📎 Paperclip icon), file preview for images, icon-based preview for documents (FileText) and audio (Mic), optional caption field, file size indicator, remove attachment button, and real-time validation
+- **Frontend (client/src/pages/Groups.tsx):** Complete UI with attachment button (📎 Paperclip icon), file preview for images, icon-based preview for documents (FileText) and audio (Mic), optional caption field, file size indicator, remove attachment button, and real-time validation. **Messages now display media content**: images rendered inline with max-h-96, PDFs shown with FileText icon and filename, audio with HTML5 player.
 - **File Validation:** Automatic type checking (JPEG/PNG/GIF/WebP for images, PDF/DOC/DOCX for documents, MP3/WAV/OGG/M4A for audio) with size limits (10MB for images/documents, 16MB for audio)
 - **User Experience:** Drag-and-drop support via hidden file input, base64 conversion client-side, loading states during upload, success/error toast notifications, and automatic cleanup after send
 
-**Evolution API Integration:**
+**Evolution API Payload (Corrected):**
 ```json
 POST /message/sendMedia/{instance}
 {
   "number": "groupJID@g.us",
-  "mediatype": "image|document|audio",
+  "mediatype": "image",
   "mimetype": "image/jpeg",
   "caption": "Optional caption text",
   "fileName": "file.jpg",
   "media": "base64String..."
 }
 ```
+
+**Bug Fixes:**
+- Fixed Evolution API payload structure (properties must be at root level, not nested)
+- Added media rendering in message history (images, PDFs, audio)
+- Added `/grupos` route (Portuguese) in addition to `/groups`
 
 **Database Schema:** Utilizes existing fields (imageBase64, pdfBase64, pdfName, audioBase64) from messages table for media storage with proper content type mapping.
 

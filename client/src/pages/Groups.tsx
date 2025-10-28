@@ -38,6 +38,10 @@ interface Message {
   timestamp: Date;
   sendBy?: string;
   assistant?: string;
+  imageBase64?: string | null;
+  pdfBase64?: string | null;
+  pdfName?: string | null;
+  audioBase64?: string | null;
   functionCall?: {
     name: string;
     status: 'pending' | 'completed' | 'failed';
@@ -611,7 +615,38 @@ export default function Groups() {
                                   {format(new Date(msg.timestamp), "HH:mm", { locale: ptBR })}
                                 </span>
                               </div>
-                              <p className="text-sm whitespace-pre-wrap break-words overflow-wrap-anywhere">{msg.content}</p>
+                              {msg.content && (
+                                <p className="text-sm whitespace-pre-wrap break-words overflow-wrap-anywhere">{msg.content}</p>
+                              )}
+                              
+                              {/* Renderizar imagem se presente */}
+                              {msg.imageBase64 && (
+                                <div className="mt-2">
+                                  <img 
+                                    src={`data:image/jpeg;base64,${msg.imageBase64}`} 
+                                    alt="Imagem enviada" 
+                                    className="max-w-full rounded-lg max-h-96 object-contain"
+                                  />
+                                </div>
+                              )}
+                              
+                              {/* Renderizar documento PDF se presente */}
+                              {msg.pdfBase64 && (
+                                <div className="mt-2 flex items-center gap-2 p-2 bg-muted/50 rounded">
+                                  <FileText className="h-5 w-5" />
+                                  <span className="text-xs">{msg.pdfName || 'documento.pdf'}</span>
+                                </div>
+                              )}
+                              
+                              {/* Renderizar áudio se presente */}
+                              {msg.audioBase64 && (
+                                <div className="mt-2">
+                                  <audio controls className="max-w-full">
+                                    <source src={`data:audio/mpeg;base64,${msg.audioBase64}`} type="audio/mpeg" />
+                                    Seu navegador não suporta o elemento de áudio.
+                                  </audio>
+                                </div>
+                              )}
                               
                               {msg.functionCall && (
                                 <Badge 
