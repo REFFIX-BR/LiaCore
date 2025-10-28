@@ -9011,20 +9011,23 @@ A resposta deve:
         return res.status(404).json({ error: "Rascunho não encontrado. Crie um rascunho primeiro." });
       }
 
-      // TODO: Call AI service to analyze and suggest improvements
-      // For now, return a placeholder
-      const suggestions = {
-        analysis: "Análise do prompt em desenvolvimento...",
-        recommendations: [],
-        optimizations: [],
-      };
+      console.log(`🤖 [Prompts] Starting AI analysis for ${template.assistantType}...`);
+
+      // Call AI service to analyze and suggest improvements
+      const { analyzePrompt } = await import("./lib/openai");
+      const suggestions = await analyzePrompt(
+        template.content,
+        draft.draftContent,
+        template.assistantType,
+        context
+      );
 
       // Update draft with AI suggestions
       const updatedDraft = await storage.updatePromptDraft(id, {
         aiSuggestions: suggestions,
       });
 
-      console.log(`✅ [Prompts] AI review completed for prompt ${id}`);
+      console.log(`✅ [Prompts] AI review completed for ${template.assistantType} (score: ${suggestions.score}/100)`);
       
       return res.json({
         draft: updatedDraft,
@@ -9086,9 +9089,16 @@ A resposta deve:
         lastSyncedAt: new Date(),
       });
 
-      // 3. TODO: Sync to OpenAI Assistants API
-      // const { updateAssistantInstructions } = await import("./lib/openai");
-      // await updateAssistantInstructions(template.assistantId, draft.draftContent);
+      // 3. Sync to OpenAI Assistants API
+      console.log(`🔄 [Prompts] Syncing ${template.assistantType} to OpenAI...`);
+      try {
+        const { updateAssistantPrompt } = await import("./lib/openai");
+        await updateAssistantPrompt(template.assistantType, draft.draftContent);
+        console.log(`✅ [Prompts] Successfully synced ${template.assistantType} to OpenAI`);
+      } catch (syncError) {
+        console.error(`⚠️ [Prompts] Failed to sync to OpenAI (continuing anyway):`, syncError);
+        // Don't fail the publish if OpenAI sync fails - the version is already created
+      }
 
       // 4. Clear assistant cache to force reload
       const { assistantCache } = await import("./lib/redis-config");

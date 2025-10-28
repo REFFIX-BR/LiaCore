@@ -2333,4 +2333,115 @@ Responda APENAS com JSON válido:
   }
 }
 
+/**
+ * AI Prompt Analysis Service
+ * Uses GPT-4 to analyze assistant prompts and provide improvement suggestions
+ */
+export interface PromptAnalysisResult {
+  analysis: string;
+  score: number; // 0-100
+  strengths: string[];
+  weaknesses: string[];
+  recommendations: Array<{
+    category: 'clarity' | 'structure' | 'tone' | 'instructions' | 'edge_cases' | 'compliance';
+    priority: 'high' | 'medium' | 'low';
+    suggestion: string;
+    example?: string;
+  }>;
+  optimizations: Array<{
+    title: string;
+    before: string;
+    after: string;
+    rationale: string;
+  }>;
+  estimatedTokenCount: number;
+}
+
+export async function analyzePrompt(
+  currentPrompt: string,
+  draftPrompt: string,
+  assistantType: string,
+  userContext?: string
+): Promise<PromptAnalysisResult> {
+  try {
+    const analysisPrompt = `Você é um especialista em engenharia de prompts para assistentes de IA em atendimento ao cliente de telecomunicações.
+
+**CONTEXTO:**
+- Tipo de assistente: ${assistantType.toUpperCase()}
+- Setor: Telecomunicações (TR Telecom)
+- Cliente: Atendimento via WhatsApp com IA
+${userContext ? `- Contexto adicional do usuário: ${userContext}` : ''}
+
+**PROMPT ATUAL (PRODUÇÃO):**
+${currentPrompt}
+
+**NOVO PROMPT (RASCUNHO):**
+${draftPrompt}
+
+**SUA TAREFA:**
+Analise o novo prompt (rascunho) comparando com o atual e forneça uma análise detalhada considerando:
+
+1. **CLAREZA**: O prompt é claro e específico sobre o papel do assistente?
+2. **ESTRUTURA**: O prompt está bem organizado e fácil de seguir?
+3. **TOM**: O tom é apropriado para atendimento ao cliente brasileiro?
+4. **INSTRUÇÕES**: As instruções são completas e acionáveis?
+5. **CASOS EXTREMOS**: O prompt lida com situações difíceis (clientes irritados, perguntas fora do escopo)?
+6. **COMPLIANCE**: O prompt respeita LGPD e boas práticas de atendimento?
+
+**FORMATO DE RESPOSTA (JSON):**
+{
+  "analysis": "Análise geral do prompt em 2-3 parágrafos",
+  "score": 85,
+  "strengths": ["Ponto forte 1", "Ponto forte 2", "Ponto forte 3"],
+  "weaknesses": ["Ponto fraco 1", "Ponto fraco 2"],
+  "recommendations": [
+    {
+      "category": "clarity",
+      "priority": "high",
+      "suggestion": "Descrição da sugestão",
+      "example": "Exemplo opcional de implementação"
+    }
+  ],
+  "optimizations": [
+    {
+      "title": "Título da otimização",
+      "before": "Trecho do prompt original",
+      "after": "Versão otimizada",
+      "rationale": "Por que essa mudança melhora o prompt"
+    }
+  ],
+  "estimatedTokenCount": 1500
+}
+
+Forneça uma análise honesta, construtiva e acionável. Se o prompt já está excelente, diga isso!`;
+
+    const response = await openaiCircuitBreaker.execute(() =>
+      openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: analysisPrompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      })
+    );
+
+    const result = JSON.parse(response.choices[0].message.content?.trim() || "{}");
+    
+    // Track token usage
+    if (response.usage) {
+      await trackTokenUsage(
+        "gpt-4o",
+        response.usage.prompt_tokens || 0,
+        response.usage.completion_tokens || 0
+      );
+    }
+
+    console.log(`✅ [Prompt Analysis] Completed for ${assistantType} (score: ${result.score}/100)`);
+    
+    return result as PromptAnalysisResult;
+  } catch (error) {
+    console.error("❌ [Prompt Analysis] Error:", error);
+    throw new Error("Erro ao analisar prompt com IA");
+  }
+}
+
 export { openai };

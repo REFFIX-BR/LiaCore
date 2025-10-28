@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useTokenCount } from "@/hooks/use-token-count";
 
 type AssistantType = "apresentacao" | "comercial" | "financeiro" | "suporte" | "ouvidoria" | "cancelamento";
 
@@ -92,6 +93,9 @@ export default function PromptManagement() {
   const [showVersionsDialog, setShowVersionsDialog] = useState(false);
   const [versionNotes, setVersionNotes] = useState("");
   const [versionBump, setVersionBump] = useState<"major" | "minor" | "patch">("patch");
+  
+  // Token counter
+  const { count: tokenCount, isLoading: countingTokens } = useTokenCount(draftContent);
 
   // Fetch all prompts
   const { data: prompts = [], isLoading: loadingPrompts } = useQuery<PromptTemplate[]>({
@@ -380,14 +384,40 @@ export default function PromptManagement() {
                         Edite as instruções do assistente. Alterações não serão aplicadas até você publicar.
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="flex-1 overflow-hidden">
+                    <CardContent className="flex-1 overflow-hidden flex flex-col gap-2">
                       <Textarea
                         value={draftContent || currentPrompt.content}
                         onChange={(e) => setDraftContent(e.target.value)}
-                        className="h-full resize-none font-mono text-sm"
+                        className="flex-1 resize-none font-mono text-sm"
                         placeholder="Digite as instruções do assistente..."
                         data-testid="textarea-prompt-content"
                       />
+                      <div className="flex items-center justify-between text-xs text-muted-foreground border-t pt-2">
+                        <div className="flex items-center gap-4">
+                          <span data-testid="text-token-count">
+                            {countingTokens ? (
+                              <span className="flex items-center gap-1">
+                                <RefreshCw className="w-3 h-3 animate-spin" />
+                                Contando tokens...
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <FileText className="w-3 h-3" />
+                                <strong>{tokenCount.toLocaleString()}</strong> tokens
+                              </span>
+                            )}
+                          </span>
+                          {tokenCount > 8000 && (
+                            <Badge variant="destructive" className="h-5">
+                              <AlertCircle className="w-3 h-3 mr-1" />
+                              Limite recomendado: 8000 tokens
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="text-muted-foreground/60">
+                          {draftContent.length.toLocaleString()} caracteres
+                        </span>
+                      </div>
                     </CardContent>
                   </Card>
                 </TabsContent>
@@ -425,41 +455,145 @@ export default function PromptManagement() {
                 </TabsContent>
 
                 {currentPrompt.draft?.aiSuggestions && (
-                  <TabsContent value="ai" className="flex-1 overflow-hidden mt-4 px-4">
-                    <Card className="h-full">
-                      <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <Sparkles className="w-5 h-5 text-purple-600" />
-                          Análise e Sugestões da IA
-                        </CardTitle>
-                        <CardDescription>
-                          Recomendações automáticas para otimização do prompt
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="overflow-auto">
-                        <div className="space-y-4">
-                          <div>
-                            <h4 className="font-medium mb-2">Análise</h4>
-                            <p className="text-sm text-muted-foreground">
+                  <TabsContent value="ai" className="flex-1 overflow-hidden mt-4 px-4" data-testid="ai-analysis-panel">
+                    <ScrollArea className="h-full">
+                      <div className="space-y-6 pr-4">
+                        {/* Score */}
+                        {currentPrompt.draft.aiSuggestions.score !== undefined && (
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="text-base flex items-center justify-between">
+                                <span className="flex items-center gap-2">
+                                  <Sparkles className="w-5 h-5 text-purple-600" />
+                                  Pontuação Geral
+                                </span>
+                                <Badge variant={currentPrompt.draft.aiSuggestions.score >= 80 ? "default" : "secondary"} className="text-lg px-3">
+                                  {currentPrompt.draft.aiSuggestions.score}/100
+                                </Badge>
+                              </CardTitle>
+                            </CardHeader>
+                          </Card>
+                        )}
+
+                        {/* Analysis */}
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-base">Análise Geral</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                               {currentPrompt.draft.aiSuggestions.analysis || "Nenhuma análise disponível"}
                             </p>
-                          </div>
-                          {currentPrompt.draft.aiSuggestions.recommendations?.length > 0 && (
-                            <div>
-                              <h4 className="font-medium mb-2">Recomendações</h4>
+                          </CardContent>
+                        </Card>
+
+                        {/* Strengths */}
+                        {currentPrompt.draft.aiSuggestions.strengths?.length > 0 && (
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="text-base flex items-center gap-2">
+                                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                                Pontos Fortes
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
                               <ul className="space-y-2">
-                                {currentPrompt.draft.aiSuggestions.recommendations.map((rec: any, idx: number) => (
+                                {currentPrompt.draft.aiSuggestions.strengths.map((strength: string, idx: number) => (
                                   <li key={idx} className="text-sm flex gap-2">
-                                    <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                                    <span>{rec}</span>
+                                    <span className="text-green-600 flex-shrink-0">✓</span>
+                                    <span>{strength}</span>
                                   </li>
                                 ))}
                               </ul>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* Weaknesses */}
+                        {currentPrompt.draft.aiSuggestions.weaknesses?.length > 0 && (
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="text-base flex items-center gap-2">
+                                <AlertCircle className="w-5 h-5 text-orange-600" />
+                                Pontos a Melhorar
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <ul className="space-y-2">
+                                {currentPrompt.draft.aiSuggestions.weaknesses.map((weakness: string, idx: number) => (
+                                  <li key={idx} className="text-sm flex gap-2">
+                                    <span className="text-orange-600 flex-shrink-0">!</span>
+                                    <span>{weakness}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* Recommendations */}
+                        {currentPrompt.draft.aiSuggestions.recommendations?.length > 0 && (
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="text-base">Recomendações</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-4">
+                                {currentPrompt.draft.aiSuggestions.recommendations.map((rec: any, idx: number) => (
+                                  <div key={idx} className="border-l-2 border-purple-600 pl-4 space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant={rec.priority === 'high' ? 'destructive' : rec.priority === 'medium' ? 'default' : 'secondary'} className="text-xs">
+                                        {rec.priority === 'high' ? 'Alta' : rec.priority === 'medium' ? 'Média' : 'Baixa'}
+                                      </Badge>
+                                      <span className="text-xs text-muted-foreground capitalize">{rec.category}</span>
+                                    </div>
+                                    <p className="text-sm">{rec.suggestion}</p>
+                                    {rec.example && (
+                                      <pre className="text-xs bg-muted p-2 rounded mt-2 whitespace-pre-wrap">
+                                        {rec.example}
+                                      </pre>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* Optimizations */}
+                        {currentPrompt.draft.aiSuggestions.optimizations?.length > 0 && (
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="text-base">Otimizações Sugeridas</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-4">
+                                {currentPrompt.draft.aiSuggestions.optimizations.map((opt: any, idx: number) => (
+                                  <div key={idx} className="space-y-2">
+                                    <h5 className="font-medium text-sm">{opt.title}</h5>
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div>
+                                        <p className="text-xs text-muted-foreground mb-1">Antes:</p>
+                                        <pre className="text-xs bg-red-500/10 p-2 rounded whitespace-pre-wrap border border-red-500/20">
+                                          {opt.before}
+                                        </pre>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-muted-foreground mb-1">Depois:</p>
+                                        <pre className="text-xs bg-green-500/10 p-2 rounded whitespace-pre-wrap border border-green-500/20">
+                                          {opt.after}
+                                        </pre>
+                                      </div>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground italic">{opt.rationale}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </div>
+                    </ScrollArea>
                   </TabsContent>
                 )}
               </Tabs>
