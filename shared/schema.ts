@@ -745,7 +745,11 @@ export const massiveFailures = pgTable("massive_failures", {
   resolutionMessage: text("resolution_message"), // Mensagem opcional de resolução
   
   // Regiões afetadas: Array de IDs de regions OU estrutura JSON livre para regiões customizadas
-  // Formato JSON: { type: 'predefined' | 'custom', regionIds?: string[], custom?: [{state, city, neighborhoods[]}] }
+  // Formato JSON: { type: 'predefined' | 'custom', regionIds?: string[], custom?: [{city, neighborhoods[]}] }
+  // NOTA: neighborhoods[] pode estar VAZIO para indicar falha que afeta CIDADE INTEIRA (não apenas bairros específicos)
+  // Exemplos:
+  //   - Falha específica: {city: "Chiador", neighborhoods: ["CENTRO", "PENHA LONGA"]}
+  //   - Falha geral: {city: "Chiador", neighborhoods: []} (afeta TODA a cidade)
   affectedRegions: jsonb("affected_regions").notNull(),
   
   estimatedResolution: timestamp("estimated_resolution"), // Previsão de normalização
