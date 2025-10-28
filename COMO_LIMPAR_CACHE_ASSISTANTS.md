@@ -17,15 +17,43 @@ Quando você atualiza as instruções de um assistente no **OpenAI Dashboard**, 
 
 Foi criado o endpoint `/api/admin/clear-assistant-cache` que **limpa imediatamente** o cache de todos os 6 assistants.
 
-### 📋 Como Usar (Opção 1: Via Interface Web - Recomendado)
+### 📋 Como Usar (Opção 1: Via Interface Web - Recomendado) ⭐ MAIS FÁCIL
 
-**AINDA NÃO IMPLEMENTADO** - Será adicionado um botão no Dashboard Admin.
+**✅ IMPLEMENTADO** - Botão disponível no Dashboard Administrativo!
 
-Por enquanto, use a **Opção 2** abaixo.
+1. **Faça login como ADMIN** no sistema
+2. **Acesse**: Dashboard Administrativo
+3. **Role até a seção** "Ações Administrativas"
+4. **Clique no botão**: "🗑️ Limpar Cache dos Assistants (OpenAI)"
+5. **Aguarde**: Você verá uma notificação de sucesso
+6. **Pronto!** As novas instruções serão carregadas na próxima interação
+
+**Screenshot da interface:**
+```
+┌─────────────────────────────────────────────────────┐
+│ ⚡ Ações Administrativas                            │
+│                                                     │
+│ [🔄 Reprocessar Mensagens Travadas]               │
+│ [🔄 Reprocessar Todas (Recentes)]                 │
+│                                                     │
+│ [❌ Fechar Conversas Abandonadas (+30min)]        │
+│                                                     │
+│ ──────────────────────────────────────────────     │
+│                                                     │
+│ [🗑️ Limpar Cache dos Assistants (OpenAI)] ← AQUI │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+```
+
+**Vantagens:**
+- ✅ Mais rápido e fácil (1 clique)
+- ✅ Feedback visual instantâneo (toast notification)
+- ✅ Não precisa abrir console do navegador
+- ✅ Interface profissional e segura
 
 ---
 
-### 🔧 Como Usar (Opção 2: Via curl/Postman)
+### 🔧 Como Usar (Opção 2: Via curl/Postman) - AVANÇADO
 
 #### Passo 1: Fazer Login como Admin
 1. Acesse: https://[seu-dominio].replit.app/login
@@ -59,7 +87,7 @@ curl -X POST http://localhost:5000/api/admin/clear-assistant-cache \
 
 ---
 
-### 🎯 Como Usar (Opção 3: Direto no Console do Navegador) ⭐ RECOMENDADO
+### 🎯 Como Usar (Opção 3: Direto no Console do Navegador) - AVANÇADO
 
 **⚠️ IMPORTANTE: Execute no console DA APLICAÇÃO, NÃO no console do Replit.com!**
 

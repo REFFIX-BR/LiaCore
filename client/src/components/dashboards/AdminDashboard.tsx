@@ -25,7 +25,8 @@ import {
   UserX,
   Smile,
   Frown,
-  Meh
+  Meh,
+  Trash2
 } from "lucide-react";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
@@ -155,6 +156,30 @@ export function AdminDashboard() {
     onError: (error: Error) => {
       toast({
         title: "Erro ao Fechar Conversas",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const clearAssistantCacheMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/admin/clear-assistant-cache', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) throw new Error('Erro ao limpar cache dos assistants');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Cache Limpo com Sucesso",
+        description: `Cache de ${data.clearedAssistants.length} assistentes limpo. Novas instruções serão carregadas na próxima interação.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao Limpar Cache",
         description: error.message,
         variant: "destructive",
       });
@@ -574,9 +599,31 @@ export function AdminDashboard() {
                 )}
               </Button>
             </div>
+            <Separator className="my-3" />
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                onClick={() => clearAssistantCacheMutation.mutate()}
+                disabled={clearAssistantCacheMutation.isPending}
+                variant="outline"
+                className="flex items-center gap-2"
+                data-testid="button-clear-assistant-cache"
+              >
+                {clearAssistantCacheMutation.isPending ? (
+                  <>
+                    <Trash2 className="h-4 w-4 animate-spin" />
+                    Limpando...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    Limpar Cache dos Assistants (OpenAI)
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
           <p className="text-xs text-muted-foreground mt-3">
-            <strong>Reprocessar:</strong> Reenfileira mensagens sem resposta da IA. <strong>Fechar Abandonadas:</strong> Finaliza conversas inativas (&gt;30min) e envia NPS automaticamente.
+            <strong>Reprocessar:</strong> Reenfileira mensagens sem resposta da IA. <strong>Fechar Abandonadas:</strong> Finaliza conversas inativas (&gt;30min) e envia NPS automaticamente. <strong>Limpar Cache:</strong> Força recarregamento das instruções dos assistants do OpenAI Dashboard (use após atualizar prompts).
           </p>
         </CardContent>
       </Card>
