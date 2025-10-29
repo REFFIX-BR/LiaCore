@@ -96,7 +96,7 @@ export default function ActiveFailuresTab() {
   };
 
   const handleResolve = (id: string) => {
-    if (confirm("Tem certeza que deseja resolver esta falha? Os clientes não serão mais notificados.")) {
+    if (confirm("Tem certeza que deseja resolver esta falha? Todos os clientes afetados serão notificados automaticamente sobre a resolução via WhatsApp.")) {
       resolveMutation.mutate(id);
     }
   };
@@ -230,6 +230,7 @@ export default function ActiveFailuresTab() {
                           size="sm"
                           variant="ghost"
                           onClick={() => handleResolve(failure.id)}
+                          disabled={resolveMutation.isPending}
                           data-testid={`button-resolve-${failure.id}`}
                         >
                           <CheckCircle className="h-4 w-4" />
