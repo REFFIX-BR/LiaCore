@@ -149,7 +149,8 @@ export async function fetchClientInstallationPoints(cpfCnpj: string): Promise<In
 export interface MassiveFailureCheckResult {
   hasMultiplePoints: boolean;
   points?: InstallationPoint[];
-  notified: boolean;
+  justNotified: boolean; // Acabou de notificar AGORA (primeira vez)
+  alreadyNotified: boolean; // Cliente já foi notificado ANTES
   needsPointSelection: boolean;
 }
 
@@ -173,7 +174,7 @@ export async function checkAndNotifyMassiveFailure(
   
   if (!cpfCnpj) {
     console.log("⚠️ [Massive Failure] CPF/CNPJ não disponível, pulando verificação");
-    return { hasMultiplePoints: false, notified: false, needsPointSelection: false };
+    return { hasMultiplePoints: false, justNotified: false, alreadyNotified: false, needsPointSelection: false };
   }
 
   // 1. Consultar CRM para obter pontos de instalação
@@ -181,7 +182,7 @@ export async function checkAndNotifyMassiveFailure(
   
   if (!points || points.length === 0) {
     console.log("⚠️ [Massive Failure] Nenhum ponto de instalação encontrado");
-    return { hasMultiplePoints: false, notified: false, needsPointSelection: false };
+    return { hasMultiplePoints: false, justNotified: false, alreadyNotified: false, needsPointSelection: false };
   }
 
   // 2. Verificar falhas massivas em TODOS os pontos de instalação
@@ -204,12 +205,13 @@ export async function checkAndNotifyMassiveFailure(
       return {
         hasMultiplePoints: true,
         points,
-        notified: false,
+        justNotified: false,
+        alreadyNotified: false,
         needsPointSelection: true,
       };
     }
     
-    return { hasMultiplePoints: false, notified: false, needsPointSelection: false };
+    return { hasMultiplePoints: false, justNotified: false, alreadyNotified: false, needsPointSelection: false };
   }
 
   // 4. Há falha(s) massiva(s) em um ou mais pontos
@@ -229,16 +231,18 @@ export async function checkAndNotifyMassiveFailure(
   }
 
   if (alreadyNotified) {
+    console.log(`✅ [Massive Failure] Cliente já notificado - IA continua atendimento normalmente`);
     // Ainda retornar múltiplos pontos se aplicável para contexto da IA
     if (points.length > 1) {
       return {
         hasMultiplePoints: true,
         points,
-        notified: true,
+        justNotified: false,
+        alreadyNotified: true,
         needsPointSelection: true,
       };
     }
-    return { hasMultiplePoints: false, notified: true, needsPointSelection: false };
+    return { hasMultiplePoints: false, justNotified: false, alreadyNotified: true, needsPointSelection: false };
   }
 
   // 6. Montar mensagem de notificação considerando múltiplos pontos
@@ -274,7 +278,7 @@ export async function checkAndNotifyMassiveFailure(
 
   if (!messageSent.success) {
     console.error(`❌ [Massive Failure] Falha ao enviar mensagem de notificação para ${clientPhone}`);
-    return { hasMultiplePoints: points.length > 1, points, notified: false, needsPointSelection: points.length > 1 };
+    return { hasMultiplePoints: points.length > 1, points, justNotified: false, alreadyNotified: false, needsPointSelection: points.length > 1 };
   }
 
   console.log(`✅ [Massive Failure] Mensagem de notificação enviada para ${clientPhone}`);
@@ -297,12 +301,13 @@ export async function checkAndNotifyMassiveFailure(
   }
 
   // 9. IA continua o atendimento após notificar sobre a falha massiva
-  console.log(`🤖 [Massive Failure] Cliente notificado - IA continua o atendimento`);
+  console.log(`🤖 [Massive Failure] Cliente ACABOU DE SER notificado - IA continua o atendimento normalmente`);
 
   return { 
     hasMultiplePoints: points.length > 1, 
     points, 
-    notified: true, 
+    justNotified: true, 
+    alreadyNotified: false,
     needsPointSelection: points.length > 1 
   };
 }

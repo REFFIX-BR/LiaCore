@@ -478,32 +478,15 @@ if (redisConnection) {
           sendWhatsAppMessage
         );
 
-        // Se cliente já foi notificado de falha, interromper
-        if (failureResult.notified) {
-          console.log(`🚨 [Massive Failure] Cliente notificado de falha massiva - interrompendo processamento normal`);
-          
-          // Store user message
-          await storage.createMessage({
-            conversationId,
-            role: 'user',
-            content: message,
-          });
-
-          // Mark job as processed
-          await markJobProcessed(idempotencyKey!);
-
-          prodLogger.info('worker', 'Message intercepted by massive failure', {
-            conversationId,
-            fromNumber,
-            reason: 'massive_failure_detected',
-          });
-
-          return {
-            success: true,
-            interceptedByMassiveFailure: true,
-            reason: 'massive_failure_active',
-          };
+        // Log para debug
+        if (failureResult.justNotified) {
+          console.log(`✅ [Massive Failure] Cliente ACABOU de ser notificado - IA continua atendimento`);
+        } else if (failureResult.alreadyNotified) {
+          console.log(`✅ [Massive Failure] Cliente JÁ foi notificado anteriormente - IA continua atendimento`);
         }
+
+        // NUNCA bloquear processamento - apenas notificar UMA VEZ e continuar
+        // IA pode transferir para humano se cliente solicitar
 
         // Se houver múltiplos pontos, injetar contexto para IA perguntar
         if (failureResult.needsPointSelection && failureResult.points) {
