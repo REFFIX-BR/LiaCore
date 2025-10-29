@@ -72,10 +72,14 @@ export function AnnouncementBanner() {
     return combinedItems;
   }, [announcements, failures]);
 
-  // Resetar índice quando items mudar
+  // Resetar índice quando items mudar ou quando índice estiver fora do range
   useEffect(() => {
-    setCurrentIndex(0);
-  }, [items]);
+    if (items.length === 0) {
+      setCurrentIndex(0);
+    } else if (currentIndex >= items.length) {
+      setCurrentIndex(0);
+    }
+  }, [items, currentIndex]);
 
   // Rotação automática
   useEffect(() => {
@@ -92,6 +96,9 @@ export function AnnouncementBanner() {
   if (items.length === 0) return null;
 
   const currentItem = items[currentIndex];
+  
+  // Proteção: se currentItem for undefined (race condition), não renderizar nada
+  if (!currentItem) return null;
 
   return (
     <div className="w-full border-b" data-testid="announcement-banner">
