@@ -265,7 +265,10 @@ export default function PromptManagement() {
       return await apiRequest(`/api/prompts/${currentPrompt.id}/consolidate-evolutions`, "POST", {});
     },
     onSuccess: (result: any) => {
+      console.log("Consolidation result:", result);
+      
       if (!result?.consolidation) {
+        console.error("Invalid result structure:", result);
         toast({
           variant: "destructive",
           title: "Erro ao consolidar",
@@ -292,6 +295,7 @@ export default function PromptManagement() {
       });
     },
     onError: (error: any) => {
+      console.error("Consolidation error:", error);
       toast({
         variant: "destructive",
         title: "Erro ao consolidar",
