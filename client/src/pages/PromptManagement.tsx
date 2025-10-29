@@ -117,12 +117,12 @@ export default function PromptManagement() {
 
   // Sync draft content when prompt changes
   useEffect(() => {
-    if (currentPrompt?.draft) {
+    if (currentPrompt?.draft?.draftContent) {
       setDraftContent(currentPrompt.draft.draftContent);
     } else if (currentPrompt?.content) {
       setDraftContent(currentPrompt.content);
     }
-  }, [currentPrompt?.id, currentPrompt?.draft, currentPrompt?.content]);
+  }, [currentPrompt?.id, currentPrompt?.draft?.draftContent, currentPrompt?.content]);
 
   // Save draft mutation
   const saveDraftMutation = useMutation({
