@@ -37,7 +37,9 @@ The frontend is built with React, TypeScript, Vite, `shadcn/ui`, and Tailwind CS
 - **Media Handling**: Supervisors can download WhatsApp images and PDFs, with inline PDF viewing capabilities.
 - **Security & Compliance**: Implements LGPD/GDPR-compliant logging, protected debug endpoints, and structured error handling.
 - **Failure Detection**: Enhanced massive failure detection supports city-wide outages in addition to neighborhood-specific incidents.
+- **Massive Failure Notification**: When a client in an affected region sends a message, the system automatically notifies them ONCE about the active failure via WhatsApp. The notification is tracked in the database to prevent duplicate notifications. After notifying, the AI continues the conversation normally, allowing the client to make other requests or request human transfer if needed. The system NEVER blocks conversation flow due to massive failures.
 - **Massive Failure Resolution**: When a massive failure is resolved, the system automatically notifies all affected customers via WhatsApp in background (using `setImmediate()`). The HTTP response returns immediately to prevent UI freezing, while notifications are sent asynchronously. Includes loading state on resolve button and clear messaging about automatic customer notification.
+- **Conversation Reopening**: System automatically reopens resolved conversations when a client sends a new message, changing status from "resolved" to "active" and clearing all resolution-related fields (resolvedAt, resolvedBy, resolutionTime, autoClosed, autoClosedReason, autoClosedAt).
 
 ## External Dependencies
 
