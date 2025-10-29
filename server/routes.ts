@@ -8939,10 +8939,14 @@ A resposta deve:
       // Get version history
       const versions = await storage.getPromptVersionsByPromptId(template.id);
 
+      // Get pending evolutions count
+      const pendingEvolutions = await storage.getPromptSuggestionsByAssistantType(template.assistantType, "pending");
+
       return res.json({
         ...template,
         draft,
         versions,
+        pendingEvolutionsCount: pendingEvolutions.length,
       });
     } catch (error) {
       console.error("❌ [Prompts] Error fetching prompt:", error);
