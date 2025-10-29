@@ -179,11 +179,29 @@ export default function PromptManagement() {
         versionBump,
       });
     },
-    onSuccess: () => {
+    onSuccess: async (result: any) => {
+      // If there were consolidated evolutions, mark them as applied
+      if (consolidationResult && consolidationResult.appliedSuggestions.length > 0) {
+        try {
+          const appliedIds = consolidationResult.appliedSuggestions
+            .filter((s: any) => s.applied)
+            .map((s: any) => s.suggestionId);
+          
+          await apiRequest(`/api/prompts/${currentPrompt.id}/mark-evolutions-applied`, "POST", {
+            version: result.version,
+            appliedSuggestionIds: appliedIds,
+            duplicateGroups: consolidationResult.duplicateGroups,
+          });
+        } catch (error) {
+          console.error("Error marking evolutions as applied:", error);
+        }
+      }
+
       queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/prompts", selectedAssistant] });
       setShowPublishDialog(false);
       setVersionNotes("");
+      setConsolidationResult(null); // Clear consolidation result after publish
       toast({
         title: "Versão publicada",
         description: "O prompt foi publicado e sincronizado com o OpenAI",
@@ -786,6 +804,155 @@ export default function PromptManagement() {
               ))}
             </div>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Consolidation Result Dialog */}
+      <Dialog open={showConsolidationDialog} onOpenChange={setShowConsolidationDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh]" data-testid="dialog-consolidation">
+          <DialogHeader>
+            <DialogTitle>Evoluções Consolidadas</DialogTitle>
+            <DialogDescription>
+              As sugestões de evolução foram processadas e consolidadas no rascunho
+            </DialogDescription>
+          </DialogHeader>
+
+          {consolidationResult && (
+            <ScrollArea className="max-h-[60vh] pr-4">
+              <div className="space-y-4">
+                {/* Summary */}
+                <div className="grid grid-cols-4 gap-3">
+                  <Card>
+                    <CardHeader className="p-3">
+                      <CardDescription className="text-xs">Total</CardDescription>
+                      <CardTitle className="text-2xl">{consolidationResult.summary.totalSuggestions}</CardTitle>
+                    </CardHeader>
+                  </Card>
+                  <Card>
+                    <CardHeader className="p-3">
+                      <CardDescription className="text-xs">Aplicadas</CardDescription>
+                      <CardTitle className="text-2xl text-green-600 dark:text-green-400">
+                        {consolidationResult.summary.appliedCount}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                  <Card>
+                    <CardHeader className="p-3">
+                      <CardDescription className="text-xs">Duplicadas</CardDescription>
+                      <CardTitle className="text-2xl text-blue-600 dark:text-blue-400">
+                        {consolidationResult.summary.duplicatesCount}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                  <Card>
+                    <CardHeader className="p-3">
+                      <CardDescription className="text-xs">Conflitos</CardDescription>
+                      <CardTitle className="text-2xl text-orange-600 dark:text-orange-400">
+                        {consolidationResult.summary.conflictsCount}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                </div>
+
+                {/* Changes by Category */}
+                {consolidationResult.changes && consolidationResult.changes.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Mudanças por Categoria</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {consolidationResult.changes.map((change: any, i: number) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <Badge variant="outline" className="mt-0.5">{change.count}</Badge>
+                          <div>
+                            <p className="font-medium text-sm">{change.category}</p>
+                            <p className="text-xs text-muted-foreground">{change.description}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Applied Suggestions */}
+                {consolidationResult.appliedSuggestions && consolidationResult.appliedSuggestions.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Sugestões Aplicadas</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {consolidationResult.appliedSuggestions.map((suggestion: any, i: number) => (
+                        <div key={i} className="border-l-2 border-green-500 pl-3 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                            <Badge variant="outline" className="text-xs">{suggestion.category}</Badge>
+                          </div>
+                          <p className="text-sm">{suggestion.howApplied}</p>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Duplicate Groups */}
+                {consolidationResult.duplicateGroups && consolidationResult.duplicateGroups.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Sugestões Duplicadas</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {consolidationResult.duplicateGroups.map((group: any, i: number) => (
+                        <div key={i} className="border-l-2 border-blue-500 pl-3 space-y-1">
+                          <p className="text-sm font-medium">
+                            {group.duplicateIds.length} sugestões similares consolidadas
+                          </p>
+                          <p className="text-xs text-muted-foreground">{group.reason}</p>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Not Applied */}
+                {consolidationResult.notApplied && consolidationResult.notApplied.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Não Aplicadas</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {consolidationResult.notApplied.map((item: any, i: number) => (
+                        <div key={i} className="border-l-2 border-orange-500 pl-3">
+                          <p className="text-xs text-muted-foreground">{item.reason}</p>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </ScrollArea>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowConsolidationDialog(false)}
+              data-testid="button-close-consolidation"
+            >
+              Fechar
+            </Button>
+            <Button
+              onClick={() => {
+                setShowConsolidationDialog(false);
+                toast({
+                  title: "Próximo passo",
+                  description: "Revise o rascunho e publique quando estiver pronto",
+                });
+              }}
+              data-testid="button-continue-consolidation"
+            >
+              Continuar Editando
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
