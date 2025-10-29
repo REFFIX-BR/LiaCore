@@ -171,6 +171,30 @@ export default function PromptManagement() {
     },
   });
 
+  // Mark evolutions as applied mutation
+  const markEvolutionsAppliedMutation = useMutation({
+    mutationFn: async (data: { version: string; appliedIds: string[] }) => {
+      return await apiRequest(`/api/prompts/${currentPrompt.id}/mark-evolutions-applied`, "POST", {
+        version: data.version,
+        appliedSuggestionIds: data.appliedIds,
+        duplicateGroups: consolidationResult?.duplicateGroups || [],
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts", selectedAssistant] });
+      setConsolidationResult(null);
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Aviso: Sugestões não foram marcadas",
+        description: `A versão foi publicada, mas houve um erro ao marcar as sugestões como aplicadas: ${error.message}`,
+        duration: 8000,
+      });
+    },
+  });
+
   // Publish mutation
   const publishMutation = useMutation({
     mutationFn: async () => {
@@ -179,33 +203,30 @@ export default function PromptManagement() {
         versionBump,
       });
     },
-    onSuccess: async (result: any) => {
-      // If there were consolidated evolutions, mark them as applied
-      if (consolidationResult && consolidationResult.appliedSuggestions.length > 0) {
-        try {
-          const appliedIds = consolidationResult.appliedSuggestions
-            .filter((s: any) => s.applied)
-            .map((s: any) => s.suggestionId);
-          
-          await apiRequest(`/api/prompts/${currentPrompt.id}/mark-evolutions-applied`, "POST", {
-            version: result.version,
-            appliedSuggestionIds: appliedIds,
-            duplicateGroups: consolidationResult.duplicateGroups,
-          });
-        } catch (error) {
-          console.error("Error marking evolutions as applied:", error);
-        }
-      }
-
+    onSuccess: (result: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/prompts", selectedAssistant] });
       setShowPublishDialog(false);
       setVersionNotes("");
-      setConsolidationResult(null); // Clear consolidation result after publish
+      
       toast({
         title: "Versão publicada",
         description: "O prompt foi publicado e sincronizado com o OpenAI",
       });
+
+      // If there were consolidated evolutions, mark them as applied
+      if (consolidationResult && consolidationResult.appliedSuggestions.length > 0) {
+        const appliedIds = consolidationResult.appliedSuggestions
+          .filter((s: any) => s.applied)
+          .map((s: any) => s.suggestionId);
+        
+        if (appliedIds.length > 0) {
+          markEvolutionsAppliedMutation.mutate({
+            version: result.version,
+            appliedIds,
+          });
+        }
+      }
     },
     onError: (error: any) => {
       toast({
