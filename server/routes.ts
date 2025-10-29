@@ -2252,6 +2252,30 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
           });
         }
 
+        // Reopen conversation if it was resolved
+        if (conversation.status === 'resolved') {
+          console.log(`🔄 [Conversation Reopen] Reabrindo conversa resolvida para ${clientName}`);
+          await storage.updateConversation(conversation.id, {
+            status: 'active',
+            resolvedAt: null,
+            resolvedBy: null,
+            resolutionTime: null,
+            autoClosed: false,
+            autoClosedReason: null,
+            autoClosedAt: null,
+          });
+          
+          // Update local conversation object
+          conversation.status = 'active';
+          
+          prodLogger.info('conversation', 'Conversa reaberta', {
+            conversationId: conversation.id,
+            phoneNumber,
+            clientName,
+            chatId,
+          });
+        }
+
         // Check if this is NPS feedback BEFORE reopening conversation
         // This prevents reopening when client is just responding to NPS survey
         const metadata = conversation.metadata as any || {};
