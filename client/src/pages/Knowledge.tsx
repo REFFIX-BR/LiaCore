@@ -78,8 +78,7 @@ export default function Knowledge() {
 
   const searchMutation = useMutation({
     mutationFn: async (query: string) => {
-      const response = await apiRequest("/api/knowledge/search", "POST", { query, topK: 50 });
-      return response.json();
+      return await apiRequest("/api/knowledge/search", "POST", { query, topK: 50 });
     },
     onSuccess: (data: any) => {
       const formattedResults = data.map((result: any) => ({
@@ -106,8 +105,7 @@ export default function Knowledge() {
 
   const addDocumentMutation = useMutation({
     mutationFn: async (doc: any) => {
-      const response = await apiRequest("/api/knowledge/add", "POST", { chunks: [doc] });
-      return response.json();
+      return await apiRequest("/api/knowledge/add", "POST", { chunks: [doc] });
     },
     onSuccess: (_, variables) => {
       toast({
@@ -141,8 +139,7 @@ export default function Knowledge() {
 
   const editDocumentMutation = useMutation({
     mutationFn: async (doc: any) => {
-      const response = await apiRequest("/api/knowledge/add", "POST", { chunks: [doc] });
-      return response.json();
+      return await apiRequest("/api/knowledge/add", "POST", { chunks: [doc] });
     },
     onSuccess: (_, variables) => {
       toast({
