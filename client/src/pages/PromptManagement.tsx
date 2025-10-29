@@ -266,7 +266,10 @@ export default function PromptManagement() {
     },
     onSuccess: (result: any) => {
       setConsolidationResult(result.consolidation);
-      setDraftContent(result.draft.draftContent);
+      // Update draft content with the consolidated prompt
+      if (result.consolidation?.updatedPrompt) {
+        setDraftContent(result.consolidation.updatedPrompt);
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/prompts", selectedAssistant] });
       setShowConsolidationDialog(true);
