@@ -4,8 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Search, Upload } from "lucide-react";
-import { useState } from "react";
+import { Search, Upload, RefreshCw } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +21,8 @@ import {
 export default function Knowledge() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [allDocuments, setAllDocuments] = useState<any[]>([]);
+  const [isLoadingAll, setIsLoadingAll] = useState(false);
   const [newDocName, setNewDocName] = useState("");
   const [newDocContent, setNewDocContent] = useState("");
   const [newDocSource, setNewDocSource] = useState("");
@@ -29,9 +31,54 @@ export default function Knowledge() {
   const [editingDoc, setEditingDoc] = useState<any>(null);
   const { toast } = useToast();
 
+  // Load all documents on mount
+  useEffect(() => {
+    loadAllDocuments();
+  }, []);
+
+  const loadAllDocuments = async () => {
+    setIsLoadingAll(true);
+    try {
+      // Usar endpoint otimizado que faz queries paralelas
+      const response = await fetch("/api/knowledge/list-all", {
+        method: "GET",
+        credentials: "include"
+      });
+      if (!response.ok) {
+        throw new Error("Failed to load documents");
+      }
+      const data = await response.json();
+      
+      const documents = data.map((result: any) => ({
+        id: result.chunk.id,
+        name: result.chunk.name || "Documento sem nome",
+        content: result.chunk.content,
+        source: result.chunk.source,
+        relevance: Math.round(result.score * 100),
+      }));
+      
+      setAllDocuments(documents);
+      setSearchResults(documents);
+      
+      toast({
+        title: "Base de Conhecimento Carregada",
+        description: `${documents.length} documentos encontrados`,
+      });
+    } catch (error) {
+      console.error("Error loading all documents:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao carregar base de conhecimento",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingAll(false);
+    }
+  };
+
   const searchMutation = useMutation({
     mutationFn: async (query: string) => {
-      const response = await apiRequest("/api/knowledge/search", "POST", { query, topK: 20 });
+      const response = await apiRequest("/api/knowledge/search", "POST", { query, topK: 50 });
       return response.json();
     },
     onSuccess: (data: any) => {
@@ -76,6 +123,7 @@ export default function Knowledge() {
         relevance: 100,
       };
       setSearchResults(prev => [newDoc, ...prev]);
+      setAllDocuments(prev => [newDoc, ...prev]);
       
       setNewDocName("");
       setNewDocContent("");
@@ -102,10 +150,20 @@ export default function Knowledge() {
         description: "Documento atualizado com sucesso",
       });
       
+      const updatedDoc = {
+        id: variables.id,
+        name: variables.name,
+        content: variables.content,
+        source: variables.source,
+        relevance: 100,
+      };
+      
+      // Atualizar ambos os estados para manter consistência
       setSearchResults(prev => prev.map(doc => 
-        doc.id === variables.id 
-          ? { ...doc, name: variables.name, content: variables.content, source: variables.source }
-          : doc
+        doc.id === variables.id ? updatedDoc : doc
+      ));
+      setAllDocuments(prev => prev.map(doc => 
+        doc.id === variables.id ? updatedDoc : doc
       ));
       
       setEditingDoc(null);
@@ -123,14 +181,20 @@ export default function Knowledge() {
 
   const handleSearch = () => {
     if (!searchQuery.trim()) {
-      toast({
-        title: "Campo vazio",
-        description: "Digite algo para buscar",
-        variant: "destructive",
-      });
+      // Se busca vazia, mostrar todos os documentos
+      setSearchResults(allDocuments);
       return;
     }
     searchMutation.mutate(searchQuery);
+  };
+
+  const handleShowAll = () => {
+    setSearchQuery("");
+    setSearchResults(allDocuments);
+    toast({
+      title: "Exibindo Todos",
+      description: `${allDocuments.length} documentos na base`,
+    });
   };
 
   const handleAddDocument = () => {
@@ -191,7 +255,15 @@ export default function Knowledge() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Pesquisar Conhecimento</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Pesquisar Conhecimento</CardTitle>
+            {isLoadingAll && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                Carregando...
+              </span>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex gap-2">
@@ -209,11 +281,21 @@ export default function Knowledge() {
             />
             <Button 
               onClick={handleSearch}
-              disabled={searchMutation.isPending}
+              disabled={searchMutation.isPending || isLoadingAll}
               data-testid="button-search"
             >
               <Search className="h-4 w-4 mr-2" />
               {searchMutation.isPending ? "Buscando..." : "Buscar"}
+            </Button>
+            
+            <Button 
+              onClick={handleShowAll}
+              disabled={isLoadingAll}
+              variant="outline"
+              data-testid="button-show-all"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Mostrar Todos
             </Button>
             
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -274,24 +356,37 @@ export default function Knowledge() {
         </CardContent>
       </Card>
 
-      <KnowledgeBasePanel 
-        chunks={searchResults}
-        onEdit={handleOpenEditDialog}
-        onDelete={(id) => {
-          apiRequest(`/api/knowledge/${id}`, "DELETE", {})
-            .then(() => {
-              setSearchResults(prev => prev.filter(c => c.id !== id));
-              toast({ title: "Documento excluído" });
-            })
-            .catch(() => {
-              toast({ 
-                title: "Erro", 
-                description: "Falha ao excluir documento",
-                variant: "destructive" 
+      {searchResults.length === 0 && !isLoadingAll && (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-muted-foreground">
+              Nenhum documento encontrado. Faça uma busca ou adicione novos documentos.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {searchResults.length > 0 && (
+        <KnowledgeBasePanel 
+          chunks={searchResults}
+          onEdit={handleOpenEditDialog}
+          onDelete={(id) => {
+            apiRequest(`/api/knowledge/${id}`, "DELETE", {})
+              .then(() => {
+                setSearchResults(prev => prev.filter(c => c.id !== id));
+                setAllDocuments(prev => prev.filter(c => c.id !== id));
+                toast({ title: "Documento excluído" });
+              })
+              .catch(() => {
+                toast({ 
+                  title: "Erro", 
+                  description: "Falha ao excluir documento",
+                  variant: "destructive" 
+                });
               });
-            });
-        }}
-      />
+          }}
+        />
+      )}
 
       {/* Dialog de Edição */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

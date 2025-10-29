@@ -4429,6 +4429,55 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
     }
   });
 
+  // List all knowledge base documents (best-effort using parallel semantic searches)
+  app.get("/api/knowledge/list-all", authenticate, async (req, res) => {
+    try {
+      const { searchKnowledge } = await import("./lib/upstash");
+      
+      // Queries abrangentes para cobrir diferentes categorias
+      const queries = [
+        "TR Telecom",
+        "internet fibra",
+        "pagamento boleto",
+        "suporte técnico",
+        "planos comercial",
+        "financeiro fatura",
+        "cancelamento",
+        "ouvidoria",
+        "instalação",
+        "cliente",
+        "serviço",
+        "problemas",
+        "cobrança",
+        "velocidade",
+        "conexão"
+      ];
+      
+      // Executar todas as queries em paralelo
+      const searchPromises = queries.map(query => searchKnowledge(query, 100));
+      const allResults = await Promise.all(searchPromises);
+      
+      // Deduplicate by chunk ID
+      const uniqueChunks = new Map();
+      allResults.forEach(results => {
+        results.forEach(result => {
+          if (!uniqueChunks.has(result.chunk.id)) {
+            uniqueChunks.set(result.chunk.id, result);
+          }
+        });
+      });
+      
+      const documents = Array.from(uniqueChunks.values())
+        .sort((a, b) => (a.chunk.name || "").localeCompare(b.chunk.name || ""));
+      
+      console.log(`📚 [Knowledge] Listed ${documents.length} unique documents`);
+      return res.json(documents);
+    } catch (error) {
+      console.error("List all knowledge error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Add knowledge chunks
   app.post("/api/knowledge/add", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
