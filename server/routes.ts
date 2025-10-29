@@ -8900,15 +8900,17 @@ A resposta deve:
     try {
       const templates = await storage.getAllPromptTemplates();
       
-      // Include draft status for each template
+      // Include draft status and pending evolutions count for each template
       const templatesWithDrafts = await Promise.all(
         templates.map(async (template) => {
           const draft = await storage.getPromptDraft(template.id);
+          const pendingEvolutions = await storage.getPromptSuggestionsByAssistantType(template.assistantType, "pending");
           return {
             ...template,
             hasDraft: !!draft,
             draftLastEditedAt: draft?.lastEditedAt,
             draftLastEditedBy: draft?.lastEditedBy,
+            pendingEvolutionsCount: pendingEvolutions.length,
           };
         })
       );

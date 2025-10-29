@@ -45,6 +45,7 @@ interface PromptTemplate {
   hasDraft?: boolean;
   draftLastEditedAt?: Date;
   draftLastEditedBy?: string;
+  pendingEvolutionsCount?: number;
 }
 
 interface PromptDraft {
@@ -93,8 +94,10 @@ export default function PromptManagement() {
   const [draftContent, setDraftContent] = useState("");
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showVersionsDialog, setShowVersionsDialog] = useState(false);
+  const [showConsolidationDialog, setShowConsolidationDialog] = useState(false);
   const [versionNotes, setVersionNotes] = useState("");
   const [versionBump, setVersionBump] = useState<"major" | "minor" | "patch">("patch");
+  const [consolidationResult, setConsolidationResult] = useState<any>(null);
   
   // Token counter
   const { count: tokenCount, isLoading: countingTokens } = useTokenCount(draftContent);
@@ -217,8 +220,34 @@ export default function PromptManagement() {
     },
   });
 
+  // Consolidate evolutions mutation
+  const consolidateEvolutionsMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest(`/api/prompts/${currentPrompt.id}/consolidate-evolutions`, "POST", {});
+    },
+    onSuccess: (result: any) => {
+      setConsolidationResult(result.consolidation);
+      setDraftContent(result.draft.draftContent);
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts", selectedAssistant] });
+      setShowConsolidationDialog(true);
+      toast({
+        title: "Evoluções consolidadas",
+        description: `${result.consolidation.summary.appliedCount} sugestões aplicadas ao rascunho`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Erro ao consolidar",
+        description: error.message || "Não foi possível consolidar as evoluções",
+      });
+    },
+  });
+
   const hasChanges = currentPrompt && draftContent !== currentPrompt.content;
   const hasDraft = currentPrompt?.draft;
+  const hasPendingEvolutions = currentPrompt?.pendingEvolutionsCount && currentPrompt.pendingEvolutionsCount > 0;
 
   if (loadingPrompts) {
     return (
@@ -266,6 +295,12 @@ export default function PromptManagement() {
                     <div className="flex items-center gap-2 text-xs text-orange-600 dark:text-orange-400">
                       <AlertCircle className="w-3 h-3" />
                       <span>Rascunho não publicado</span>
+                    </div>
+                  )}
+                  {prompt.pendingEvolutionsCount && prompt.pendingEvolutionsCount > 0 && (
+                    <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
+                      <Sparkles className="w-3 h-3" />
+                      <span>{prompt.pendingEvolutionsCount} sugestões pendentes</span>
                     </div>
                   )}
                 </CardHeader>
@@ -321,6 +356,22 @@ export default function PromptManagement() {
                     <History className="w-4 h-4 mr-2" />
                     Histórico
                   </Button>
+                  {hasPendingEvolutions && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => consolidateEvolutionsMutation.mutate()}
+                      disabled={consolidateEvolutionsMutation.isPending}
+                      data-testid="button-consolidate-evolutions"
+                    >
+                      {consolidateEvolutionsMutation.isPending ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-4 h-4 mr-2" />
+                      )}
+                      Consolidar Evoluções ({currentPrompt?.pendingEvolutionsCount})
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
