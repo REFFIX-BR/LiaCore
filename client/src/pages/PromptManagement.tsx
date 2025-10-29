@@ -117,18 +117,9 @@ export default function PromptManagement() {
 
   // Sync draft content when prompt changes
   useEffect(() => {
-    console.log("useEffect triggered", {
-      hasPrompt: !!currentPrompt,
-      hasDraft: !!currentPrompt?.draft,
-      draftContentLength: currentPrompt?.draft?.draftContent?.length,
-      contentLength: currentPrompt?.content?.length,
-    });
-    
     if (currentPrompt?.draft?.draftContent) {
-      console.log("Setting draft content");
       setDraftContent(currentPrompt.draft.draftContent);
     } else if (currentPrompt?.content) {
-      console.log("Setting fallback content");
       setDraftContent(currentPrompt.content);
     }
   }, [currentPrompt?.id, currentPrompt?.draft?.draftContent, currentPrompt?.content]);
@@ -274,10 +265,7 @@ export default function PromptManagement() {
       return await apiRequest(`/api/prompts/${currentPrompt.id}/consolidate-evolutions`, "POST", {});
     },
     onSuccess: (result: any) => {
-      console.log("Consolidation result:", result);
-      
       if (!result?.consolidation) {
-        console.error("Invalid result structure:", result);
         toast({
           variant: "destructive",
           title: "Erro ao consolidar",
@@ -304,7 +292,6 @@ export default function PromptManagement() {
       });
     },
     onError: (error: any) => {
-      console.error("Consolidation error:", error);
       toast({
         variant: "destructive",
         title: "Erro ao consolidar",
