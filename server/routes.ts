@@ -9202,5 +9202,126 @@ A resposta deve:
     }
   });
 
+  // POST /api/prompts/:id/consolidate-evolutions - Consolidate pending evolution suggestions
+  app.post("/api/prompts/:id/consolidate-evolutions", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.userId;
+
+      // Get template
+      const template = await storage.getPromptTemplate(id);
+      if (!template) {
+        return res.status(404).json({ error: "Prompt template não encontrado" });
+      }
+
+      // Get pending evolution suggestions for this assistant type
+      const pendingSuggestions = await storage.getPromptSuggestionsByAssistantType(
+        template.assistantType,
+        "pending"
+      );
+
+      if (!pendingSuggestions || pendingSuggestions.length === 0) {
+        return res.status(400).json({ 
+          error: "Nenhuma sugestão de evolução pendente encontrada para este assistente" 
+        });
+      }
+
+      console.log(`🔄 [Consolidation] Starting for ${template.assistantType} with ${pendingSuggestions.length} suggestions`);
+
+      // Call consolidation service
+      const { consolidateEvolutionSuggestions } = await import("./lib/openai");
+      const consolidationResult = await consolidateEvolutionSuggestions(
+        template.content,
+        pendingSuggestions.map((s: any) => ({
+          id: s.id,
+          problemIdentified: s.problemIdentified,
+          rootCauseAnalysis: s.rootCauseAnalysis,
+          currentPrompt: s.currentPrompt,
+          suggestedPrompt: s.suggestedPrompt,
+          confidenceScore: s.confidenceScore,
+        })),
+        template.assistantType
+      );
+
+      // Create or update draft with consolidated prompt
+      const existingDraft = await storage.getPromptDraft(id);
+      
+      let draft;
+      if (existingDraft) {
+        draft = await storage.updatePromptDraft(id, {
+          draftContent: consolidationResult.updatedPrompt,
+          lastEditedBy: userId,
+        });
+      } else {
+        draft = await storage.createPromptDraft({
+          promptId: id,
+          draftContent: consolidationResult.updatedPrompt,
+          lastEditedBy: userId,
+          tokenCount: 0,
+        });
+      }
+
+      console.log(`✅ [Consolidation] Created draft with ${consolidationResult.summary.appliedCount} suggestions applied`);
+      
+      return res.json({
+        draft,
+        consolidation: consolidationResult,
+      });
+    } catch (error) {
+      console.error("❌ [Consolidation] Error consolidating evolution suggestions:", error);
+      return res.status(500).json({ error: "Erro ao consolidar sugestões de evolução" });
+    }
+  });
+
+  // POST /api/prompts/:id/mark-evolutions-applied - Mark evolution suggestions as applied
+  app.post("/api/prompts/:id/mark-evolutions-applied", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { version, appliedSuggestionIds, duplicateGroups } = req.body;
+
+      if (!version || !appliedSuggestionIds || !Array.isArray(appliedSuggestionIds)) {
+        return res.status(400).json({ 
+          error: "version e appliedSuggestionIds são obrigatórios" 
+        });
+      }
+
+      const template = await storage.getPromptTemplate(id);
+      if (!template) {
+        return res.status(404).json({ error: "Prompt template não encontrado" });
+      }
+
+      // Mark applied suggestions
+      for (const suggestionId of appliedSuggestionIds) {
+        await storage.updatePromptSuggestion(suggestionId, {
+          status: "applied",
+          appliedInVersion: version,
+        });
+      }
+
+      // Mark duplicate suggestions as consolidated
+      if (duplicateGroups && Array.isArray(duplicateGroups)) {
+        for (const group of duplicateGroups) {
+          for (const duplicateId of group.duplicateIds) {
+            await storage.updatePromptSuggestion(duplicateId, {
+              status: "consolidated",
+              consolidatedWith: [group.mainSuggestionId, ...group.duplicateIds.filter((id: string) => id !== duplicateId)],
+              appliedInVersion: version,
+            });
+          }
+        }
+      }
+
+      console.log(`✅ [Consolidation] Marked ${appliedSuggestionIds.length} suggestions as applied in version ${version}`);
+
+      return res.json({
+        success: true,
+        message: `Sugestões marcadas como aplicadas na versão ${version}`,
+      });
+    } catch (error) {
+      console.error("❌ [Consolidation] Error marking suggestions as applied:", error);
+      return res.status(500).json({ error: "Erro ao marcar sugestões como aplicadas" });
+    }
+  });
+
   return httpServer;
 }

@@ -109,6 +109,7 @@ export interface IStorage {
   createPromptSuggestion(suggestion: InsertPromptSuggestion): Promise<PromptSuggestion>;
   getAllPromptSuggestions(): Promise<PromptSuggestion[]>;
   getPromptSuggestionsByStatus(status: string): Promise<PromptSuggestion[]>;
+  getPromptSuggestionsByAssistantType(assistantType: string, status?: string): Promise<PromptSuggestion[]>;
   getPromptSuggestion(id: string): Promise<PromptSuggestion | undefined>;
   updatePromptSuggestion(id: string, updates: Partial<PromptSuggestion>): Promise<PromptSuggestion | undefined>;
   
@@ -832,6 +833,16 @@ export class MemStorage implements IStorage {
   async getPromptSuggestionsByStatus(status: string): Promise<PromptSuggestion[]> {
     return Array.from(this.promptSuggestions.values()).filter(
       (suggestion) => suggestion.status === status
+    ).sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  async getPromptSuggestionsByAssistantType(assistantType: string, status?: string): Promise<PromptSuggestion[]> {
+    return Array.from(this.promptSuggestions.values()).filter(
+      (suggestion) => {
+        const matchesType = suggestion.assistantType === assistantType;
+        const matchesStatus = status ? suggestion.status === status : true;
+        return matchesType && matchesStatus;
+      }
     ).sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
   }
 
@@ -2157,6 +2168,20 @@ export class DbStorage implements IStorage {
   async getPromptSuggestionsByStatus(status: string): Promise<PromptSuggestion[]> {
     return await db.select().from(schema.promptSuggestions)
       .where(eq(schema.promptSuggestions.status, status))
+      .orderBy(desc(schema.promptSuggestions.createdAt));
+  }
+
+  async getPromptSuggestionsByAssistantType(assistantType: string, status?: string): Promise<PromptSuggestion[]> {
+    if (status) {
+      return await db.select().from(schema.promptSuggestions)
+        .where(and(
+          eq(schema.promptSuggestions.assistantType, assistantType),
+          eq(schema.promptSuggestions.status, status)
+        ))
+        .orderBy(desc(schema.promptSuggestions.createdAt));
+    }
+    return await db.select().from(schema.promptSuggestions)
+      .where(eq(schema.promptSuggestions.assistantType, assistantType))
       .orderBy(desc(schema.promptSuggestions.createdAt));
   }
 
