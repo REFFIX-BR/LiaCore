@@ -2415,6 +2415,31 @@ Analise o novo prompt (rascunho) comparando com o atual e forneça uma análise 
 5. **CASOS EXTREMOS**: O prompt lida com situações difíceis (clientes irritados, perguntas fora do escopo)?
 6. **COMPLIANCE**: O prompt respeita LGPD e boas práticas de atendimento?
 
+**IMPORTANTE - CAMPO "optimizations":**
+O campo "optimizations" contém substituições LITERAIS de texto. Este campo será usado para aplicar as otimizações automaticamente ao prompt.
+
+Para cada otimização:
+- "before": COPIE LITERALMENTE um trecho do PROMPT RASCUNHO que precisa ser melhorado (entre 10-200 palavras)
+- "after": ESCREVA LITERALMENTE o texto COMPLETO que vai SUBSTITUIR o "before" (não escreva uma descrição, escreva o texto final)
+- NÃO use descrições genéricas como "Consolidar as instruções..." - use o TEXTO REAL
+- O "before" deve existir EXATAMENTE no prompt rascunho (incluindo pontuação e formatação)
+
+**EXEMPLO CORRETO:**
+{
+  "title": "Melhorar instruções de saudação",
+  "before": "Você deve cumprimentar o cliente de forma educada.",
+  "after": "Inicie sempre com uma saudação calorosa e personalizada. Exemplos: 'Olá! Como posso ajudar você hoje?' ou 'Bom dia! É um prazer atendê-lo(a).'",
+  "rationale": "Saudações específicas e exemplos tornam o atendimento mais humano e consistente."
+}
+
+**EXEMPLO INCORRETO (NÃO FAÇA ASSIM):**
+{
+  "title": "Melhorar instruções de saudação",
+  "before": "O texto atual é muito vago sobre saudações",
+  "after": "Adicionar exemplos de saudações personalizadas",
+  "rationale": "..."
+}
+
 **FORMATO DE RESPOSTA (JSON):**
 {
   "analysis": "Análise geral do prompt em 2-3 parágrafos",
@@ -2432,8 +2457,8 @@ Analise o novo prompt (rascunho) comparando com o atual e forneça uma análise 
   "optimizations": [
     {
       "title": "Título da otimização",
-      "before": "Trecho do prompt original",
-      "after": "Versão otimizada",
+      "before": "COPIE AQUI O TEXTO LITERAL EXATO DO PROMPT RASCUNHO QUE DEVE SER SUBSTITUÍDO (mínimo 10 palavras, máximo 200 palavras)",
+      "after": "ESCREVA AQUI O TEXTO LITERAL COMPLETO QUE VAI SUBSTITUIR O 'before' (deve ser o texto final, não uma descrição)",
       "rationale": "Por que essa mudança melhora o prompt"
     }
   ],

@@ -320,36 +320,25 @@ export default function PromptManagement() {
       return text.replace(/\s+/g, ' ').trim();
     };
 
-    console.log('🔧 [Apply Suggestions] Starting with', currentPrompt.draft.aiSuggestions.optimizations.length, 'optimizations');
-    console.log('🔧 [Apply Suggestions] Draft content length:', draftContent.length);
-
     // Apply each optimization (before -> after) preserving whitespace
-    currentPrompt.draft.aiSuggestions.optimizations.forEach((opt: any, index: number) => {
-      console.log(`\n🔍 [Opt ${index + 1}] Before:`, opt.before?.substring(0, 100), '...');
-      console.log(`🔍 [Opt ${index + 1}] After:`, opt.after?.substring(0, 100), '...');
+    currentPrompt.draft.aiSuggestions.optimizations.forEach((opt: any) => {
       if (opt.before && opt.after) {
         // Try exact match first
         if (updatedContent.includes(opt.before)) {
-          console.log(`✅ [Opt ${index + 1}] Found exact match!`);
           updatedContent = updatedContent.replace(opt.before, opt.after);
           appliedCount++;
         } else {
-          console.log(`❌ [Opt ${index + 1}] No exact match, trying normalized...`);
           // Try normalized match (for cases where AI normalized whitespace)
           const normalizedBefore = normalizeWhitespace(opt.before);
           const normalizedCurrent = normalizeWhitespace(updatedContent);
           
-          console.log(`🔍 [Opt ${index + 1}] Normalized before:`, normalizedBefore.substring(0, 100));
-          
           // Skip if before is whitespace-only (would match everywhere)
           if (!normalizedBefore) {
-            console.log(`⏭️  [Opt ${index + 1}] Skipping whitespace-only pattern`);
             skippedCount++;
             return;
           }
           
           if (normalizedCurrent.includes(normalizedBefore)) {
-            console.log(`✅ [Opt ${index + 1}] Found normalized match!`);
             // Find the actual text in the draft that matches (preserving original formatting)
             // Create a regex that matches the text with flexible whitespace
             // Trim the pattern to ignore leading/trailing whitespace differences
@@ -370,23 +359,18 @@ export default function PromptManagement() {
             const match = updatedContent.match(regex);
             
             if (match) {
-              console.log(`✅ [Opt ${index + 1}] Regex matched! Replacing...`);
               // Replace the matched text (with original formatting) with the 'after' text
               updatedContent = updatedContent.replace(match[0], opt.after);
               appliedCount++;
             } else {
-              console.log(`❌ [Opt ${index + 1}] Regex failed to match`);
               skippedCount++;
             }
           } else {
-            console.log(`❌ [Opt ${index + 1}] Normalized text not found in content`);
             skippedCount++;
           }
         }
       }
     });
-    
-    console.log(`\n📊 [Apply Suggestions] Final: ${appliedCount} applied, ${skippedCount} skipped`);
 
     if (appliedCount > 0) {
       setDraftContent(updatedContent);
