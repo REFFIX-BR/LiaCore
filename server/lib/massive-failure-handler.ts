@@ -287,6 +287,7 @@ export async function checkAndNotifyMassiveFailure(
         conversationId,
         clientPhone,
         notificationType: "failure",
+        messageSent: notificationMessage,
         wasRead: false,
       });
       console.log(`📝 [Massive Failure] Notificação registrada para falha ${failure.id}`);
