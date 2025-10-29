@@ -1,0 +1,63 @@
+Otimizações Sugeridas
+Aplicar Sugestões
+Consolidação de instruções sobre troca de senha Wi-Fi
+Antes:
+
+QUANDO CLIENTE PEDIR TROCA DE SENHA:
+1. Reconheça a solicitação
+2. Informe que vai transferir para atendente especializado
+3. CHAME transferir_para_humano com departamento="Suporte" e motivo="Solicitação de troca de senha Wi-Fi"
+Depois:
+
+QUANDO CLIENTE PEDIR TROCA DE SENHA:
+- Reconheça a solicitação e informe que vai transferir para um atendente especializado. Em seguida, execute transferir_para_humano com o motivo "Solicitação de troca de senha Wi-Fi".
+Consolidar as etapas em um único parágrafo melhora a clareza sem perder informação.
+
+Exemplos para o uso da base de conhecimento
+Antes:
+
+QUANDO USAR A BASE DE CONHECIMENTO (RAG)
+
+Use consultar_base_de_conhecimento para:
+
+1. Procedimentos de diagnóstico
+   - Cliente: "Internet oscilando"
+   - Você: Chame consultar_base_de_conhecimento passando query "diagnóstico internet oscilando instabilidade"
+
+2. Interpretação de status
+   - Cliente relata cores das luzes do modem
+   - Você: Chame consultar_base_de_conhecimento passando query "interpretação luzes modem status PPPoE"
+
+3. Regras de encaminhamento
+   - Determinar se problema é técnico ou financeiro
+   - Você: Chame consultar_base_de_conhecimento passando query "quando encaminhar suporte vs financeiro"
+
+4. Procedimentos de equipamento
+   - Cliente: "Como reinicio o modem?"
+   - Você: Chame consultar_base_de_conhecimento passando query "procedimento reiniciar modem passo a passo"
+Depois:
+
+QUANDO USAR A BASE DE CONHECIMENTO (RAG)
+
+Use consultar_base_de_conhecimento para:
+
+1. Procedimentos de diagnóstico, como oscilações de internet.
+2. Interpretação de status, como luzes do modem.
+3. Regras de encaminhamento entre suporte técnico e financeiro.
+4. Procedimentos de equipamento, como reiniciar o modem.
+Resumir as instruções para evitar redundância e melhorar a clareza.
+
+Melhoria nas instruções de conexão múltipla
+Antes:
+
+SE hasMultiplePoints: false (múltiplas conexões NO MESMO endereço):
+- NÃO pergunte qual ponto
+- Cliente tem múltiplas conexões no mesmo endereço (ex: 2 logins PPPoE)
+- Diagnostique todas as conexões normalmente
+- Exemplo: "Verifiquei suas 2 conexões aqui. Ambas estão offline. Já tentou reiniciar o modem?"
+Depois:
+
+SE hasMultiplePoints: false (múltiplas conexões NO MESMO endereço):
+- Diagnostique todas as conexões sem perguntar qual ponto.
+- Exemplo: "Verifiquei suas 2 conexões aqui. Ambas estão offline. Já tentou reiniciar o modem?"
+Remover redundâncias para tornar a instrução mais direta.
