@@ -265,17 +265,30 @@ export default function PromptManagement() {
       return await apiRequest(`/api/prompts/${currentPrompt.id}/consolidate-evolutions`, "POST", {});
     },
     onSuccess: (result: any) => {
+      if (!result?.consolidation) {
+        toast({
+          variant: "destructive",
+          title: "Erro ao consolidar",
+          description: "Resposta inválida do servidor",
+        });
+        return;
+      }
+
       setConsolidationResult(result.consolidation);
+      
       // Update draft content with the consolidated prompt
-      if (result.consolidation?.updatedPrompt) {
+      if (result.consolidation.updatedPrompt) {
         setDraftContent(result.consolidation.updatedPrompt);
       }
+      
       queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/prompts", selectedAssistant] });
       setShowConsolidationDialog(true);
+      
+      const appliedCount = result.consolidation.summary?.appliedCount || 0;
       toast({
         title: "Evoluções consolidadas",
-        description: `${result.consolidation.summary.appliedCount} sugestões aplicadas ao rascunho`,
+        description: `${appliedCount} sugestões aplicadas ao rascunho`,
       });
     },
     onError: (error: any) => {
