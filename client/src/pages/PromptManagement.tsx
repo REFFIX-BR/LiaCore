@@ -548,29 +548,29 @@ export default function PromptManagement() {
                 </TabsContent>
 
                 <TabsContent value="diff" className="flex-1 overflow-hidden mt-4 px-4">
-                  <div className="grid grid-cols-2 gap-4 h-full">
-                    <Card className="flex flex-col">
-                      <CardHeader>
+                  <div className="grid grid-cols-2 gap-4 h-full max-h-[calc(100vh-240px)]">
+                    <Card className="flex flex-col h-full">
+                      <CardHeader className="flex-shrink-0">
                         <CardTitle className="text-sm flex items-center gap-2">
                           <CheckCircle2 className="w-4 h-4 text-green-600" />
                           Produção (v{currentPrompt.version})
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="flex-1 overflow-auto">
+                      <CardContent className="flex-1 overflow-auto min-h-0">
                         <pre className="text-xs font-mono whitespace-pre-wrap">
                           {currentPrompt.content}
                         </pre>
                       </CardContent>
                     </Card>
 
-                    <Card className="flex flex-col">
-                      <CardHeader>
+                    <Card className="flex flex-col h-full">
+                      <CardHeader className="flex-shrink-0">
                         <CardTitle className="text-sm flex items-center gap-2">
                           <AlertCircle className="w-4 h-4 text-orange-600" />
                           Rascunho (não publicado)
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="flex-1 overflow-auto">
+                      <CardContent className="flex-1 overflow-auto min-h-0">
                         <pre className="text-xs font-mono whitespace-pre-wrap">
                           {draftContent || currentPrompt.content}
                         </pre>
