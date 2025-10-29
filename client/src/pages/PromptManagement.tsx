@@ -300,6 +300,93 @@ export default function PromptManagement() {
     },
   });
 
+  // Apply AI suggestions function
+  const handleApplyAISuggestions = () => {
+    if (!currentPrompt?.draft?.aiSuggestions?.optimizations) {
+      toast({
+        variant: "destructive",
+        title: "Nenhuma otimização disponível",
+        description: "Execute 'Analisar com IA' primeiro",
+      });
+      return;
+    }
+
+    let updatedContent = draftContent;
+    let appliedCount = 0;
+    let skippedCount = 0;
+
+    // Helper function to normalize whitespace for comparison
+    const normalizeWhitespace = (text: string) => {
+      return text.replace(/\s+/g, ' ').trim();
+    };
+
+    // Apply each optimization (before -> after) preserving whitespace
+    currentPrompt.draft.aiSuggestions.optimizations.forEach((opt: any) => {
+      if (opt.before && opt.after) {
+        // Try exact match first
+        if (updatedContent.includes(opt.before)) {
+          updatedContent = updatedContent.replace(opt.before, opt.after);
+          appliedCount++;
+        } else {
+          // Try normalized match (for cases where AI normalized whitespace)
+          const normalizedBefore = normalizeWhitespace(opt.before);
+          const normalizedCurrent = normalizeWhitespace(updatedContent);
+          
+          // Skip if before is whitespace-only (would match everywhere)
+          if (!normalizedBefore) {
+            skippedCount++;
+            return;
+          }
+          
+          if (normalizedCurrent.includes(normalizedBefore)) {
+            // Find the actual text in the draft that matches (preserving original formatting)
+            // Create a regex that matches the text with flexible whitespace
+            // Trim the pattern to ignore leading/trailing whitespace differences
+            const trimmedBefore = opt.before.trim();
+            
+            // Extra safety: skip if trimmed is empty
+            if (!trimmedBefore) {
+              skippedCount++;
+              return;
+            }
+            
+            const regexPattern = trimmedBefore
+              .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // Escape special chars
+              .replace(/\s+/g, '\\s+'); // Match any whitespace with \s+
+            
+            // Make leading/trailing whitespace optional
+            const regex = new RegExp(`\\s*${regexPattern}\\s*`);
+            const match = updatedContent.match(regex);
+            
+            if (match) {
+              // Replace the matched text (with original formatting) with the 'after' text
+              updatedContent = updatedContent.replace(match[0], opt.after);
+              appliedCount++;
+            } else {
+              skippedCount++;
+            }
+          } else {
+            skippedCount++;
+          }
+        }
+      }
+    });
+
+    if (appliedCount > 0) {
+      setDraftContent(updatedContent);
+      toast({
+        title: "Sugestões aplicadas",
+        description: `${appliedCount} otimização(ões) aplicada(s) ao rascunho${skippedCount > 0 ? ` (${skippedCount} não encontrada(s))` : ''}`,
+      });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Nenhuma otimização aplicada",
+        description: "Os trechos 'antes' não foram encontrados no rascunho atual",
+      });
+    }
+  };
+
   const hasChanges = currentPrompt && draftContent !== currentPrompt.content;
   const hasDraft = currentPrompt?.draft;
   const hasPendingEvolutions = currentPrompt?.pendingEvolutionsCount && currentPrompt.pendingEvolutionsCount > 0;
@@ -689,7 +776,18 @@ export default function PromptManagement() {
                         {currentPrompt.draft.aiSuggestions.optimizations?.length > 0 && (
                           <Card>
                             <CardHeader>
-                              <CardTitle className="text-base">Otimizações Sugeridas</CardTitle>
+                              <div className="flex items-center justify-between">
+                                <CardTitle className="text-base">Otimizações Sugeridas</CardTitle>
+                                <Button
+                                  size="sm"
+                                  onClick={handleApplyAISuggestions}
+                                  data-testid="button-apply-ai-suggestions"
+                                  className="gap-2"
+                                >
+                                  <Rocket className="w-4 h-4" />
+                                  Aplicar Sugestões
+                                </Button>
+                              </div>
                             </CardHeader>
                             <CardContent>
                               <div className="space-y-4">
