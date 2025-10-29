@@ -2474,4 +2474,221 @@ Forneça uma análise honesta, construtiva e acionável. Se o prompt já está e
   }
 }
 
+/**
+ * Evolution Suggestions Consolidation Service
+ * Consolidates multiple evolution suggestions into a single updated prompt
+ */
+
+// Zod schema for applied suggestion
+const appliedSuggestionSchema = z.object({
+  suggestionId: z.string(),
+  category: z.enum(['tone', 'instructions', 'edge_cases', 'scripts', 'compliance', 'structure']),
+  applied: z.boolean(),
+  howApplied: z.string(),
+});
+
+// Zod schema for consolidation result
+const consolidationResultSchema = z.object({
+  updatedPrompt: z.string(),
+  summary: z.object({
+    totalSuggestions: z.number(),
+    appliedCount: z.number(),
+    duplicatesCount: z.number(),
+    conflictsCount: z.number(),
+  }),
+  appliedSuggestions: z.array(appliedSuggestionSchema),
+  duplicateGroups: z.array(z.object({
+    mainSuggestionId: z.string(),
+    duplicateIds: z.array(z.string()),
+    reason: z.string(),
+  })).default([]),
+  notApplied: z.array(z.object({
+    suggestionId: z.string(),
+    reason: z.string(),
+  })).default([]),
+  changes: z.array(z.object({
+    category: z.string(),
+    count: z.number(),
+    description: z.string(),
+  })).default([]),
+});
+
+export interface ConsolidationResult {
+  updatedPrompt: string;
+  summary: {
+    totalSuggestions: number;
+    appliedCount: number;
+    duplicatesCount: number;
+    conflictsCount: number;
+  };
+  appliedSuggestions: Array<{
+    suggestionId: string;
+    category: 'tone' | 'instructions' | 'edge_cases' | 'scripts' | 'compliance' | 'structure';
+    applied: boolean;
+    howApplied: string;
+  }>;
+  duplicateGroups: Array<{
+    mainSuggestionId: string;
+    duplicateIds: string[];
+    reason: string;
+  }>;
+  notApplied: Array<{
+    suggestionId: string;
+    reason: string;
+  }>;
+  changes: Array<{
+    category: string;
+    count: number;
+    description: string;
+  }>;
+}
+
+export interface EvolutionSuggestion {
+  id: string;
+  problemIdentified: string;
+  rootCauseAnalysis: string;
+  currentPrompt: string;
+  suggestedPrompt: string;
+  confidenceScore: number;
+}
+
+export async function consolidateEvolutionSuggestions(
+  currentPrompt: string,
+  suggestions: EvolutionSuggestion[],
+  assistantType: string
+): Promise<ConsolidationResult> {
+  try {
+    console.log(`🔄 [Consolidation] Starting for ${assistantType} with ${suggestions.length} suggestions`);
+
+    const suggestionsContext = suggestions.map((s, i) => `
+SUGESTÃO ${i + 1} (ID: ${s.id}):
+- Problema: ${s.problemIdentified}
+- Análise: ${s.rootCauseAnalysis}
+- Confiança: ${s.confidenceScore}%
+- Mudança sugerida:
+  ANTES: ${s.currentPrompt}
+  DEPOIS: ${s.suggestedPrompt}
+`).join('\n---\n');
+
+    const consolidationPrompt = `Você é um especialista em consolidar feedback e melhorar prompts de assistentes de IA.
+
+**CONTEXTO:**
+- Assistente: ${assistantType.toUpperCase()}
+- Setor: Telecomunicações (TR Telecom)
+- Prompt atual em produção: VER ABAIXO
+
+**PROMPT ATUAL (PRODUÇÃO):**
+${currentPrompt}
+
+**SUGESTÕES DE EVOLUÇÃO (${suggestions.length} no total):**
+${suggestionsContext}
+
+**SUA TAREFA:**
+1. Analise TODAS as ${suggestions.length} sugestões
+2. Identifique sugestões **DUPLICADAS** ou muito similares (agrupe-as)
+3. Identifique sugestões **CONFLITANTES** (que não podem ser aplicadas juntas)
+4. Categorize cada sugestão por tema:
+   - tone: Mudanças no tom de voz
+   - instructions: Novas instruções ou procedimentos
+   - edge_cases: Tratamento de casos extremos
+   - scripts: Novos scripts de resposta
+   - compliance: Adequação a LGPD ou políticas
+   - structure: Organização do prompt
+
+5. Gere um **PROMPT ATUALIZADO** que incorpore as sugestões válidas e não-duplicadas
+   - Mantenha a estrutura original sempre que possível
+   - Aplique as mudanças de forma coesa e harmoniosa
+   - Se uma sugestão conflita com políticas da empresa ou outras sugestões, NÃO aplique
+
+6. Para cada sugestão, indique:
+   - Se foi aplicada (true/false)
+   - Como foi aplicada (descreva a mudança feita)
+   - Se é duplicada de outra
+   - Se não foi aplicada, por qual motivo
+
+**FORMATO DE RESPOSTA (JSON ESTRITO):**
+{
+  "updatedPrompt": "Prompt completo atualizado aqui...",
+  "summary": {
+    "totalSuggestions": ${suggestions.length},
+    "appliedCount": 10,
+    "duplicatesCount": 3,
+    "conflictsCount": 2
+  },
+  "appliedSuggestions": [
+    {
+      "suggestionId": "abc-123",
+      "category": "tone",
+      "applied": true,
+      "howApplied": "Adicionada instrução para tom mais empático em casos de reclamação na seção de Ouvidoria"
+    }
+  ],
+  "duplicateGroups": [
+    {
+      "mainSuggestionId": "abc-123",
+      "duplicateIds": ["def-456", "ghi-789"],
+      "reason": "Todas sugerem adicionar tratamento de tom empático - consolidadas na sugestão principal"
+    }
+  ],
+  "notApplied": [
+    {
+      "suggestionId": "xyz-999",
+      "reason": "Conflita com política da empresa de não prometer prazos específicos"
+    }
+  ],
+  "changes": [
+    {
+      "category": "Tone",
+      "count": 4,
+      "description": "Tom mais empático em situações de frustração do cliente"
+    },
+    {
+      "category": "Scripts",
+      "count": 3,
+      "description": "Novos scripts para tratamento de inadimplência"
+    }
+  ]
+}
+
+**IMPORTANTE:**
+- Seja conservador: não faça mudanças drásticas sem justificativa clara
+- Se uma sugestão é vaga ou de baixa confiança (<70%), considere não aplicar
+- Mantenha o tom profissional e alinhado com a marca TR Telecom
+- Sempre retorne JSON válido e completo`;
+
+    const response = await openaiCircuitBreaker.execute(() =>
+      openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: consolidationPrompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.3, // Lower temperature for more conservative/consistent consolidation
+      })
+    );
+
+    const rawResult = JSON.parse(response.choices[0].message.content?.trim() || "{}");
+
+    // Track token usage
+    if (response.usage) {
+      await trackTokenUsage(
+        "gpt-4o",
+        response.usage.prompt_tokens || 0,
+        response.usage.completion_tokens || 0
+      );
+    }
+
+    // Validate and sanitize result with Zod
+    const validatedResult = consolidationResultSchema.parse(rawResult);
+
+    console.log(`✅ [Consolidation] Completed for ${assistantType}`);
+    console.log(`   - Applied: ${validatedResult.summary.appliedCount}/${validatedResult.summary.totalSuggestions}`);
+    console.log(`   - Duplicates: ${validatedResult.summary.duplicatesCount}`);
+    console.log(`   - Conflicts: ${validatedResult.summary.conflictsCount}`);
+
+    return validatedResult;
+  } catch (error) {
+    console.error("❌ [Consolidation] Error:", error);
+    throw new Error("Erro ao consolidar sugestões de evolução");
+  }
+}
+
 export { openai };
