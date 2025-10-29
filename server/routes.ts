@@ -7455,7 +7455,7 @@ A resposta deve:
     }
   });
 
-  // Update contact information (name, document/CPF/CNPJ, etc)
+  // Update contact information (name, document/CPF/CNPJ, phoneNumber, etc)
   app.patch("/api/contacts/:id", authenticate, async (req, res) => {
     try {
       const contactId = req.params.id;
@@ -7464,6 +7464,7 @@ A resposta deve:
       const updateSchema = z.object({
         name: z.string().optional(),
         document: z.string().optional(),
+        phoneNumber: z.string().optional(),
         status: z.enum(['active', 'inactive']).optional(),
         hasRecurringIssues: z.boolean().optional(),
       });
@@ -7482,6 +7483,22 @@ A resposta deve:
       
       if (!existingContact) {
         return res.status(404).json({ error: "Contact not found" });
+      }
+
+      // SAFETY CHECK: If trying to change phoneNumber, verify contact has no conversation history
+      if (validation.data.phoneNumber && validation.data.phoneNumber !== existingContact.phoneNumber) {
+        // Check if contact has any conversations
+        const allConversations = await storage.getAllConversations();
+        const hasConversations = allConversations.some(
+          conv => conv.chatId.includes(existingContact.phoneNumber)
+        );
+
+        if (hasConversations) {
+          return res.status(400).json({ 
+            error: "Não é possível alterar o número de telefone de um contato que já possui histórico de conversas. Para alterar o número, entre em contato com o suporte técnico.",
+            code: "PHONE_CHANGE_NOT_ALLOWED"
+          });
+        }
       }
 
       // Update contact

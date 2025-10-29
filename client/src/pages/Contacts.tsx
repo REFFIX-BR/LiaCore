@@ -66,6 +66,7 @@ export default function Contacts() {
   const [editContactData, setEditContactData] = useState({
     name: "",
     document: "",
+    phoneNumber: "",
   });
   const { toast } = useToast();
 
@@ -169,7 +170,7 @@ export default function Contacts() {
 
   // Mutation to update contact
   const updateMutation = useMutation({
-    mutationFn: async (data: { id: string; updates: { name?: string; document?: string } }) => {
+    mutationFn: async (data: { id: string; updates: { name?: string; document?: string; phoneNumber?: string } }) => {
       return await apiRequest(`/api/contacts/${data.id}`, "PATCH", data.updates);
     },
     onSuccess: () => {
@@ -231,6 +232,7 @@ export default function Contacts() {
       updates: {
         name: editContactData.name || undefined,
         document: editContactData.document || undefined,
+        phoneNumber: editContactData.phoneNumber || undefined,
       },
     });
   };
@@ -241,6 +243,7 @@ export default function Contacts() {
     setEditContactData({
       name: selectedContact.name || "",
       document: selectedContact.document || "",
+      phoneNumber: selectedContact.phoneNumber || "",
     });
     setIsEditDialogOpen(true);
   };
@@ -681,6 +684,27 @@ export default function Contacts() {
 
           <div className="space-y-4 py-4">
             <div>
+              <Label htmlFor="edit-phoneNumber">Telefone (WhatsApp)</Label>
+              <Input
+                id="edit-phoneNumber"
+                value={editContactData.phoneNumber}
+                onChange={(e) => setEditContactData({ ...editContactData, phoneNumber: e.target.value })}
+                placeholder="5511999999999"
+                data-testid="input-edit-phoneNumber"
+                disabled={(contactDetails?.conversations?.length || 0) > 0}
+              />
+              {(contactDetails?.conversations?.length || 0) > 0 ? (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  ⚠️ Não é possível alterar o telefone de contatos com histórico de conversas
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Apenas números (com DDD)
+                </p>
+              )}
+            </div>
+
+            <div>
               <Label htmlFor="edit-name">Nome</Label>
               <Input
                 id="edit-name"
@@ -702,13 +726,6 @@ export default function Contacts() {
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Apenas números, com ou sem formatação
-              </p>
-            </div>
-
-            <div>
-              <Label className="text-xs text-muted-foreground">Telefone</Label>
-              <p className="text-sm font-medium text-muted-foreground">
-                {selectedContact?.phoneNumber} (não editável)
               </p>
             </div>
           </div>
