@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { 
   FileText, 
@@ -98,6 +99,7 @@ export default function PromptManagement() {
   const [versionNotes, setVersionNotes] = useState("");
   const [versionBump, setVersionBump] = useState<"major" | "minor" | "patch">("patch");
   const [consolidationResult, setConsolidationResult] = useState<any>(null);
+  const [selectedOptimizations, setSelectedOptimizations] = useState<number[]>([]);
   
   // Token counter
   const { count: tokenCount, isLoading: countingTokens } = useTokenCount(draftContent);
@@ -123,6 +125,16 @@ export default function PromptManagement() {
       setDraftContent(currentPrompt.content);
     }
   }, [currentPrompt?.id, currentPrompt?.draft?.draftContent, currentPrompt?.content]);
+
+  // Auto-select all optimizations when AI suggestions change
+  useEffect(() => {
+    if (currentPrompt?.draft?.aiSuggestions?.optimizations) {
+      const allIndices = currentPrompt.draft.aiSuggestions.optimizations.map((_: any, idx: number) => idx);
+      setSelectedOptimizations(allIndices);
+    } else {
+      setSelectedOptimizations([]);
+    }
+  }, [currentPrompt?.draft?.aiSuggestions]);
 
   // Save draft mutation
   const saveDraftMutation = useMutation({
@@ -311,6 +323,15 @@ export default function PromptManagement() {
       return;
     }
 
+    if (selectedOptimizations.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Nenhuma otimização selecionada",
+        description: "Selecione ao menos uma otimização para aplicar",
+      });
+      return;
+    }
+
     let updatedContent = draftContent;
     let appliedCount = 0;
     let skippedCount = 0;
@@ -322,8 +343,12 @@ export default function PromptManagement() {
 
     const optimizations = currentPrompt.draft.aiSuggestions.optimizations;
 
-    // Apply each optimization (before -> after) preserving whitespace
-    optimizations.forEach((opt: any) => {
+    // Apply only selected optimizations (before -> after) preserving whitespace
+    optimizations.forEach((opt: any, idx: number) => {
+      // Skip if this optimization is not selected
+      if (!selectedOptimizations.includes(idx)) {
+        return;
+      }
       if (opt.before && opt.after) {
         // Try exact match first
         if (updatedContent.includes(opt.before)) {
@@ -778,39 +803,81 @@ export default function PromptManagement() {
                         {currentPrompt.draft.aiSuggestions.optimizations?.length > 0 && (
                           <Card>
                             <CardHeader>
-                              <div className="flex items-center justify-between">
-                                <CardTitle className="text-base">Otimizações Sugeridas</CardTitle>
-                                <Button
-                                  size="sm"
-                                  onClick={handleApplyAISuggestions}
-                                  data-testid="button-apply-ai-suggestions"
-                                  className="gap-2"
-                                >
-                                  <Rocket className="w-4 h-4" />
-                                  Aplicar Sugestões
-                                </Button>
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex-1">
+                                  <CardTitle className="text-base">Otimizações Sugeridas</CardTitle>
+                                  <CardDescription className="text-xs mt-1">
+                                    {selectedOptimizations.length} de {currentPrompt.draft.aiSuggestions.optimizations.length} selecionada(s)
+                                  </CardDescription>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      const optimizations = currentPrompt.draft?.aiSuggestions?.optimizations || [];
+                                      const allSelected = selectedOptimizations.length === optimizations.length;
+                                      if (allSelected) {
+                                        setSelectedOptimizations([]);
+                                      } else {
+                                        const allIndices = optimizations.map((_: any, idx: number) => idx);
+                                        setSelectedOptimizations(allIndices);
+                                      }
+                                    }}
+                                    data-testid="button-toggle-all-optimizations"
+                                  >
+                                    {selectedOptimizations.length === (currentPrompt.draft?.aiSuggestions?.optimizations?.length || 0) ? "Desmarcar Todas" : "Selecionar Todas"}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={handleApplyAISuggestions}
+                                    data-testid="button-apply-ai-suggestions"
+                                    className="gap-2"
+                                    disabled={selectedOptimizations.length === 0}
+                                  >
+                                    <Rocket className="w-4 h-4" />
+                                    Aplicar Selecionadas
+                                  </Button>
+                                </div>
                               </div>
                             </CardHeader>
                             <CardContent>
                               <div className="space-y-4">
                                 {currentPrompt.draft.aiSuggestions.optimizations.map((opt: any, idx: number) => (
-                                  <div key={idx} className="space-y-2">
-                                    <h5 className="font-medium text-sm">{opt.title}</h5>
-                                    <div className="grid grid-cols-2 gap-4">
-                                      <div>
-                                        <p className="text-xs text-muted-foreground mb-1">Antes:</p>
-                                        <pre className="text-xs bg-red-500/10 p-2 rounded whitespace-pre-wrap border border-red-500/20">
-                                          {opt.before}
-                                        </pre>
-                                      </div>
-                                      <div>
-                                        <p className="text-xs text-muted-foreground mb-1">Depois:</p>
-                                        <pre className="text-xs bg-green-500/10 p-2 rounded whitespace-pre-wrap border border-green-500/20">
-                                          {opt.after}
-                                        </pre>
-                                      </div>
+                                  <div key={idx} className="space-y-2 border rounded-lg p-3">
+                                    <div className="flex items-start gap-3">
+                                      <Checkbox
+                                        id={`opt-${idx}`}
+                                        checked={selectedOptimizations.includes(idx)}
+                                        onCheckedChange={(checked) => {
+                                          if (checked) {
+                                            setSelectedOptimizations([...selectedOptimizations, idx]);
+                                          } else {
+                                            setSelectedOptimizations(selectedOptimizations.filter(i => i !== idx));
+                                          }
+                                        }}
+                                        data-testid={`checkbox-optimization-${idx}`}
+                                        className="mt-1"
+                                      />
+                                      <label htmlFor={`opt-${idx}`} className="flex-1 cursor-pointer space-y-2">
+                                        <h5 className="font-medium text-sm">{opt.title}</h5>
+                                        <div className="grid grid-cols-2 gap-4">
+                                          <div>
+                                            <p className="text-xs text-muted-foreground mb-1">Antes:</p>
+                                            <pre className="text-xs bg-red-500/10 p-2 rounded whitespace-pre-wrap border border-red-500/20">
+                                              {opt.before}
+                                            </pre>
+                                          </div>
+                                          <div>
+                                            <p className="text-xs text-muted-foreground mb-1">Depois:</p>
+                                            <pre className="text-xs bg-green-500/10 p-2 rounded whitespace-pre-wrap border border-green-500/20">
+                                              {opt.after}
+                                            </pre>
+                                          </div>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground italic">{opt.rationale}</p>
+                                      </label>
                                     </div>
-                                    <p className="text-xs text-muted-foreground italic">{opt.rationale}</p>
                                   </div>
                                 ))}
                               </div>

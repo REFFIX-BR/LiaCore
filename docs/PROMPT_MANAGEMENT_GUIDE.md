@@ -222,23 +222,30 @@ Clique no card do assistente que deseja editar (ex: "Comercial")
 
 #### Passo 5.1: Aplicar Otimizações Automaticamente (NOVO! ⚡)
 
-Agora você pode aplicar as otimizações da IA **automaticamente** ao rascunho:
+Agora você pode aplicar as otimizações da IA **automaticamente** ao rascunho com **seleção granular**:
 
 1. Na aba **"Sugestões da IA"**, após a análise completar
 2. Revise as otimizações listadas (você verá de 3 a 5 otimizações)
-3. Clique no botão **"Aplicar Sugestões" 🚀**
-4. O sistema irá:
-   - Encontrar cada trecho "before" no rascunho
+3. **Escolha quais aplicar:**
+   - Por padrão, **todas** as otimizações vêm **selecionadas** ✅
+   - **Desmarque** as que você **não** quer aplicar clicando no checkbox
+   - Use **"Selecionar Todas"** ou **"Desmarcar Todas"** para controle rápido
+   - O contador mostra "X de Y selecionada(s)"
+4. Clique no botão **"Aplicar Selecionadas" 🚀**
+5. O sistema irá:
+   - Encontrar cada trecho "before" das otimizações selecionadas no rascunho
    - Substituir pelo texto "after" otimizado
    - Mostrar quantas otimizações foram aplicadas
-5. Vá para a aba **"Edição"** para revisar as mudanças
-6. Se gostar, **salve o rascunho** com as otimizações aplicadas
+6. Vá para a aba **"Edição"** para revisar as mudanças
+7. Se gostar, **salve o rascunho** com as otimizações aplicadas
 
 **Vantagens:**
-- ✅ Aplica múltiplas otimizações em 1 clique
+- ✅ **Seleção granular** - escolha quais otimizações aplicar
+- ✅ **Controle total** - aplique só o que faz sentido para você
 - ✅ Algoritmo inteligente de matching (exact → normalized → regex)
 - ✅ Preserva formatação original
 - ✅ Mostra feedback claro (X aplicadas, Y puladas)
+- ✅ Botões de "Selecionar/Desmarcar Todas" para conveniência
 
 **Alternativa Manual:**
 Se preferir, você ainda pode:
