@@ -168,9 +168,11 @@ export const promptSuggestions = pgTable("prompt_suggestions", {
   suggestedPrompt: text("suggested_prompt").notNull(),
   confidenceScore: integer("confidence_score").notNull(), // 0-100
   affectedConversations: text("affected_conversations").array(),
-  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected', 'applied'
+  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected', 'applied', 'consolidated'
   reviewedBy: text("reviewed_by"),
   reviewNotes: text("review_notes"),
+  appliedInVersion: varchar("applied_in_version"), // Versão do prompt em que foi aplicada (ex: "1.4.0")
+  consolidatedWith: text("consolidated_with").array(), // IDs de outras sugestões consolidadas junto com esta
   createdAt: timestamp("created_at").defaultNow(),
   reviewedAt: timestamp("reviewed_at"),
 });
