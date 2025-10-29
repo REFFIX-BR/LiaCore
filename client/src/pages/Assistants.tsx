@@ -512,17 +512,18 @@ export default function Assistants() {
               {stats?.transfers && stats.transfers.length > 0 ? (
                 <div className="space-y-4">
                   {stats.transfers
+                    .filter(transfer => transfer && transfer.assistantType)
                     .sort((a, b) => b.count - a.count)
                     .map((transfer, idx) => {
-                      const config = assistantConfig.find(c => c.type === transfer.assistantType);
+                      const config = assistantConfig.find(c => c && c.type === transfer.assistantType);
                       return (
                         <div key={idx} className="space-y-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <span className="text-2xl">{config?.icon}</span>
+                              <span className="text-2xl">{config?.icon || '📊'}</span>
                               <div>
                                 <p className="font-medium capitalize">{transfer.assistantType}</p>
-                                <p className="text-xs text-muted-foreground">{config?.name}</p>
+                                <p className="text-xs text-muted-foreground">{config?.name || transfer.assistantType}</p>
                               </div>
                             </div>
                             <Badge variant="outline" className="text-yellow-600">
