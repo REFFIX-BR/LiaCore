@@ -2415,8 +2415,16 @@ Analise o novo prompt (rascunho) comparando com o atual e forneça uma análise 
 5. **CASOS EXTREMOS**: O prompt lida com situações difíceis (clientes irritados, perguntas fora do escopo)?
 6. **COMPLIANCE**: O prompt respeita LGPD e boas práticas de atendimento?
 
-**IMPORTANTE - CAMPO "optimizations":**
+**IMPORTANTE - CAMPO "optimizations" (OBRIGATÓRIO: 3-5 OTIMIZAÇÕES):**
 O campo "optimizations" contém substituições LITERAIS de texto. Este campo será usado para aplicar as otimizações automaticamente ao prompt.
+
+**VOCÊ DEVE GERAR ENTRE 3 A 5 OTIMIZAÇÕES.** Mesmo que o prompt esteja bom, encontre oportunidades de melhoria em:
+- Clareza e concisão (reduzir redundâncias)
+- Exemplos mais específicos
+- Instruções mais acionáveis
+- Casos extremos não cobertos
+- Tom e empatia
+- Estrutura e organização
 
 Para cada otimização:
 - "before": COPIE LITERALMENTE um trecho do PROMPT RASCUNHO que precisa ser melhorado (entre 10-200 palavras)
@@ -2456,16 +2464,30 @@ Para cada otimização:
   ],
   "optimizations": [
     {
-      "title": "Título da otimização",
+      "title": "Título da otimização 1",
       "before": "COPIE AQUI O TEXTO LITERAL EXATO DO PROMPT RASCUNHO QUE DEVE SER SUBSTITUÍDO (mínimo 10 palavras, máximo 200 palavras)",
       "after": "ESCREVA AQUI O TEXTO LITERAL COMPLETO QUE VAI SUBSTITUIR O 'before' (deve ser o texto final, não uma descrição)",
       "rationale": "Por que essa mudança melhora o prompt"
+    },
+    {
+      "title": "Título da otimização 2",
+      "before": "OUTRO TRECHO LITERAL DO PROMPT RASCUNHO",
+      "after": "TEXTO COMPLETO DE SUBSTITUIÇÃO",
+      "rationale": "Justificativa"
+    },
+    {
+      "title": "Título da otimização 3",
+      "before": "MAIS UM TRECHO LITERAL DO PROMPT RASCUNHO",
+      "after": "TEXTO COMPLETO DE SUBSTITUIÇÃO",
+      "rationale": "Justificativa"
     }
   ],
   "estimatedTokenCount": 1500
 }
 
-Forneça uma análise honesta, construtiva e acionável. Se o prompt já está excelente, diga isso!`;
+Forneça uma análise honesta, construtiva e acionável. Se o prompt já está excelente, diga isso!
+
+**LEMBRE-SE: VOCÊ DEVE GERAR NO MÍNIMO 3 OTIMIZAÇÕES, IDEALMENTE 5. Não gere apenas 1 ou 2.**`;
 
     const response = await openaiCircuitBreaker.execute(() =>
       openai.chat.completions.create({

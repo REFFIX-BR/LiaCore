@@ -124,11 +124,14 @@ O sistema utiliza GPT-4o para analisar a qualidade dos prompts através de **6 c
    - Prioridade: CRITICAL, HIGH, MEDIUM, LOW
    - Sugestão detalhada
    - Exemplo de implementação (opcional)
-5. **Otimizações Before/After**
-   - Título da otimização
-   - Versão anterior (before)
-   - Versão melhorada (after)
-   - Justificativa (rationale)
+5. **Otimizações Before/After (3-5 otimizações)**
+   - A IA sempre gera entre 3 a 5 otimizações práticas
+   - Cada otimização contém:
+     - Título da otimização
+     - Versão anterior (before) - texto literal copiado do prompt
+     - Versão melhorada (after) - texto de substituição completo
+     - Justificativa (rationale) - explicação da melhoria
+   - As otimizações podem ser aplicadas automaticamente ao rascunho com 1 clique
 
 ### 3. Comparador Side-by-Side
 
@@ -213,12 +216,35 @@ Clique no card do assistente que deseja editar (ex: "Comercial")
    - **Pontos Fortes**: O que está funcionando bem
    - **Pontos Fracos**: O que precisa melhorar
    - **Recomendações**: Sugestões categorizadas com prioridades
-   - **Otimizações**: Exemplos before/after de melhorias
+   - **Otimizações**: Exemplos before/after de melhorias (3-5 otimizações)
 
 3. Revise cada sugestão cuidadosamente
-4. Volte para a aba **"Edição"** e implemente as melhorias sugeridas
-5. Salve o rascunho novamente
-6. Opcionalmente, solicite nova análise para validar as mudanças
+
+#### Passo 5.1: Aplicar Otimizações Automaticamente (NOVO! ⚡)
+
+Agora você pode aplicar as otimizações da IA **automaticamente** ao rascunho:
+
+1. Na aba **"Sugestões da IA"**, após a análise completar
+2. Revise as otimizações listadas (você verá de 3 a 5 otimizações)
+3. Clique no botão **"Aplicar Sugestões" 🚀**
+4. O sistema irá:
+   - Encontrar cada trecho "before" no rascunho
+   - Substituir pelo texto "after" otimizado
+   - Mostrar quantas otimizações foram aplicadas
+5. Vá para a aba **"Edição"** para revisar as mudanças
+6. Se gostar, **salve o rascunho** com as otimizações aplicadas
+
+**Vantagens:**
+- ✅ Aplica múltiplas otimizações em 1 clique
+- ✅ Algoritmo inteligente de matching (exact → normalized → regex)
+- ✅ Preserva formatação original
+- ✅ Mostra feedback claro (X aplicadas, Y puladas)
+
+**Alternativa Manual:**
+Se preferir, você ainda pode:
+4. Voltar para a aba **"Edição"** e implementar as melhorias manualmente
+5. Salvar o rascunho novamente
+6. Opcionalmente, solicitar nova análise para validar as mudanças
 
 ### Comparando Versões
 
