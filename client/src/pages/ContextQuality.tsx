@@ -424,9 +424,9 @@ export default function ContextQuality() {
 
       <div className="flex-1 overflow-auto p-6">
         <div className="space-y-6">
-          {/* Test Button (DEV ONLY) */}
+          {/* Test Buttons (DEV ONLY) */}
           {import.meta.env.DEV && (
-            <div className="mb-4">
+            <div className="mb-4 flex gap-2">
               <Button
                 onClick={async () => {
                   try {
@@ -454,6 +454,34 @@ export default function ContextQuality() {
               >
                 <Zap className="h-4 w-4 mr-2" />
                 Injetar Alertas de Teste
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/monitor/context-quality/test', {
+                      method: 'DELETE',
+                      credentials: 'include',
+                    });
+                    if (!response.ok) throw new Error('Failed to clear test alerts');
+                    await queryClient.invalidateQueries({ queryKey: ['/api/monitor/context-quality'] });
+                    toast({
+                      title: "Alertas de teste removidos",
+                      description: "Todos os alertas simulados foram limpos!",
+                    });
+                  } catch (error) {
+                    toast({
+                      title: "Erro ao limpar alertas",
+                      description: "Falha ao remover alertas de teste",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                variant="outline"
+                size="sm"
+                data-testid="button-clear-test-alerts"
+              >
+                <AlertCircle className="h-4 w-4 mr-2" />
+                Limpar Alertas de Teste
               </Button>
             </div>
           )}

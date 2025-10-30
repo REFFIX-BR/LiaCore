@@ -4251,6 +4251,36 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     }
   });
 
+  // DELETE /api/monitor/context-quality/test - Limpa alertas de teste (apenas DEV)
+  app.delete("/api/monitor/context-quality/test", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    if (process.env.NODE_ENV !== 'development') {
+      return res.status(403).json({ error: "Test endpoint only available in development" });
+    }
+    
+    try {
+      const { ContextMonitor } = await import("./lib/context-monitor");
+      
+      // Remover apenas alertas de teste (conversationId começa com 'test-conv-')
+      const beforeCount = (ContextMonitor as any).alerts.length;
+      (ContextMonitor as any).alerts = (ContextMonitor as any).alerts.filter(
+        (alert: any) => !alert.conversationId.startsWith('test-conv-')
+      );
+      const afterCount = (ContextMonitor as any).alerts.length;
+      const removedCount = beforeCount - afterCount;
+      
+      console.log(`✅ [Test] Removed ${removedCount} test alerts`);
+      
+      return res.json({ 
+        success: true, 
+        removedAlerts: removedCount,
+        message: 'Test alerts cleared successfully' 
+      });
+    } catch (error) {
+      console.error("Error clearing test alerts:", error);
+      return res.status(500).json({ error: "Failed to clear test alerts" });
+    }
+  });
+
   // POST /api/monitor/context-quality/suggest-fix - Gera sugestões de correção de prompt
   app.post("/api/monitor/context-quality/suggest-fix", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
