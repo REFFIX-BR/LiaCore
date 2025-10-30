@@ -527,8 +527,9 @@ export class MemStorage implements IStorage {
     const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
     
     return Array.from(this.conversations.values()).filter((conv) => {
-      // Show active conversations OR resolved conversations from last 12h
+      // Show active conversations OR queued conversations OR resolved conversations from last 12h
       if (conv.status === 'active') return true;
+      if (conv.status === 'queued') return true;
       if (conv.status === 'resolved' && conv.lastMessageTime && conv.lastMessageTime >= twelveHoursAgo) return true;
       
       return false;
@@ -1817,6 +1818,8 @@ export class DbStorage implements IStorage {
         or(
           // All active conversations (including those in transfer queue, being handled by AI, or assigned to agents)
           eq(schema.conversations.status, 'active'),
+          // All queued conversations (in transfer queue waiting for agent assignment)
+          eq(schema.conversations.status, 'queued'),
           // Resolved conversations from last 12h (by AI, agent, or auto-close)
           and(
             eq(schema.conversations.status, 'resolved'),
