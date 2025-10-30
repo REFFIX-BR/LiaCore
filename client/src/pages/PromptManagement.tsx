@@ -122,6 +122,17 @@ export default function PromptManagement() {
 
   const currentPrompt = promptDetails as PromptTemplate & { draft?: PromptDraft; versions?: PromptVersion[] };
 
+  // Fetch context quality suggestions for selected assistant
+  const { data: contextSuggestions, isLoading: loadingContextSuggestions } = useQuery({
+    queryKey: ["/api/prompts", selectedAssistant, "context-suggestions"],
+    queryFn: async () => {
+      const response = await fetch(`/api/prompts/${selectedAssistant}/context-suggestions?hours=168`);
+      if (!response.ok) throw new Error('Failed to fetch context suggestions');
+      return response.json();
+    },
+    enabled: !!selectedAssistant,
+  });
+
   // Sync draft content when prompt changes
   useEffect(() => {
     if (currentPrompt?.draft?.draftContent) {
@@ -652,10 +663,19 @@ export default function PromptManagement() {
                     <GitBranch className="w-4 h-4 mr-2" />
                     Comparação
                   </TabsTrigger>
+                  <TabsTrigger value="context" data-testid="tab-context">
+                    <AlertCircle className="w-4 h-4 mr-2" />
+                    Sugestões de Contexto
+                    {contextSuggestions?.totalAlerts > 0 && (
+                      <Badge variant="destructive" className="ml-2 h-5 px-1.5 text-xs">
+                        {contextSuggestions.totalAlerts}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
                   {currentPrompt.draft?.aiSuggestions && (
                     <TabsTrigger value="ai" data-testid="tab-ai">
                       <Sparkles className="w-4 h-4 mr-2" />
-                      Sugestões da IA
+                      Análise da IA
                     </TabsTrigger>
                   )}
                 </TabsList>
@@ -752,6 +772,166 @@ export default function PromptManagement() {
                       </CardContent>
                     </Card>
                   </div>
+                </TabsContent>
+
+                {/* Context Suggestions Tab */}
+                <TabsContent value="context" className="flex-1 overflow-hidden mt-4 px-4" data-testid="context-suggestions-panel">
+                  <ScrollArea className="h-full">
+                    <div className="space-y-4 pr-4">
+                      {loadingContextSuggestions ? (
+                        <Card>
+                          <CardContent className="pt-6">
+                            <div className="flex items-center justify-center py-12">
+                              <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
+                              <span className="ml-3 text-muted-foreground">Buscando sugestões...</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ) : !contextSuggestions || contextSuggestions.suggestions.length === 0 ? (
+                        <Card>
+                          <CardContent className="pt-6">
+                            <div className="flex flex-col items-center justify-center py-12 text-center">
+                              <CheckCircle2 className="w-12 h-12 text-green-600 mb-4" />
+                              <h3 className="text-lg font-semibold">Nenhum Problema Detectado</h3>
+                              <p className="text-sm text-muted-foreground mt-2 max-w-md">
+                                O Monitor de Qualidade de Contexto não detectou problemas nos últimos 7 dias para este assistente.
+                              </p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        <>
+                          {/* Header with Stats */}
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="flex items-center gap-2">
+                                <AlertCircle className="w-5 h-5 text-orange-600" />
+                                Sugestões do Monitor de Contexto
+                              </CardTitle>
+                              <CardDescription>
+                                {contextSuggestions.totalAlerts} alerta{contextSuggestions.totalAlerts !== 1 ? 's' : ''} detectado{contextSuggestions.totalAlerts !== 1 ? 's' : ''} nos últimos 7 dias
+                              </CardDescription>
+                            </CardHeader>
+                          </Card>
+
+                          {/* Suggestions List */}
+                          {contextSuggestions.suggestions.map((suggestion: any, index: number) => {
+                            const priorityColors = {
+                              high: 'border-red-200 dark:border-red-900',
+                              medium: 'border-orange-200 dark:border-orange-900',
+                              low: 'border-yellow-200 dark:border-yellow-900',
+                            };
+                            const priorityBadgeColors = {
+                              high: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+                              medium: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+                              low: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+                            };
+
+                            return (
+                              <Card key={index} className={`border-l-4 ${priorityColors[suggestion.priority as keyof typeof priorityColors]}`}>
+                                <CardHeader>
+                                  <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1">
+                                      <CardTitle className="text-base">
+                                        {suggestion.problemSummary}
+                                      </CardTitle>
+                                      <CardDescription className="mt-2">
+                                        {suggestion.rootCause}
+                                      </CardDescription>
+                                    </div>
+                                    <div className="flex flex-col gap-2 items-end">
+                                      <Badge className={priorityBadgeColors[suggestion.priority as keyof typeof priorityBadgeColors]}>
+                                        {suggestion.priority === 'high' ? 'Alta' : suggestion.priority === 'medium' ? 'Média' : 'Baixa'}
+                                      </Badge>
+                                      <Badge variant="outline">
+                                        {suggestion.count} ocorrência{suggestion.count !== 1 ? 's' : ''}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                  {/* Suggested Fix */}
+                                  <div>
+                                    <Label className="text-sm font-semibold mb-2 block">Correção Sugerida:</Label>
+                                    <div className="bg-muted/50 rounded-md p-4">
+                                      <pre className="text-xs whitespace-pre-wrap font-mono">
+                                        {suggestion.suggestedFix}
+                                      </pre>
+                                    </div>
+                                  </div>
+
+                                  {/* Before/After Examples */}
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <Label className="text-sm font-semibold mb-2 block text-red-600 dark:text-red-400">❌ Antes (Errado):</Label>
+                                      <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-md p-3">
+                                        <pre className="text-xs whitespace-pre-wrap">
+                                          {suggestion.exampleBefore}
+                                        </pre>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm font-semibold mb-2 block text-green-600 dark:text-green-400">✅ Depois (Correto):</Label>
+                                      <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-md p-3">
+                                        <pre className="text-xs whitespace-pre-wrap">
+                                          {suggestion.exampleAfter}
+                                        </pre>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Recent Alerts */}
+                                  {suggestion.recentAlerts && suggestion.recentAlerts.length > 0 && (
+                                    <div>
+                                      <Label className="text-sm font-semibold mb-2 block">Alertas Recentes:</Label>
+                                      <div className="space-y-2">
+                                        {suggestion.recentAlerts.slice(0, 3).map((alert: any, alertIndex: number) => (
+                                          <div key={alertIndex} className="text-xs bg-muted/30 rounded p-2 border">
+                                            <div className="flex items-center gap-2">
+                                              <Badge variant="outline" className="text-xs">{alert.severity}</Badge>
+                                              <span className="text-muted-foreground">
+                                                {formatDistanceToNow(new Date(alert.detectedAt), { addSuffix: true, locale: ptBR })}
+                                              </span>
+                                            </div>
+                                            <p className="mt-1">{alert.description}</p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Action Button */}
+                                  <div className="flex justify-end pt-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        // Copy suggested fix to draft
+                                        setDraftContent(prev => {
+                                          const separator = '\n\n' + '='.repeat(50) + '\n';
+                                          const header = `CORREÇÃO SUGERIDA (${suggestion.problemSummary}):\n`;
+                                          const newContent = prev + separator + header + suggestion.suggestedFix + '\n';
+                                          return newContent;
+                                        });
+                                        toast({
+                                          title: "Sugestão adicionada ao rascunho",
+                                          description: "A correção foi adicionada ao final do seu rascunho. Revise e ajuste conforme necessário.",
+                                        });
+                                      }}
+                                      data-testid={`button-apply-suggestion-${index}`}
+                                    >
+                                      <Send className="w-4 h-4 mr-2" />
+                                      Adicionar ao Rascunho
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </>
+                      )}
+                    </div>
+                  </ScrollArea>
                 </TabsContent>
 
                 {currentPrompt.draft?.aiSuggestions && (
