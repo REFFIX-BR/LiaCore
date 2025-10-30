@@ -4146,6 +4146,26 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     }
   });
 
+  // GET /api/monitor/context-quality - Context quality monitoring stats
+  app.get("/api/monitor/context-quality", authenticateWithTracking, async (req, res) => {
+    try {
+      const { ContextMonitor } = await import("./lib/context-monitor");
+      
+      const hours = parseInt(req.query.hours as string) || 24;
+      const stats = ContextMonitor.getStats(hours);
+      const recentAlerts = ContextMonitor.getRecentAlerts(hours);
+      
+      return res.json({
+        stats,
+        recentAlerts: recentAlerts.slice(0, 50), // Limitar a 50 alertas mais recentes
+        period: `${hours}h`,
+      });
+    } catch (error) {
+      console.error("Error fetching context quality stats:", error);
+      return res.status(500).json({ error: "Failed to fetch context quality stats" });
+    }
+  });
+
   // Supervisor actions
   app.post("/api/supervisor/transfer", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {

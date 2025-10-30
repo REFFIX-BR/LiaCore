@@ -46,6 +46,7 @@ import { sendMessageAndGetResponse } from './lib/openai';
 import { analyzeImageWithVision } from './lib/vision';
 import { storage } from './storage';
 import { checkAndNotifyMassiveFailure } from './lib/massive-failure-handler';
+import { ContextMonitor } from './lib/context-monitor';
 
 // Helper function to validate and normalize Evolution API instance
 // CRITICAL: ONLY "Leads" or "Cobranca" are allowed - NEVER "Principal"
@@ -847,20 +848,26 @@ if (redisConnection) {
           }
           
           // 🆕 INJETAR CONTEXTO DO ROTEAMENTO: Construir mensagem contextualizada
-          // Em vez de enviar apenas "2", vamos enviar o motivo completo do roteamento
+          // IMPORTANTE: Os assistentes agora têm instruções explícitas para revisar histórico completo
+          // Portanto, NÃO precisamos modificar a mensagem original - ela já está no thread OpenAI
           let contextualizedMessage = message;
           
           if (result.routingReason && result.routingReason.trim().length > 0) {
-            // Se há um motivo de roteamento, usá-lo como contexto principal
-            contextualizedMessage = `${result.routingReason}`;
+            // Verificar se mensagem é apenas seleção numérica (1, 2, etc.)
+            const isSimpleSelection = /^[0-9]{1,2}$/.test(message.trim());
             
-            // Preservar mensagem original se contiver informação relevante (não apenas números de seleção)
-            const isSimpleSelection = /^[0-9]{1,2}$/.test(message.trim()); // Apenas 1-2 dígitos
-            if (!isSimpleSelection && message.trim().length > 2) {
-              contextualizedMessage += `\n\nObservação adicional do cliente: ${message}`;
+            if (isSimpleSelection) {
+              // Se é apenas número, SUBSTITUIR pela razão do roteamento
+              // Ex: "2" → "Cliente solicitou boleto"
+              contextualizedMessage = result.routingReason;
+              console.log(`🔀 [Worker] Substituindo seleção numérica "${message}" por contexto: "${contextualizedMessage}"`);
+            } else {
+              // Se mensagem tem conteúdo real, MANTER MENSAGEM ORIGINAL
+              // O assistente vai ler o histórico e terá contexto completo
+              contextualizedMessage = message;
+              console.log(`🔀 [Worker] Mantendo mensagem original (assistente lerá histórico): "${message}"`);
+              console.log(`   Motivo do roteamento (apenas para log): "${result.routingReason}"`);
             }
-            
-            console.log(`🔀 [Worker] Contexto injetado para ${result.assistantTarget}: "${contextualizedMessage}"`);
           } else {
             console.log(`⚠️ [Worker] Sem motivo de roteamento - usando mensagem original: "${message}"`);
           }
@@ -891,6 +898,13 @@ if (redisConnection) {
               });
               
               console.log(`✅ [Worker] Novo assistente ${result.assistantTarget} processou e respondeu com sucesso`);
+              
+              // 🔍 MONITORAR QUALIDADE DE CONTEXTO (após roteamento)
+              await ContextMonitor.monitorInteraction(
+                conversationId,
+                newAssistantResult.response,
+                result.assistantTarget
+              ).catch(err => console.error('❌ [Context Monitor] Error:', err));
             } else {
               console.error(`❌ [Worker] Falha ao enviar resposta do novo assistente`);
             }
@@ -1000,6 +1014,12 @@ if (redisConnection) {
               ? result.functionCalls[0] // Store first function call (most relevant)
               : undefined,
           });
+          
+          // 🔍 MONITORAR QUALIDADE DE CONTEXTO (resposta normal)
+          await ContextMonitor.monitorInteraction(
+            conversationId,
+            result.response
+          ).catch(err => console.error('❌ [Context Monitor] Error:', err));
         }
       } else {
         console.log(`⏩ [Worker] Skipping presentation message - routing already handled`);
