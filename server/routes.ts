@@ -9605,5 +9605,81 @@ A resposta deve:
     }
   });
 
+  // GET /api/prompts/:assistantType/context-suggestions - Get Context Quality Monitor suggestions for specific assistant
+  app.get("/api/prompts/:assistantType/context-suggestions", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { assistantType } = req.params;
+      const { hours = 168 } = req.query; // Default: last 7 days (168 hours)
+
+      console.log(`📊 [Context Suggestions] Fetching alerts for assistant: ${assistantType} (last ${hours}h)`);
+
+      // Get recent alerts filtered by assistant type
+      const allAlerts = await storage.getRecentContextQualityAlerts(Number(hours));
+      const assistantAlerts = allAlerts.filter(alert => alert.assistantType === assistantType);
+
+      console.log(`📊 [Context Suggestions] Found ${assistantAlerts.length} alerts for ${assistantType}`);
+
+      // Group alerts by type
+      const alertsByType: Record<string, typeof assistantAlerts> = {};
+      assistantAlerts.forEach(alert => {
+        if (!alertsByType[alert.alertType]) {
+          alertsByType[alert.alertType] = [];
+        }
+        alertsByType[alert.alertType].push(alert);
+      });
+
+      // Generate suggestions for each alert type using the prompt-suggestions library
+      const { generatePromptSuggestions } = await import("./lib/prompt-suggestions");
+      const template = await storage.getPromptTemplateByType(assistantType);
+      
+      const suggestions = await Promise.all(
+        Object.entries(alertsByType).map(async ([alertType, alerts]) => {
+          const suggestion = await generatePromptSuggestions(
+            alerts.map(a => ({
+              alertType: a.alertType,
+              severity: a.severity,
+              description: a.description,
+              conversationId: a.conversationId || '',
+              metadata: a.metadata || {},
+            })),
+            assistantType,
+            template?.content
+          );
+          
+          return {
+            ...suggestion,
+            alertType,
+            count: alerts.length,
+            recentAlerts: alerts.slice(0, 5).map(a => ({
+              id: a.id,
+              description: a.description,
+              severity: a.severity,
+              detectedAt: a.detectedAt,
+              conversationId: a.conversationId,
+            })),
+          };
+        })
+      );
+
+      // Sort by priority (high > medium > low) and count
+      const priorityOrder = { high: 3, medium: 2, low: 1 };
+      suggestions.sort((a, b) => {
+        const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
+        if (priorityDiff !== 0) return priorityDiff;
+        return b.count - a.count;
+      });
+
+      return res.json({
+        assistantType,
+        totalAlerts: assistantAlerts.length,
+        suggestions,
+        period: `${hours}h`,
+      });
+    } catch (error) {
+      console.error("❌ [Context Suggestions] Error fetching suggestions:", error);
+      return res.status(500).json({ error: "Erro ao buscar sugestões de contexto" });
+    }
+  });
+
   return httpServer;
 }
