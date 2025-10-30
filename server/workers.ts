@@ -1018,7 +1018,8 @@ if (redisConnection) {
           // 🔍 MONITORAR QUALIDADE DE CONTEXTO (resposta normal)
           await ContextMonitor.monitorInteraction(
             conversationId,
-            result.response
+            result.response,
+            conversation.assistantType
           ).catch(err => console.error('❌ [Context Monitor] Error:', err));
         }
       } else {

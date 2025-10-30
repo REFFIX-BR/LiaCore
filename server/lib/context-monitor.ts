@@ -16,6 +16,7 @@ export interface ContextQualityAlert {
   severity: 'low' | 'medium' | 'high';
   description: string;
   detectedAt: Date;
+  assistantType?: string; // Tipo do assistente que gerou o alerta
   metadata?: Record<string, any>;
 }
 
@@ -28,7 +29,8 @@ export class ContextMonitor {
   static async detectDuplicateDataRequest(
     conversationId: string,
     assistantMessage: string,
-    recentMessages: Message[]
+    recentMessages: Message[],
+    assistantType?: string
   ): Promise<ContextQualityAlert | null> {
     // Padrões de solicitação de dados
     const dataRequestPatterns = {
@@ -71,6 +73,7 @@ export class ContextMonitor {
           severity: 'high',
           description: `Assistente pediu ${dataType.toUpperCase()} que cliente já forneceu anteriormente`,
           detectedAt: new Date(),
+          assistantType,
           metadata: {
             requestedData: dataType,
             assistantMessage: assistantMessage.substring(0, 200),
@@ -89,7 +92,8 @@ export class ContextMonitor {
   static async detectIgnoredHistory(
     conversationId: string,
     assistantMessage: string,
-    recentMessages: Message[]
+    recentMessages: Message[],
+    assistantType?: string
   ): Promise<ContextQualityAlert | null> {
     // Mensagens genéricas de início de conversa
     const greetingPatterns = [
@@ -114,6 +118,7 @@ export class ContextMonitor {
         severity: 'medium',
         description: `Assistente enviou saudação genérica ignorando ${conversationLength} mensagens anteriores`,
         detectedAt: new Date(),
+        assistantType,
         metadata: {
           assistantMessage: assistantMessage.substring(0, 200),
           conversationLength,
@@ -151,6 +156,7 @@ export class ContextMonitor {
         severity: 'medium',
         description: `Detectados ${recentRoutings.length} roteamentos consecutivos (pode indicar confusão do assistente)`,
         detectedAt: new Date(),
+        assistantType: newAssistantType,
         metadata: {
           newAssistantType,
           recentRoutings: recentRoutings.map(m => m.content.substring(0, 100)),
@@ -167,7 +173,8 @@ export class ContextMonitor {
   static async detectContextReset(
     conversationId: string,
     assistantMessage: string,
-    recentMessages: Message[]
+    recentMessages: Message[],
+    assistantType?: string
   ): Promise<ContextQualityAlert | null> {
     // Padrões que indicam total falta de contexto
     const contextResetPatterns = [
@@ -192,6 +199,7 @@ export class ContextMonitor {
         severity: 'high',
         description: `Assistente alegou não ter informações apesar de ${recentMessages.length} mensagens disponíveis`,
         detectedAt: new Date(),
+        assistantType,
         metadata: {
           assistantMessage: assistantMessage.substring(0, 200),
           availableMessages: recentMessages.length,
@@ -208,7 +216,7 @@ export class ContextMonitor {
   static async monitorInteraction(
     conversationId: string,
     assistantMessage: string,
-    newAssistantType?: string
+    assistantType?: string
   ): Promise<ContextQualityAlert[]> {
     const alerts: ContextQualityAlert[] = [];
     
@@ -224,12 +232,12 @@ export class ContextMonitor {
         duplicateRoutingAlert,
         contextResetAlert,
       ] = await Promise.all([
-        this.detectDuplicateDataRequest(conversationId, assistantMessage, recentMessages),
-        this.detectIgnoredHistory(conversationId, assistantMessage, recentMessages),
-        newAssistantType 
-          ? this.detectDuplicateRouting(conversationId, newAssistantType, recentMessages)
+        this.detectDuplicateDataRequest(conversationId, assistantMessage, recentMessages, assistantType),
+        this.detectIgnoredHistory(conversationId, assistantMessage, recentMessages, assistantType),
+        assistantType 
+          ? this.detectDuplicateRouting(conversationId, assistantType, recentMessages)
           : null,
-        this.detectContextReset(conversationId, assistantMessage, recentMessages),
+        this.detectContextReset(conversationId, assistantMessage, recentMessages, assistantType),
       ]);
       
       // Coletar alertas não-nulos

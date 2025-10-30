@@ -23,6 +23,7 @@ interface ContextAlert {
   severity: string;
   description: string;
   detectedAt: string;
+  assistantType?: string;
   metadata?: Record<string, any>;
 }
 
@@ -59,6 +60,24 @@ const ASSISTANT_OPTIONS = [
   { value: "ouvidoria", label: "Ouvidoria" },
   { value: "cancelamento", label: "Cancelamento" },
 ];
+
+const ASSISTANT_LABELS: Record<string, string> = {
+  apresentacao: "Apresentação",
+  financeiro: "Financeiro",
+  comercial: "Comercial",
+  suporte: "Suporte",
+  ouvidoria: "Ouvidoria",
+  cancelamento: "Cancelamento",
+};
+
+const ASSISTANT_COLORS: Record<string, string> = {
+  apresentacao: "bg-purple-500",
+  financeiro: "bg-blue-500",
+  comercial: "bg-green-500",
+  suporte: "bg-orange-500",
+  ouvidoria: "bg-pink-500",
+  cancelamento: "bg-red-500",
+};
 
 interface PromptSuggestion {
   assistantType: string;
@@ -553,7 +572,7 @@ export default function ContextQuality() {
                         {getSeverityIcon(alert.severity)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <Badge
                             variant={getSeverityBadgeVariant(alert.severity)}
                             data-testid={`badge-severity-${index}`}
@@ -563,6 +582,14 @@ export default function ContextQuality() {
                           <Badge variant="outline" data-testid={`badge-type-${index}`}>
                             {ALERT_TYPE_LABELS[alert.alertType] || alert.alertType}
                           </Badge>
+                          {alert.assistantType && (
+                            <Badge 
+                              className={`${ASSISTANT_COLORS[alert.assistantType] || 'bg-gray-500'} text-white`}
+                              data-testid={`badge-assistant-${index}`}
+                            >
+                              {ASSISTANT_LABELS[alert.assistantType] || alert.assistantType}
+                            </Badge>
+                          )}
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
                             <Clock className="h-3 w-3" />
                             {formatDate(alert.detectedAt)}
