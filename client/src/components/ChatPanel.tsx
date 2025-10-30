@@ -349,12 +349,9 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         }
       );
       
-      console.log(`✅ [Mutation] Resposta recebida:`, {
-        status: response.status,
-        statusText: response.statusText
-      });
+      console.log(`✅ [Mutation] Mensagem enviada com sucesso`);
       
-      return response.json();
+      return response;
     },
     onSuccess: (data) => {
       setMessageContent("");
