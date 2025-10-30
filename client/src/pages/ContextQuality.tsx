@@ -5,10 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertCircle, AlertTriangle, Info, TrendingUp, Clock, Sparkles, Copy, CheckCircle } from "lucide-react";
+import { AlertCircle, AlertTriangle, Info, TrendingUp, Clock, Sparkles, Copy, CheckCircle, Zap } from "lucide-react";
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface ContextQualityStats {
   totalAlerts: number;
@@ -424,6 +424,40 @@ export default function ContextQuality() {
 
       <div className="flex-1 overflow-auto p-6">
         <div className="space-y-6">
+          {/* Test Button (DEV ONLY) */}
+          {import.meta.env.DEV && (
+            <div className="mb-4">
+              <Button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/monitor/context-quality/test', {
+                      method: 'POST',
+                      credentials: 'include',
+                    });
+                    if (!response.ok) throw new Error('Failed to inject test alerts');
+                    await queryClient.invalidateQueries({ queryKey: ['/api/monitor/context-quality'] });
+                    toast({
+                      title: "Alertas de teste injetados",
+                      description: "6 alertas simulados foram adicionados com sucesso!",
+                    });
+                  } catch (error) {
+                    toast({
+                      title: "Erro ao injetar alertas",
+                      description: "Falha ao criar alertas de teste",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                variant="outline"
+                size="sm"
+                data-testid="button-inject-test-alerts"
+              >
+                <Zap className="h-4 w-4 mr-2" />
+                Injetar Alertas de Teste
+              </Button>
+            </div>
+          )}
+
           {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card data-testid="card-total-alerts">

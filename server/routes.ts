@@ -4166,6 +4166,91 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     }
   });
 
+  // POST /api/monitor/context-quality/test - Injeta alertas de teste (apenas DEV)
+  app.post("/api/monitor/context-quality/test", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    if (process.env.NODE_ENV !== 'development') {
+      return res.status(403).json({ error: "Test endpoint only available in development" });
+    }
+    
+    try {
+      const { ContextMonitor } = await import("./lib/context-monitor");
+      
+      // Injetar alertas de teste para cada assistente
+      const testAlerts = [
+        {
+          conversationId: 'test-conv-1',
+          alertType: 'duplicate_data_request',
+          severity: 'high' as const,
+          description: 'Assistente pediu CPF que cliente já forneceu anteriormente',
+          detectedAt: new Date(),
+          assistantType: 'financeiro',
+          metadata: { requestedData: 'cpf' },
+        },
+        {
+          conversationId: 'test-conv-2',
+          alertType: 'ignored_history',
+          severity: 'medium' as const,
+          description: 'Assistente enviou saudação genérica ignorando 12 mensagens anteriores',
+          detectedAt: new Date(Date.now() - 60000),
+          assistantType: 'suporte',
+          metadata: { conversationLength: 12 },
+        },
+        {
+          conversationId: 'test-conv-3',
+          alertType: 'duplicate_routing',
+          severity: 'medium' as const,
+          description: 'Detectados 3 roteamentos consecutivos (pode indicar confusão do assistente)',
+          detectedAt: new Date(Date.now() - 120000),
+          assistantType: 'apresentacao',
+          metadata: { recentRoutings: ['rotear1', 'rotear2', 'rotear3'] },
+        },
+        {
+          conversationId: 'test-conv-4',
+          alertType: 'context_reset',
+          severity: 'high' as const,
+          description: 'Assistente alegou não ter informações apesar de 15 mensagens disponíveis',
+          detectedAt: new Date(Date.now() - 180000),
+          assistantType: 'comercial',
+          metadata: { availableMessages: 15 },
+        },
+        {
+          conversationId: 'test-conv-5',
+          alertType: 'duplicate_data_request',
+          severity: 'high' as const,
+          description: 'Assistente pediu CNPJ que cliente já forneceu anteriormente',
+          detectedAt: new Date(Date.now() - 240000),
+          assistantType: 'ouvidoria',
+          metadata: { requestedData: 'cnpj' },
+        },
+        {
+          conversationId: 'test-conv-6',
+          alertType: 'ignored_history',
+          severity: 'medium' as const,
+          description: 'Assistente enviou saudação genérica ignorando 8 mensagens anteriores',
+          detectedAt: new Date(Date.now() - 300000),
+          assistantType: 'cancelamento',
+          metadata: { conversationLength: 8 },
+        },
+      ];
+      
+      // Injetar alertas diretamente no ContextMonitor
+      testAlerts.forEach(alert => {
+        (ContextMonitor as any).alerts.push(alert);
+      });
+      
+      console.log(`✅ [Test] Injected ${testAlerts.length} test alerts`);
+      
+      return res.json({ 
+        success: true, 
+        injectedAlerts: testAlerts.length,
+        message: 'Test alerts injected successfully' 
+      });
+    } catch (error) {
+      console.error("Error injecting test alerts:", error);
+      return res.status(500).json({ error: "Failed to inject test alerts" });
+    }
+  });
+
   // POST /api/monitor/context-quality/suggest-fix - Gera sugestões de correção de prompt
   app.post("/api/monitor/context-quality/suggest-fix", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
