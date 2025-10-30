@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -101,6 +101,11 @@ export default function PromptManagement() {
   const [consolidationResult, setConsolidationResult] = useState<any>(null);
   const [selectedOptimizations, setSelectedOptimizations] = useState<number[]>([]);
   
+  // Refs for synchronized scrolling in comparison view
+  const productionScrollRef = useRef<HTMLDivElement>(null);
+  const draftScrollRef = useRef<HTMLDivElement>(null);
+  const scrollSyncActiveRef = useRef(false);
+  
   // Token counter
   const { count: tokenCount, isLoading: countingTokens } = useTokenCount(draftContent);
 
@@ -135,6 +140,46 @@ export default function PromptManagement() {
       setSelectedOptimizations([]);
     }
   }, [currentPrompt?.draft?.aiSuggestions]);
+
+  // Synchronized scrolling for comparison view
+  useEffect(() => {
+    const productionRoot = productionScrollRef.current;
+    const draftRoot = draftScrollRef.current;
+
+    if (!productionRoot || !draftRoot) return;
+
+    // Access the viewport element inside ScrollArea (Radix UI structure)
+    const productionViewport = productionRoot.querySelector('[data-radix-scroll-area-viewport]');
+    const draftViewport = draftRoot.querySelector('[data-radix-scroll-area-viewport]');
+
+    if (!productionViewport || !draftViewport) return;
+
+    const handleProductionScroll = () => {
+      if (scrollSyncActiveRef.current) return;
+      scrollSyncActiveRef.current = true;
+      draftViewport.scrollTop = productionViewport.scrollTop;
+      requestAnimationFrame(() => {
+        scrollSyncActiveRef.current = false;
+      });
+    };
+
+    const handleDraftScroll = () => {
+      if (scrollSyncActiveRef.current) return;
+      scrollSyncActiveRef.current = true;
+      productionViewport.scrollTop = draftViewport.scrollTop;
+      requestAnimationFrame(() => {
+        scrollSyncActiveRef.current = false;
+      });
+    };
+
+    productionViewport.addEventListener('scroll', handleProductionScroll);
+    draftViewport.addEventListener('scroll', handleDraftScroll);
+
+    return () => {
+      productionViewport.removeEventListener('scroll', handleProductionScroll);
+      draftViewport.removeEventListener('scroll', handleDraftScroll);
+    };
+  }, []);
 
   // Save draft mutation
   const saveDraftMutation = useMutation({
@@ -661,33 +706,49 @@ export default function PromptManagement() {
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="diff" className="flex-1 overflow-hidden mt-4 px-4">
-                  <div className="grid grid-cols-2 gap-4 h-full max-h-[calc(100vh-240px)]">
-                    <Card className="flex flex-col h-full">
+                <TabsContent value="diff" className="flex-1 mt-4 px-4">
+                  <div className="grid grid-cols-2 gap-4 h-[calc(100vh-240px)]">
+                    <Card className="flex flex-col h-full overflow-hidden">
                       <CardHeader className="flex-shrink-0">
                         <CardTitle className="text-sm flex items-center gap-2">
                           <CheckCircle2 className="w-4 h-4 text-green-600" />
                           Produção (v{currentPrompt.version})
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="flex-1 overflow-auto min-h-0">
-                        <pre className="text-xs font-mono whitespace-pre-wrap">
-                          {currentPrompt.content}
-                        </pre>
+                      <CardContent className="flex-1 p-0 overflow-hidden">
+                        <ScrollArea 
+                          ref={productionScrollRef}
+                          className="h-full w-full"
+                          data-testid="comparison-production-panel"
+                        >
+                          <div className="p-6">
+                            <pre className="text-xs font-mono whitespace-pre-wrap">
+                              {currentPrompt.content}
+                            </pre>
+                          </div>
+                        </ScrollArea>
                       </CardContent>
                     </Card>
 
-                    <Card className="flex flex-col h-full">
+                    <Card className="flex flex-col h-full overflow-hidden">
                       <CardHeader className="flex-shrink-0">
                         <CardTitle className="text-sm flex items-center gap-2">
                           <AlertCircle className="w-4 h-4 text-orange-600" />
                           Rascunho (não publicado)
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="flex-1 overflow-auto min-h-0">
-                        <pre className="text-xs font-mono whitespace-pre-wrap">
-                          {draftContent || currentPrompt.content}
-                        </pre>
+                      <CardContent className="flex-1 p-0 overflow-hidden">
+                        <ScrollArea 
+                          ref={draftScrollRef}
+                          className="h-full w-full"
+                          data-testid="comparison-draft-panel"
+                        >
+                          <div className="p-6">
+                            <pre className="text-xs font-mono whitespace-pre-wrap">
+                              {draftContent || currentPrompt.content}
+                            </pre>
+                          </div>
+                        </ScrollArea>
                       </CardContent>
                     </Card>
                   </div>
