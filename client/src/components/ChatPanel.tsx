@@ -301,7 +301,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         "POST",
         { supervisorName: user?.fullName }
       );
-      return response.json();
+      return response;
     },
     onSuccess: (data) => {
       setAiSuggestion(data.suggestedResponse);
@@ -395,7 +395,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         "POST",
         { resolvedBy: user?.fullName }
       );
-      return response.json();
+      return response;
     },
     onSuccess: () => {
       toast({
@@ -415,7 +415,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         "POST",
         {} // Body vazio para auto-atribuição (backend usa currentUser.userId)
       );
-      return response.json();
+      return response;
     },
     onSuccess: (data) => {
       if (data.unassigned) {
@@ -461,7 +461,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         "POST",
         { content }
       );
-      return response.json();
+      return response;
     },
     onSuccess: () => {
       toast({
@@ -498,7 +498,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         "POST",
         requestBody
       );
-      return response.json();
+      return response;
     },
     onSuccess: (data) => {
       toast({
@@ -529,7 +529,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         `/api/messages/${messageId}`, 
         "DELETE"
       );
-      return response.json();
+      return response;
     },
     onSuccess: async (data) => {
       toast({
@@ -560,7 +560,7 @@ export function ChatPanel({ conversation, onClose, showCloseButton = false }: Ch
         "POST",
         {}
       );
-      return response.json();
+      return response;
     },
     onSuccess: () => {
       toast({

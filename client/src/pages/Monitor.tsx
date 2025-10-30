@@ -188,7 +188,7 @@ export default function Monitor() {
         "POST",
         {}
       );
-      return response.json();
+      return response;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations"] });
@@ -217,7 +217,7 @@ export default function Monitor() {
         "POST",
         {}
       );
-      return response.json();
+      return response;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations"] });
