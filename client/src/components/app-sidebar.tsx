@@ -127,6 +127,12 @@ const menuCategories: MenuCategory[] = [
     roles: ["ADMIN", "SUPERVISOR"],
     items: [
       {
+        title: "Qualidade de Contexto",
+        url: "/context-quality",
+        icon: Brain,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
         title: "Ouvidoria",
         url: "/ouvidoria",
         icon: AlertTriangle,

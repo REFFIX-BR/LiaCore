@@ -37,6 +37,7 @@ import FalhasMassivas from "@/pages/FalhasMassivas";
 import Regioes from "@/pages/Regioes";
 import Anuncios from "@/pages/Anuncios";
 import PromptManagement from "@/pages/PromptManagement";
+import ContextQuality from "@/pages/ContextQuality";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -207,6 +208,9 @@ function Router() {
       </Route>
       <Route path="/ouvidoria">
         {() => <AdminSupervisorRoute component={Ouvidoria} />}
+      </Route>
+      <Route path="/context-quality">
+        {() => <AdminSupervisorRoute component={ContextQuality} />}
       </Route>
       <Route path="/vendas">
         {() => <SalesRoute component={Vendas} />}
