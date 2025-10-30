@@ -2359,7 +2359,7 @@ Responda APENAS com JSON válido:
 
 // Zod schema for AI analysis validation
 const promptAnalysisRecommendationSchema = z.object({
-  category: z.enum(['clarity', 'structure', 'tone', 'instructions', 'edge_cases', 'compliance']),
+  category: z.enum(['clarity', 'structure', 'tone', 'instructions', 'edge_cases', 'extreme_cases', 'compliance']),
   priority: z.enum(['high', 'medium', 'low']),
   suggestion: z.string(),
   example: z.string().optional(),
@@ -2388,7 +2388,7 @@ export interface PromptAnalysisResult {
   strengths: string[];
   weaknesses: string[];
   recommendations: Array<{
-    category: 'clarity' | 'structure' | 'tone' | 'instructions' | 'edge_cases' | 'compliance';
+    category: 'clarity' | 'structure' | 'tone' | 'instructions' | 'edge_cases' | 'extreme_cases' | 'compliance';
     priority: 'high' | 'medium' | 'low';
     suggestion: string;
     example?: string;
