@@ -9630,7 +9630,7 @@ A resposta deve:
 
       // Generate suggestions for each alert type using the prompt-suggestions library
       const { generatePromptSuggestions } = await import("./lib/prompt-suggestions");
-      const template = await storage.getPromptTemplateByType(assistantType);
+      const template = await storage.getPromptTemplateByAssistantType(assistantType);
       
       const suggestions = await Promise.all(
         Object.entries(alertsByType).map(async ([alertType, alerts]) => {
