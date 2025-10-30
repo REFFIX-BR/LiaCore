@@ -551,7 +551,25 @@ export async function sendMessageAndGetResponse(
     }
 
     if (run.status === "failed" || run.status === "cancelled" || run.status === "expired") {
-      throw new Error(`Run failed with status: ${run.status}`);
+      // Log detailed error information from OpenAI
+      const errorDetails = {
+        status: run.status,
+        runId: run.id,
+        threadId: threadId,
+        lastError: (run as any).last_error || null,
+        incompleteDetails: (run as any).incomplete_details || null,
+      };
+      
+      console.error("❌ [OpenAI] Run failed with details:", JSON.stringify(errorDetails, null, 2));
+      
+      // Create detailed error message
+      let errorMessage = `Run failed with status: ${run.status}`;
+      if ((run as any).last_error) {
+        const lastError = (run as any).last_error;
+        errorMessage += ` | Error: ${lastError.code || 'unknown'} - ${lastError.message || 'No message provided'}`;
+      }
+      
+      throw new Error(errorMessage);
     }
 
     const messages = await openaiCircuitBreaker.execute(() =>
