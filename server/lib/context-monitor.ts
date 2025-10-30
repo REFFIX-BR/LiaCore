@@ -221,9 +221,13 @@ export class ContextMonitor {
     const alerts: ContextQualityAlert[] = [];
     
     try {
+      console.log(`🔍 [Context Monitor] Monitoring interaction - Assistant: ${assistantType || 'unknown'}, Conversation: ${conversationId.substring(0, 8)}...`);
+      
       // Buscar mensagens recentes da conversa
       const allMessages = await storage.getMessagesByConversationId(conversationId);
       const recentMessages = allMessages.slice(-50); // Últimas 50 mensagens
+      
+      console.log(`🔍 [Context Monitor] Analyzing ${recentMessages.length} messages for potential issues...`);
       
       // Executar todos os detectores
       const [
@@ -255,8 +259,15 @@ export class ContextMonitor {
           console.warn(`⚠️  [CONTEXT MONITOR] ${alert.severity.toUpperCase()}: ${alert.description}`);
           console.warn(`   Conversation: ${conversationId}`);
           console.warn(`   Alert Type: ${alert.alertType}`);
+          console.warn(`   Assistant: ${alert.assistantType || 'unknown'}`);
         }
       });
+      
+      if (alerts.length === 0) {
+        console.log(`✅ [Context Monitor] No issues detected - conversation quality is good`);
+      } else {
+        console.warn(`⚠️  [Context Monitor] Detected ${alerts.length} quality issue(s)`);
+      }
       
       // Garantir limite máximo de 304 alertas (remover mais antigos)
       if (this.alerts.length > 304) {
