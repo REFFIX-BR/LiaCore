@@ -4294,7 +4294,7 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
       }
 
       const period = hours || 24;
-      const allAlerts = ContextMonitor.getRecentAlerts(period);
+      const allAlerts = await ContextMonitor.getRecentAlerts(period);
       
       // Filtrar alertas por tipo de assistente (se disponível no metadata)
       // Por enquanto, usar todos os alertas
