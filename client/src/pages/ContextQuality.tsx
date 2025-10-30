@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, AlertTriangle, Info, TrendingUp, Clock } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertCircle, AlertTriangle, Info, TrendingUp, Clock, Sparkles, Copy, CheckCircle } from "lucide-react";
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 interface ContextQualityStats {
   totalAlerts: number;
@@ -48,8 +51,31 @@ const SEVERITY_LABELS: Record<string, string> = {
   low: "Baixa",
 };
 
+const ASSISTANT_OPTIONS = [
+  { value: "apresentacao", label: "Apresentação (Recepcionista)" },
+  { value: "financeiro", label: "Financeiro" },
+  { value: "comercial", label: "Comercial" },
+  { value: "suporte", label: "Suporte Técnico" },
+  { value: "ouvidoria", label: "Ouvidoria" },
+  { value: "cancelamento", label: "Cancelamento" },
+];
+
+interface PromptSuggestion {
+  assistantType: string;
+  problemSummary: string;
+  rootCause: string;
+  suggestedFix: string;
+  exampleBefore: string;
+  exampleAfter: string;
+  priority: "high" | "medium" | "low";
+}
+
 export default function ContextQuality() {
   const [period, setPeriod] = useState<string>("24");
+  const [selectedAssistant, setSelectedAssistant] = useState<string>("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [copiedText, setCopiedText] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const { data, isLoading, refetch } = useQuery<ContextQualityResponse>({
     queryKey: ["/api/monitor/context-quality", period],
@@ -60,6 +86,54 @@ export default function ContextQuality() {
     },
     refetchInterval: 30000, // Atualizar a cada 30 segundos
   });
+
+  const suggestionMutation = useMutation({
+    mutationFn: async (assistantType: string) => {
+      return apiRequest(
+        `/api/monitor/context-quality/suggest-fix`,
+        "POST",
+        { 
+          assistantType, 
+          hours: parseInt(period) 
+        }
+      );
+    },
+    onSuccess: () => {
+      toast({
+        title: "Sugestão Gerada!",
+        description: "A IA analisou os alertas e criou uma sugestão de correção.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível gerar a sugestão. Tente novamente.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleGenerateSuggestion = () => {
+    if (!selectedAssistant) {
+      toast({
+        title: "Selecione um assistente",
+        description: "Escolha qual assistente você quer corrigir.",
+        variant: "destructive",
+      });
+      return;
+    }
+    suggestionMutation.mutate(selectedAssistant);
+  };
+
+  const handleCopyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedText(label);
+    setTimeout(() => setCopiedText(null), 2000);
+    toast({
+      title: "Copiado!",
+      description: `${label} copiado para a área de transferência.`,
+    });
+  };
 
   // Preparar dados para o gráfico de barras (por tipo)
   const typeChartData = data?.stats.byType
@@ -139,6 +213,173 @@ export default function ContextQuality() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="gap-2"
+                  data-testid="button-suggest-fix"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Gerar Sugestão de Correção
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                    Sugestão Inteligente de Correção
+                  </DialogTitle>
+                  <DialogDescription>
+                    A IA vai analisar os alertas detectados e sugerir correções específicas para o prompt do assistente
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">
+                      Selecione o Assistente para Corrigir
+                    </label>
+                    <Select value={selectedAssistant} onValueChange={setSelectedAssistant}>
+                      <SelectTrigger data-testid="select-assistant">
+                        <SelectValue placeholder="Escolha o assistente..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ASSISTANT_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button
+                    onClick={handleGenerateSuggestion}
+                    disabled={!selectedAssistant || suggestionMutation.isPending}
+                    className="w-full"
+                    data-testid="button-generate"
+                  >
+                    {suggestionMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Analisando alertas e gerando sugestão...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Gerar Sugestão com IA
+                      </>
+                    )}
+                  </Button>
+
+                  {suggestionMutation.data?.suggestion && (
+                    <div className="space-y-4 mt-6 border-t pt-6">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold">Resultado da Análise</h3>
+                        <Badge variant={
+                          suggestionMutation.data.suggestion.priority === "high" ? "destructive" :
+                          suggestionMutation.data.suggestion.priority === "medium" ? "default" : "secondary"
+                        }>
+                          Prioridade: {suggestionMutation.data.suggestion.priority.toUpperCase()}
+                        </Badge>
+                      </div>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base">📋 Resumo do Problema</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm">{suggestionMutation.data.suggestion.problemSummary}</p>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base">🔍 Causa Raiz</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm">{suggestionMutation.data.suggestion.rootCause}</p>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                          <CardTitle className="text-base">✨ Correção Sugerida</CardTitle>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleCopyText(suggestionMutation.data.suggestion.suggestedFix, "Correção")}
+                            className="gap-2"
+                          >
+                            {copiedText === "Correção" ? (
+                              <><CheckCircle className="h-4 w-4" /> Copiado!</>
+                            ) : (
+                              <><Copy className="h-4 w-4" /> Copiar</>
+                            )}
+                          </Button>
+                        </CardHeader>
+                        <CardContent>
+                          <pre className="text-sm bg-muted p-4 rounded-md overflow-x-auto whitespace-pre-wrap">
+                            {suggestionMutation.data.suggestion.suggestedFix}
+                          </pre>
+                        </CardContent>
+                      </Card>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-base text-destructive">❌ Antes (Errado)</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <pre className="text-sm bg-destructive/10 p-3 rounded-md whitespace-pre-wrap">
+                              {suggestionMutation.data.suggestion.exampleBefore}
+                            </pre>
+                          </CardContent>
+                        </Card>
+
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-base text-green-600">✅ Depois (Correto)</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <pre className="text-sm bg-green-100 dark:bg-green-950 p-3 rounded-md whitespace-pre-wrap">
+                              {suggestionMutation.data.suggestion.exampleAfter}
+                            </pre>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                        <CardContent className="pt-4">
+                          <p className="text-sm text-blue-900 dark:text-blue-100">
+                            <strong>💡 Próximos Passos:</strong><br />
+                            1. Copie a "Correção Sugerida" acima<br />
+                            2. Vá em <strong>Conhecimento & IA → Gerenciamento de Prompts</strong><br />
+                            3. Selecione o assistente <strong>{ASSISTANT_OPTIONS.find(a => a.value === selectedAssistant)?.label}</strong><br />
+                            4. Cole a correção no prompt<br />
+                            5. Analise com IA e Publique<br />
+                            6. Volte aqui em 24h para verificar se os alertas diminuíram
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+
+                  {suggestionMutation.data && !suggestionMutation.data.suggestion && (
+                    <Card className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800">
+                      <CardContent className="pt-4">
+                        <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                          {suggestionMutation.data.message || "Nenhum alerta encontrado para este assistente no período selecionado."}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+
             <Select value={period} onValueChange={setPeriod}>
               <SelectTrigger className="w-[180px]" data-testid="select-period">
                 <SelectValue placeholder="Selecionar período" />

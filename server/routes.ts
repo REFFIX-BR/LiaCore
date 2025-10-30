@@ -4166,6 +4166,55 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     }
   });
 
+  // POST /api/monitor/context-quality/suggest-fix - Gera sugestões de correção de prompt
+  app.post("/api/monitor/context-quality/suggest-fix", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { ContextMonitor } = await import("./lib/context-monitor");
+      const { generatePromptSuggestions } = await import("./lib/prompt-suggestions");
+      
+      const { assistantType, hours } = req.body;
+      
+      if (!assistantType) {
+        return res.status(400).json({ error: "assistantType é obrigatório" });
+      }
+
+      const period = hours || 24;
+      const allAlerts = ContextMonitor.getRecentAlerts(period);
+      
+      // Filtrar alertas por tipo de assistente (se disponível no metadata)
+      // Por enquanto, usar todos os alertas
+      const relevantAlerts = allAlerts;
+
+      if (relevantAlerts.length === 0) {
+        return res.status(200).json({
+          message: "Nenhum alerta encontrado para gerar sugestões",
+          suggestion: null
+        });
+      }
+
+      // Buscar prompt atual do assistente
+      const prompt = await storage.getPromptTemplateByAssistantType(assistantType);
+      const currentPromptContent = prompt?.content;
+
+      console.log(`🔍 [Prompt Suggestions] Gerando sugestão para ${assistantType} com ${relevantAlerts.length} alertas`);
+
+      const suggestion = await generatePromptSuggestions(
+        relevantAlerts,
+        assistantType,
+        currentPromptContent
+      );
+
+      return res.json({
+        suggestion,
+        alertsAnalyzed: relevantAlerts.length
+      });
+
+    } catch (error) {
+      console.error("❌ [Prompt Suggestions] Error generating suggestions:", error);
+      return res.status(500).json({ error: "Erro ao gerar sugestões de correção" });
+    }
+  });
+
   // Supervisor actions
   app.post("/api/supervisor/transfer", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
