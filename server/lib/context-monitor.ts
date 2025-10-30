@@ -250,10 +250,27 @@ export class ContextMonitor {
         ignoredHistoryAlert,
         duplicateRoutingAlert,
         contextResetAlert,
-      ].forEach(alert => {
+      ].forEach(async (alert) => {
         if (alert) {
           alerts.push(alert);
-          this.alerts.push(alert);
+          
+          // Salvar no banco de dados para persistência
+          try {
+            const { storage } = await import("../storage");
+            await storage.createContextQualityAlert({
+              conversationId: alert.conversationId,
+              alertType: alert.alertType as any,
+              severity: alert.severity as any,
+              description: alert.description,
+              assistantType: alert.assistantType,
+              metadata: alert.metadata,
+            });
+            console.log(`💾 [Context Monitor] Alert saved to database: ${alert.alertType}`);
+          } catch (saveError) {
+            console.error(`❌ [Context Monitor] Failed to save alert to database:`, saveError);
+            // Fallback to in-memory storage
+            this.alerts.push(alert);
+          }
           
           // Log no console para visibilidade imediata
           console.warn(`⚠️  [CONTEXT MONITOR] ${alert.severity.toUpperCase()}: ${alert.description}`);
@@ -267,18 +284,18 @@ export class ContextMonitor {
         console.log(`✅ [Context Monitor] No issues detected - conversation quality is good`);
       } else {
         console.warn(`⚠️  [Context Monitor] Detected ${alerts.length} quality issue(s)`);
+        
+        // Limpar alertas antigos do banco (>7 dias) - executar periodicamente
+        try {
+          const { storage } = await import("../storage");
+          const deleted = await storage.deleteOldContextQualityAlerts(7);
+          if (deleted > 0) {
+            console.log(`🧹 [Context Monitor] Cleaned ${deleted} old alerts from database (>7 days)`);
+          }
+        } catch (cleanupError) {
+          console.error(`❌ [Context Monitor] Failed to cleanup old alerts:`, cleanupError);
+        }
       }
-      
-      // Garantir limite máximo de 304 alertas (remover mais antigos)
-      if (this.alerts.length > 304) {
-        this.alerts = this.alerts
-          .sort((a, b) => b.detectedAt.getTime() - a.detectedAt.getTime()) // Mais recentes primeiro
-          .slice(0, 304); // Manter apenas os 304 mais recentes
-      }
-      
-      // Limpar alertas antigos (mais de 7 dias)
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      this.alerts = this.alerts.filter(a => a.detectedAt > sevenDaysAgo);
       
     } catch (error) {
       console.error('❌ [Context Monitor] Error monitoring interaction:', error);
@@ -288,49 +305,64 @@ export class ContextMonitor {
   }
   
   /**
-   * Retorna alertas recentes (últimas N horas), ordenados do mais recente ao mais antigo
+   * Retorna alertas recentes do banco de dados (últimas N horas)
    */
-  static getRecentAlerts(hours: number = 24): ContextQualityAlert[] {
-    const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000);
-    return this.alerts
-      .filter(alert => alert.detectedAt >= cutoffTime)
-      .sort((a, b) => b.detectedAt.getTime() - a.detectedAt.getTime()); // Mais recentes primeiro
+  static async getRecentAlerts(hours: number = 24): Promise<ContextQualityAlert[]> {
+    try {
+      const { storage } = await import("../storage");
+      return await storage.getRecentContextQualityAlerts(hours);
+    } catch (error) {
+      console.error(`❌ [Context Monitor] Failed to fetch recent alerts:`, error);
+      // Fallback to in-memory alerts
+      const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000);
+      return this.alerts
+        .filter(alert => alert.detectedAt >= cutoffTime)
+        .sort((a, b) => b.detectedAt.getTime() - a.detectedAt.getTime());
+    }
   }
   
   /**
-   * Obtém estatísticas de qualidade de contexto
+   * Obtém estatísticas de qualidade de contexto do banco de dados
    */
-  static getStats(hours: number = 24) {
-    const recentAlerts = this.getRecentAlerts(hours);
-    
-    const byType = recentAlerts.reduce((acc, alert) => {
-      acc[alert.alertType] = (acc[alert.alertType] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    
-    const bySeverity = recentAlerts.reduce((acc, alert) => {
-      acc[alert.severity] = (acc[alert.severity] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    
-    return {
-      totalAlerts: recentAlerts.length,
-      byType,
-      bySeverity,
-      period: `${hours}h`,
-    };
-  }
-  
-  /**
-   * Limpa alertas antigos (mais de 7 dias)
-   */
-  static cleanup() {
-    const cutoffTime = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    this.alerts = this.alerts.filter(alert => alert.detectedAt >= cutoffTime);
+  static async getStats(hours: number = 24) {
+    try {
+      const { storage } = await import("../storage");
+      const stats = await storage.getContextQualityStats(hours);
+      return {
+        ...stats,
+        period: `${hours}h`,
+      };
+    } catch (error) {
+      console.error(`❌ [Context Monitor] Failed to fetch stats:`, error);
+      // Fallback to in-memory calculation
+      const recentAlerts = await this.getRecentAlerts(hours);
+      const byType = recentAlerts.reduce((acc, alert) => {
+        acc[alert.alertType] = (acc[alert.alertType] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      const bySeverity = recentAlerts.reduce((acc, alert) => {
+        acc[alert.severity] = (acc[alert.severity] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      return {
+        totalAlerts: recentAlerts.length,
+        byType,
+        bySeverity,
+        period: `${hours}h`,
+      };
+    }
   }
 }
 
-// Limpeza automática a cada hora
-setInterval(() => {
-  ContextMonitor.cleanup();
+// Limpeza automática de alertas antigos a cada hora
+setInterval(async () => {
+  try {
+    const { storage } = await import("../storage");
+    const deleted = await storage.deleteOldContextQualityAlerts(7);
+    if (deleted > 0) {
+      console.log(`🧹 [Context Monitor Cleanup] Removed ${deleted} old alerts (>7 days)`);
+    }
+  } catch (error) {
+    console.error(`❌ [Context Monitor Cleanup] Failed:`, error);
+  }
 }, 60 * 60 * 1000);

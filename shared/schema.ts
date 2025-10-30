@@ -942,6 +942,23 @@ export const promptDrafts = pgTable("prompt_drafts", {
   promptIdIdx: index("prompt_drafts_prompt_id_idx").on(table.promptId),
 }));
 
+// Context Quality Alerts - Monitoring de qualidade de contexto das conversas
+export const contextQualityAlerts = pgTable("context_quality_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull(),
+  alertType: text("alert_type").notNull(), // 'duplicate_data_request', 'ignored_history', 'duplicate_routing', 'context_reset'
+  severity: text("severity").notNull(), // 'low', 'medium', 'high'
+  description: text("description").notNull(),
+  assistantType: text("assistant_type"), // Tipo do assistente que gerou o alerta
+  metadata: jsonb("metadata"), // Dados adicionais do alerta
+  detectedAt: timestamp("detected_at").defaultNow(),
+}, (table) => ({
+  conversationIdIdx: index("context_quality_alerts_conversation_id_idx").on(table.conversationId),
+  detectedAtIdx: index("context_quality_alerts_detected_at_idx").on(table.detectedAt),
+  assistantTypeIdx: index("context_quality_alerts_assistant_type_idx").on(table.assistantType),
+  alertTypeIdx: index("context_quality_alerts_alert_type_idx").on(table.alertType),
+}));
+
 // Insert Schemas
 export const insertPromptTemplateSchema = createInsertSchema(promptTemplates).omit({
   id: true,
@@ -981,3 +998,15 @@ export type InsertPromptVersion = z.infer<typeof insertPromptVersionSchema>;
 export type PromptDraft = typeof promptDrafts.$inferSelect;
 export type InsertPromptDraft = z.infer<typeof insertPromptDraftSchema>;
 export type UpdatePromptDraft = z.infer<typeof updatePromptDraftSchema>;
+
+// Context Quality Alerts Schemas
+export const insertContextQualityAlertSchema = createInsertSchema(contextQualityAlerts).omit({
+  id: true,
+  detectedAt: true,
+}).extend({
+  alertType: z.enum(["duplicate_data_request", "ignored_history", "duplicate_routing", "context_reset"]),
+  severity: z.enum(["low", "medium", "high"]),
+});
+
+export type ContextQualityAlert = typeof contextQualityAlerts.$inferSelect;
+export type InsertContextQualityAlert = z.infer<typeof insertContextQualityAlertSchema>;

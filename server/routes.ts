@@ -4152,8 +4152,8 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
       const { ContextMonitor } = await import("./lib/context-monitor");
       
       const hours = parseInt(req.query.hours as string) || 24;
-      const stats = ContextMonitor.getStats(hours);
-      const recentAlerts = ContextMonitor.getRecentAlerts(hours);
+      const stats = await ContextMonitor.getStats(hours);
+      const recentAlerts = await ContextMonitor.getRecentAlerts(hours);
       
       return res.json({
         stats,

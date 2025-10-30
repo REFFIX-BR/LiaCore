@@ -50,7 +50,9 @@ import {
   type InsertPromptVersion,
   type PromptDraft,
   type InsertPromptDraft,
-  type UpdatePromptDraft
+  type UpdatePromptDraft,
+  type ContextQualityAlert,
+  type InsertContextQualityAlert
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { localCache } from "./lib/redis-cache";
@@ -398,6 +400,16 @@ export interface IStorage {
   createPromptDraft(draft: InsertPromptDraft): Promise<PromptDraft>;
   updatePromptDraft(promptId: string, updates: UpdatePromptDraft): Promise<PromptDraft>;
   deletePromptDraft(promptId: string): Promise<void>;
+
+  // Context Quality Alerts
+  createContextQualityAlert(alert: InsertContextQualityAlert): Promise<ContextQualityAlert>;
+  getRecentContextQualityAlerts(hours: number): Promise<ContextQualityAlert[]>;
+  getContextQualityStats(hours: number): Promise<{
+    totalAlerts: number;
+    byType: Record<string, number>;
+    bySeverity: Record<string, number>;
+  }>;
+  deleteOldContextQualityAlerts(daysAgo: number): Promise<number>; // Returns number of deleted alerts
 }
 
 export class MemStorage implements IStorage {
@@ -4314,6 +4326,56 @@ export class DbStorage implements IStorage {
   async deletePromptDraft(promptId: string): Promise<void> {
     await db.delete(schema.promptDrafts)
       .where(eq(schema.promptDrafts.promptId, promptId));
+  }
+
+  // ===================================
+  // CONTEXT QUALITY ALERTS SYSTEM
+  // ===================================
+
+  async createContextQualityAlert(alert: InsertContextQualityAlert): Promise<ContextQualityAlert> {
+    const [created] = await db.insert(schema.contextQualityAlerts)
+      .values(alert)
+      .returning();
+    return created;
+  }
+
+  async getRecentContextQualityAlerts(hours: number): Promise<ContextQualityAlert[]> {
+    const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000);
+    return await db.select()
+      .from(schema.contextQualityAlerts)
+      .where(gte(schema.contextQualityAlerts.detectedAt, cutoffTime))
+      .orderBy(desc(schema.contextQualityAlerts.detectedAt));
+  }
+
+  async getContextQualityStats(hours: number): Promise<{
+    totalAlerts: number;
+    byType: Record<string, number>;
+    bySeverity: Record<string, number>;
+  }> {
+    const alerts = await this.getRecentContextQualityAlerts(hours);
+    
+    const byType = alerts.reduce((acc, alert) => {
+      acc[alert.alertType] = (acc[alert.alertType] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const bySeverity = alerts.reduce((acc, alert) => {
+      acc[alert.severity] = (acc[alert.severity] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return {
+      totalAlerts: alerts.length,
+      byType,
+      bySeverity,
+    };
+  }
+
+  async deleteOldContextQualityAlerts(daysAgo: number): Promise<number> {
+    const cutoffTime = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+    const result = await db.delete(schema.contextQualityAlerts)
+      .where(lt(schema.contextQualityAlerts.detectedAt, cutoffTime));
+    return result.rowCount || 0;
   }
 }
 
