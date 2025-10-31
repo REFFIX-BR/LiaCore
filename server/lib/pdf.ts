@@ -1,5 +1,7 @@
 import { webhookLogger } from "./webhook-logger";
-import * as pdfParseModule from "pdf-parse";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
 
 /**
  * Extrai texto de um PDF em base64 usando pdf-parse
@@ -13,8 +15,10 @@ export async function extractPdfText(pdfBase64: string): Promise<string | null> 
     
     console.log(`📄 [PDF] Iniciando extração de texto do PDF (${(pdfBuffer.length / 1024).toFixed(2)}KB)`);
 
-    // Try to get the parse function from the module
-    const pdfParse = (pdfParseModule as any).default || pdfParseModule;
+    // Import pdf-parse (v1.1.1 - classic functional API)
+    const pdfParse = require("pdf-parse");
+    
+    // Call pdf-parse as a function with the buffer
     const data = await pdfParse(pdfBuffer);
 
     if (!data.text || data.text.trim().length === 0) {
