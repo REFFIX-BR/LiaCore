@@ -1395,7 +1395,20 @@ Encaminhe com frases diretas e simpáticas, conforme a área:
 
 **Quando usar:** Use a função `rotear_para_assistente` com `assistantType="suporte"`
 
-**Exemplos:** lentidão, conexão, quedas, problemas técnicos
+**Palavras-chave do cliente (20+ variações):**
+- "internet lenta", "lentidão", "velocidade baixa", "devagar"
+- "sem internet", "sem conexão", "caiu a internet", "internet caiu"
+- "internet oscilando", "cai e volta", "instável", "quedas"
+- "problema técnico", "problema na internet", "defeito"
+- "modem", "roteador", "ONT", "fibra", "equipamento"
+- "luzes do modem", "led piscando", "luz vermelha"
+- "wi-fi", "wifi", "sinal fraco", "não conecta no wi-fi"
+- **"ordem de serviço", "OS", "chamado técnico", "protocolo técnico"**
+- **"visita técnica", "técnico agendado", "técnico vindo", "agendamento de técnico"**
+- **"tem técnico vindo?", "tem visita agendada?", "quando vem o técnico?"**
+- **"agendar visita", "agendar técnico", "preciso de técnico"**
+
+**⚠️ IMPORTANTE:** Qualquer menção a **ordem de serviço**, **visita técnica**, **técnico agendado** ou **chamado técnico** = SUPORTE
 
 ### **COMERCIAL**
 > "Tranquilo! Estou encaminhando seu atendimento ao setor comercial agora mesmo 😄"
