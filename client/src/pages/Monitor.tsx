@@ -418,8 +418,13 @@ export default function Monitor() {
     setAllMessages((prevMessages) => {
       const newMessages = conversationDetails.messages;
       
+      console.log(`🔵 [Monitor setAllMessages] prevMessages.length: ${prevMessages.length}, newMessages.length: ${newMessages.length}`);
+      
       // Se não há mensagens antigas, carregar as novas
       if (prevMessages.length === 0) {
+        console.log(`🔵 [Monitor BRANCH 1] No previous messages - returning ${newMessages.length} new messages`);
+        const pdfCount = newMessages.filter(m => m.pdfBase64).length;
+        console.log(`🔵 [Monitor BRANCH 1] PDFs in return: ${pdfCount}`);
         setHasMoreLocal(conversationDetails.hasMore || false);
         return newMessages;
       }
@@ -429,6 +434,9 @@ export default function Monitor() {
       
       // Se não há sobreposição, é uma nova conversa
       if (!newMessages.some(m => prevMessages.some(p => p.id === m.id))) {
+        console.log(`🔵 [Monitor BRANCH 2] New conversation - returning ${newMessages.length} new messages`);
+        const pdfCount = newMessages.filter(m => m.pdfBase64).length;
+        console.log(`🔵 [Monitor BRANCH 2] PDFs in return: ${pdfCount}`);
         setHasMoreLocal(conversationDetails.hasMore || false);
         setPaginatedMessageIds(new Set());
         return newMessages;
