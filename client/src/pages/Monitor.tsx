@@ -496,7 +496,10 @@ export default function Monitor() {
     }
   };
 
-  const activeConversation = conversations.find(c => c.id === activeConvId);
+  // Buscar conversa ativa ou no histórico completo
+  const activeConversation = conversations.find(c => c.id === activeConvId) || 
+    (viewMode === "historico_completo" && historyData?.conversations?.find((c: any) => c.id === activeConvId));
+  
   const activeMessages = allMessages.map(msg => ({
     id: msg.id,
     role: msg.role as "user" | "assistant",
@@ -799,6 +802,7 @@ export default function Monitor() {
                           verifiedBy: conv.verifiedBy || null,
                           resolvedBy,
                           resolvedByName: conv.resolvedByName || null,
+                          status: conv.status,
                         }}
                         isActive={activeConvId === conv.id}
                         onClick={() => setActiveConvId(conv.id)}
