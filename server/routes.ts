@@ -1372,6 +1372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdBy: "IA Assistant",
         });
 
+        // ✅ BUG FIX: Garantir que resolved_by seja sempre preenchido (mesmo para IA)
         // Update conversation - mark as resolved and set awaitingNPS flag
         const existingMetadata = typeof conversation.metadata === 'object' && conversation.metadata !== null 
           ? conversation.metadata 
@@ -1379,6 +1380,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
         await storage.updateConversation(conversation.id, {
           status: 'resolved',
+          resolvedBy: null, // IA não tem userId, então usar null (diferente de undefined)
+          resolvedAt: new Date(),
           lastMessage: message,
           lastMessageTime: new Date(),
           duration: (conversation.duration || 0) + 30,
@@ -1387,8 +1390,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           metadata: {
             ...existingMetadata,
             awaitingNPS: true,
-            resolvedBy: 'IA Assistant',
-            resolvedAt: new Date().toISOString(),
+            resolvedByAI: true, // Flag indicando que foi a IA que finalizou
             resolveReason: result.resolveReason || 'Problema resolvido',
           },
         });
@@ -2371,9 +2373,11 @@ Sentimos muito que sua experiência não tenha sido a melhor.
 Seu feedback é fundamental para melhorarmos nosso atendimento.
             `.trim();
             
+            // ✅ BUG FIX: Preservar resolved_by quando atualizar metadata de NPS
             // Marcar que está aguardando comentário do detrator
             await storage.updateConversation(conversation.id, {
               status: 'resolved',
+              // NÃO alterar resolved_by - já foi definido quando conversa foi finalizada
               metadata: { 
                 ...metadata, 
                 awaitingNPS: false,
@@ -2406,9 +2410,11 @@ Seu feedback é fundamental para melhorarmos nosso atendimento.
               detractor_followup_sent: true
             });
           } else {
+            // ✅ BUG FIX: Preservar resolved_by quando atualizar metadata de NPS
             // NÃO É DETRATOR: Apenas agradecer
             await storage.updateConversation(conversation.id, {
               status: 'resolved',
+              // NÃO alterar resolved_by - já foi definido quando conversa foi finalizada
               metadata: { ...metadata, awaitingNPS: false }
             });
             
@@ -7068,6 +7074,16 @@ A resposta deve:
         return res.status(404).json({ error: "Conversa não encontrada" });
       }
 
+      // ✅ BUG FIX: Prevenir logs duplicados - checar se já está finalizada
+      if (conversation.status === 'resolved') {
+        console.warn(`⚠️ [Resolve] Conversa ${id} já está finalizada. Ignorando duplicata.`);
+        return res.status(400).json({ 
+          error: "Esta conversa já foi finalizada",
+          alreadyResolvedBy: conversation.resolvedBy,
+          resolvedAt: conversation.resolvedAt
+        });
+      }
+
       // Validação de permissão
       const isAdminOrSupervisor = currentUser.role === 'ADMIN' || currentUser.role === 'SUPERVISOR';
       const isAssignedAgent = conversation.assignedTo === currentUser.userId;
@@ -7078,25 +7094,7 @@ A resposta deve:
         });
       }
 
-      // Criar ação
-      await storage.createSupervisorAction({
-        conversationId: id,
-        action: "mark_resolved",
-        notes: `Conversa finalizada por ${currentUser.fullName || currentUser.username}`,
-        createdBy: currentUser.fullName || currentUser.username,
-      });
-
-      // Criar log de atividade
-      await storage.createActivityLog({
-        userId: currentUser.userId,
-        action: "resolve_conversation",
-        conversationId: id,
-        details: {
-          clientName: conversation.clientName,
-          assistantType: conversation.assistantType,
-        },
-      });
-
+      // ✅ BUG FIX: Atualizar conversa PRIMEIRO para garantir resolved_by em transação atômica
       // Preparar metadata para aguardar NPS se for WhatsApp
       const currentMetadata = conversation?.metadata as any || {};
       const isWhatsApp = currentMetadata?.source === 'evolution_api';
@@ -7108,6 +7106,25 @@ A resposta deve:
         assignedTo: null, // Desatribuir conversa ao finalizar
         transferredToHuman: false, // Limpar flag de transferência ao finalizar
         metadata: isWhatsApp ? { ...currentMetadata, awaitingNPS: true } : currentMetadata,
+      });
+
+      // Criar ação de supervisor (após update bem-sucedido)
+      await storage.createSupervisorAction({
+        conversationId: id,
+        action: "mark_resolved",
+        notes: `Conversa finalizada por ${currentUser.fullName || currentUser.username}`,
+        createdBy: currentUser.fullName || currentUser.username,
+      });
+
+      // Criar log de atividade (após update bem-sucedido)
+      await storage.createActivityLog({
+        userId: currentUser.userId,
+        action: "resolve_conversation",
+        conversationId: id,
+        details: {
+          clientName: conversation.clientName,
+          assistantType: conversation.assistantType,
+        },
       });
 
       // Create learning event for successful resolution
