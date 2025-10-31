@@ -755,6 +755,67 @@ export async function solicitarDesbloqueio(
   }
 }
 
+/**
+ * Interface para resultado de consulta de OS em aberto
+ */
+interface OrdemServicoAbertoResult {
+  existe_os_ativa: string; // "true" ou "false" (API retorna como string)
+}
+
+/**
+ * Consulta se existe Ordem de Serviço (OS) em aberto para o cliente
+ * @param documento CPF ou CNPJ do cliente
+ * @param conversationContext Contexto OBRIGATÓRIO da conversa para validação de segurança
+ * @param storage Interface de storage para validação da conversa
+ * @returns Objeto indicando se existe OS ativa
+ */
+export async function consultarOrdemServicoAberta(
+  documento: string,
+  conversationContext: { conversationId: string },
+  storage: IStorage
+): Promise<OrdemServicoAbertoResult> {
+  try {
+    // Validação de segurança OBRIGATÓRIA
+    if (!conversationContext || !conversationContext.conversationId) {
+      console.error(`❌ [AI Tool Security] Tentativa de consulta de OS sem contexto de conversa`);
+      throw new Error("Contexto de segurança é obrigatório para consulta de OS");
+    }
+
+    // Validação: conversa deve existir no banco
+    const conversation = await storage.getConversation(conversationContext.conversationId);
+    if (!conversation) {
+      console.error(`❌ [AI Tool Security] Tentativa de consulta de OS com conversationId inválido`);
+      throw new Error("Conversa não encontrada - contexto de segurança inválido");
+    }
+
+    // Validação de documento (normalizar antes de comparar)
+    const documentoNormalizado = documento.replace(/\D/g, '');
+    const clientDocumentNormalizado = conversation.clientDocument?.replace(/\D/g, '');
+    
+    if (clientDocumentNormalizado && clientDocumentNormalizado !== documentoNormalizado) {
+      console.error(`❌ [AI Tool Security] Tentativa de consulta de OS de documento diferente do cliente`);
+      throw new Error("Não é permitido consultar OS de outros clientes");
+    }
+
+    console.log(`🔧 [AI Tool] Consultando OS em aberto (conversação: ${conversationContext.conversationId})`);
+
+    const resultado = await fetchWithRetry<OrdemServicoAbertoResult>(
+      "https://webhook.trtelecom.net/webhook/consulta/cliente/os/aberto",
+      { documento: documentoNormalizado },
+      { operationName: "consulta de OS em aberto" }
+    );
+
+    const existeOsAtiva = resultado.existe_os_ativa === "true";
+    
+    console.log(`📋 [AI Tool] Consulta de OS concluída - Existe OS ativa: ${existeOsAtiva ? 'SIM' : 'NÃO'}`);
+
+    return resultado;
+  } catch (error) {
+    console.error("❌ [AI Tool] Erro ao consultar OS em aberto:", error);
+    throw error;
+  }
+}
+
 // Mapeamento válido de setor -> motivos permitidos
 const SETOR_MOTIVO_MAP: Record<string, string[]> = {
   "ADMINISTRAÇÃO": [
