@@ -295,33 +295,24 @@ export function ChatMessage({ message, canEdit = false, onDelete, onReply, showI
               🎤 Áudio enviado
             </Badge>
           )}
-          {hasPdfAttached && pdfFileName && (
-            <Badge variant="outline" className="mb-2 text-xs flex items-center gap-1">
-              <FileText className="h-3 w-3" />
-              <span>{pdfFileName}</span>
-            </Badge>
-          )}
           {hasVideoAttached && !message.videoUrl && (
             <Badge variant="outline" className="mb-2 text-xs">
               🎬 Vídeo enviado
             </Badge>
           )}
 
-          {/* PDF com base64 salvo - mostrar visualização inline */}
-          {message.pdfName && console.log('[PDF Debug]', {
-            id: message.id,
-            pdfName: message.pdfName,
-            hasPdfBase64: !!message.pdfBase64,
-            pdfBase64Length: message.pdfBase64?.length || 0,
-            pdfBase64Preview: message.pdfBase64?.substring(0, 50)
-          })}
-          {message.pdfBase64 && message.pdfName && (
+          {/* PDF com base64 salvo - mostrar visualização inline SEMPRE que tiver dados */}
+          {message.pdfBase64 && (
             <div className="mb-2">
+              <Badge variant="outline" className="mb-2 text-xs flex items-center gap-1">
+                <FileText className="h-3 w-3" />
+                <span>{message.pdfName || 'Documento PDF'}</span>
+              </Badge>
               <iframe
                 src={message.pdfBase64.startsWith('data:') ? message.pdfBase64 : `data:application/pdf;base64,${message.pdfBase64}`}
                 className="w-full rounded-md border"
                 style={{ height: '400px' }}
-                title={message.pdfName}
+                title={message.pdfName || 'Documento PDF'}
                 data-testid="pdf-viewer"
               />
               <Button
@@ -332,7 +323,7 @@ export function ChatMessage({ message, canEdit = false, onDelete, onReply, showI
                 data-testid="button-download-pdf"
               >
                 <Download className="h-4 w-4" />
-                <span>Baixar {message.pdfName}</span>
+                <span>Baixar {message.pdfName || 'documento.pdf'}</span>
               </Button>
             </div>
           )}
