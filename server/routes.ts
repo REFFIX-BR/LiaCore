@@ -2255,6 +2255,14 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
         // Reopen conversation if it was resolved
         if (conversation.status === 'resolved') {
           console.log(`🔄 [Conversation Reopen] Reabrindo conversa resolvida para ${clientName}`);
+          
+          // CRITICAL: Update evolutionInstance when reopening conversation
+          // This ensures responses go out through the SAME instance the message came in
+          const shouldUpdateInstance = conversation.evolutionInstance !== instance;
+          if (shouldUpdateInstance) {
+            console.log(`📱 [Instance Update] Atualizando instância na reabertura: "${conversation.evolutionInstance}" → "${instance}"`);
+          }
+          
           await storage.updateConversation(conversation.id, {
             status: 'active',
             resolvedAt: null,
@@ -2263,10 +2271,12 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
             autoClosed: false,
             autoClosedReason: null,
             autoClosedAt: null,
+            evolutionInstance: instance, // ALWAYS update to current webhook instance
           });
           
           // Update local conversation object
           conversation.status = 'active';
+          conversation.evolutionInstance = instance; // Update local copy too
           
           prodLogger.info('conversation', 'Conversa reaberta', {
             conversationId: conversation.id,
@@ -2692,13 +2702,17 @@ Qualquer coisa, estamos à disposição! 😊
           const { addToBatch } = await import("./lib/message-batching");
           const { addMessageToQueue } = await import("./lib/queue");
           
-          // IMPORTANTE: Usar evolutionInstance da CONVERSA (não do webhook)
-          // Se a conversa já existe, sempre usar a instância original
-          const finalEvolutionInstance = conversation.evolutionInstance || instance;
+          // CRITICAL: ALWAYS use the instance from which the message CAME IN
+          // If client sends message via Principal, response MUST go out via Principal
+          const finalEvolutionInstance = instance; // Use current webhook instance
           
-          // Log se a instância do webhook for diferente da conversa
-          if (conversation.evolutionInstance && instance !== conversation.evolutionInstance) {
-            console.log(`⚠️ [Webhook] Cliente ${clientName} enviou mensagem via instância "${instance}", mas conversa original é "${conversation.evolutionInstance}" - usando instância original`);
+          // Update conversation's evolutionInstance if it changed
+          if (conversation.evolutionInstance !== instance) {
+            console.log(`📱 [Instance Update] Cliente ${clientName} mudou de instância: "${conversation.evolutionInstance}" → "${instance}"`);
+            await storage.updateConversation(conversation.id, {
+              evolutionInstance: instance
+            });
+            conversation.evolutionInstance = instance; // Update local copy
           }
           
           // Prepara dados da mensagem
