@@ -4116,15 +4116,17 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
       
       const { messages, hasMore } = await storage.getMessagesPaginated(conversation.id, { limit, before });
       
-      // Debug: verificar PDFs
-      const pdfMessages = messages.filter(m => m.pdfName);
+      // Debug: verificar PDFs (buscar por content também para encontrar "[Documento recebido]")
+      const pdfMessages = messages.filter(m => m.pdfName || m.pdfBase64 || m.content?.includes('Documento'));
       if (pdfMessages.length > 0) {
-        console.log(`📄 [API Debug] Found ${pdfMessages.length} PDF messages:`, 
+        console.log(`📄 [API Debug - BEFORE JSON] Found ${pdfMessages.length} PDF-related messages:`, 
           pdfMessages.map(m => ({ 
             id: m.id, 
             pdfName: m.pdfName, 
             hasPdfBase64: !!m.pdfBase64,
-            pdfBase64Length: m.pdfBase64?.length || 0 
+            pdfBase64Length: m.pdfBase64?.length || 0,
+            contentPreview: m.content?.substring(0, 50),
+            pdfBase64Preview: m.pdfBase64?.substring(0, 30)
           }))
         );
       }
