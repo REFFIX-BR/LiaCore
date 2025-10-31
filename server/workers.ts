@@ -489,15 +489,19 @@ if (redisConnection) {
         // NUNCA bloquear processamento - apenas notificar UMA VEZ e continuar
         // IA pode transferir para humano se cliente solicitar
 
-        // Se houver múltiplos pontos, injetar contexto para IA perguntar
+        // ✅ IDENTIFICAÇÃO SILENCIOSA DE MÚLTIPLOS PONTOS
+        // Sistema identifica múltiplos pontos internamente, mas NÃO afirma ou pergunta ao cliente
+        // A IA só deve perguntar se for estritamente necessário para resolver o problema específico
         if (failureResult.needsPointSelection && failureResult.points) {
-          console.log(`🔀 [Massive Failure] Injetando contexto de ${failureResult.points.length} pontos para IA`);
+          console.log(`🔀 [Multiple Points] Cliente possui ${failureResult.points.length} pontos - identificação SILENCIOSA`);
           
+          // Injetar apenas dados técnicos, SEM instruções para afirmar/perguntar
           const pointsList = failureResult.points
-            .map((p, idx) => `${idx + 1}. **${p.bairro}** - ${p.endereco}${p.complemento ? ', ' + p.complemento : ''} (${p.cidade})`)
+            .map((p, idx) => `${idx + 1}. ${p.bairro} - ${p.endereco}${p.complemento ? ', ' + p.complemento : ''} (${p.cidade})`)
             .join('\n');
 
-          multiplePointsContext = `\n\n---\n**CONTEXTO SISTEMA: Cliente possui ${failureResult.points.length} pontos de instalação:**\n${pointsList}\n\n**INSTRUÇÃO:** Se o cliente relatar problema técnico (internet, conexão, etc), você DEVE perguntar qual desses endereços está com problema antes de prosseguir. Use a função 'selecionar_ponto_instalacao' após a confirmação do cliente.\n---\n`;
+          // ⚠️ NOVO COMPORTAMENTO: Contexto técnico SILENCIOSO - IA não deve mencionar ao cliente
+          multiplePointsContext = `\n\n---\n[CONTEXTO INTERNO - NÃO MENCIONAR AO CLIENTE]\nCliente possui ${failureResult.points.length} pontos de instalação:\n${pointsList}\n\n**IDENTIFICAÇÃO SILENCIOSA:**\n- ❌ NÃO afirme: "Vejo que você possui ${failureResult.points.length} pontos de instalação"\n- ❌ NÃO liste os endereços proativamente\n- ✅ PODE perguntar naturalmente: "Qual endereço está com problema?" ou "Para qual endereço você deseja consultar?"\n- ✅ Após cliente mencionar o endereço, use 'selecionar_ponto_instalacao' discretamente\n---\n`;
         }
       } catch (failureError) {
         console.error(`❌ [Massive Failure] Erro ao verificar falha massiva:`, failureError);
