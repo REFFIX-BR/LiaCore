@@ -207,7 +207,7 @@ export interface IStorage {
   }>;
 
   // Agent Status Monitor
-  getAgentsStatus(): Promise<Array<{
+  getAgentsStatus(dateFilter?: { startDate?: Date; endDate?: Date }): Promise<Array<{
     id: string;
     fullName: string;
     role: string;
@@ -2921,11 +2921,9 @@ export class DbStorage implements IStorage {
     return usage;
   }
 
-  async getAgentsStatus() {
+  async getAgentsStatus(dateFilter?: { startDate?: Date; endDate?: Date }) {
     const now = new Date();
     const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
     // Get all human agents (AGENT and SUPERVISOR roles)
     const agents = await db.select().from(schema.users)
@@ -2953,30 +2951,33 @@ export class DbStorage implements IStorage {
           not(eq(schema.conversations.status, 'resolved'))
         ));
 
-      // Resolved conversations today - usando resolved_by para dados reais
-      const resolvedToday = await db.select().from(schema.conversations)
-        .where(and(
-          eq(schema.conversations.resolvedBy, agent.id),
-          eq(schema.conversations.status, 'resolved'),
-          gte(schema.conversations.resolvedAt, today)
-        ));
-
-      // Calculate success rate baseado em conversas efetivamente resolvidas pelo agente
-      const totalResolved = await db.select().from(schema.conversations)
-        .where(and(
-          eq(schema.conversations.resolvedBy, agent.id),
-          eq(schema.conversations.status, 'resolved')
-        ));
+      // ✅ FIX: Resolved conversations - aplicar filtro de data APENAS se fornecido
+      const resolvedConditions = [
+        eq(schema.conversations.resolvedBy, agent.id),
+        eq(schema.conversations.status, 'resolved')
+      ];
       
-      const successfullyResolved = totalResolved.filter(c => 
+      // Só adicionar filtros de data se fornecidos
+      if (dateFilter?.startDate) {
+        resolvedConditions.push(gte(schema.conversations.resolvedAt, dateFilter.startDate));
+      }
+      if (dateFilter?.endDate) {
+        resolvedConditions.push(lte(schema.conversations.resolvedAt, dateFilter.endDate));
+      }
+
+      const resolvedInPeriod = await db.select().from(schema.conversations)
+        .where(and(...resolvedConditions));
+
+      // Calculate success rate baseado em conversas efetivamente resolvidas pelo agente NO PERÍODO
+      const successfullyResolved = resolvedInPeriod.filter(c => 
         c.sentiment === 'positive' || c.sentiment === 'neutral'
       );
-      const successRate = totalResolved.length > 0 
-        ? Math.round((successfullyResolved.length / totalResolved.length) * 100)
+      const successRate = resolvedInPeriod.length > 0 
+        ? Math.round((successfullyResolved.length / resolvedInPeriod.length) * 100)
         : 0;
 
-      // Calculate average sentiment - baseado em conversas que o agente efetivamente resolveu
-      const conversationsWithSentiment = totalResolved.filter(c => c.sentiment);
+      // Calculate average sentiment - baseado em conversas resolvidas NO PERÍODO
+      const conversationsWithSentiment = resolvedInPeriod.filter(c => c.sentiment);
       const sentimentScore = conversationsWithSentiment.reduce((sum, c) => {
         if (c.sentiment === 'positive') return sum + 1;
         if (c.sentiment === 'negative') return sum - 1;
@@ -2992,7 +2993,7 @@ export class DbStorage implements IStorage {
         role: agent.role,
         status,
         activeConversations: activeConversations.length,
-        resolvedToday: resolvedToday.length,
+        resolvedToday: resolvedInPeriod.length,
         avgResponseTime: 0, // TODO: Calculate from message timestamps
         successRate,
         sentimentAverage,

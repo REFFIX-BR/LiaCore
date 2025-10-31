@@ -1,7 +1,12 @@
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, MessageSquare, CheckCircle2, Clock, TrendingUp, Activity } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Users, MessageSquare, CheckCircle2, Clock, TrendingUp, Activity, Filter, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 
 type AgentStatus = {
   id: string;
@@ -16,10 +21,82 @@ type AgentStatus = {
   lastActivity: Date | null;
 };
 
+type PeriodFilter = 'today' | 'week' | 'month' | 'all' | 'custom';
+
 export default function AgentMonitor() {
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>();
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>();
+
+  // Memoizar datas para evitar loop infinito de refetch
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (periodFilter) {
+      case 'today':
+        const endOfToday = new Date(today);
+        endOfToday.setHours(23, 59, 59, 999);
+        return {
+          startDate: today.toISOString(),
+          endDate: endOfToday.toISOString()
+        };
+      case 'week':
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const endOfWeek = new Date();
+        endOfWeek.setHours(23, 59, 59, 999);
+        return {
+          startDate: weekAgo.toISOString(),
+          endDate: endOfWeek.toISOString()
+        };
+      case 'month':
+        const monthAgo = new Date(today);
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        const endOfMonth = new Date();
+        endOfMonth.setHours(23, 59, 59, 999);
+        return {
+          startDate: monthAgo.toISOString(),
+          endDate: endOfMonth.toISOString()
+        };
+      case 'custom':
+        if (customStartDate && customEndDate) {
+          return {
+            startDate: customStartDate.toISOString(),
+            endDate: customEndDate.toISOString()
+          };
+        }
+        return {};
+      default:
+        return {};
+    }
+  }, [periodFilter, customStartDate, customEndDate]);
+
+  const queryParams = new URLSearchParams();
+  if (dateRange.startDate) queryParams.set('startDate', dateRange.startDate);
+  if (dateRange.endDate) queryParams.set('endDate', dateRange.endDate);
+  const queryString = queryParams.toString();
+  
+  const apiUrl = queryString 
+    ? `/api/agents/status?${queryString}` 
+    : '/api/agents/status';
+
+  // Desabilitar query se período custom sem datas selecionadas
+  const isQueryEnabled = periodFilter !== 'custom' || Boolean(customStartDate && customEndDate);
+
   const { data: agents = [], isLoading } = useQuery<AgentStatus[]>({
-    queryKey: ["/api/agents/status"],
-    refetchInterval: 5000, // Update every 5 seconds
+    queryKey: ['/api/agents/status', periodFilter, dateRange.startDate || null, dateRange.endDate || null],
+    queryFn: async (): Promise<AgentStatus[]> => {
+      const response = await fetch(apiUrl, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error(`Erro ao carregar status: ${response.status}`);
+      }
+      return response.json();
+    },
+    enabled: isQueryEnabled,
+    refetchInterval: 5000,
   });
 
   if (isLoading) {
@@ -102,6 +179,104 @@ export default function AgentMonitor() {
           Monitoramento em tempo real da equipe de atendimento humano
         </p>
       </div>
+
+      {/* Filtro de Período */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Filtrar por período:</span>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant={periodFilter === 'today' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setPeriodFilter('today')}
+                data-testid="button-filter-today"
+              >
+                Hoje
+              </Button>
+              <Button
+                variant={periodFilter === 'week' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setPeriodFilter('week')}
+                data-testid="button-filter-week"
+              >
+                Semana
+              </Button>
+              <Button
+                variant={periodFilter === 'month' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setPeriodFilter('month')}
+                data-testid="button-filter-month"
+              >
+                Mês
+              </Button>
+              <Button
+                variant={periodFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setPeriodFilter('all')}
+                data-testid="button-filter-all"
+              >
+                Todos
+              </Button>
+
+              {/* Date Pickers para período personalizado */}
+              <div className="flex items-center gap-2 ml-2 pl-2 border-l">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2" data-testid="button-custom-start-date">
+                      <CalendarIcon className="w-4 h-4" />
+                      {customStartDate ? format(customStartDate, 'dd/MM/yyyy') : 'Data inicial'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={customStartDate}
+                      onSelect={(date) => {
+                        setCustomStartDate(date);
+                        if (date && customEndDate) {
+                          setPeriodFilter('custom');
+                        }
+                      }}
+                      initialFocus
+                      data-testid="calendar-start-date"
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <span className="text-sm text-muted-foreground">até</span>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2" data-testid="button-custom-end-date">
+                      <CalendarIcon className="w-4 h-4" />
+                      {customEndDate ? format(customEndDate, 'dd/MM/yyyy') : 'Data final'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={customEndDate}
+                      onSelect={(date) => {
+                        setCustomEndDate(date);
+                        if (customStartDate && date) {
+                          setPeriodFilter('custom');
+                        }
+                      }}
+                      initialFocus
+                      data-testid="calendar-end-date"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">

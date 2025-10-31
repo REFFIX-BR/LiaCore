@@ -7583,7 +7583,24 @@ A resposta deve:
   // Get all agents status (online/idle/offline) with metrics
   app.get("/api/agents/status", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
-      const agentsStatus = await storage.getAgentsStatus();
+      const { startDate, endDate } = req.query;
+      
+      // Parse dates if provided
+      let dateFilter: { startDate?: Date; endDate?: Date } = {};
+      if (startDate) {
+        dateFilter.startDate = new Date(startDate as string);
+        if (isNaN(dateFilter.startDate.getTime())) {
+          return res.status(400).json({ error: "Invalid startDate format" });
+        }
+      }
+      if (endDate) {
+        dateFilter.endDate = new Date(endDate as string);
+        if (isNaN(dateFilter.endDate.getTime())) {
+          return res.status(400).json({ error: "Invalid endDate format" });
+        }
+      }
+
+      const agentsStatus = await storage.getAgentsStatus(dateFilter);
       return res.json(agentsStatus);
     } catch (error) {
       console.error("❌ [Agents Status] Error getting agents status:", error);
