@@ -317,23 +317,33 @@ export async function processWhatsAppDocument(
   console.log(`🔍 [DEBUG Document] Resultado do download:`, {
     hasBase64: !!base64Document,
     length: base64Document?.length || 0,
-    fileName: fileName || 'sem nome'
+    fileName: fileName || 'sem nome',
+    tentouMediaUrl: !!mediaUrl,
+    mediaUrlPreview: mediaUrl?.substring(0, 100) || 'N/A'
   });
 
   if (!base64Document) {
-    console.error('❌ [Document] FALHA ao baixar documento:', {
+    console.error('❌❌❌ [Document] FALHA CRÍTICA ao baixar documento:', {
       tentouUrl: !!mediaUrl,
+      mediaUrl: mediaUrl?.substring(0, 150) || 'não disponível',
       tentouEvolution: !mediaUrl || !!messageKey,
       fileName,
       messageKey: messageKey ? {
-        id: messageKey.id?.substring(0, 20),
+        id: messageKey.id,
         fromMe: messageKey.fromMe,
-        remoteJid: messageKey.remoteJid?.substring(0, 20)
-      } : 'não disponível'
+        remoteJid: messageKey.remoteJid
+      } : 'não disponível',
+      instance,
+      apiUrl: getEvolutionApiUrl(instance),
+      hasApiKey: !!getEvolutionApiKey(instance)
     });
+    
+    // ⚠️ IMPORTANTE: Retornar placeholder SEM base64
     const text = fileName 
       ? `[Documento] ${fileName}` 
       : '[Documento recebido]';
+    
+    console.error(`⚠️ [Document] Retornando placeholder SEM base64 - PDF não será extraído`);
     return { text, fileName };
   }
 
