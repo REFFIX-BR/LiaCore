@@ -404,6 +404,17 @@ export default function Monitor() {
   useEffect(() => {
     if (!conversationDetails?.messages) return;
 
+    // DEBUG: Verificar se PDFs chegam ao useEffect
+    const pdfMsgs = conversationDetails.messages.filter(m => m.pdfBase64);
+    console.log(`🟢 [Monitor useEffect] Received ${pdfMsgs.length} messages with pdfBase64`);
+    if (pdfMsgs.length > 0) {
+      console.log(`🟢 [Monitor useEffect] First PDF:`, {
+        id: pdfMsgs[0].id,
+        hasPdf: !!pdfMsgs[0].pdfBase64,
+        pdfLength: pdfMsgs[0].pdfBase64?.length || 0
+      });
+    }
+
     setAllMessages((prevMessages) => {
       const newMessages = conversationDetails.messages;
       
@@ -451,6 +462,10 @@ export default function Monitor() {
       
       // Combinar histórico paginado + mensagens do servidor (sempre fonte da verdade)
       const mergedMessages = [...historicalPaginatedMessages, ...newMessages];
+      
+      // DEBUG: Verificar se PDFs sobreviveram ao merge
+      const pdfAfterMerge = mergedMessages.filter(m => m.pdfBase64);
+      console.log(`🟡 [Monitor AFTER merge] ${pdfAfterMerge.length} messages with pdfBase64 in final array`);
       
       return mergedMessages;
     });
