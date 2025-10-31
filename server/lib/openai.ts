@@ -2057,6 +2057,24 @@ Fonte: ${fonte}`;
           });
         }
 
+      case "validar_cpf_cnpj":
+        const { validarCpfCnpj } = await import("../ai-tools");
+        
+        try {
+          console.log(`🔍 [AI Tool Handler] Validando CPF/CNPJ: ${args.documento}`);
+          
+          const result = validarCpfCnpj(args.documento);
+          
+          console.log(`✅ [AI Tool Handler] Resultado da validação:`, result);
+          
+          return JSON.stringify(result);
+        } catch (error) {
+          console.error("❌ [Validação] Erro ao validar CPF/CNPJ:", error);
+          return JSON.stringify({
+            error: "Não foi possível validar o documento. Tente novamente."
+          });
+        }
+
       default:
         console.error(`❌ [AI Tool] CAIU NO DEFAULT - Função não implementada: "${functionName}"`);
         console.error(`❌ [AI Tool] Funções disponíveis: verificar_conexao, consultar_fatura, consultar_base_de_conhecimento, consultar_boleto_cliente, etc.`);
