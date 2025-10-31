@@ -1833,6 +1833,69 @@ Fonte: ${fonte}`;
           });
         }
 
+      case "consultar_ordem_servico_aberta":
+        if (!conversationId) {
+          console.error("❌ [AI Tool] consultar_ordem_servico_aberta chamada sem conversationId");
+          return JSON.stringify({
+            error: "Contexto de conversa não disponível"
+          });
+        }
+        
+        const { consultarOrdemServicoAberta } = await import("../ai-tools");
+        const { storage: storageOS } = await import("../storage");
+        
+        try {
+          console.log(`🔧 [AI Tool Handler] Iniciando consulta de OS em aberto para conversação ${conversationId}`);
+          
+          // Buscar documento do cliente automaticamente da conversa
+          const conversationOS = await storageOS.getConversation(conversationId);
+          
+          if (!conversationOS) {
+            console.error("❌ [AI Tool] Conversa não encontrada:", conversationId);
+            return JSON.stringify({
+              error: "Conversa não encontrada"
+            });
+          }
+          
+          console.log(`🔧 [AI Tool Handler] Conversa encontrada. clientDocument: ${conversationOS.clientDocument ? 'SIM' : 'NÃO'}`);
+          
+          if (!conversationOS.clientDocument) {
+            console.warn("⚠️ [AI Tool] Cliente ainda não forneceu CPF/CNPJ");
+            return JSON.stringify({
+              error: "Para consultar sua ordem de serviço, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
+            });
+          }
+          
+          console.log(`🔧 [AI Tool Handler] Chamando consultarOrdemServicoAberta com documento do banco...`);
+          
+          // Chamar diretamente a API real de consulta de OS
+          const resultado = await consultarOrdemServicoAberta(
+            conversationOS.clientDocument,
+            { conversationId },
+            storageOS
+          );
+          
+          const existeOsAtiva = resultado.existe_os_ativa === "true";
+          
+          console.log(`✅ [AI Tool Handler] Consulta de OS concluída - Existe OS ativa: ${existeOsAtiva ? 'SIM' : 'NÃO'}`);
+          
+          return JSON.stringify({
+            success: true,
+            existe_os_ativa: existeOsAtiva,
+            mensagem: existeOsAtiva 
+              ? "Cliente possui ordem de serviço em aberto/andamento"
+              : "Cliente não possui ordem de serviço em aberto"
+          });
+        } catch (error) {
+          console.error("❌ [AI Tool Handler] Erro ao consultar OS em aberto:", error);
+          if (error instanceof Error) {
+            console.error("❌ [AI Tool Handler] Stack trace:", error.stack);
+          }
+          return JSON.stringify({
+            error: error instanceof Error ? error.message : "Erro ao consultar ordem de serviço"
+          });
+        }
+
       case "abrir_ticket_crm":
         if (!conversationId) {
           console.error("❌ [AI Tool] abrir_ticket_crm chamada sem conversationId");
