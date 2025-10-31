@@ -30,9 +30,9 @@ function normalizeEvolutionUrl(url?: string): string {
 }
 
 // Helper function to validate and normalize Evolution API instance
-// CRITICAL: ONLY "Leads" or "Cobranca" are allowed - NEVER "Principal"
+// Supported instances: "Leads", "Cobranca", "Principal"
 function validateEvolutionInstance(instance?: string | null): string {
-  const allowedInstances = ['Leads', 'Cobranca'];
+  const allowedInstances = ['Leads', 'Cobranca', 'Principal'];
   
   if (!instance) {
     return 'Leads'; // Default
@@ -45,7 +45,7 @@ function validateEvolutionInstance(instance?: string | null): string {
     return normalized;
   }
   
-  // If invalid instance (including "Principal"), force to Leads
+  // If invalid instance, force to Leads
   console.warn(`⚠️ [Evolution] Invalid instance "${instance}" - forcing to "Leads" (allowed: ${allowedInstances.join(', ')})`);
   return 'Leads';
 }
@@ -54,7 +54,7 @@ function validateEvolutionInstance(instance?: string | null): string {
 const EVOLUTION_CONFIG = {
   apiUrl: normalizeEvolutionUrl(process.env.EVOLUTION_API_URL),
   apiKey: process.env.EVOLUTION_API_KEY,
-  instance: "Leads", // Default instance: NUNCA usar Principal - apenas Leads ou Cobranca
+  instance: "Leads", // Default instance (supported: Leads, Cobranca, Principal)
 };
 
 // Log configuration at startup
@@ -94,7 +94,7 @@ function getEvolutionApiUrl(instanceName?: string): string {
 
 // Helper function to send WhatsApp image via Evolution API
 async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, caption?: string, instanceName?: string): Promise<boolean> {
-  // CRITICAL: Validate instance - ONLY "Leads" or "Cobranca" allowed
+  // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
   const rawInstance = instanceName || EVOLUTION_CONFIG.instance;
   const instance = validateEvolutionInstance(rawInstance);
   const apiKey = getEvolutionApiKey(instance);
@@ -156,7 +156,7 @@ async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, capti
 
 // Helper function to send WhatsApp PDF/document via Evolution API
 async function sendWhatsAppDocument(phoneNumber: string, pdfBase64: string, fileName?: string, caption?: string, instanceName?: string): Promise<boolean> {
-  // CRITICAL: Validate instance - ONLY "Leads" or "Cobranca" allowed
+  // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
   const rawInstance = instanceName || EVOLUTION_CONFIG.instance;
   const instance = validateEvolutionInstance(rawInstance);
   const apiKey = getEvolutionApiKey(instance);
@@ -264,7 +264,7 @@ async function sendWhatsAppMessage(
   text: string, 
   instanceName?: string
 ): Promise<{ success: boolean; whatsappMessageId?: string; remoteJid?: string }> {
-  // CRITICAL: Validate instance - ONLY "Leads" or "Cobranca" allowed
+  // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
   const rawInstance = instanceName || EVOLUTION_CONFIG.instance;
   const instance = validateEvolutionInstance(rawInstance);
   const apiKey = getEvolutionApiKey(instance);
@@ -340,7 +340,7 @@ async function deleteWhatsAppMessage(
   remoteJid: string, 
   instanceName?: string
 ): Promise<boolean> {
-  // CRITICAL: Validate instance - ONLY "Leads" or "Cobranca" allowed
+  // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
   const rawInstance = instanceName || EVOLUTION_CONFIG.instance;
   const instance = validateEvolutionInstance(rawInstance);
   const apiKey = getEvolutionApiKey(instance);
@@ -1803,7 +1803,7 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     try {
       const { event: rawEvent, instance: rawInstance, data } = req.body;
       
-      // CRITICAL: Validate instance - ONLY "Leads" or "Cobranca" allowed
+      // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
       const instance = validateEvolutionInstance(rawInstance);
 
       // DEBUG: Log completo do payload recebido
@@ -7873,7 +7873,7 @@ A resposta deve:
         transferReason: 'Novo contato criado via painel - aguardando mensagem manual do atendente',
         transferredAt: new Date(),
         assignedTo: assignedTo === 'none' || !assignedTo ? null : assignedTo, // null = "Transferidas", specific ID = "Atribuídas"
-        evolutionInstance: evolutionInstance || 'Leads', // NUNCA usar Principal - apenas Leads ou Cobranca
+        evolutionInstance: evolutionInstance || 'Leads', // Default to Leads if not provided
         metadata: { 
           createdFromContact: true, 
           createdBy: req.user?.userId,
@@ -7940,7 +7940,7 @@ A resposta deve:
 
       if (!conversation) {
         // Determine evolutionInstance and department: use last conversation's values or defaults
-        let evolutionInstance = 'Leads'; // Default: NUNCA usar Principal - apenas Leads ou Cobranca
+        let evolutionInstance = 'Leads'; // Default instance (supported: Leads, Cobranca, Principal)
         let department = 'support'; // Default: support instead of general (so it appears in Transferidas)
         let assistantType = 'suporte'; // Default: suporte assistant
         
@@ -8141,7 +8141,7 @@ A resposta deve:
 
       // Get Evolution API configuration
       const evolutionUrl = process.env.EVOLUTION_API_URL;
-      // CRITICAL: Validate instance - ONLY "Leads" or "Cobranca" allowed
+      // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
       const instance = validateEvolutionInstance(group.evolutionInstance || 'Leads');
 
       if (!evolutionUrl) {
@@ -8270,7 +8270,7 @@ A resposta deve:
         return res.status(404).json({ error: "Group not found" });
       }
 
-      // CRITICAL: Validate instance - ONLY "Leads" or "Cobranca" allowed
+      // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
       const instance = validateEvolutionInstance(group.evolutionInstance || 'Leads');
 
       console.log(`📤 [Groups] Sending ${mediaType} to group ${group.name}`);

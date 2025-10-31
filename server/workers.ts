@@ -49,9 +49,9 @@ import { checkAndNotifyMassiveFailure } from './lib/massive-failure-handler';
 import { ContextMonitor } from './lib/context-monitor';
 
 // Helper function to validate and normalize Evolution API instance
-// CRITICAL: ONLY "Leads" or "Cobranca" are allowed - NEVER "Principal"
+// Supported instances: "Leads", "Cobranca", "Principal"
 function validateEvolutionInstance(instance?: string): string {
-  const allowedInstances = ['Leads', 'Cobranca'];
+  const allowedInstances = ['Leads', 'Cobranca', 'Principal'];
   
   if (!instance) {
     return 'Leads'; // Default
@@ -64,14 +64,14 @@ function validateEvolutionInstance(instance?: string): string {
     return normalized;
   }
   
-  // If invalid instance (including "Principal"), force to Leads
+  // If invalid instance, force to Leads
   console.warn(`⚠️ [Evolution] Invalid instance "${instance}" - forcing to "Leads" (allowed: ${allowedInstances.join(', ')})`);
   return 'Leads';
 }
 
 // Helper function to send WhatsApp message
 async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?: string): Promise<{success: boolean, whatsappMessageId?: string, remoteJid?: string}> {
-  // CRITICAL: Validate instance - ONLY "Leads" or "Cobranca" allowed
+  // Validate and normalize Evolution API instance (Leads, Cobranca, or Principal)
   const rawInstance = instance || process.env.EVOLUTION_API_INSTANCE || 'Leads';
   const evolutionInstance = validateEvolutionInstance(rawInstance);
   
@@ -154,7 +154,7 @@ export async function sendWhatsAppMedia(
   fileName?: string,
   instance?: string
 ): Promise<{success: boolean, whatsappMessageId?: string, remoteJid?: string}> {
-  // CRITICAL: Validate instance - ONLY "Leads" or "Cobranca" allowed
+  // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
   const rawInstance = instance || process.env.EVOLUTION_API_INSTANCE || 'Leads';
   const evolutionInstance = validateEvolutionInstance(rawInstance);
   
@@ -340,7 +340,7 @@ if (redisConnection) {
     async (job: Job<MessageProcessingJob>) => {
       const { chatId, conversationId, message, fromNumber, hasImage, imageUrl, evolutionInstance: rawEvolutionInstance, clientName, messageId } = job.data;
       
-      // CRITICAL: Validate Evolution instance - ONLY "Leads" or "Cobranca" allowed
+      // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
       const evolutionInstance = validateEvolutionInstance(rawEvolutionInstance);
 
       // Check idempotency
@@ -1136,7 +1136,7 @@ if (redisConnection) {
     async (job: Job<NPSSurveyJob>) => {
     const { chatId, conversationId, evolutionInstance: rawEvolutionInstance } = job.data;
     
-    // CRITICAL: Validate Evolution instance - ONLY "Leads" or "Cobranca" allowed
+    // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
     const evolutionInstance = validateEvolutionInstance(rawEvolutionInstance);
 
     // Check idempotency
@@ -1204,7 +1204,7 @@ Por favor, responda apenas com um número de 0 a 10.
     async (job: Job<InactivityFollowupJob>) => {
       const { conversationId, chatId, clientId, clientName, evolutionInstance: rawEvolutionInstance, lastClientMessageTime } = job.data;
       
-      // CRITICAL: Validate Evolution instance - ONLY "Leads" or "Cobranca" allowed
+      // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
       const evolutionInstance = validateEvolutionInstance(rawEvolutionInstance);
 
       // Check idempotency
@@ -1315,7 +1315,7 @@ Por favor, responda apenas com um número de 0 a 10.
     async (job: Job<AutoClosureJob>) => {
       const { conversationId, chatId, clientId, clientName, evolutionInstance: rawEvolutionInstance, followupSentAt } = job.data;
       
-      // CRITICAL: Validate Evolution instance - ONLY "Leads" or "Cobranca" allowed
+      // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
       const evolutionInstance = validateEvolutionInstance(rawEvolutionInstance);
 
       // Check idempotency
