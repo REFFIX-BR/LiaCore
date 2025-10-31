@@ -937,10 +937,10 @@ export default function PromptManagement() {
                                           // Get current content (draft or production)
                                           const currentContent = draftContent || currentPrompt?.content || '';
                                           
-                                          // Add suggested fix to draft
+                                          // Add suggested fix to draft with proper spacing
                                           const separator = '\n\n' + '='.repeat(50) + '\n';
                                           const header = `CORREÇÃO SUGERIDA (${suggestion.problemSummary}):\n`;
-                                          const newContent = currentContent + separator + header + suggestion.suggestedFix + '\n';
+                                          const newContent = currentContent + separator + header + suggestion.suggestedFix + '\n\n';
                                           
                                           setDraftContent(newContent);
                                           hasLocalChangesRef.current = true; // Mark that we have local changes
