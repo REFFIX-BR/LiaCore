@@ -76,7 +76,22 @@ export const monitorAPI = {
     if (!response.ok) {
       throw new Error(`Failed to fetch conversation details: ${response.status}`);
     }
-    return response.json();
+    
+    const data = await response.json();
+    
+    // DEBUG: Verificar se PDFs chegaram
+    const pdfMessages = data.messages?.filter((m: any) => m.pdfBase64);
+    console.log(`🔥 [API Debug] Received ${pdfMessages?.length || 0} messages with pdfBase64 from API`);
+    if (pdfMessages && pdfMessages.length > 0) {
+      console.log(`🔥 [API Debug] First PDF sample:`, {
+        id: pdfMessages[0].id,
+        hasPdf: !!pdfMessages[0].pdfBase64,
+        pdfLength: pdfMessages[0].pdfBase64?.length || 0,
+        pdfPreview: pdfMessages[0].pdfBase64?.substring(0, 30)
+      });
+    }
+    
+    return data;
   },
 
   getAlerts: async (): Promise<AlertData[]> => {
