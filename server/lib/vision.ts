@@ -321,7 +321,16 @@ export async function processWhatsAppDocument(
   });
 
   if (!base64Document) {
-    console.log('⚠️  [Document] Não foi possível baixar o documento - retornando placeholder');
+    console.error('❌ [Document] FALHA ao baixar documento:', {
+      tentouUrl: !!mediaUrl,
+      tentouEvolution: !mediaUrl || !!messageKey,
+      fileName,
+      messageKey: messageKey ? {
+        id: messageKey.id?.substring(0, 20),
+        fromMe: messageKey.fromMe,
+        remoteJid: messageKey.remoteJid?.substring(0, 20)
+      } : 'não disponível'
+    });
     const text = fileName 
       ? `[Documento] ${fileName}` 
       : '[Documento recebido]';
