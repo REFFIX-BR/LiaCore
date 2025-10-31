@@ -106,6 +106,7 @@ export default function PromptManagement() {
   const productionScrollRef = useRef<HTMLDivElement>(null);
   const draftScrollRef = useRef<HTMLDivElement>(null);
   const scrollSyncActiveRef = useRef(false);
+  const hasLocalChangesRef = useRef(false);
   
   // Token counter
   const { count: tokenCount, isLoading: countingTokens } = useTokenCount(draftContent);
@@ -134,8 +135,13 @@ export default function PromptManagement() {
     enabled: !!selectedAssistant,
   });
 
-  // Sync draft content when prompt changes
+  // Sync draft content when prompt changes (but don't overwrite local changes)
   useEffect(() => {
+    // Don't overwrite if user has made local changes
+    if (hasLocalChangesRef.current) {
+      return;
+    }
+    
     if (currentPrompt?.draft?.draftContent) {
       setDraftContent(currentPrompt.draft.draftContent);
     } else if (currentPrompt?.content) {
@@ -143,9 +149,10 @@ export default function PromptManagement() {
     }
   }, [currentPrompt?.id, currentPrompt?.draft?.draftContent, currentPrompt?.content]);
 
-  // Reset applied suggestions when assistant changes
+  // Reset applied suggestions and local changes flag when assistant changes
   useEffect(() => {
     setAppliedSuggestions(new Set());
+    hasLocalChangesRef.current = false;
   }, [selectedAssistant]);
 
   // Auto-select all optimizations when AI suggestions change
@@ -206,6 +213,7 @@ export default function PromptManagement() {
       });
     },
     onSuccess: () => {
+      hasLocalChangesRef.current = false; // Reset local changes flag after successful save
       queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/prompts", selectedAssistant] });
       toast({
@@ -697,7 +705,10 @@ export default function PromptManagement() {
                     <CardContent className="flex-1 overflow-hidden flex flex-col gap-2">
                       <Textarea
                         value={draftContent || currentPrompt.content}
-                        onChange={(e) => setDraftContent(e.target.value)}
+                        onChange={(e) => {
+                          setDraftContent(e.target.value);
+                          hasLocalChangesRef.current = true; // Mark that we have local changes
+                        }}
                         className="flex-1 resize-none font-mono text-sm"
                         placeholder="Digite as instruções do assistente..."
                         data-testid="textarea-prompt-content"
@@ -923,13 +934,16 @@ export default function PromptManagement() {
                                         variant="outline"
                                         size="sm"
                                         onClick={() => {
-                                          // Copy suggested fix to draft
-                                          setDraftContent(prev => {
-                                            const separator = '\n\n' + '='.repeat(50) + '\n';
-                                            const header = `CORREÇÃO SUGERIDA (${suggestion.problemSummary}):\n`;
-                                            const newContent = prev + separator + header + suggestion.suggestedFix + '\n';
-                                            return newContent;
-                                          });
+                                          // Get current content (draft or production)
+                                          const currentContent = draftContent || currentPrompt?.content || '';
+                                          
+                                          // Add suggested fix to draft
+                                          const separator = '\n\n' + '='.repeat(50) + '\n';
+                                          const header = `CORREÇÃO SUGERIDA (${suggestion.problemSummary}):\n`;
+                                          const newContent = currentContent + separator + header + suggestion.suggestedFix + '\n';
+                                          
+                                          setDraftContent(newContent);
+                                          hasLocalChangesRef.current = true; // Mark that we have local changes
                                           
                                           // Mark suggestion as applied
                                           setAppliedSuggestions(prev => new Set(Array.from(prev).concat(index)));
