@@ -1372,26 +1372,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdBy: "IA Assistant",
         });
 
-        // ✅ BUG FIX: Garantir que resolved_by seja sempre preenchido (mesmo para IA)
-        // Update conversation - mark as resolved and set awaitingNPS flag
+        // ✅ BUG FIX: Usar método transacional atômico
         const existingMetadata = typeof conversation.metadata === 'object' && conversation.metadata !== null 
           ? conversation.metadata 
           : {};
           
-        await storage.updateConversation(conversation.id, {
-          status: 'resolved',
-          resolvedBy: null, // IA não tem userId, então usar null (diferente de undefined)
+        await storage.resolveConversation({
+          conversationId: conversation.id,
+          resolvedBy: null, // IA não tem userId, então usar null
           resolvedAt: new Date(),
-          lastMessage: message,
-          lastMessageTime: new Date(),
-          duration: (conversation.duration || 0) + 30,
-          sentiment,
-          urgency,
+          createActivityLog: false, // IA não cria activity log
           metadata: {
             ...existingMetadata,
             awaitingNPS: true,
             resolvedByAI: true, // Flag indicando que foi a IA que finalizou
             resolveReason: result.resolveReason || 'Problema resolvido',
+          },
+          additionalUpdates: {
+            lastMessage: message,
+            lastMessageTime: new Date(),
+            duration: (conversation.duration || 0) + 30,
+            sentiment,
+            urgency,
           },
         });
 
@@ -7094,37 +7096,34 @@ A resposta deve:
         });
       }
 
-      // ✅ BUG FIX: Atualizar conversa PRIMEIRO para garantir resolved_by em transação atômica
+      // ✅ BUG FIX: Usar método transacional atômico para garantir consistência
       // Preparar metadata para aguardar NPS se for WhatsApp
       const currentMetadata = conversation?.metadata as any || {};
       const isWhatsApp = currentMetadata?.source === 'evolution_api';
       
-      await storage.updateConversation(id, {
-        status: "resolved",
-        resolvedBy: currentUser.userId, // Registrar quem finalizou a conversa
+      // Usar método atômico que faz update + activity log em uma transação
+      await storage.resolveConversation({
+        conversationId: id,
+        resolvedBy: currentUser.userId,
         resolvedAt: new Date(),
-        assignedTo: null, // Desatribuir conversa ao finalizar
-        transferredToHuman: false, // Limpar flag de transferência ao finalizar
+        createActivityLog: true, // Criar log de atividade para agente
+        activityLogDetails: {
+          clientName: conversation.clientName,
+          assistantType: conversation.assistantType,
+        },
+        additionalUpdates: {
+          assignedTo: null, // Desatribuir conversa ao finalizar
+          transferredToHuman: false, // Limpar flag de transferência ao finalizar
+        },
         metadata: isWhatsApp ? { ...currentMetadata, awaitingNPS: true } : currentMetadata,
       });
 
-      // Criar ação de supervisor (após update bem-sucedido)
+      // Criar ação de supervisor (após resolução bem-sucedida)
       await storage.createSupervisorAction({
         conversationId: id,
         action: "mark_resolved",
         notes: `Conversa finalizada por ${currentUser.fullName || currentUser.username}`,
         createdBy: currentUser.fullName || currentUser.username,
-      });
-
-      // Criar log de atividade (após update bem-sucedido)
-      await storage.createActivityLog({
-        userId: currentUser.userId,
-        action: "resolve_conversation",
-        conversationId: id,
-        details: {
-          clientName: conversation.clientName,
-          assistantType: conversation.assistantType,
-        },
       });
 
       // Create learning event for successful resolution

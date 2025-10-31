@@ -923,11 +923,14 @@ if (redisConnection) {
       }
 
       if (result.resolved) {
-        console.log(`✅ [Worker] Conversation resolved`);
+        console.log(`✅ [Worker] Conversation resolved by AI`);
         
-        await storage.updateConversation(conversationId, {
-          status: 'resolved',
+        // ✅ BUG FIX: Usar método transacional atômico
+        await storage.resolveConversation({
+          conversationId,
+          resolvedBy: null, // IA não tem userId
           resolvedAt: new Date(),
+          createActivityLog: false, // IA não cria activity log
         });
       }
 
@@ -1389,13 +1392,16 @@ Por favor, responda apenas com um número de 0 a 10.
           content: closureMessage,
         });
 
+        // ✅ BUG FIX: Usar método transacional atômico
         // 8. Mark conversation as resolved (auto-closed)
-        await storage.updateConversation(conversationId, {
-          status: 'resolved',
+        await storage.resolveConversation({
+          conversationId,
+          resolvedBy: null, // Auto-closure não tem userId
           resolvedAt: new Date(),
           autoClosed: true,
           autoClosedReason: 'inactivity',
           autoClosedAt: new Date(),
+          createActivityLog: false, // Não criar activity log para auto-closure
         });
 
         console.log(`✅ [Auto-Closure Worker] Conversa ${conversationId} encerrada automaticamente por inatividade`);

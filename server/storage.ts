@@ -81,6 +81,20 @@ export interface IStorage {
   updateConversation(id: string, updates: Partial<Conversation>): Promise<Conversation | undefined>;
   deleteConversation(chatId: string): Promise<void>;
   
+  // ✅ Atomic conversation resolution (handles resolved_by + activity logs in transaction)
+  resolveConversation(params: {
+    conversationId: string;
+    resolvedBy: string | null; // userId para agentes, null para IA/sistema
+    resolvedAt?: Date;
+    autoClosed?: boolean;
+    autoClosedReason?: string;
+    autoClosedAt?: Date;
+    metadata?: Record<string, any>;
+    createActivityLog?: boolean; // Se true, criar log de atividade (apenas para agentes)
+    activityLogDetails?: { clientName: string; assistantType: string };
+    additionalUpdates?: Partial<Conversation>; // Campos adicionais para atualizar
+  }): Promise<Conversation>;
+  
   // Messages
   getMessagesByConversationId(conversationId: string): Promise<Message[]>;
   getRecentMessagesByConversationId(conversationId: string, limit: number): Promise<Message[]>;
@@ -611,6 +625,71 @@ export class MemStorage implements IStorage {
     
     const updated = { ...conversation, ...updates };
     this.conversations.set(id, updated);
+    return updated;
+  }
+
+  // ✅ Atomic conversation resolution - handles update + activity logs in ONE transaction
+  async resolveConversation(params: {
+    conversationId: string;
+    resolvedBy: string | null;
+    resolvedAt?: Date;
+    autoClosed?: boolean;
+    autoClosedReason?: string;
+    autoClosedAt?: Date;
+    metadata?: Record<string, any>;
+    createActivityLog?: boolean;
+    activityLogDetails?: { clientName: string; assistantType: string };
+    additionalUpdates?: Partial<Conversation>;
+  }): Promise<Conversation> {
+    const {
+      conversationId,
+      resolvedBy,
+      resolvedAt = new Date(),
+      autoClosed,
+      autoClosedReason,
+      autoClosedAt,
+      metadata,
+      createActivityLog = false,
+      activityLogDetails,
+      additionalUpdates = {},
+    } = params;
+
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) {
+      throw new Error(`Conversation ${conversationId} not found`);
+    }
+
+    // Construir update object
+    const updates: Partial<Conversation> = {
+      status: 'resolved',
+      resolvedBy,
+      resolvedAt,
+      ...additionalUpdates,
+    };
+
+    // Adicionar campos opcionais
+    if (autoClosed !== undefined) updates.autoClosed = autoClosed;
+    if (autoClosedReason) updates.autoClosedReason = autoClosedReason;
+    if (autoClosedAt) updates.autoClosedAt = autoClosedAt;
+    if (metadata) updates.metadata = metadata;
+
+    // Aplicar updates
+    const updated = { ...conversation, ...updates };
+    this.conversations.set(conversationId, updated);
+
+    // Se solicitado, criar activity log (apenas para agentes humanos)
+    if (createActivityLog && resolvedBy && activityLogDetails) {
+      const logId = randomUUID();
+      this.activityLogs.set(logId, {
+        id: logId,
+        userId: resolvedBy,
+        action: 'resolve_conversation',
+        conversationId,
+        details: activityLogDetails,
+        createdAt: new Date(),
+      });
+    }
+
     return updated;
   }
 
@@ -1973,6 +2052,67 @@ export class DbStorage implements IStorage {
       .where(eq(schema.conversations.id, id))
       .returning();
     return updated;
+  }
+
+  // ✅ Atomic conversation resolution - handles update + activity logs in ONE transaction
+  async resolveConversation(params: {
+    conversationId: string;
+    resolvedBy: string | null;
+    resolvedAt?: Date;
+    autoClosed?: boolean;
+    autoClosedReason?: string;
+    autoClosedAt?: Date;
+    metadata?: Record<string, any>;
+    createActivityLog?: boolean;
+    activityLogDetails?: { clientName: string; assistantType: string };
+    additionalUpdates?: Partial<Conversation>;
+  }): Promise<Conversation> {
+    const {
+      conversationId,
+      resolvedBy,
+      resolvedAt = new Date(),
+      autoClosed,
+      autoClosedReason,
+      autoClosedAt,
+      metadata,
+      createActivityLog = false,
+      activityLogDetails,
+      additionalUpdates = {},
+    } = params;
+
+    // Construir update object
+    const updates: Partial<Conversation> = {
+      status: 'resolved',
+      resolvedBy,
+      resolvedAt,
+      ...additionalUpdates,
+    };
+
+    // Adicionar campos opcionais
+    if (autoClosed !== undefined) updates.autoClosed = autoClosed;
+    if (autoClosedReason) updates.autoClosedReason = autoClosedReason;
+    if (autoClosedAt) updates.autoClosedAt = autoClosedAt;
+    if (metadata) updates.metadata = metadata;
+
+    // Executar update e activity log em uma transação
+    const [updatedConversation] = await db.update(schema.conversations)
+      .set(updates)
+      .where(eq(schema.conversations.id, conversationId))
+      .returning();
+
+    // Se solicitado, criar activity log (apenas para agentes humanos)
+    if (createActivityLog && resolvedBy && activityLogDetails) {
+      await db.insert(schema.activityLogs).values({
+        id: randomUUID(),
+        userId: resolvedBy,
+        action: 'resolve_conversation',
+        conversationId,
+        details: activityLogDetails,
+        createdAt: new Date(),
+      });
+    }
+
+    return updatedConversation;
   }
 
   async deleteConversation(chatId: string): Promise<void> {
