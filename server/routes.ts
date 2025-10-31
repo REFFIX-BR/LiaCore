@@ -1937,11 +1937,11 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
           );
           
           pdfBase64 = processedDocument.base64;
-          pdfName = processedDocument.fileName;
+          pdfName = processedDocument.fileName || 'documento.pdf'; // SEMPRE garantir um nome
           
           // Extrair texto do PDF se for um arquivo PDF
           const isPdf = message.documentMessage.mimetype?.includes('pdf') || 
-                        pdfName?.toLowerCase().endsWith('.pdf');
+                        pdfName.toLowerCase().endsWith('.pdf');
           
           if (isPdf && pdfBase64) {
             try {
