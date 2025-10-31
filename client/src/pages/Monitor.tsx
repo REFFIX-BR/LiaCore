@@ -404,27 +404,11 @@ export default function Monitor() {
   useEffect(() => {
     if (!conversationDetails?.messages) return;
 
-    // DEBUG: Verificar se PDFs chegam ao useEffect
-    const pdfMsgs = conversationDetails.messages.filter(m => m.pdfBase64);
-    console.log(`🟢 [Monitor useEffect] Received ${pdfMsgs.length} messages with pdfBase64`);
-    if (pdfMsgs.length > 0) {
-      console.log(`🟢 [Monitor useEffect] First PDF:`, {
-        id: pdfMsgs[0].id,
-        hasPdf: !!pdfMsgs[0].pdfBase64,
-        pdfLength: pdfMsgs[0].pdfBase64?.length || 0
-      });
-    }
-
     setAllMessages((prevMessages) => {
       const newMessages = conversationDetails.messages;
       
-      console.log(`🔵 [Monitor setAllMessages] prevMessages.length: ${prevMessages.length}, newMessages.length: ${newMessages.length}`);
-      
       // Se não há mensagens antigas, carregar as novas
       if (prevMessages.length === 0) {
-        console.log(`🔵 [Monitor BRANCH 1] No previous messages - returning ${newMessages.length} new messages`);
-        const pdfCount = newMessages.filter(m => m.pdfBase64).length;
-        console.log(`🔵 [Monitor BRANCH 1] PDFs in return: ${pdfCount}`);
         setHasMoreLocal(conversationDetails.hasMore || false);
         return newMessages;
       }
@@ -434,9 +418,6 @@ export default function Monitor() {
       
       // Se não há sobreposição, é uma nova conversa
       if (!newMessages.some(m => prevMessages.some(p => p.id === m.id))) {
-        console.log(`🔵 [Monitor BRANCH 2] New conversation - returning ${newMessages.length} new messages`);
-        const pdfCount = newMessages.filter(m => m.pdfBase64).length;
-        console.log(`🔵 [Monitor BRANCH 2] PDFs in return: ${pdfCount}`);
         setHasMoreLocal(conversationDetails.hasMore || false);
         setPaginatedMessageIds(new Set());
         return newMessages;
@@ -470,10 +451,6 @@ export default function Monitor() {
       
       // Combinar histórico paginado + mensagens do servidor (sempre fonte da verdade)
       const mergedMessages = [...historicalPaginatedMessages, ...newMessages];
-      
-      // DEBUG: Verificar se PDFs sobreviveram ao merge
-      const pdfAfterMerge = mergedMessages.filter(m => m.pdfBase64);
-      console.log(`🟡 [Monitor AFTER merge] ${pdfAfterMerge.length} messages with pdfBase64 in final array`);
       
       return mergedMessages;
     });
@@ -529,6 +506,11 @@ export default function Monitor() {
     content: msg.content,
     timestamp: new Date(msg.timestamp),
     functionCall: msg.functionCall,
+    pdfBase64: msg.pdfBase64,
+    pdfName: msg.pdfName,
+    imageBase64: msg.imageBase64,
+    audioBase64: msg.audioBase64,
+    audioMimeType: msg.audioMimeType,
   }));
 
   const mockAnalysis = {
