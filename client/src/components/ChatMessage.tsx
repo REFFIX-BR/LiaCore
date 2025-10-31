@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { useMemo, useEffect } from "react";
 
 export interface Message {
   id: string;
@@ -302,31 +303,77 @@ export function ChatMessage({ message, canEdit = false, onDelete, onReply, showI
           )}
 
           {/* PDF com base64 salvo - mostrar visualização inline SEMPRE que tiver dados */}
-          {message.pdfBase64 && (
-            <div className="mb-2">
-              <Badge variant="outline" className="mb-2 text-xs flex items-center gap-1">
-                <FileText className="h-3 w-3" />
-                <span>{message.pdfName || 'Documento PDF'}</span>
-              </Badge>
-              <iframe
-                src={message.pdfBase64.startsWith('data:') ? message.pdfBase64 : `data:application/pdf;base64,${message.pdfBase64}`}
-                className="w-full rounded-md border"
-                style={{ height: '400px' }}
-                title={message.pdfName || 'Documento PDF'}
-                data-testid="pdf-viewer"
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={downloadPdf}
-                className="mt-2 flex items-center gap-2"
-                data-testid="button-download-pdf"
-              >
-                <Download className="h-4 w-4" />
-                <span>Baixar {message.pdfName || 'documento.pdf'}</span>
-              </Button>
-            </div>
-          )}
+          {message.pdfBase64 && (() => {
+            // Criar Blob URL para evitar bloqueio do Chrome com data: URLs
+            const pdfBlobUrl = useMemo(() => {
+              try {
+                const base64Data = message.pdfBase64!.startsWith('data:') 
+                  ? message.pdfBase64!.split(',')[1] 
+                  : message.pdfBase64!;
+                
+                const binaryString = atob(base64Data);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                  bytes[i] = binaryString.charCodeAt(i);
+                }
+                
+                const blob = new Blob([bytes], { type: 'application/pdf' });
+                return URL.createObjectURL(blob);
+              } catch (error) {
+                console.error('Erro ao criar Blob URL:', error);
+                return null;
+              }
+            }, [message.pdfBase64]);
+
+            // Limpar Blob URL quando componente desmontar
+            useEffect(() => {
+              return () => {
+                if (pdfBlobUrl) {
+                  URL.revokeObjectURL(pdfBlobUrl);
+                }
+              };
+            }, [pdfBlobUrl]);
+
+            if (!pdfBlobUrl) return null;
+
+            return (
+              <div className="mb-2">
+                <Badge variant="outline" className="mb-2 text-xs flex items-center gap-1">
+                  <FileText className="h-3 w-3" />
+                  <span>{message.pdfName || 'Documento PDF'}</span>
+                </Badge>
+                <object
+                  data={pdfBlobUrl}
+                  type="application/pdf"
+                  className="w-full rounded-md border"
+                  style={{ height: '400px' }}
+                  title={message.pdfName || 'Documento PDF'}
+                  data-testid="pdf-viewer"
+                >
+                  <p className="p-4 text-sm text-muted-foreground">
+                    Seu navegador não suporta visualização de PDF inline.
+                    <br />
+                    <button
+                      onClick={downloadPdf}
+                      className="underline hover:no-underline text-primary"
+                    >
+                      Clique aqui para baixar o arquivo
+                    </button>
+                  </p>
+                </object>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={downloadPdf}
+                  className="mt-2 flex items-center gap-2"
+                  data-testid="button-download-pdf"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Baixar {message.pdfName || 'documento.pdf'}</span>
+                </Button>
+              </div>
+            );
+          })()}
 
           {/* Áudio do WhatsApp - player de áudio */}
           {message.audioUrl && (
