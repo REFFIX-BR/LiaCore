@@ -4,6 +4,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { startLearningScheduler } from "./lib/learning-scheduler";
 
+// PDF Extraction Fix: Force rebuild with pdf-parse@1.1.1 (2025-10-31)
 // Configurar timezone para horário de Brasília (UTC-3)
 process.env.TZ = 'America/Sao_Paulo';
 
