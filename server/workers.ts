@@ -1134,7 +1134,10 @@ if (redisConnection) {
   npsSurveyWorker = new Worker<NPSSurveyJob>(
     QUEUE_NAMES.NPS_SURVEY,
     async (job: Job<NPSSurveyJob>) => {
-    const { chatId, conversationId } = job.data;
+    const { chatId, conversationId, evolutionInstance: rawEvolutionInstance } = job.data;
+    
+    // CRITICAL: Validate Evolution instance - ONLY "Leads" or "Cobranca" allowed
+    const evolutionInstance = validateEvolutionInstance(rawEvolutionInstance);
 
     // Check idempotency
     if (await isJobProcessed(job.id!)) {
@@ -1163,11 +1166,13 @@ Olá! Seu atendimento foi finalizado 😊
 Por favor, responda apenas com um número de 0 a 10.
       `.trim();
 
-      const surveySent = await sendWhatsAppMessage(chatId, npsMessage);
+      const surveySent = await sendWhatsAppMessage(chatId, npsMessage, evolutionInstance);
       
       if (!surveySent.success) {
         throw new Error('Failed to send NPS survey - Evolution API error');
       }
+      
+      console.log(`✅ [NPS Worker] Survey sent via instance: ${evolutionInstance}`);
 
       // Mark conversation as awaiting NPS (only if survey was sent successfully)
       await storage.updateConversation(conversationId, {

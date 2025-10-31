@@ -226,6 +226,7 @@ export interface NPSSurveyJob {
   chatId: string;
   customerName: string;
   wasResolved: boolean;
+  evolutionInstance?: string;
 }
 
 export interface LearningTaskJob {

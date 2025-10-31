@@ -3973,6 +3973,7 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
               chatId: conv.chatId,
               customerName: conv.clientName || 'Cliente',
               wasResolved: false, // Consideramos não resolvida pois foi abandonada
+              evolutionInstance: conv.evolutionInstance ?? undefined, // 🔧 FIX: Pass instance to ensure NPS uses correct Evolution API instance
             }, 5000);
 
             console.log(`✅ [ADMIN] Conversa fechada: ${conv.clientName} (${minutesInactive}min inativa)`);
