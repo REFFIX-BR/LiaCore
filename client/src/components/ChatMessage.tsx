@@ -303,7 +303,20 @@ export function ChatMessage({ message, canEdit = false, onDelete, onReply, showI
           )}
 
           {/* PDF com base64 salvo - mostrar visualização inline SEMPRE que tiver dados */}
-          {message.pdfBase64 && (() => {
+          {(() => {
+            // DEBUG: Log para ver o que está chegando
+            if (message.content?.includes('Documento') || message.pdfBase64 || message.pdfName) {
+              console.log('🔍 [ChatMessage PDF Debug]', {
+                messageId: message.id,
+                hasPdfBase64: !!message.pdfBase64,
+                pdfBase64Length: message.pdfBase64?.length || 0,
+                pdfName: message.pdfName,
+                contentPreview: message.content?.substring(0, 100)
+              });
+            }
+            
+            if (!message.pdfBase64) return null;
+            
             // Criar Blob URL para evitar bloqueio do Chrome com data: URLs
             const pdfBlobUrl = useMemo(() => {
               try {
