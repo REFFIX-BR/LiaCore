@@ -4139,13 +4139,27 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
 
-      return res.json({
+      // Debug: log tamanho do JSON antes de enviar
+      const responseData = {
         conversation,
         messages,
         hasMore,
         alerts,
         actions,
-      });
+      };
+      
+      const jsonString = JSON.stringify(responseData);
+      const jsonSizeKB = (jsonString.length / 1024).toFixed(2);
+      console.log(`📊 [API Response Size] Sending ${jsonSizeKB}KB of JSON with ${messages.length} messages`);
+      
+      // Debug: verificar se PDF está no JSON final
+      const jsonWithPdfs = messages.filter(m => jsonString.includes(m.id) && m.pdfBase64);
+      if (jsonWithPdfs.length > 0) {
+        console.log(`✅ [API JSON Check] ${jsonWithPdfs.length} PDFs ARE in final JSON string`);
+      }
+
+      res.setHeader('X-Response-Size-KB', jsonSizeKB);
+      return res.json(responseData);
     } catch (error) {
       console.error("Conversation details error:", error);
       return res.status(500).json({ error: "Internal server error" });
