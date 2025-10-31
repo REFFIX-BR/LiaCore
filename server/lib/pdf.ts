@@ -1,4 +1,5 @@
 import { webhookLogger } from "./webhook-logger";
+import * as pdfParseModule from "pdf-parse";
 
 /**
  * Extrai texto de um PDF em base64 usando pdf-parse
@@ -8,13 +9,12 @@ import { webhookLogger } from "./webhook-logger";
  */
 export async function extractPdfText(pdfBase64: string): Promise<string | null> {
   try {
-    // Dynamic import for CommonJS module
-    const pdfParse = (await import("pdf-parse")).default;
-    
     const pdfBuffer = Buffer.from(pdfBase64, "base64");
     
     console.log(`📄 [PDF] Iniciando extração de texto do PDF (${(pdfBuffer.length / 1024).toFixed(2)}KB)`);
 
+    // Try to get the parse function from the module
+    const pdfParse = (pdfParseModule as any).default || pdfParseModule;
     const data = await pdfParse(pdfBuffer);
 
     if (!data.text || data.text.trim().length === 0) {
