@@ -2946,14 +2946,11 @@ export class DbStorage implements IStorage {
         }
       }
 
-      // Active conversations assigned to this agent
+      // ✅ FIX: Conversas ativas = TODAS as conversas atribuídas que NÃO foram finalizadas
       const activeConversations = await db.select().from(schema.conversations)
         .where(and(
           eq(schema.conversations.assignedTo, agent.id),
-          or(
-            eq(schema.conversations.status, 'active'),
-            eq(schema.conversations.status, 'transferred')
-          )
+          not(eq(schema.conversations.status, 'resolved'))
         ));
 
       // Resolved conversations today - usando resolved_by para dados reais
