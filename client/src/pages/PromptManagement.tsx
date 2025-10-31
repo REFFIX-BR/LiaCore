@@ -100,6 +100,7 @@ export default function PromptManagement() {
   const [versionBump, setVersionBump] = useState<"major" | "minor" | "patch">("patch");
   const [consolidationResult, setConsolidationResult] = useState<any>(null);
   const [selectedOptimizations, setSelectedOptimizations] = useState<number[]>([]);
+  const [appliedSuggestions, setAppliedSuggestions] = useState<Set<number>>(new Set());
   
   // Refs for synchronized scrolling in comparison view
   const productionScrollRef = useRef<HTMLDivElement>(null);
@@ -141,6 +142,11 @@ export default function PromptManagement() {
       setDraftContent(currentPrompt.content);
     }
   }, [currentPrompt?.id, currentPrompt?.draft?.draftContent, currentPrompt?.content]);
+
+  // Reset applied suggestions when assistant changes
+  useEffect(() => {
+    setAppliedSuggestions(new Set());
+  }, [selectedAssistant]);
 
   // Auto-select all optimizations when AI suggestions change
   useEffect(() => {
@@ -666,9 +672,9 @@ export default function PromptManagement() {
                   <TabsTrigger value="context" data-testid="tab-context">
                     <AlertCircle className="w-4 h-4 mr-2" />
                     Sugestões de Contexto
-                    {contextSuggestions?.totalAlerts > 0 && (
+                    {contextSuggestions && contextSuggestions.suggestions.length > 0 && appliedSuggestions.size < contextSuggestions.suggestions.length && (
                       <Badge variant="destructive" className="ml-2 h-5 px-1.5 text-xs">
-                        {contextSuggestions.totalAlerts}
+                        {contextSuggestions.suggestions.length - appliedSuggestions.size}
                       </Badge>
                     )}
                   </TabsTrigger>
@@ -902,27 +908,43 @@ export default function PromptManagement() {
 
                                   {/* Action Button */}
                                   <div className="flex justify-end pt-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        // Copy suggested fix to draft
-                                        setDraftContent(prev => {
-                                          const separator = '\n\n' + '='.repeat(50) + '\n';
-                                          const header = `CORREÇÃO SUGERIDA (${suggestion.problemSummary}):\n`;
-                                          const newContent = prev + separator + header + suggestion.suggestedFix + '\n';
-                                          return newContent;
-                                        });
-                                        toast({
-                                          title: "Sugestão adicionada ao rascunho",
-                                          description: "A correção foi adicionada ao final do seu rascunho. Revise e ajuste conforme necessário.",
-                                        });
-                                      }}
-                                      data-testid={`button-apply-suggestion-${index}`}
-                                    >
-                                      <Send className="w-4 h-4 mr-2" />
-                                      Adicionar ao Rascunho
-                                    </Button>
+                                    {appliedSuggestions.has(index) ? (
+                                      <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        disabled
+                                        data-testid={`button-suggestion-applied-${index}`}
+                                      >
+                                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                                        Adicionada ao Rascunho
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          // Copy suggested fix to draft
+                                          setDraftContent(prev => {
+                                            const separator = '\n\n' + '='.repeat(50) + '\n';
+                                            const header = `CORREÇÃO SUGERIDA (${suggestion.problemSummary}):\n`;
+                                            const newContent = prev + separator + header + suggestion.suggestedFix + '\n';
+                                            return newContent;
+                                          });
+                                          
+                                          // Mark suggestion as applied
+                                          setAppliedSuggestions(prev => new Set(Array.from(prev).concat(index)));
+                                          
+                                          toast({
+                                            title: "Sugestão adicionada ao rascunho",
+                                            description: "A correção foi adicionada ao final do seu rascunho. Revise e ajuste conforme necessário.",
+                                          });
+                                        }}
+                                        data-testid={`button-apply-suggestion-${index}`}
+                                      >
+                                        <Send className="w-4 h-4 mr-2" />
+                                        Adicionar ao Rascunho
+                                      </Button>
+                                    )}
                                   </div>
                                 </CardContent>
                               </Card>
