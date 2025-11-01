@@ -1010,3 +1010,96 @@ export const insertContextQualityAlertSchema = createInsertSchema(contextQuality
 
 export type ContextQualityAlert = typeof contextQualityAlerts.$inferSelect;
 export type InsertContextQualityAlert = z.infer<typeof insertContextQualityAlertSchema>;
+
+// ========================
+// GAMIFICATION SYSTEM
+// ========================
+
+// Badge Type enum
+export const BadgeType = {
+  SOLUCIONADOR: "solucionador", // Alto NPS + alta taxa de resolução
+  VELOCISTA: "velocista", // Tempo médio de resposta rápido mantendo NPS >7
+  CAMPEAO_VOLUME: "campeao_volume", // Maior número de atendimentos finalizados
+} as const;
+
+// Gamification Scores - Pontuação mensal dos atendentes
+export const gamificationScores = pgTable("gamification_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull(), // User ID do atendente
+  period: text("period").notNull(), // Período no formato YYYY-MM (ex: "2025-01")
+  totalConversations: integer("total_conversations").default(0), // Total de conversas resolvidas
+  avgNps: integer("avg_nps").default(0), // NPS médio (0-10)
+  successRate: integer("success_rate").default(0), // Taxa de sucesso baseada em sentimento (0-100)
+  avgResponseTime: integer("avg_response_time").default(0), // Tempo médio de resposta em segundos
+  volumeScore: integer("volume_score").default(0), // Pontuação de volume (normalizada 0-100)
+  npsScore: integer("nps_score").default(0), // Pontuação de NPS (normalizada 0-100)
+  resolutionScore: integer("resolution_score").default(0), // Pontuação de resolução (0-100)
+  timeScore: integer("time_score").default(0), // Pontuação de tempo (0-100)
+  totalScore: integer("total_score").default(0), // Pontuação total ponderada (40% NPS + 30% Volume + 20% Resolução + 10% Tempo)
+  ranking: integer("ranking"), // Posição no ranking (1-N)
+  calculatedAt: timestamp("calculated_at").defaultNow(), // Quando foi calculado
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  agentPeriodIdx: index("gamification_scores_agent_period_idx").on(table.agentId, table.period),
+  periodIdx: index("gamification_scores_period_idx").on(table.period),
+  totalScoreIdx: index("gamification_scores_total_score_idx").on(table.totalScore),
+}));
+
+// Gamification Badges - Badges conquistados pelos atendentes
+export const gamificationBadges = pgTable("gamification_badges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull(), // User ID do atendente
+  badgeType: text("badge_type").notNull(), // 'solucionador', 'velocista', 'campeao_volume'
+  period: text("period").notNull(), // Período no formato YYYY-MM (ex: "2025-01")
+  metric: integer("metric"), // Valor da métrica que conquistou o badge
+  awardedAt: timestamp("awarded_at").defaultNow(),
+}, (table) => ({
+  agentIdIdx: index("gamification_badges_agent_id_idx").on(table.agentId),
+  periodIdx: index("gamification_badges_period_idx").on(table.period),
+  badgeTypeIdx: index("gamification_badges_badge_type_idx").on(table.badgeType),
+}));
+
+// Gamification History - Histórico de vencedores mensais (Top 5)
+export const gamificationHistory = pgTable("gamification_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  period: text("period").notNull(), // Período no formato YYYY-MM (ex: "2025-01")
+  agentId: varchar("agent_id").notNull(), // User ID do vencedor
+  ranking: integer("ranking").notNull(), // Posição no Top 5 (1-5)
+  totalScore: integer("total_score").notNull(), // Pontuação final
+  metrics: jsonb("metrics"), // Snapshot das métricas (volume, NPS, resolução, tempo)
+  badges: text("badges").array(), // Badges conquistados naquele mês
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  periodIdx: index("gamification_history_period_idx").on(table.period),
+  agentIdIdx: index("gamification_history_agent_id_idx").on(table.agentId),
+  rankingIdx: index("gamification_history_ranking_idx").on(table.ranking),
+}));
+
+// Insert Schemas
+export const insertGamificationScoreSchema = createInsertSchema(gamificationScores).omit({
+  id: true,
+  createdAt: true,
+  calculatedAt: true,
+});
+
+export const insertGamificationBadgeSchema = createInsertSchema(gamificationBadges).omit({
+  id: true,
+  awardedAt: true,
+}).extend({
+  badgeType: z.enum(["solucionador", "velocista", "campeao_volume"]),
+});
+
+export const insertGamificationHistorySchema = createInsertSchema(gamificationHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type GamificationScore = typeof gamificationScores.$inferSelect;
+export type InsertGamificationScore = z.infer<typeof insertGamificationScoreSchema>;
+
+export type GamificationBadge = typeof gamificationBadges.$inferSelect;
+export type InsertGamificationBadge = z.infer<typeof insertGamificationBadgeSchema>;
+
+export type GamificationHistory = typeof gamificationHistory.$inferSelect;
+export type InsertGamificationHistory = z.infer<typeof insertGamificationHistorySchema>;

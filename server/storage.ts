@@ -4525,6 +4525,442 @@ export class DbStorage implements IStorage {
       .where(lt(schema.contextQualityAlerts.detectedAt, cutoffTime));
     return result.rowCount || 0;
   }
+
+  // ===================================
+  // GAMIFICATION SYSTEM
+  // ===================================
+
+  /**
+   * Calcula e atualiza as pontuações de gamificação para um período específico (mês)
+   * Formula: 40% NPS + 30% Volume + 20% Resolução + 10% Tempo
+   */
+  async calculateGamificationScores(period: string): Promise<void> {
+    // Parse period (formato: YYYY-MM)
+    const [year, month] = period.split('-').map(Number);
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+
+    // Pega todos os agentes ativos
+    const agents = await db.select()
+      .from(schema.users)
+      .where(and(
+        eq(schema.users.status, 'ACTIVE'),
+        or(
+          eq(schema.users.role, 'AGENT'),
+          eq(schema.users.role, 'SUPERVISOR')
+        )
+      ));
+
+    if (agents.length === 0) {
+      console.log('[Gamification] Nenhum agente ativo encontrado');
+      return;
+    }
+
+    // Para cada agente, calcula as métricas
+    const scores = [];
+    for (const agent of agents) {
+      // Pega conversas resolvidas pelo agente no período
+      const conversations = await db.select()
+        .from(schema.conversations)
+        .where(and(
+          eq(schema.conversations.status, 'resolved'),
+          eq(schema.conversations.resolvedBy, agent.id),
+          isNotNull(schema.conversations.resolvedAt),
+          gte(schema.conversations.resolvedAt, startDate),
+          lte(schema.conversations.resolvedAt, endDate)
+        ));
+
+      const totalConversations = conversations.length;
+
+      // Se o agente não tem conversas, pula
+      if (totalConversations === 0) {
+        continue;
+      }
+
+      // Pega feedbacks NPS do período
+      const feedbacks = await db.select()
+        .from(schema.satisfactionFeedback)
+        .where(and(
+          sql`${schema.satisfactionFeedback.conversationId} IN (SELECT id FROM ${schema.conversations} WHERE ${schema.conversations.resolvedBy} = ${agent.id})`,
+          gte(schema.satisfactionFeedback.createdAt, startDate),
+          lte(schema.satisfactionFeedback.createdAt, endDate)
+        ));
+
+      // Calcula NPS médio
+      const avgNps = feedbacks.length > 0
+        ? Math.round(feedbacks.reduce((sum, f) => sum + (f.npsScore || 0), 0) / feedbacks.length)
+        : 0;
+
+      // Calcula taxa de sucesso (baseado em sentimento positivo/neutro)
+      const successfulConversations = conversations.filter(c =>
+        c.sentiment === 'positive' || c.sentiment === 'neutral'
+      ).length;
+      const successRate = Math.round((successfulConversations / totalConversations) * 100);
+
+      // Calcula tempo médio de resposta (primeira resposta do agente após atribuição)
+      let totalResponseTime = 0;
+      let countWithResponseTime = 0;
+      for (const conv of conversations) {
+        if (!conv.transferredAt) continue;
+
+        // Pega primeira mensagem do agente após transferência
+        const firstAgentMessage = await db.select()
+          .from(schema.messages)
+          .where(and(
+            eq(schema.messages.conversationId, conv.id),
+            eq(schema.messages.role, 'assistant'),
+            gte(schema.messages.timestamp, conv.transferredAt)
+          ))
+          .orderBy(schema.messages.timestamp)
+          .limit(1);
+
+        if (firstAgentMessage.length > 0 && firstAgentMessage[0].timestamp) {
+          const responseTime = firstAgentMessage[0].timestamp.getTime() - conv.transferredAt.getTime();
+          totalResponseTime += responseTime;
+          countWithResponseTime++;
+        }
+      }
+      const avgResponseTime = countWithResponseTime > 0
+        ? Math.round(totalResponseTime / countWithResponseTime / 1000) // em segundos
+        : 0;
+
+      scores.push({
+        agentId: agent.id,
+        agentName: agent.fullName,
+        totalConversations,
+        avgNps,
+        successRate,
+        avgResponseTime,
+      });
+    }
+
+    // Normaliza as pontuações (0-100) para cada métrica
+    const maxVolume = Math.max(...scores.map(s => s.totalConversations), 1);
+    const maxNps = 10; // NPS é de 0-10
+    const maxSuccessRate = 100; // Taxa de sucesso já é 0-100
+    
+    // Para tempo de resposta, quanto menor melhor - invertemos a lógica
+    const maxTime = Math.max(...scores.map(s => s.avgResponseTime), 1);
+
+    const scoredData = scores.map(s => {
+      const volumeScore = Math.round((s.totalConversations / maxVolume) * 100);
+      const npsScore = Math.round((s.avgNps / maxNps) * 100);
+      const resolutionScore = s.successRate; // Já está em 0-100
+      
+      // Tempo: quanto menor, melhor. Invertemos a pontuação
+      const timeScore = s.avgResponseTime > 0
+        ? Math.round((1 - (s.avgResponseTime / maxTime)) * 100)
+        : 100;
+
+      // Fórmula final: 40% NPS + 30% Volume + 20% Resolução + 10% Tempo
+      const totalScore = Math.round(
+        (npsScore * 0.4) +
+        (volumeScore * 0.3) +
+        (resolutionScore * 0.2) +
+        (timeScore * 0.1)
+      );
+
+      return {
+        ...s,
+        volumeScore,
+        npsScore,
+        resolutionScore,
+        timeScore,
+        totalScore,
+      };
+    });
+
+    // Ordena por pontuação total (decrescente) e atribui ranking
+    const ranked = scoredData
+      .sort((a, b) => b.totalScore - a.totalScore)
+      .map((score, index) => ({
+        ...score,
+        ranking: index + 1,
+      }));
+
+    // Salva ou atualiza os scores no banco
+    for (const score of ranked) {
+      // Verifica se já existe um score para este agente/período
+      const [existing] = await db.select()
+        .from(schema.gamificationScores)
+        .where(and(
+          eq(schema.gamificationScores.agentId, score.agentId),
+          eq(schema.gamificationScores.period, period)
+        ))
+        .limit(1);
+
+      const scoreData = {
+        agentId: score.agentId,
+        period,
+        totalConversations: score.totalConversations,
+        avgNps: score.avgNps,
+        successRate: score.successRate,
+        avgResponseTime: score.avgResponseTime,
+        volumeScore: score.volumeScore,
+        npsScore: score.npsScore,
+        resolutionScore: score.resolutionScore,
+        timeScore: score.timeScore,
+        totalScore: score.totalScore,
+        ranking: score.ranking,
+        calculatedAt: new Date(),
+      };
+
+      if (existing) {
+        // Atualiza
+        await db.update(schema.gamificationScores)
+          .set(scoreData)
+          .where(eq(schema.gamificationScores.id, existing.id));
+      } else {
+        // Insere
+        await db.insert(schema.gamificationScores).values(scoreData);
+      }
+    }
+
+    console.log(`[Gamification] Pontuações calculadas para ${period}: ${ranked.length} agentes`);
+  }
+
+  /**
+   * Verifica e atribui badges para um período específico
+   */
+  async awardBadges(period: string): Promise<void> {
+    // Pega todos os scores do período
+    const scores = await db.select({
+      score: schema.gamificationScores,
+      agent: schema.users,
+    })
+      .from(schema.gamificationScores)
+      .leftJoin(schema.users, eq(schema.gamificationScores.agentId, schema.users.id))
+      .where(eq(schema.gamificationScores.period, period))
+      .orderBy(desc(schema.gamificationScores.totalScore));
+
+    if (scores.length === 0) {
+      console.log('[Gamification] Nenhum score encontrado para atribuir badges');
+      return;
+    }
+
+    // 1. Badge "Solucionador" - Maior NPS + Taxa de Resolução combinados
+    const solucionadorScores = scores.map(s => ({
+      ...s,
+      combinedScore: ((s.score.avgNps || 0) * 10) + (s.score.successRate || 0),
+    })).sort((a, b) => b.combinedScore - a.combinedScore);
+
+    const solucionador = solucionadorScores[0];
+    await this.upsertBadge({
+      agentId: solucionador.score.agentId,
+      badgeType: 'solucionador',
+      period,
+      metric: solucionador.combinedScore,
+    });
+
+    // 2. Badge "Velocista" - Menor tempo de resposta (mantendo NPS > 7)
+    const velocistas = scores
+      .filter(s => (s.score.avgNps || 0) >= 7)
+      .sort((a, b) => (a.score.avgResponseTime || 0) - (b.score.avgResponseTime || 0));
+
+    if (velocistas.length > 0) {
+      const velocista = velocistas[0];
+      await this.upsertBadge({
+        agentId: velocista.score.agentId,
+        badgeType: 'velocista',
+        period,
+        metric: velocista.score.avgResponseTime || 0,
+      });
+    }
+
+    // 3. Badge "Campeão do Volume" - Maior número de atendimentos
+    const campeao = scores
+      .sort((a, b) => (b.score.totalConversations || 0) - (a.score.totalConversations || 0))[0];
+
+    await this.upsertBadge({
+      agentId: campeao.score.agentId,
+      badgeType: 'campeao_volume',
+      period,
+      metric: campeao.score.totalConversations || 0,
+    });
+
+    console.log(`[Gamification] Badges atribuídos para ${period}`);
+  }
+
+  /**
+   * Upsert de badge (insere ou atualiza se já existe)
+   */
+  private async upsertBadge(badge: {
+    agentId: string;
+    badgeType: string;
+    period: string;
+    metric: number;
+  }): Promise<void> {
+    const [existing] = await db.select()
+      .from(schema.gamificationBadges)
+      .where(and(
+        eq(schema.gamificationBadges.agentId, badge.agentId),
+        eq(schema.gamificationBadges.badgeType, badge.badgeType),
+        eq(schema.gamificationBadges.period, badge.period)
+      ))
+      .limit(1);
+
+    if (existing) {
+      await db.update(schema.gamificationBadges)
+        .set({ metric: badge.metric, awardedAt: new Date() })
+        .where(eq(schema.gamificationBadges.id, existing.id));
+    } else {
+      await db.insert(schema.gamificationBadges).values(badge);
+    }
+  }
+
+  /**
+   * Salva o histórico dos Top 5 vencedores do mês
+   */
+  async saveTop5History(period: string): Promise<void> {
+    // Pega os Top 5 do período
+    const top5 = await db.select({
+      score: schema.gamificationScores,
+      agent: schema.users,
+    })
+      .from(schema.gamificationScores)
+      .leftJoin(schema.users, eq(schema.gamificationScores.agentId, schema.users.id))
+      .where(eq(schema.gamificationScores.period, period))
+      .orderBy(desc(schema.gamificationScores.totalScore))
+      .limit(5);
+
+    // Para cada um, pega os badges conquistados
+    for (let i = 0; i < top5.length; i++) {
+      const item = top5[i];
+      const badges = await db.select()
+        .from(schema.gamificationBadges)
+        .where(and(
+          eq(schema.gamificationBadges.agentId, item.score.agentId),
+          eq(schema.gamificationBadges.period, period)
+        ));
+
+      const badgeTypes = badges.map(b => b.badgeType);
+
+      // Verifica se já existe no histórico
+      const [existing] = await db.select()
+        .from(schema.gamificationHistory)
+        .where(and(
+          eq(schema.gamificationHistory.period, period),
+          eq(schema.gamificationHistory.agentId, item.score.agentId)
+        ))
+        .limit(1);
+
+      const historyData = {
+        period,
+        agentId: item.score.agentId,
+        ranking: i + 1,
+        totalScore: item.score.totalScore || 0,
+        metrics: {
+          volume: item.score.totalConversations || 0,
+          nps: item.score.avgNps || 0,
+          successRate: item.score.successRate || 0,
+          avgResponseTime: item.score.avgResponseTime || 0,
+        },
+        badges: badgeTypes,
+      };
+
+      if (existing) {
+        await db.update(schema.gamificationHistory)
+          .set(historyData)
+          .where(eq(schema.gamificationHistory.id, existing.id));
+      } else {
+        await db.insert(schema.gamificationHistory).values(historyData);
+      }
+    }
+
+    console.log(`[Gamification] Histórico Top 5 salvo para ${period}`);
+  }
+
+  /**
+   * Retorna o ranking do período atual (ou período especificado)
+   */
+  async getGamificationRanking(period?: string): Promise<any[]> {
+    // Se não especificado, usa o mês atual
+    const targetPeriod = period || new Date().toISOString().slice(0, 7); // YYYY-MM
+
+    const ranking = await db.select({
+      score: schema.gamificationScores,
+      agent: schema.users,
+    })
+      .from(schema.gamificationScores)
+      .leftJoin(schema.users, eq(schema.gamificationScores.agentId, schema.users.id))
+      .where(eq(schema.gamificationScores.period, targetPeriod))
+      .orderBy(desc(schema.gamificationScores.totalScore));
+
+    // Para cada agente, pega os badges
+    const rankingWithBadges = await Promise.all(
+      ranking.map(async (item) => {
+        const badges = await db.select()
+          .from(schema.gamificationBadges)
+          .where(and(
+            eq(schema.gamificationBadges.agentId, item.score.agentId),
+            eq(schema.gamificationBadges.period, targetPeriod)
+          ));
+
+        return {
+          ...item.score,
+          agentName: item.agent?.fullName || 'Desconhecido',
+          badges: badges.map(b => ({
+            type: b.badgeType,
+            metric: b.metric,
+            awardedAt: b.awardedAt,
+          })),
+        };
+      })
+    );
+
+    return rankingWithBadges;
+  }
+
+  /**
+   * Retorna o histórico de um agente específico
+   */
+  async getAgentGamificationHistory(agentId: string, limit: number = 12): Promise<any[]> {
+    const history = await db.select()
+      .from(schema.gamificationScores)
+      .where(eq(schema.gamificationScores.agentId, agentId))
+      .orderBy(desc(schema.gamificationScores.period))
+      .limit(limit);
+
+    return history;
+  }
+
+  /**
+   * Retorna estatísticas gerais de gamificação
+   */
+  async getGamificationStats(period?: string): Promise<any> {
+    const targetPeriod = period || new Date().toISOString().slice(0, 7);
+
+    const scores = await db.select()
+      .from(schema.gamificationScores)
+      .where(eq(schema.gamificationScores.period, targetPeriod));
+
+    const totalAgents = scores.length;
+    const avgTotalScore = scores.length > 0
+      ? Math.round(scores.reduce((sum, s) => sum + (s.totalScore || 0), 0) / scores.length)
+      : 0;
+    
+    const topScore = scores.length > 0
+      ? Math.max(...scores.map(s => s.totalScore || 0))
+      : 0;
+
+    const badges = await db.select()
+      .from(schema.gamificationBadges)
+      .where(eq(schema.gamificationBadges.period, targetPeriod));
+
+    const badgesByType = badges.reduce((acc, badge) => {
+      acc[badge.badgeType] = (acc[badge.badgeType] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      period: targetPeriod,
+      totalAgents,
+      avgTotalScore,
+      topScore,
+      totalBadges: badges.length,
+      badgesByType,
+    };
+  }
 }
 
 export const storage = new DbStorage();
