@@ -3064,17 +3064,21 @@ export class DbStorage implements IStorage {
   }) {
     const { startDate, endDate, agentId, groupBy } = params;
 
-    // Get all conversations in the period
+    // ✅ FIX: Get conversations RESOLVED by agents in the period (not created)
+    // Usar resolvedBy e resolvedAt para pegar conversas efetivamente resolvidas pelos atendentes
     let conversationsQuery = db.select({
       conversation: schema.conversations,
       agent: schema.users
     })
       .from(schema.conversations)
-      .leftJoin(schema.users, eq(schema.conversations.assignedTo, schema.users.id))
+      .leftJoin(schema.users, eq(schema.conversations.resolvedBy, schema.users.id))
       .where(and(
-        gte(schema.conversations.createdAt, startDate),
-        lte(schema.conversations.createdAt, endDate),
-        agentId ? eq(schema.conversations.assignedTo, agentId) : sql`1=1`
+        eq(schema.conversations.status, 'resolved'),
+        isNotNull(schema.conversations.resolvedBy),
+        isNotNull(schema.conversations.resolvedAt),
+        gte(schema.conversations.resolvedAt, startDate),
+        lte(schema.conversations.resolvedAt, endDate),
+        agentId ? eq(schema.conversations.resolvedBy, agentId) : sql`1=1`
       ));
 
     const conversations = await conversationsQuery;
@@ -3096,9 +3100,10 @@ export class DbStorage implements IStorage {
     }>();
 
     conversations.forEach(({ conversation, agent }) => {
-      if (!conversation.createdAt) return;
+      // ✅ FIX: Usar resolvedAt ao invés de createdAt para agrupar
+      if (!conversation.resolvedAt) return;
 
-      const date = new Date(conversation.createdAt);
+      const date = new Date(conversation.resolvedAt);
       let periodKey = '';
 
       switch (groupBy) {
@@ -3114,12 +3119,12 @@ export class DbStorage implements IStorage {
           break;
       }
 
-      // If filtering by agent, use single key; otherwise use agent-specific keys
-      const key = agentId ? periodKey : `${periodKey}-${conversation.assignedTo || 'unassigned'}`;
+      // ✅ FIX: Usar resolvedBy ao invés de assignedTo (quem resolveu, não quem foi atribuído)
+      const key = agentId ? periodKey : `${periodKey}-${conversation.resolvedBy || 'unassigned'}`;
 
       if (!groupedData.has(key)) {
         groupedData.set(key, {
-          agentId: conversation.assignedTo || undefined,
+          agentId: conversation.resolvedBy || undefined,
           agentName: agent?.fullName || 'Não Atribuído',
           conversations: [],
           feedbacks: []
@@ -3149,9 +3154,9 @@ export class DbStorage implements IStorage {
           break;
       }
 
-      // Find the conversation to get agent
+      // ✅ FIX: Find the conversation to get agent BY resolvedBy
       const conv = conversations.find(c => c.conversation.id === feedback.conversationId);
-      const key = agentId ? periodKey : `${periodKey}-${conv?.conversation.assignedTo || 'unassigned'}`;
+      const key = agentId ? periodKey : `${periodKey}-${conv?.conversation.resolvedBy || 'unassigned'}`;
 
       if (groupedData.has(key)) {
         groupedData.get(key)!.feedbacks.push(feedback);
@@ -3163,15 +3168,19 @@ export class DbStorage implements IStorage {
       const period = agentId ? key : key.split('-').slice(0, groupBy === 'week' ? 2 : groupBy === 'day' ? 3 : 2).join('-');
       const convs = data.conversations.map(c => c.conversation);
       
+      // ✅ FIX: totalConversations agora representa conversas RESOLVIDAS pelo atendente no período
       const totalConversations = convs.length;
-      // Conta conversas resolvidas: status 'resolved' OU 'awaiting_nps' OU com resolvedBy preenchido
-      const resolvedConversations = convs.filter(c => 
-        c.status === 'resolved' || 
-        c.status === 'awaiting_nps' || 
-        c.resolvedBy !== null
+      
+      // ✅ FIX: Todas as conversas já são resolvidas (filtradas na query inicial)
+      // resolvedConversations = totalConversations (já que filtramos por status='resolved')
+      const resolvedConversations = totalConversations;
+      
+      // ✅ FIX: Success rate baseado em sentimento positivo/neutro
+      const successfulConversations = convs.filter(c => 
+        c.sentiment === 'positive' || c.sentiment === 'neutral'
       ).length;
       const successRate = totalConversations > 0 
-        ? Math.round((resolvedConversations / totalConversations) * 100)
+        ? Math.round((successfulConversations / totalConversations) * 100)
         : 0;
 
       // Calculate average sentiment
@@ -3190,7 +3199,8 @@ export class DbStorage implements IStorage {
         ? Math.round(data.feedbacks.reduce((sum, f) => sum + (f.npsScore || 0), 0) / data.feedbacks.length)
         : 0;
 
-      // Count transfers to human
+      // ✅ FIX: Transferências = conversas que foram transferidas (de AI ou de outro agente) antes de serem resolvidas
+      // transferredToHuman representa se a IA transferiu para humano, o que é relevante para atendentes
       const transfersToHuman = convs.filter(c => c.transferredToHuman).length;
 
       return {
