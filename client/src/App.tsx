@@ -38,6 +38,7 @@ import Regioes from "@/pages/Regioes";
 import Anuncios from "@/pages/Anuncios";
 import PromptManagement from "@/pages/PromptManagement";
 import ContextQuality from "@/pages/ContextQuality";
+import Gamification from "@/pages/Gamification";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -184,6 +185,9 @@ function Router() {
       </Route>
       <Route path="/evolution">
         {() => <ProtectedRoute component={AgentEvolution} />}
+      </Route>
+      <Route path="/gamification">
+        {() => <ProtectedRoute component={Gamification} />}
       </Route>
       <Route path="/assistants">
         {() => <ProtectedRoute component={Assistants} />}

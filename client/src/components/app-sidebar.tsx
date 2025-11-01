@@ -43,7 +43,8 @@ import {
   MapPin,
   Megaphone,
   Wrench,
-  Target
+  Target,
+  Trophy
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
@@ -212,6 +213,12 @@ const menuCategories: MenuCategory[] = [
         url: "/evolution",
         icon: TrendingUp,
         roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Gamificação",
+        url: "/gamification",
+        icon: Trophy,
+        roles: ["ADMIN", "SUPERVISOR", "AGENT"],
       },
     ],
   },

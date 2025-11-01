@@ -9754,7 +9754,7 @@ A resposta deve:
    * Retorna o ranking de gamificação do período
    * Query params: period (opcional, formato YYYY-MM, default: mês atual)
    */
-  app.get("/api/gamification/ranking", isAuthenticated, async (req, res) => {
+  app.get("/api/gamification/ranking", authenticate, async (req, res) => {
     try {
       const { period } = req.query;
       
@@ -9775,7 +9775,7 @@ A resposta deve:
    * Body: { period: "YYYY-MM" }
    * Requer permissão ADMIN ou SUPERVISOR
    */
-  app.post("/api/gamification/calculate", isAuthenticated, isSupervisorOrAdmin, async (req, res) => {
+  app.post("/api/gamification/calculate", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
       const { period } = req.body;
       
@@ -9811,7 +9811,7 @@ A resposta deve:
    * Retorna estatísticas gerais de gamificação
    * Query params: period (opcional, formato YYYY-MM, default: mês atual)
    */
-  app.get("/api/gamification/stats", isAuthenticated, async (req, res) => {
+  app.get("/api/gamification/stats", authenticate, async (req, res) => {
     try {
       const { period } = req.query;
       
@@ -9831,7 +9831,7 @@ A resposta deve:
    * Retorna o histórico de gamificação de um agente específico
    * Query params: limit (opcional, default: 12 meses)
    */
-  app.get("/api/gamification/agent/:agentId", isAuthenticated, async (req, res) => {
+  app.get("/api/gamification/agent/:agentId", authenticate, async (req, res) => {
     try {
       const { agentId } = req.params;
       const { limit = 12 } = req.query;
