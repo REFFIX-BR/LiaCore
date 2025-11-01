@@ -220,6 +220,12 @@ const menuCategories: MenuCategory[] = [
         icon: Trophy,
         roles: ["ADMIN", "SUPERVISOR", "AGENT"],
       },
+      {
+        title: "Configurações",
+        url: "/gamification/settings",
+        icon: Settings,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
     ],
   },
   {

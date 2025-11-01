@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema, insertSatisfactionFeedbackSchema, loginSchema, insertUserSchema, updateUserSchema, insertComplaintSchema, updateComplaintSchema, insertPlanSchema, updatePlanSchema, insertSaleSchema, type Conversation } from "@shared/schema";
+import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema, insertSatisfactionFeedbackSchema, loginSchema, insertUserSchema, updateUserSchema, insertComplaintSchema, updateComplaintSchema, insertPlanSchema, updatePlanSchema, insertSaleSchema, updateGamificationSettingsSchema, type Conversation } from "@shared/schema";
 import { routeMessage, createThread, sendMessageAndGetResponse, summarizeConversation, routeMessageWithContext, CONTEXT_CONFIG } from "./lib/openai";
 import { z } from "zod";
 import { storeConversationThread, getConversationThread, searchKnowledge } from "./lib/upstash";
@@ -9844,6 +9844,62 @@ A resposta deve:
     } catch (error) {
       console.error("❌ [Gamification] Error fetching agent history:", error);
       return res.status(500).json({ error: "Erro ao buscar histórico do agente" });
+    }
+  });
+
+  /**
+   * GET /api/gamification/settings
+   * Retorna as configurações globais de gamificação
+   * Acessível para todos usuários autenticados
+   */
+  app.get("/api/gamification/settings", authenticate, async (req, res) => {
+    try {
+      console.log(`⚙️ [Gamification Settings] Fetching settings`);
+      
+      const settings = await storage.getGamificationSettings();
+      
+      return res.json(settings);
+    } catch (error) {
+      console.error("❌ [Gamification Settings] Error fetching settings:", error);
+      return res.status(500).json({ error: "Erro ao buscar configurações de gamificação" });
+    }
+  });
+
+  /**
+   * PUT /api/gamification/settings
+   * Atualiza as configurações globais de gamificação
+   * Requer: ADMIN ou SUPERVISOR
+   */
+  app.put("/api/gamification/settings", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      if (!req.user?.userId) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
+      }
+
+      console.log(`⚙️ [Gamification Settings] Updating settings by user: ${req.user.userId}`);
+      
+      // Valida os dados com Zod schema
+      const validationResult = updateGamificationSettingsSchema.safeParse(req.body);
+      
+      if (!validationResult.success) {
+        console.error("❌ [Gamification Settings] Validation error:", validationResult.error.errors);
+        return res.status(400).json({ 
+          error: "Dados inválidos",
+          details: validationResult.error.errors
+        });
+      }
+      
+      const updatedSettings = await storage.updateGamificationSettings(
+        validationResult.data,
+        req.user.userId
+      );
+      
+      console.log(`✅ [Gamification Settings] Settings updated successfully`);
+      
+      return res.json(updatedSettings);
+    } catch (error) {
+      console.error("❌ [Gamification Settings] Error updating settings:", error);
+      return res.status(500).json({ error: "Erro ao atualizar configurações de gamificação" });
     }
   });
 

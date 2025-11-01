@@ -39,6 +39,7 @@ import Anuncios from "@/pages/Anuncios";
 import PromptManagement from "@/pages/PromptManagement";
 import ContextQuality from "@/pages/ContextQuality";
 import Gamification from "@/pages/Gamification";
+import GamificationSettings from "@/pages/GamificationSettings";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -188,6 +189,9 @@ function Router() {
       </Route>
       <Route path="/gamification">
         {() => <ProtectedRoute component={Gamification} />}
+      </Route>
+      <Route path="/gamification/settings">
+        {() => <AdminSupervisorRoute component={GamificationSettings} />}
       </Route>
       <Route path="/assistants">
         {() => <ProtectedRoute component={Assistants} />}

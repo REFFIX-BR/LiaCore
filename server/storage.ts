@@ -4532,9 +4532,12 @@ export class DbStorage implements IStorage {
 
   /**
    * Calcula e atualiza as pontuações de gamificação para um período específico (mês)
-   * Formula: 40% NPS + 30% Volume + 20% Resolução + 10% Tempo
+   * Usa pesos configuráveis definidos em gamificationSettings
    */
   async calculateGamificationScores(period: string): Promise<void> {
+    // Busca configurações dinâmicas
+    const settings = await this.getGamificationSettings();
+    
     // Parse period (formato: YYYY-MM)
     const [year, month] = period.split('-').map(Number);
     const startDate = new Date(year, month - 1, 1);
@@ -4652,12 +4655,12 @@ export class DbStorage implements IStorage {
         ? Math.round((1 - (s.avgResponseTime / maxTime)) * 100)
         : 100;
 
-      // Fórmula final: 40% NPS + 30% Volume + 20% Resolução + 10% Tempo
+      // Fórmula final: usa pesos configuráveis (soma sempre = 100%)
       const totalScore = Math.round(
-        (npsScore * 0.4) +
-        (volumeScore * 0.3) +
-        (resolutionScore * 0.2) +
-        (timeScore * 0.1)
+        (npsScore * (settings.npsWeight / 100)) +
+        (volumeScore * (settings.volumeWeight / 100)) +
+        (resolutionScore * (settings.resolutionWeight / 100)) +
+        (timeScore * (settings.responseTimeWeight / 100))
       );
 
       return {
@@ -4721,8 +4724,12 @@ export class DbStorage implements IStorage {
 
   /**
    * Verifica e atribui badges para um período específico
+   * Usa critérios configuráveis definidos em gamificationSettings
    */
   async awardBadges(period: string): Promise<void> {
+    // Busca configurações dinâmicas
+    const settings = await this.getGamificationSettings();
+    
     // Pega todos os scores do período
     const scores = await db.select({
       score: schema.gamificationScores,
@@ -4738,27 +4745,35 @@ export class DbStorage implements IStorage {
       return;
     }
 
-    // 1. Badge "Solucionador" - Maior NPS + Taxa de Resolução combinados
-    const solucionadorScores = scores.map(s => ({
-      ...s,
-      combinedScore: ((s.score.avgNps || 0) * 10) + (s.score.successRate || 0),
-    })).sort((a, b) => b.combinedScore - a.combinedScore);
+    // 1. Badge "Solucionador" - Alto NPS + Alta Taxa de Resolução (filtrado por critérios configuráveis)
+    const solucionadorCandidates = scores
+      .filter(s => 
+        (s.score.avgNps || 0) >= settings.solucionadorNpsMin &&
+        (s.score.successRate || 0) >= settings.solucionadorResolutionMin
+      )
+      .map(s => ({
+        ...s,
+        combinedScore: ((s.score.avgNps || 0) * 10) + (s.score.successRate || 0),
+      }))
+      .sort((a, b) => b.combinedScore - a.combinedScore);
 
-    const solucionador = solucionadorScores[0];
-    await this.upsertBadge({
-      agentId: solucionador.score.agentId,
-      badgeType: 'solucionador',
-      period,
-      metric: solucionador.combinedScore,
-    });
+    if (solucionadorCandidates.length > 0) {
+      const solucionador = solucionadorCandidates[0];
+      await this.upsertBadge({
+        agentId: solucionador.score.agentId,
+        badgeType: 'solucionador',
+        period,
+        metric: solucionador.combinedScore,
+      });
+    }
 
-    // 2. Badge "Velocista" - Menor tempo de resposta (mantendo NPS > 7)
+    // 2. Badge "Velocista" - Top N mais rápidos (mantendo NPS mínimo configurável)
     const velocistas = scores
-      .filter(s => (s.score.avgNps || 0) >= 7)
-      .sort((a, b) => (a.score.avgResponseTime || 0) - (b.score.avgResponseTime || 0));
+      .filter(s => (s.score.avgNps || 0) >= settings.velocistaNpsMin)
+      .sort((a, b) => (a.score.avgResponseTime || 0) - (b.score.avgResponseTime || 0))
+      .slice(0, settings.velocistaTopN);
 
-    if (velocistas.length > 0) {
-      const velocista = velocistas[0];
+    for (const velocista of velocistas) {
       await this.upsertBadge({
         agentId: velocista.score.agentId,
         badgeType: 'velocista',
@@ -4767,18 +4782,21 @@ export class DbStorage implements IStorage {
       });
     }
 
-    // 3. Badge "Campeão do Volume" - Maior número de atendimentos
-    const campeao = scores
-      .sort((a, b) => (b.score.totalConversations || 0) - (a.score.totalConversations || 0))[0];
+    // 3. Badge "Campeão do Volume" - Top N com mais atendimentos
+    const campeoes = scores
+      .sort((a, b) => (b.score.totalConversations || 0) - (a.score.totalConversations || 0))
+      .slice(0, settings.campeaoVolumeTopN);
 
-    await this.upsertBadge({
-      agentId: campeao.score.agentId,
-      badgeType: 'campeao_volume',
-      period,
-      metric: campeao.score.totalConversations || 0,
-    });
+    for (const campeao of campeoes) {
+      await this.upsertBadge({
+        agentId: campeao.score.agentId,
+        badgeType: 'campeao_volume',
+        period,
+        metric: campeao.score.totalConversations || 0,
+      });
+    }
 
-    console.log(`[Gamification] Badges atribuídos para ${period}`);
+    console.log(`[Gamification] Badges atribuídos para ${period} (${solucionadorCandidates.length} Solucionador, ${velocistas.length} Velocista, ${campeoes.length} Campeão)`);
   }
 
   /**
@@ -4964,6 +4982,85 @@ export class DbStorage implements IStorage {
       totalBadges: badges.length,
       badgeDistribution,
     };
+  }
+
+  /**
+   * Retorna as configurações de gamificação (singleton - sempre id=1)
+   * Se não existir, cria com valores padrão
+   */
+  async getGamificationSettings(): Promise<schema.GamificationSettings> {
+    // Tenta buscar configuração existente
+    const existing = await db.select()
+      .from(schema.gamificationSettings)
+      .where(eq(schema.gamificationSettings.id, 1))
+      .limit(1);
+
+    if (existing.length > 0) {
+      return existing[0];
+    }
+
+    // Se não existir, cria com valores padrão
+    const defaultSettings: Omit<schema.GamificationSettings, 'id' | 'createdAt' | 'updatedAt'> = {
+      // Pesos da fórmula (devem somar 100%)
+      npsWeight: 40,
+      volumeWeight: 30,
+      resolutionWeight: 20,
+      responseTimeWeight: 10,
+      
+      // Critérios dos badges
+      solucionadorNpsMin: 7,
+      solucionadorResolutionMin: 70,
+      velocistaNpsMin: 7,
+      velocistaTopN: 1,
+      campeaoVolumeTopN: 1,
+      
+      // Metas mensais
+      targetNps: 8,
+      targetResolution: 85,
+      targetResponseTime: 120,
+      targetVolume: 500,
+      
+      // Período de cálculo
+      calculationPeriod: "monthly",
+      
+      // Automação
+      autoCalculate: false,
+      calculationFrequency: "monthly",
+      calculationDayOfMonth: 1,
+      calculationDayOfWeek: 1,
+      calculationTime: "00:00",
+      
+      updatedBy: null,
+    };
+
+    const [created] = await db.insert(schema.gamificationSettings)
+      .values(defaultSettings)
+      .returning();
+
+    return created;
+  }
+
+  /**
+   * Atualiza as configurações de gamificação
+   */
+  async updateGamificationSettings(
+    data: schema.UpdateGamificationSettings,
+    userId: string
+  ): Promise<schema.GamificationSettings> {
+    // Garante que o registro existe (cria se necessário)
+    await this.getGamificationSettings();
+
+    // Atualiza o registro
+    const [updated] = await db.update(schema.gamificationSettings)
+      .set({
+        ...data,
+        updatedBy: userId,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.gamificationSettings.id, 1))
+      .returning();
+
+    return updated;
   }
 }
 

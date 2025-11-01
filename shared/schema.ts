@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, jsonb, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, jsonb, boolean, index, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -1094,6 +1094,64 @@ export const insertGamificationHistorySchema = createInsertSchema(gamificationHi
   createdAt: true,
 });
 
+// Gamification Settings - Configurações globais do sistema (singleton - apenas 1 registro)
+export const gamificationSettings = pgTable("gamification_settings", {
+  id: serial("id").primaryKey(), // Sempre id=1 (singleton)
+  
+  // Pesos da Fórmula de Pontuação (devem somar 100)
+  npsWeight: integer("nps_weight").notNull().default(40), // Peso do NPS (padrão: 40%)
+  volumeWeight: integer("volume_weight").notNull().default(30), // Peso do volume (padrão: 30%)
+  resolutionWeight: integer("resolution_weight").notNull().default(20), // Peso da resolução (padrão: 20%)
+  responseTimeWeight: integer("response_time_weight").notNull().default(10), // Peso do tempo (padrão: 10%)
+  
+  // Critérios dos Badges
+  solucionadorNpsMin: integer("solucionador_nps_min").notNull().default(7), // NPS mínimo para Solucionador
+  solucionadorResolutionMin: integer("solucionador_resolution_min").notNull().default(70), // % resolução mínima
+  velocistaNpsMin: integer("velocista_nps_min").notNull().default(7), // NPS mínimo para Velocista
+  velocistaTopN: integer("velocista_top_n").notNull().default(1), // Quantos ganham badge Velocista (Top N)
+  campeaoVolumeTopN: integer("campeao_volume_top_n").notNull().default(1), // Quantos ganham badge Campeão (Top N)
+  
+  // Metas Mensais
+  targetNps: integer("target_nps").default(8), // Meta de NPS médio da equipe
+  targetResolution: integer("target_resolution").default(85), // Meta de % de resolução
+  targetResponseTime: integer("target_response_time").default(120), // Meta de tempo médio em segundos
+  targetVolume: integer("target_volume").default(500), // Meta de volume total de conversas
+  
+  // Período de Cálculo
+  calculationPeriod: text("calculation_period").notNull().default("monthly"), // 'weekly', 'monthly', 'quarterly', 'custom'
+  
+  // Automação
+  autoCalculate: boolean("auto_calculate").notNull().default(false), // Se o cálculo é automático
+  calculationFrequency: text("calculation_frequency").default("monthly"), // 'daily', 'weekly', 'monthly', 'custom'
+  calculationDayOfMonth: integer("calculation_day_of_month").default(1), // Dia do mês para calcular (1-31)
+  calculationDayOfWeek: integer("calculation_day_of_week").default(1), // Dia da semana (1=segunda, 7=domingo)
+  calculationTime: text("calculation_time").default("00:00"), // Horário do cálculo (HH:MM)
+  
+  // Auditoria
+  updatedBy: varchar("updated_by"), // User ID que fez a última alteração
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Insert/Update Schema para configurações
+export const updateGamificationSettingsSchema = createInsertSchema(gamificationSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  calculationPeriod: z.enum(["weekly", "monthly", "quarterly", "custom"]).default("monthly"),
+  calculationFrequency: z.enum(["daily", "weekly", "monthly", "custom"]).default("monthly"),
+  autoCalculate: z.boolean().default(false),
+  // Validação: pesos devem somar 100
+  npsWeight: z.number().int().min(0).max(100),
+  volumeWeight: z.number().int().min(0).max(100),
+  resolutionWeight: z.number().int().min(0).max(100),
+  responseTimeWeight: z.number().int().min(0).max(100),
+}).refine(
+  (data) => data.npsWeight + data.volumeWeight + data.resolutionWeight + data.responseTimeWeight === 100,
+  { message: "A soma dos pesos deve ser exatamente 100%" }
+);
+
 // Types
 export type GamificationScore = typeof gamificationScores.$inferSelect;
 export type InsertGamificationScore = z.infer<typeof insertGamificationScoreSchema>;
@@ -1103,3 +1161,6 @@ export type InsertGamificationBadge = z.infer<typeof insertGamificationBadgeSche
 
 export type GamificationHistory = typeof gamificationHistory.$inferSelect;
 export type InsertGamificationHistory = z.infer<typeof insertGamificationHistorySchema>;
+
+export type GamificationSettings = typeof gamificationSettings.$inferSelect;
+export type UpdateGamificationSettings = z.infer<typeof updateGamificationSettingsSchema>;
