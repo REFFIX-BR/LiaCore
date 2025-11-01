@@ -9745,5 +9745,107 @@ A resposta deve:
     }
   });
 
+  // ===================================
+  // GAMIFICATION ROUTES
+  // ===================================
+
+  /**
+   * GET /api/gamification/ranking
+   * Retorna o ranking de gamificação do período
+   * Query params: period (opcional, formato YYYY-MM, default: mês atual)
+   */
+  app.get("/api/gamification/ranking", isAuthenticated, async (req, res) => {
+    try {
+      const { period } = req.query;
+      
+      console.log(`🎮 [Gamification] Fetching ranking for period: ${period || 'current month'}`);
+      
+      const ranking = await storage.getGamificationRanking(period as string | undefined);
+      
+      return res.json(ranking);
+    } catch (error) {
+      console.error("❌ [Gamification] Error fetching ranking:", error);
+      return res.status(500).json({ error: "Erro ao buscar ranking de gamificação" });
+    }
+  });
+
+  /**
+   * POST /api/gamification/calculate
+   * Calcula pontuações e badges para um período
+   * Body: { period: "YYYY-MM" }
+   * Requer permissão ADMIN ou SUPERVISOR
+   */
+  app.post("/api/gamification/calculate", isAuthenticated, isSupervisorOrAdmin, async (req, res) => {
+    try {
+      const { period } = req.body;
+      
+      if (!period || !/^\d{4}-\d{2}$/.test(period)) {
+        return res.status(400).json({ error: "Período inválido. Use formato YYYY-MM" });
+      }
+      
+      console.log(`🎮 [Gamification] Calculating scores and badges for period: ${period}`);
+      
+      // Calcula pontuações
+      await storage.calculateGamificationScores(period);
+      
+      // Atribui badges
+      await storage.awardBadges(period);
+      
+      // Salva histórico Top 5
+      await storage.saveTop5History(period);
+      
+      console.log(`✅ [Gamification] Calculation completed for period: ${period}`);
+      
+      return res.json({ 
+        success: true, 
+        message: `Gamificação calculada com sucesso para ${period}` 
+      });
+    } catch (error) {
+      console.error("❌ [Gamification] Error calculating gamification:", error);
+      return res.status(500).json({ error: "Erro ao calcular gamificação" });
+    }
+  });
+
+  /**
+   * GET /api/gamification/stats
+   * Retorna estatísticas gerais de gamificação
+   * Query params: period (opcional, formato YYYY-MM, default: mês atual)
+   */
+  app.get("/api/gamification/stats", isAuthenticated, async (req, res) => {
+    try {
+      const { period } = req.query;
+      
+      console.log(`🎮 [Gamification] Fetching stats for period: ${period || 'current month'}`);
+      
+      const stats = await storage.getGamificationStats(period as string | undefined);
+      
+      return res.json(stats);
+    } catch (error) {
+      console.error("❌ [Gamification] Error fetching stats:", error);
+      return res.status(500).json({ error: "Erro ao buscar estatísticas de gamificação" });
+    }
+  });
+
+  /**
+   * GET /api/gamification/agent/:agentId
+   * Retorna o histórico de gamificação de um agente específico
+   * Query params: limit (opcional, default: 12 meses)
+   */
+  app.get("/api/gamification/agent/:agentId", isAuthenticated, async (req, res) => {
+    try {
+      const { agentId } = req.params;
+      const { limit = 12 } = req.query;
+      
+      console.log(`🎮 [Gamification] Fetching history for agent: ${agentId} (limit: ${limit})`);
+      
+      const history = await storage.getAgentGamificationHistory(agentId, Number(limit));
+      
+      return res.json(history);
+    } catch (error) {
+      console.error("❌ [Gamification] Error fetching agent history:", error);
+      return res.status(500).json({ error: "Erro ao buscar histórico do agente" });
+    }
+  });
+
   return httpServer;
 }
