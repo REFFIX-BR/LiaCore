@@ -363,7 +363,7 @@ export default function Gamification() {
           <div className="grid gap-4 md:grid-cols-3">
             {Object.entries(BADGE_INFO).map(([type, info]) => {
               const Icon = info.icon;
-              const count = stats?.badgeDistribution[type as keyof typeof stats.badgeDistribution] || 0;
+              const count = stats?.badgeDistribution?.[type as keyof typeof stats.badgeDistribution] || 0;
               return (
                 <div
                   key={type}

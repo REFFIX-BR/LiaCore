@@ -4947,10 +4947,14 @@ export class DbStorage implements IStorage {
       .from(schema.gamificationBadges)
       .where(eq(schema.gamificationBadges.period, targetPeriod));
 
-    const badgesByType = badges.reduce((acc, badge) => {
+    const badgeDistribution = badges.reduce((acc, badge) => {
       acc[badge.badgeType] = (acc[badge.badgeType] || 0) + 1;
       return acc;
-    }, {} as Record<string, number>);
+    }, {
+      solucionador: 0,
+      velocista: 0,
+      campeao_volume: 0,
+    } as Record<string, number>);
 
     return {
       period: targetPeriod,
@@ -4958,7 +4962,7 @@ export class DbStorage implements IStorage {
       avgTotalScore,
       topScore,
       totalBadges: badges.length,
-      badgesByType,
+      badgeDistribution,
     };
   }
 }
