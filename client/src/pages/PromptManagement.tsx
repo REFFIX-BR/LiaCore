@@ -730,7 +730,7 @@ export default function PromptManagement() {
                     </CardHeader>
                     <CardContent className="flex-1 overflow-hidden flex flex-col gap-2">
                       <DiffHighlightedTextarea
-                        value={draftContent || currentPrompt.content}
+                        value={draftContent || currentPrompt.draft?.draftContent || currentPrompt.content}
                         onChange={(value) => {
                           setDraftContent(value);
                           hasLocalChangesRef.current = true; // Mark that we have local changes
@@ -809,7 +809,7 @@ export default function PromptManagement() {
                         >
                           <div className="p-6">
                             <pre className="text-xs font-mono whitespace-pre-wrap">
-                              {draftContent || currentPrompt.content}
+                              {draftContent || currentPrompt.draft?.draftContent || currentPrompt.content}
                             </pre>
                           </div>
                         </ScrollArea>
