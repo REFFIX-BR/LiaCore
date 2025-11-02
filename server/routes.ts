@@ -9825,7 +9825,7 @@ A resposta deve:
         });
       } else {
         draft = await storage.createPromptDraft({
-          promptTemplateId: template.id,
+          promptId: template.id,
           draftContent: consolidationResult.updatedPrompt,
           lastEditedBy: userId,
         });

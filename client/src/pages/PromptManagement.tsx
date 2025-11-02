@@ -382,6 +382,30 @@ export default function PromptManagement() {
     },
   });
 
+  // Consolidate context suggestions mutation
+  const consolidateContextSuggestionsMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest(`/api/prompts/${selectedAssistant}/consolidate-context-suggestions`, "POST", { hours: 168 });
+    },
+    onSuccess: (result: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts", selectedAssistant] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts", selectedAssistant, "context-suggestions"] });
+      
+      toast({
+        title: "Sugestões de contexto consolidadas",
+        description: result.message || "Sugestões integradas ao rascunho com sucesso",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Erro ao consolidar",
+        description: error.message || "Não foi possível consolidar as sugestões de contexto",
+      });
+    },
+  });
+
   // Apply AI suggestions function
   const handleApplyAISuggestions = () => {
     if (!currentPrompt?.draft?.aiSuggestions?.optimizations) {
@@ -821,13 +845,30 @@ export default function PromptManagement() {
                           {/* Header with Stats */}
                           <Card>
                             <CardHeader>
-                              <CardTitle className="flex items-center gap-2">
-                                <AlertCircle className="w-5 h-5 text-orange-600" />
-                                Sugestões do Monitor de Contexto
-                              </CardTitle>
-                              <CardDescription>
-                                {contextSuggestions.totalAlerts} alerta{contextSuggestions.totalAlerts !== 1 ? 's' : ''} detectado{contextSuggestions.totalAlerts !== 1 ? 's' : ''} nos últimos 7 dias
-                              </CardDescription>
+                              <div className="flex items-start justify-between gap-4">
+                                <div>
+                                  <CardTitle className="flex items-center gap-2">
+                                    <AlertCircle className="w-5 h-5 text-orange-600" />
+                                    Sugestões do Monitor de Contexto
+                                  </CardTitle>
+                                  <CardDescription className="mt-2">
+                                    {contextSuggestions.totalAlerts} alerta{contextSuggestions.totalAlerts !== 1 ? 's' : ''} detectado{contextSuggestions.totalAlerts !== 1 ? 's' : ''} nos últimos 7 dias
+                                  </CardDescription>
+                                </div>
+                                <Button
+                                  variant="default"
+                                  onClick={() => consolidateContextSuggestionsMutation.mutate()}
+                                  disabled={consolidateContextSuggestionsMutation.isPending}
+                                  data-testid="button-consolidate-context-suggestions"
+                                >
+                                  {consolidateContextSuggestionsMutation.isPending ? (
+                                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                  ) : (
+                                    <Sparkles className="w-4 h-4 mr-2" />
+                                  )}
+                                  Consolidar Sugestões
+                                </Button>
+                              </div>
                             </CardHeader>
                           </Card>
 
