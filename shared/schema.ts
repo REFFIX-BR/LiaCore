@@ -935,6 +935,7 @@ export const promptDrafts = pgTable("prompt_drafts", {
   draftContent: text("draft_content").notNull(), // O rascunho sendo editado
   aiSuggestions: jsonb("ai_suggestions"), // Últimas sugestões da IA
   tokenCount: integer("token_count").default(0),
+  preConsolidationContent: text("pre_consolidation_content"), // Conteúdo antes da última consolidação (para highlight de mudanças)
   lastEditedBy: varchar("last_edited_by").notNull(), // User ID who last edited
   lastEditedAt: timestamp("last_edited_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),

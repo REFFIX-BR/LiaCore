@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { DiffHighlightedTextarea } from "@/components/DiffHighlightedTextarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -725,12 +726,13 @@ export default function PromptManagement() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="flex-1 overflow-hidden flex flex-col gap-2">
-                      <Textarea
+                      <DiffHighlightedTextarea
                         value={draftContent || currentPrompt.content}
-                        onChange={(e) => {
-                          setDraftContent(e.target.value);
+                        onChange={(value) => {
+                          setDraftContent(value);
                           hasLocalChangesRef.current = true; // Mark that we have local changes
                         }}
+                        previousContent={(currentPrompt.draft as any)?.preConsolidationContent}
                         className="flex-1 resize-none font-mono text-sm"
                         placeholder="Digite as instruções do assistente..."
                         data-testid="textarea-prompt-content"

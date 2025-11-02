@@ -9817,16 +9817,21 @@ A resposta deve:
       // Create or update draft with consolidated prompt
       const existingDraft = await storage.getPromptDraft(template.id);
       
+      // Save current content as preConsolidationContent for diff highlighting
+      const currentContent = existingDraft?.draftContent || template.content;
+      
       let draft;
       if (existingDraft) {
         draft = await storage.updatePromptDraft(template.id, {
           draftContent: consolidationResult.updatedPrompt,
+          preConsolidationContent: currentContent,
           lastEditedBy: userId,
         });
       } else {
         draft = await storage.createPromptDraft({
           promptId: template.id,
           draftContent: consolidationResult.updatedPrompt,
+          preConsolidationContent: currentContent,
           lastEditedBy: userId,
         });
       }
