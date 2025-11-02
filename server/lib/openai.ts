@@ -2754,7 +2754,7 @@ ${suggestionsContext}
 
 **FORMATO DE RESPOSTA (JSON ESTRITO):**
 {
-  "updatedPrompt": "Prompt completo atualizado aqui...",
+  "updatedPrompt": "COLOQUE AQUI O PROMPT COMPLETO E ATUALIZADO COM TODAS AS MUDANÇAS APLICADAS. DEVE SER UM PROMPT FUNCIONAL E COMPLETO, NÃO APENAS UMA MENSAGEM. COPIE TODO O PROMPT ORIGINAL E APLIQUE AS MUDANÇAS NECESSÁRIAS.",
   "summary": {
     "totalSuggestions": ${suggestions.length},
     "appliedCount": 10,
@@ -2796,7 +2796,10 @@ ${suggestionsContext}
   ]
 }
 
-**IMPORTANTE:**
+**REGRAS CRÍTICAS:**
+- O campo "updatedPrompt" DEVE conter o PROMPT COMPLETO atualizado (várias centenas ou milhares de caracteres)
+- NÃO retorne apenas "Prompt completo atualizado aqui..." - isso é inválido!
+- COPIE todo o prompt original e aplique as mudanças onde necessário
 - Seja conservador: não faça mudanças drásticas sem justificativa clara
 - Se uma sugestão é vaga ou de baixa confiança (<70%), considere não aplicar
 - Mantenha o tom profissional e alinhado com a marca TR Telecom
@@ -2824,6 +2827,25 @@ ${suggestionsContext}
 
     // Validate and sanitize result with Zod
     const validatedResult = consolidationResultSchema.parse(rawResult);
+
+    // CRITICAL: Validate that updatedPrompt is actually a complete prompt, not a placeholder
+    if (validatedResult.updatedPrompt.length < 100) {
+      throw new Error(`Erro ao consolidar sugestões de evolução: GPT-4o retornou um prompt muito curto (${validatedResult.updatedPrompt.length} caracteres). Esperado: várias centenas ou milhares de caracteres.`);
+    }
+
+    // Check for common placeholder messages
+    const placeholderMessages = [
+      'prompt completo atualizado aqui',
+      'coloque aqui o prompt',
+      'updated prompt here',
+    ];
+    
+    const lowerPrompt = validatedResult.updatedPrompt.toLowerCase();
+    for (const placeholder of placeholderMessages) {
+      if (lowerPrompt.includes(placeholder)) {
+        throw new Error(`Erro ao consolidar sugestões de evolução: GPT-4o retornou um placeholder ao invés do prompt completo. Texto retornado: "${validatedResult.updatedPrompt.substring(0, 100)}..."`);
+      }
+    }
 
     console.log(`✅ [Consolidation] Completed for ${assistantType}`);
     console.log(`   - Applied: ${validatedResult.summary.appliedCount}/${validatedResult.summary.totalSuggestions}`);
