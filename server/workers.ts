@@ -194,35 +194,33 @@ export async function sendWhatsAppMedia(
 
   try {
     // Define endpoint baseado no tipo de mídia
-    const endpoint = mediaType === 'image' ? 'sendMedia' : 
-                     mediaType === 'document' ? 'sendMedia' :
-                     'sendWhatsAppAudio';
+    const endpoint = 'sendMedia';
     
     const fullUrl = `${baseUrl}/message/${endpoint}/${evolutionInstance}`;
     console.log(`📤 [WhatsApp Media] Sending ${mediaType} to: ${phoneNumber} via ${fullUrl}`);
     
-    // Preparar body baseado no tipo
+    // Preparar body no formato correto da Evolution API
+    // Documentação: https://doc.evolution-api.com/v1/api-reference/message-controller/send-media
     const body: any = {
       number: phoneNumber,
+      mediaMessage: {
+        mediaType: mediaType,
+        media: mediaBase64,
+      }
     };
 
+    // Adicionar campos opcionais ao mediaMessage
     if (mediaType === 'image') {
-      body.mediatype = 'image';
-      body.mimetype = 'image/jpeg';
-      body.media = mediaBase64;
-      if (fileName) body.fileName = fileName;
-      if (caption) body.caption = caption;
+      body.mediaMessage.mimetype = 'image/jpeg';
+      if (fileName) body.mediaMessage.fileName = fileName || 'image.jpg';
+      if (caption) body.mediaMessage.caption = caption;
     } else if (mediaType === 'document') {
-      body.mediatype = 'document';
-      body.mimetype = 'application/pdf';
-      body.media = mediaBase64;
-      body.fileName = fileName || 'document.pdf';
-      if (caption) body.caption = caption;
+      body.mediaMessage.mimetype = 'application/pdf';
+      body.mediaMessage.fileName = fileName || 'document.pdf';
+      if (caption) body.mediaMessage.caption = caption;
     } else if (mediaType === 'audio') {
-      body.mediatype = 'audio';
-      body.mimetype = 'audio/mpeg';
-      body.media = mediaBase64;
-      if (fileName) body.fileName = fileName;
+      body.mediaMessage.mimetype = 'audio/mpeg';
+      if (fileName) body.mediaMessage.fileName = fileName || 'audio.mp3';
     }
     
     const response = await fetch(fullUrl, {
