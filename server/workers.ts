@@ -1279,42 +1279,94 @@ Por favor, responda apenas com um número de 0 a 10.
         }
 
         // 4.5. Check for farewell pattern (prevent follow-up after goodbyes)
-        const recentMessages = await storage.getRecentMessagesByConversationId(conversationId, 3);
+        const recentMessages = await storage.getRecentMessagesByConversationId(conversationId, 5);
         if (recentMessages.length >= 2) {
           const lastMessage = recentMessages[0];
           const secondLastMessage = recentMessages[1];
           
-          // Padrões de despedida do assistente
-          const farewellPatterns = [
-            /tenha um (ótimo|excelente|bom) dia/i,
-            /estou sempre (à disposição|aqui|disponível)/i,
-            /se precisar.*chamar/i,
-            /fico (feliz|contente) em (ajudar|atender)/i,
-            /até (logo|mais|breve)/i,
-            /tchau|adeus/i,
-            /qualquer (coisa|dúvida).*retornar/i,
-            /conte comigo/i,
-            /por nada.*disposição/i,
-          ];
-          
-          // Padrões de despedida/agradecimento do cliente
-          const clientFarewellPatterns = [
-            /^(obg|obrigad[oa]|valeu|vlw|blz|ok|tá bom|ta bom)$/i,
-            /tchau|adeus|até/i,
-            /muito obrigad[oa]/i,
-          ];
-          
-          const aiSaidGoodbye = lastMessage.role === 'assistant' && 
-            farewellPatterns.some(pattern => pattern.test(lastMessage.content));
-          
-          const clientSaidGoodbye = secondLastMessage.role === 'user' && 
-            clientFarewellPatterns.some(pattern => pattern.test(secondLastMessage.content.trim()));
-          
-          if (aiSaidGoodbye && clientSaidGoodbye) {
-            console.log(`👋 [Inactivity Worker] Conversa terminou com despedida - cancelando follow-up`);
-            console.log(`   Cliente: "${secondLastMessage.content}" | IA: "${lastMessage.content.substring(0, 60)}..."`);
-            await markJobProcessed(job.id!);
-            return { skipped: true, reason: 'conversation_ended_with_farewell' };
+          // Validar que são as mensagens mais recentes e na ordem correta
+          if (lastMessage.role !== 'assistant' || secondLastMessage.role !== 'user') {
+            console.log(`⚠️ [Farewell Detection] Sequência de mensagens incorreta - pulando detecção`);
+          } else {
+            // Padrões de despedida do assistente (mantidos)
+            const farewellPatterns = [
+              /tenha um (ótimo|excelente|bom) dia/i,
+              /estou sempre (à disposição|aqui|disponível)/i,
+              /se precisar.*chamar/i,
+              /fico (feliz|contente) em (ajudar|atender)/i,
+              /até (logo|mais|breve)/i,
+              /tchau|adeus/i,
+              /qualquer (coisa|dúvida).*retornar/i,
+              /conte comigo/i,
+              /por nada.*disposição/i,
+            ];
+            
+            // Padrões de despedida do cliente - MAIS ESPECÍFICOS (removidos "ok", "blz", "tá bom")
+            const clientFarewellPatterns = [
+              /^(obg|obrigad[oa]|valeu|vlw)\s*$/i,  // Apenas agradecimentos isolados
+              /(tchau|adeus|até (mais|logo|breve))/i,  // Despedidas explícitas
+              /muito obrigad[oa]/i,  // Agradecimento enfático
+              /^(tá bom|ta bom|beleza).*(tchau|obrigad)/i,  // Combinação de confirmação + despedida
+            ];
+            
+            const aiSaidGoodbye = farewellPatterns.some(pattern => pattern.test(lastMessage.content));
+            const clientSaidGoodbye = clientFarewellPatterns.some(pattern => pattern.test(secondLastMessage.content.trim()));
+            
+            if (aiSaidGoodbye && clientSaidGoodbye) {
+              console.log(`👋 [Inactivity Worker] Conversa terminou com despedida - encerrando automaticamente`);
+              console.log(`   Cliente: "${secondLastMessage.content}" | IA: "${lastMessage.content.substring(0, 60)}..."`);
+              
+              // Validar estado da conversa antes de resolver
+              const currentConversation = await storage.getConversation(conversationId);
+              if (!currentConversation || currentConversation.status !== 'active') {
+                console.log(`⚠️ [Auto-Resolve] Conversa ${conversationId} não está mais ativa - pulando auto-resolução`);
+                await markJobProcessed(job.id!);
+                return { skipped: true, reason: 'conversation_already_resolved' };
+              }
+              
+              // Encerrar a conversa automaticamente
+              const existingMetadata = currentConversation.metadata && typeof currentConversation.metadata === 'object' 
+                ? currentConversation.metadata as Record<string, any>
+                : {};
+              
+              await storage.resolveConversation({
+                conversationId,
+                resolvedBy: null, // Sistema automático
+                resolvedAt: new Date(),
+                createActivityLog: false,
+                metadata: {
+                  ...existingMetadata,
+                  awaitingNPS: true,
+                  resolvedBySystem: true,
+                  resolveReason: 'Conversa encerrada automaticamente após despedidas mútuas',
+                },
+              });
+              
+              console.log(`✅ [Auto-Resolve] Conversa ${conversationId} encerrada automaticamente, enviando NPS...`);
+              
+              // Enviar pesquisa NPS com captura de resultado
+              const npsTemplate = await storage.getMessageTemplateByKey('nps_survey');
+              let npsSurveyMessage = npsTemplate?.template || 
+                `Olá ${clientName}!\n\nSeu atendimento foi finalizado.\n\nPesquisa de Satisfação\n\nEm uma escala de 0 a 10, qual a satisfação com atendimento?\n\nDigite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
+              
+              npsSurveyMessage = npsSurveyMessage.replace(/{clientName}/g, clientName);
+              
+              let npsSent = false;
+              try {
+                const result = await sendWhatsAppMessage(clientId, npsSurveyMessage, evolutionInstance);
+                if (result.success) {
+                  console.log(`📊 [NPS] Pesquisa enviada ao cliente ${clientName} após encerramento automático`);
+                  npsSent = true;
+                } else {
+                  console.error(`❌ [NPS] Falha ao enviar pesquisa - Evolution API retornou erro:`, result);
+                }
+              } catch (error) {
+                console.error(`❌ [NPS] Erro ao enviar pesquisa:`, error);
+              }
+              
+              await markJobProcessed(job.id!);
+              return { skipped: true, reason: 'conversation_auto_resolved_with_farewell', npsSent };
+            }
           }
         }
 

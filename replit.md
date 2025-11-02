@@ -35,6 +35,7 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, inspir
 - **Massive Failure Notification**: Automatically notifies clients ONCE via WhatsApp about active failures without blocking conversation flow.
 - **Massive Failure Resolution**: Asynchronously notifies all affected customers via WhatsApp upon resolution.
 - **Conversation Reopening**: Automatically reopens resolved conversations when a client sends a new message.
+- **Intelligent Farewell Detection & Auto-Resolution** (Nov 2025): The inactivity follow-up worker now detects when both client and AI exchange farewells (e.g., "obg"/"tenha um ótimo dia") and automatically resolves the conversation, sending NPS survey instead of follow-up messages. This prevents inappropriate "continuity" messages after natural conversation endings, improving UX when AI forgets to call `finalizar_conversa`.
 
 ## External Dependencies
 
