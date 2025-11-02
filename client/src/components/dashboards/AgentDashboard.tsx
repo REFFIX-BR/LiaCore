@@ -12,7 +12,16 @@ export function AgentDashboard() {
   const [period, setPeriod] = useState<'today' | 'week' | 'month'>('today');
 
   const { data: metrics, isLoading } = useQuery({
-    queryKey: ["/api/dashboard/agent", { period }],
+    queryKey: ["/api/dashboard/agent", period],
+    queryFn: async () => {
+      const res = await fetch(`/api/dashboard/agent?period=${period}`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error(`${res.status}: ${res.statusText}`);
+      }
+      return await res.json();
+    },
     refetchInterval: 30000, // 30 seconds
   });
 
