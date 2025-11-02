@@ -147,7 +147,7 @@ const menuCategories: MenuCategory[] = [
       },
       {
         title: "Análises",
-        url: "/metrics",
+        url: "/agent-reports",
         icon: BarChart3,
         roles: ["ADMIN", "SUPERVISOR"],
       },
