@@ -201,12 +201,26 @@ export async function sendWhatsAppMedia(
     
     // Preparar body no formato correto da Evolution API
     // A Evolution API requer AMBOS: mediatype (root) E mediaMessage (objeto)
+    
+    // Garantir que o base64 tenha o prefixo correto (data:image/jpeg;base64,...)
+    let formattedMedia = mediaBase64;
+    if (!formattedMedia.startsWith('data:') && !formattedMedia.startsWith('http')) {
+      // Adicionar prefixo baseado no tipo de mídia
+      if (mediaType === 'image') {
+        formattedMedia = `data:image/jpeg;base64,${mediaBase64}`;
+      } else if (mediaType === 'document') {
+        formattedMedia = `data:application/pdf;base64,${mediaBase64}`;
+      } else if (mediaType === 'audio') {
+        formattedMedia = `data:audio/mpeg;base64,${mediaBase64}`;
+      }
+    }
+    
     const body: any = {
       number: phoneNumber,
       mediatype: mediaType, // Campo obrigatório no root
       mediaMessage: {
         mediaType: mediaType,
-        media: mediaBase64,
+        media: formattedMedia, // Base64 com prefixo data:
       }
     };
 
@@ -223,6 +237,16 @@ export async function sendWhatsAppMedia(
       body.mediaMessage.mimetype = 'audio/mpeg';
       if (fileName) body.mediaMessage.fileName = fileName || 'audio.mp3';
     }
+    
+    // Log payload completo para debug
+    console.log(`🔍 [WhatsApp Media Debug] Payload sendo enviado:`, {
+      url: fullUrl,
+      number: phoneNumber,
+      mediatype: body.mediatype,
+      mediaMessageKeys: Object.keys(body.mediaMessage),
+      mediaPrefix: formattedMedia.substring(0, 30) + '...',
+      mediaLength: formattedMedia.length,
+    });
     
     const response = await fetch(fullUrl, {
       method: 'POST',
