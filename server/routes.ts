@@ -9592,11 +9592,15 @@ A resposta deve:
       // Create or update draft with consolidated prompt
       const existingDraft = await storage.getPromptDraft(id);
       
+      // Save pre-consolidation content for diff highlighting
+      const preConsolidationContent = existingDraft?.draftContent || template.content;
+      
       let draft;
       if (existingDraft) {
         draft = await storage.updatePromptDraft(id, {
           draftContent: consolidationResult.updatedPrompt,
           lastEditedBy: userId,
+          preConsolidationContent, // Save content before consolidation
         });
       } else {
         draft = await storage.createPromptDraft({
@@ -9604,6 +9608,7 @@ A resposta deve:
           draftContent: consolidationResult.updatedPrompt,
           lastEditedBy: userId,
           tokenCount: 0,
+          preConsolidationContent, // Save content before consolidation
         });
       }
 
