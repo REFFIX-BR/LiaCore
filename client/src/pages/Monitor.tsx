@@ -254,16 +254,34 @@ export default function Monitor() {
     let passesResolvedSubFilter = true;
     let passesViewModeFilter = true;
 
-    // Apply viewMode filter (5 estados)
+    // Apply viewMode filter (6 estados)
     if (viewMode === "ia_atendendo") {
-      // IA Atendendo: conversas ativas sendo atendidas pela IA (não transferidas)
-      passesViewModeFilter = conv.status === "active" && !conv.transferredToHuman;
+      // IA Atendendo: SOMENTE conversas sendo atendidas pela IA
+      // - Status: active
+      // - NÃO transferidas (transferredToHuman === false ou null/undefined)
+      // - SEM atendente atribuído (assignedTo === null)
+      passesViewModeFilter = 
+        conv.status === "active" && 
+        conv.transferredToHuman !== true && 
+        !conv.assignedTo;
     } else if (viewMode === "aguardando") {
       // Aguardando: transferidas mas sem atendente atribuído (fila de espera)
-      passesViewModeFilter = conv.status === "active" && conv.transferredToHuman === true && conv.assignedTo === null;
+      // - Status: active ou queued
+      // - Transferidas (transferredToHuman === true)
+      // - SEM atendente (assignedTo === null)
+      passesViewModeFilter = 
+        (conv.status === "active" || conv.status === "queued") && 
+        conv.transferredToHuman === true && 
+        !conv.assignedTo;
     } else if (viewMode === "em_atendimento") {
       // Em Atendimento: transferidas E com atendente atribuído
-      passesViewModeFilter = conv.status === "active" && conv.transferredToHuman === true && conv.assignedTo !== null;
+      // - Status: active ou queued
+      // - Transferidas (transferredToHuman === true)
+      // - COM atendente (assignedTo !== null)
+      passesViewModeFilter = 
+        (conv.status === "active" || conv.status === "queued") && 
+        conv.transferredToHuman === true && 
+        !!conv.assignedTo;
     } else if (viewMode === "finalizadas") {
       // Finalizadas: conversas resolvidas nas últimas 12 horas
       passesViewModeFilter = conv.status === "resolved";
@@ -281,9 +299,14 @@ export default function Monitor() {
       }
       // resolvedSubFilter === "all" -> show all, passesResolvedSubFilter stays true
     } else if (viewMode === "todas") {
-      // Todas: mostra apenas conversas ATIVAS, excluindo fila de espera (aguardando)
-      // Conversas finalizadas aparecem APENAS na aba "Finalizadas"
-      passesViewModeFilter = conv.status === "active" && !(conv.transferredToHuman === true && conv.assignedTo === null);
+      // Todas: mostra apenas conversas ATIVAS, excluindo aguardando e finalizadas
+      // - Status: active ou queued
+      // - EXCLUI: aguardando (transferidas sem atendente)
+      // - INCLUI: IA atendendo + Em atendimento
+      const isAwaiting = conv.transferredToHuman === true && !conv.assignedTo;
+      passesViewModeFilter = 
+        (conv.status === "active" || conv.status === "queued") && 
+        !isAwaiting;
     }
 
     if (activeDepartment !== "all") {
@@ -306,13 +329,22 @@ export default function Monitor() {
       let passesViewModeFilter = true;
       let passesResolvedSubFilter = true;
 
-      // ViewMode filter
+      // ViewMode filter (consistente com lógica principal)
       if (viewMode === "ia_atendendo") {
-        passesViewModeFilter = c.status === "active" && !c.transferredToHuman;
+        passesViewModeFilter = 
+          c.status === "active" && 
+          c.transferredToHuman !== true && 
+          !c.assignedTo;
       } else if (viewMode === "aguardando") {
-        passesViewModeFilter = c.status === "active" && c.transferredToHuman === true && c.assignedTo === null;
+        passesViewModeFilter = 
+          (c.status === "active" || c.status === "queued") && 
+          c.transferredToHuman === true && 
+          !c.assignedTo;
       } else if (viewMode === "em_atendimento") {
-        passesViewModeFilter = c.status === "active" && c.transferredToHuman === true && c.assignedTo !== null;
+        passesViewModeFilter = 
+          (c.status === "active" || c.status === "queued") && 
+          c.transferredToHuman === true && 
+          !!c.assignedTo;
       } else if (viewMode === "finalizadas") {
         passesViewModeFilter = c.status === "resolved";
         
@@ -325,9 +357,10 @@ export default function Monitor() {
           passesResolvedSubFilter = c.autoClosed === true;
         }
       } else if (viewMode === "todas") {
-        // Todas: mostra apenas conversas ATIVAS, excluindo fila de espera (aguardando)
-        // Conversas finalizadas aparecem APENAS na aba "Finalizadas"
-        passesViewModeFilter = c.status === "active" && !(c.transferredToHuman === true && c.assignedTo === null);
+        const isAwaiting = c.transferredToHuman === true && !c.assignedTo;
+        passesViewModeFilter = 
+          (c.status === "active" || c.status === "queued") && 
+          !isAwaiting;
       }
 
       // Department filter
@@ -807,7 +840,6 @@ export default function Monitor() {
                           verifiedBy: conv.verifiedBy || null,
                           resolvedBy,
                           resolvedByName: conv.resolvedByName || null,
-                          status: conv.status,
                         }}
                         isActive={activeConvId === conv.id}
                         onClick={() => setActiveConvId(conv.id)}
