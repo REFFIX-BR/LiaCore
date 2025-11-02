@@ -199,10 +199,10 @@ export async function sendWhatsAppMedia(
     const fullUrl = `${baseUrl}/message/${endpoint}/${evolutionInstance}`;
     console.log(`📤 [WhatsApp Media] Sending ${mediaType} to: ${phoneNumber} via ${fullUrl}`);
     
-    // Preparar body no formato correto da Evolution API V2
-    // Formato V2: todos os campos no root (não usar mediaMessage)
+    // Preparar body no formato correto da Evolution API V1
+    // Formato V1: usar mediaMessage objeto (não campos no root)
     
-    // Garantir que o base64 tenha o prefixo data URI (Evolution API V2 requer)
+    // Garantir que o base64 tenha o prefixo data URI
     let formattedMedia = mediaBase64;
     if (!formattedMedia.startsWith('data:') && !formattedMedia.startsWith('http')) {
       // Adicionar prefixo baseado no tipo de mídia
@@ -215,35 +215,33 @@ export async function sendWhatsAppMedia(
       }
     }
     
-    // Formato V2: campos no root (não usar mediaMessage objeto)
+    // Formato V1: usar objeto mediaMessage
     const body: any = {
       number: phoneNumber,
-      mediatype: mediaType,
-      media: formattedMedia,
+      mediaMessage: {
+        mediaType: mediaType,
+        media: formattedMedia,
+      }
     };
 
-    // Adicionar campos opcionais no root
+    // Adicionar campos opcionais ao mediaMessage
     if (mediaType === 'image') {
-      body.mimetype = 'image/jpeg';
-      if (fileName) body.fileName = fileName || 'image.jpg';
-      if (caption) body.caption = caption;
+      if (fileName) body.mediaMessage.fileName = fileName || 'image.jpg';
+      if (caption) body.mediaMessage.caption = caption;
     } else if (mediaType === 'document') {
-      body.mimetype = 'application/pdf';
-      body.fileName = fileName || 'document.pdf';
-      if (caption) body.caption = caption;
+      body.mediaMessage.fileName = fileName || 'document.pdf';
+      if (caption) body.mediaMessage.caption = caption;
     } else if (mediaType === 'audio') {
-      body.mimetype = 'audio/mpeg';
-      if (fileName) body.fileName = fileName || 'audio.mp3';
+      if (fileName) body.mediaMessage.fileName = fileName || 'audio.mp3';
     }
     
     // Log payload completo para debug
-    console.log(`🔍 [WhatsApp Media Debug] Evolution API V2 Format - Payload:`, {
+    console.log(`🔍 [WhatsApp Media Debug] Evolution API V1 Format - Payload:`, {
       url: fullUrl,
       number: phoneNumber,
-      mediatype: body.mediatype,
-      mimetype: body.mimetype,
-      fileName: body.fileName,
-      hasCaption: !!body.caption,
+      mediaType: body.mediaMessage.mediaType,
+      fileName: body.mediaMessage.fileName,
+      hasCaption: !!body.mediaMessage.caption,
       mediaPrefix: formattedMedia.substring(0, 40) + '...',
       mediaLength: formattedMedia.length,
       hasDataUriPrefix: formattedMedia.startsWith('data:')
