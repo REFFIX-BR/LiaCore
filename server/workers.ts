@@ -200,18 +200,15 @@ export async function sendWhatsAppMedia(
     console.log(`📤 [WhatsApp Media] Sending ${mediaType} to: ${phoneNumber} via ${fullUrl}`);
     
     // Preparar body no formato correto da Evolution API
-    // A Evolution API requer AMBOS: mediatype (root) E mediaMessage (objeto)
+    // A Evolution API aceita APENAS base64 puro (sem prefixo) ou URL
     
-    // Garantir que o base64 tenha o prefixo correto (data:image/jpeg;base64,...)
+    // Remover prefixo data URI se presente (Evolution API não aceita)
     let formattedMedia = mediaBase64;
-    if (!formattedMedia.startsWith('data:') && !formattedMedia.startsWith('http')) {
-      // Adicionar prefixo baseado no tipo de mídia
-      if (mediaType === 'image') {
-        formattedMedia = `data:image/jpeg;base64,${mediaBase64}`;
-      } else if (mediaType === 'document') {
-        formattedMedia = `data:application/pdf;base64,${mediaBase64}`;
-      } else if (mediaType === 'audio') {
-        formattedMedia = `data:audio/mpeg;base64,${mediaBase64}`;
+    if (formattedMedia.startsWith('data:')) {
+      // Remove o prefixo "data:image/jpeg;base64," e fica só com o base64 puro
+      const base64Match = formattedMedia.match(/^data:[^;]+;base64,(.+)$/);
+      if (base64Match) {
+        formattedMedia = base64Match[1];
       }
     }
     
@@ -242,9 +239,11 @@ export async function sendWhatsAppMedia(
     console.log(`🔍 [WhatsApp Media Debug] Payload sendo enviado:`, {
       url: fullUrl,
       number: phoneNumber,
+      mediatype: body.mediatype,
       mediaMessageKeys: Object.keys(body.mediaMessage),
       mediaPrefix: formattedMedia.substring(0, 30) + '...',
       mediaLength: formattedMedia.length,
+      isPureBase64: !formattedMedia.startsWith('data:') && !formattedMedia.startsWith('http')
     });
     
     const response = await fetch(fullUrl, {
