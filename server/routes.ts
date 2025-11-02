@@ -9833,6 +9833,12 @@ A resposta deve:
 
       console.log(`✅ [Context Consolidation] Draft updated for ${assistantType}`);
 
+      // Mark all alerts as resolved
+      const timeAgo = new Date(Date.now() - Number(hours) * 60 * 60 * 1000);
+      await storage.markContextQualityAlertsAsResolved(assistantType, timeAgo);
+
+      console.log(`✅ [Context Consolidation] Alerts marked as resolved for ${assistantType}`);
+
       return res.json({
         success: true,
         summary: consolidationResult.summary,

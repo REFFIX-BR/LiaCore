@@ -424,6 +424,7 @@ export interface IStorage {
     bySeverity: Record<string, number>;
   }>;
   deleteOldContextQualityAlerts(daysAgo: number): Promise<number>; // Returns number of deleted alerts
+  markContextQualityAlertsAsResolved(assistantType: string, since: Date): Promise<number>; // Mark alerts as resolved, returns count
 }
 
 export class MemStorage implements IStorage {
@@ -4491,7 +4492,12 @@ export class DbStorage implements IStorage {
     const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000);
     return await db.select()
       .from(schema.contextQualityAlerts)
-      .where(gte(schema.contextQualityAlerts.detectedAt, cutoffTime))
+      .where(
+        and(
+          gte(schema.contextQualityAlerts.detectedAt, cutoffTime),
+          isNull(schema.contextQualityAlerts.resolvedAt)
+        )
+      )
       .orderBy(desc(schema.contextQualityAlerts.detectedAt));
   }
 
@@ -4523,6 +4529,19 @@ export class DbStorage implements IStorage {
     const cutoffTime = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
     const result = await db.delete(schema.contextQualityAlerts)
       .where(lt(schema.contextQualityAlerts.detectedAt, cutoffTime));
+    return result.rowCount || 0;
+  }
+
+  async markContextQualityAlertsAsResolved(assistantType: string, since: Date): Promise<number> {
+    const result = await db.update(schema.contextQualityAlerts)
+      .set({ resolvedAt: new Date() })
+      .where(
+        and(
+          eq(schema.contextQualityAlerts.assistantType, assistantType),
+          gte(schema.contextQualityAlerts.detectedAt, since),
+          isNull(schema.contextQualityAlerts.resolvedAt)
+        )
+      );
     return result.rowCount || 0;
   }
 

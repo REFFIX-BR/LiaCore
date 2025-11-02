@@ -952,6 +952,7 @@ export const contextQualityAlerts = pgTable("context_quality_alerts", {
   assistantType: text("assistant_type"), // Tipo do assistente que gerou o alerta
   metadata: jsonb("metadata"), // Dados adicionais do alerta
   detectedAt: timestamp("detected_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"), // Quando o alerta foi consolidado/resolvido
 }, (table) => ({
   conversationIdIdx: index("context_quality_alerts_conversation_id_idx").on(table.conversationId),
   detectedAtIdx: index("context_quality_alerts_detected_at_idx").on(table.detectedAt),
