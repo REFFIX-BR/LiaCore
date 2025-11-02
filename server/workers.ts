@@ -1367,6 +1367,125 @@ Por favor, responda apenas com um número de 0 a 10.
               await markJobProcessed(job.id!);
               return { skipped: true, reason: 'conversation_auto_resolved_with_farewell', npsSent };
             }
+            
+            // 4.6. Check for payment proof + no response pattern
+            // Detecta: Cliente enviou comprovante → Ticket criado → Agente perguntou se quer continuar → Cliente NÃO respondeu
+            const paymentProofPatterns = [
+              /comprovante.*pix/i,
+              /comprovante.*pagamento/i,
+              /documento.*pdf.*recebido/i,
+              /pix.*realizado/i,
+            ];
+            
+            const continuityQuestionPatterns = [
+              /deseja.*continuar/i,
+              /quer.*continuar/i,
+              /posso.*ajudar.*mais/i,
+              /precisa.*mais.*alguma.*coisa/i,
+              /algo.*mais/i,
+            ];
+            
+            // Encontrar índices das mensagens relevantes (em ordem cronológica reversa - mais recente primeiro)
+            let paymentProofIndex = -1;
+            let continuityQuestionIndex = -1;
+            
+            for (let i = 0; i < recentMessages.length; i++) {
+              const msg = recentMessages[i];
+              
+              // Procurar comprovante (user message)
+              if (paymentProofIndex === -1 && msg.role === 'user' && 
+                  paymentProofPatterns.some(pattern => pattern.test(msg.content))) {
+                paymentProofIndex = i;
+              }
+              
+              // Procurar pergunta de continuidade (assistant message)
+              if (continuityQuestionIndex === -1 && msg.role === 'assistant' && 
+                  continuityQuestionPatterns.some(pattern => pattern.test(msg.content))) {
+                continuityQuestionIndex = i;
+              }
+            }
+            
+            // Validar sequência: comprovante existe E pergunta existe E pergunta veio DEPOIS do comprovante
+            // (índice menor = mais recente, então continuityQuestionIndex < paymentProofIndex)
+            const validSequence = paymentProofIndex !== -1 && 
+                                  continuityQuestionIndex !== -1 && 
+                                  continuityQuestionIndex < paymentProofIndex;
+            
+            if (validSequence) {
+              // Verificar se cliente respondeu DEPOIS da pergunta
+              // Procurar mensagens do cliente entre índice 0 e continuityQuestionIndex
+              const clientRespondedAfterQuestion = recentMessages
+                .slice(0, continuityQuestionIndex)
+                .some(msg => msg.role === 'user');
+              
+              if (!clientRespondedAfterQuestion) {
+                console.log(`💳 [Payment Proof Detection] Cliente enviou comprovante mas não respondeu à pergunta de continuidade`);
+                console.log(`   Comprovante na posição ${paymentProofIndex}, pergunta na posição ${continuityQuestionIndex}`);
+                
+                // Validar estado da conversa antes de resolver
+                const currentConversation = await storage.getConversation(conversationId);
+                if (!currentConversation || currentConversation.status !== 'active') {
+                  console.log(`⚠️ [Auto-Resolve] Conversa ${conversationId} não está mais ativa - pulando auto-resolução`);
+                  await markJobProcessed(job.id!);
+                  return { skipped: true, reason: 'conversation_already_resolved' };
+                }
+                
+                // Verificar se ticket CRM foi criado (evidência em metadata)
+                const metadata = currentConversation.metadata && typeof currentConversation.metadata === 'object' 
+                  ? currentConversation.metadata as Record<string, any>
+                  : {};
+                
+                const ticketCreated = metadata.crmTicket || metadata.ticketProtocol || metadata.lastTicketProtocol;
+                
+                if (!ticketCreated) {
+                  console.log(`⚠️ [Payment Proof Detection] Ticket CRM não foi criado - não auto-resolvendo`);
+                  // Continuar com fluxo normal de inatividade
+                } else {
+                  console.log(`✅ [Payment Proof Detection] Ticket CRM encontrado: ${ticketCreated}`);
+                  
+                  // Encerrar a conversa automaticamente
+                  await storage.resolveConversation({
+                    conversationId,
+                    resolvedBy: null, // Sistema automático
+                    resolvedAt: new Date(),
+                    createActivityLog: false,
+                    metadata: {
+                      ...metadata,
+                      awaitingNPS: true,
+                      resolvedBySystem: true,
+                      resolveReason: 'Comprovante recebido - Cliente não respondeu à pergunta de continuidade',
+                    },
+                  });
+                  
+                  console.log(`✅ [Auto-Resolve] Conversa ${conversationId} encerrada automaticamente (comprovante + sem resposta), enviando NPS...`);
+                  
+                  // Enviar pesquisa NPS
+                  const npsTemplate = await storage.getMessageTemplateByKey('nps_survey');
+                  let npsSurveyMessage = npsTemplate?.template || 
+                    `Olá ${clientName}!\n\nSeu atendimento foi finalizado.\n\nPesquisa de Satisfação\n\nEm uma escala de 0 a 10, qual a satisfação com atendimento?\n\nDigite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
+                  
+                  npsSurveyMessage = npsSurveyMessage.replace(/{clientName}/g, clientName);
+                  
+                  let npsSent = false;
+                  try {
+                    const result = await sendWhatsAppMessage(clientId, npsSurveyMessage, evolutionInstance);
+                    if (result.success) {
+                      console.log(`📊 [NPS] Pesquisa enviada ao cliente ${clientName} após encerramento automático (comprovante)`);
+                      npsSent = true;
+                    } else {
+                      console.error(`❌ [NPS] Falha ao enviar pesquisa - Evolution API retornou erro:`, result);
+                    }
+                  } catch (error) {
+                    console.error(`❌ [NPS] Erro ao enviar pesquisa:`, error);
+                  }
+                  
+                  await markJobProcessed(job.id!);
+                  return { skipped: true, reason: 'conversation_auto_resolved_payment_proof_no_response', npsSent };
+                }
+              } else {
+                console.log(`ℹ️ [Payment Proof Detection] Cliente respondeu à pergunta de continuidade - continuando normal`);
+              }
+            }
           }
         }
 

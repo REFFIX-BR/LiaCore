@@ -37,6 +37,7 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, inspir
 - **Massive Failure Resolution**: Asynchronously notifies all affected customers via WhatsApp upon resolution.
 - **Conversation Reopening**: Automatically reopens resolved conversations when a client sends a new message.
 - **Intelligent Farewell Detection & Auto-Resolution** (Nov 2025): The inactivity follow-up worker now detects when both client and AI exchange farewells (e.g., "obg"/"tenha um ótimo dia") and automatically resolves the conversation, sending NPS survey instead of follow-up messages. This prevents inappropriate "continuity" messages after natural conversation endings, improving UX when AI forgets to call `finalizar_conversa`.
+- **Payment Proof Auto-Resolution** (Nov 2025): The system now automatically resolves conversations when a client sends payment proof (e.g., Pix receipt), a CRM ticket is created, and the client doesn't respond to the continuity question ("Deseja continuar o atendimento?"). This prevents abandoned conversations from remaining open indefinitely after payment confirmation is received.
 
 ## External Dependencies
 
