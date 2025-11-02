@@ -2492,8 +2492,8 @@ export class DbStorage implements IStorage {
         periodStart.setHours(0, 0, 0, 0);
         break;
       case 'month':
-        periodStart.setMonth(now.getMonth() - 1);
-        periodStart.setHours(0, 0, 0, 0);
+        // Mês corrente: desde o dia 1 do mês atual
+        periodStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
         break;
     }
 
