@@ -100,7 +100,6 @@ export default function PromptManagement() {
   const [versionBump, setVersionBump] = useState<"major" | "minor" | "patch">("patch");
   const [consolidationResult, setConsolidationResult] = useState<any>(null);
   const [selectedOptimizations, setSelectedOptimizations] = useState<number[]>([]);
-  const [appliedSuggestions, setAppliedSuggestions] = useState<Set<number>>(new Set());
   
   // Refs for synchronized scrolling in comparison view
   const productionScrollRef = useRef<HTMLDivElement>(null);
@@ -149,9 +148,8 @@ export default function PromptManagement() {
     }
   }, [currentPrompt?.id, currentPrompt?.draft?.draftContent, currentPrompt?.content]);
 
-  // Reset applied suggestions and local changes flag when assistant changes
+  // Reset local changes flag when assistant changes
   useEffect(() => {
-    setAppliedSuggestions(new Set());
     hasLocalChangesRef.current = false;
   }, [selectedAssistant]);
 
@@ -704,9 +702,9 @@ export default function PromptManagement() {
                   <TabsTrigger value="context" data-testid="tab-context">
                     <AlertCircle className="w-4 h-4 mr-2" />
                     Sugestões de Contexto
-                    {contextSuggestions && contextSuggestions.suggestions.length > 0 && appliedSuggestions.size < contextSuggestions.suggestions.length && (
+                    {contextSuggestions && contextSuggestions.suggestions.length > 0 && (
                       <Badge variant="destructive" className="ml-2 h-5 px-1.5 text-xs">
-                        {contextSuggestions.suggestions.length - appliedSuggestions.size}
+                        {contextSuggestions.suggestions.length}
                       </Badge>
                     )}
                   </TabsTrigger>
@@ -957,51 +955,6 @@ export default function PromptManagement() {
                                       </div>
                                     </div>
                                   )}
-
-                                  {/* Action Button */}
-                                  <div className="flex justify-end pt-2">
-                                    {appliedSuggestions.has(index) ? (
-                                      <Button
-                                        variant="secondary"
-                                        size="sm"
-                                        disabled
-                                        data-testid={`button-suggestion-applied-${index}`}
-                                      >
-                                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                                        Adicionada ao Rascunho
-                                      </Button>
-                                    ) : (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => {
-                                          // Get current content (draft or production)
-                                          const currentContent = draftContent || currentPrompt?.content || '';
-                                          
-                                          // Add suggested fix to draft with clean markdown formatting
-                                          const header = `\n\n---\n\n### ${suggestion.problemSummary}\n\n`;
-                                          const content = suggestion.suggestedFix.trim();
-                                          const footer = '\n';
-                                          const newContent = currentContent + header + content + footer;
-                                          
-                                          setDraftContent(newContent);
-                                          hasLocalChangesRef.current = true; // Mark that we have local changes
-                                          
-                                          // Mark suggestion as applied
-                                          setAppliedSuggestions(prev => new Set(Array.from(prev).concat(index)));
-                                          
-                                          toast({
-                                            title: "Sugestão adicionada ao rascunho",
-                                            description: "A correção foi adicionada ao final do seu rascunho em formato markdown. Revise e reorganize conforme necessário.",
-                                          });
-                                        }}
-                                        data-testid={`button-apply-suggestion-${index}`}
-                                      >
-                                        <Send className="w-4 h-4 mr-2" />
-                                        Adicionar ao Rascunho
-                                      </Button>
-                                    )}
-                                  </div>
                                 </CardContent>
                               </Card>
                             );
