@@ -1278,6 +1278,46 @@ Por favor, responda apenas com um número de 0 a 10.
           return { skipped: true, reason: 'client_already_responded' };
         }
 
+        // 4.5. Check for farewell pattern (prevent follow-up after goodbyes)
+        const recentMessages = await storage.getRecentMessagesByConversationId(conversationId, 3);
+        if (recentMessages.length >= 2) {
+          const lastMessage = recentMessages[0];
+          const secondLastMessage = recentMessages[1];
+          
+          // Padrões de despedida do assistente
+          const farewellPatterns = [
+            /tenha um (ótimo|excelente|bom) dia/i,
+            /estou sempre (à disposição|aqui|disponível)/i,
+            /se precisar.*chamar/i,
+            /fico (feliz|contente) em (ajudar|atender)/i,
+            /até (logo|mais|breve)/i,
+            /tchau|adeus/i,
+            /qualquer (coisa|dúvida).*retornar/i,
+            /conte comigo/i,
+            /por nada.*disposição/i,
+          ];
+          
+          // Padrões de despedida/agradecimento do cliente
+          const clientFarewellPatterns = [
+            /^(obg|obrigad[oa]|valeu|vlw|blz|ok|tá bom|ta bom)$/i,
+            /tchau|adeus|até/i,
+            /muito obrigad[oa]/i,
+          ];
+          
+          const aiSaidGoodbye = lastMessage.role === 'assistant' && 
+            farewellPatterns.some(pattern => pattern.test(lastMessage.content));
+          
+          const clientSaidGoodbye = secondLastMessage.role === 'user' && 
+            clientFarewellPatterns.some(pattern => pattern.test(secondLastMessage.content.trim()));
+          
+          if (aiSaidGoodbye && clientSaidGoodbye) {
+            console.log(`👋 [Inactivity Worker] Conversa terminou com despedida - cancelando follow-up`);
+            console.log(`   Cliente: "${secondLastMessage.content}" | IA: "${lastMessage.content.substring(0, 60)}..."`);
+            await markJobProcessed(job.id!);
+            return { skipped: true, reason: 'conversation_ended_with_farewell' };
+          }
+        }
+
         // 5. Get message template from database
         const messageTemplates = await storage.getAllMessageTemplates();
         const inactivityTemplate = messageTemplates.find((t) => t.key === 'inactivity_followup');
