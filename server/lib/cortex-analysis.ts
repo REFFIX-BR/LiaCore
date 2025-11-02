@@ -122,8 +122,30 @@ export async function analyzeLearningEvents(): Promise<any[]> {
       console.log(`📊 [LIA Cortex Analysis] GPT-4 retornou ${suggestions?.length || 0} sugestões para ${assistantType}`);
 
       if (suggestions && suggestions.length > 0) {
-        // Salvar sugestões no banco (com deduplicação)
+        // Salvar sugestões no banco (com deduplicação e validação)
         for (const suggestion of suggestions) {
+          // Validar formato da sugestão
+          const currentLen = suggestion.currentPromptSection?.length || 0;
+          const suggestedLen = suggestion.suggestedPromptSection?.length || 0;
+          
+          // Validação 1: Campos obrigatórios existem
+          if (!suggestion.currentPromptSection || !suggestion.suggestedPromptSection) {
+            console.log(`⚠️  [LIA Cortex Analysis] Sugestão inválida ignorada para ${assistantType}: campos de prompt faltando`);
+            continue;
+          }
+
+          // Validação 2: Comprimento adequado (mínimo 200 chars para ter contexto suficiente)
+          if (currentLen < 200 || suggestedLen < 200) {
+            console.log(`⚠️  [LIA Cortex Analysis] Sugestão inválida ignorada para ${assistantType}: trechos muito curtos (${currentLen}/${suggestedLen} chars, mínimo 200)`);
+            continue;
+          }
+
+          // Validação 3: Os trechos devem ser diferentes
+          if (suggestion.currentPromptSection === suggestion.suggestedPromptSection) {
+            console.log(`⚠️  [LIA Cortex Analysis] Sugestão inválida ignorada para ${assistantType}: trechos idênticos`);
+            continue;
+          }
+
           // Verificar se já existe sugestão similar pendente
           const existingSuggestions = await storage.getPromptSuggestionsByStatus("pending");
           const isDuplicate = existingSuggestions.some(existing => 
@@ -140,14 +162,14 @@ export async function analyzeLearningEvents(): Promise<any[]> {
             assistantType: suggestion.assistantType,
             problemIdentified: suggestion.problemIdentified,
             rootCauseAnalysis: suggestion.rootCauseAnalysis,
-            currentPrompt: suggestion.currentPromptSection || "Trecho não identificado",
+            currentPrompt: suggestion.currentPromptSection,
             suggestedPrompt: suggestion.suggestedPromptSection,
             confidenceScore: suggestion.confidenceScore,
             affectedConversations: suggestion.affectedConversations || [],
             status: "pending",
           });
 
-          console.log(`✅ [LIA Cortex Analysis] Nova sugestão criada para ${assistantType} (confiança: ${suggestion.confidenceScore}%)`);
+          console.log(`✅ [LIA Cortex Analysis] Nova sugestão criada para ${assistantType} (confiança: ${suggestion.confidenceScore}%, ${currentLen}→${suggestedLen} chars)`);
         }
 
         allSuggestions.push(...suggestions);
