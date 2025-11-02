@@ -19,10 +19,11 @@ Esta função **DEVE ser adicionada manualmente** aos 5 assistentes especializad
   "function": {
     "name": "rotear_para_assistente",
     "description": "Roteia a conversa para um ASSISTENTE DE IA especializado quando o cliente enviar uma solicitação FORA DO ESCOPO do assistente atual. Use esta função para encaminhar ao assistente de IA correto (suporte, comercial, financeiro, cancelamento, ouvidoria). NÃO confunda com transferir_para_humano - esta função mantém o atendimento com IA, apenas troca de assistente.",
+    "strict": false,
     "parameters": {
       "type": "object",
       "properties": {
-        "departamento": {
+        "assistantType": {
           "type": "string",
           "description": "Tipo de assistente de IA para o qual rotear",
           "enum": ["suporte", "comercial", "financeiro", "cancelamento", "ouvidoria"]
@@ -32,7 +33,7 @@ Esta função **DEVE ser adicionada manualmente** aos 5 assistentes especializad
           "description": "Breve descrição do motivo do roteamento com contexto específico da solicitação do cliente (ex: 'Cliente reportou internet lenta há 2 dias', 'Cliente quer contratar plano 500 Mbps', 'Cliente solicitou 2ª via de boleto vencido')"
         }
       },
-      "required": ["departamento", "motivo"]
+      "required": ["assistantType", "motivo"]
     }
   }
 }
@@ -89,8 +90,8 @@ Quando a função é chamada:
 
 ```
 Cliente: "Internet tá muito lenta"
-Assistente Financeiro: "Vou encaminhar você para o suporte técnico, eles vão te ajudar com isso! 👍"
-[CHAMA rotear_para_assistente com departamento="suporte", motivo="Cliente reportou lentidão na internet"]
+Assistente Financeiro: "Vou encaminhar você para o suporte técnico, eles vão te ajudar com isso!"
+[CHAMA rotear_para_assistente com assistantType="suporte", motivo="Cliente reportou lentidão na internet"]
 → Sistema roteia para Assistente de Suporte
 → Assistente de Suporte: "Oi! Vou te ajudar com a lentidão da internet. Qual seu CPF para eu verificar?"
 ```

@@ -1191,20 +1191,20 @@ export async function registrarReclamacaoOuvidoria(
 
 /**
  * Roteia conversa para assistente especializado (NÃO marca como transferido para humano)
- * @param departamento Nome do departamento/assistente especializado
+ * @param assistantType Tipo do assistente especializado (suporte, comercial, financeiro, cancelamento, ouvidoria)
  * @param motivo Motivo do roteamento
  * @returns Confirmação do roteamento
  */
 export async function rotearParaAssistenteEspecializado(
-  departamento: string,
+  assistantType: string,
   motivo: string
 ): Promise<{ roteado: boolean; assistente: string; motivo: string }> {
-  console.log(`🎭 [AI Tool] Roteamento interno: ${departamento} - Motivo: ${motivo}`);
+  console.log(`🎭 [AI Tool] Roteamento interno: ${assistantType} - Motivo: ${motivo}`);
   
   // Retorna estrutura que será processada pelo handler
   return {
     roteado: true,
-    assistente: departamento,
+    assistente: assistantType,
     motivo: motivo
   };
 }
@@ -1245,10 +1245,10 @@ export async function executeAssistantTool(
       return await registrarReclamacaoOuvidoria(args.tipo, args.descricao, context, storage);
 
     case 'rotear_para_assistente':
-      if (!args.departamento || !args.motivo) {
-        throw new Error("Parâmetros 'departamento' e 'motivo' são obrigatórios para rotear_para_assistente");
+      if (!args.assistantType || !args.motivo) {
+        throw new Error("Parâmetros 'assistantType' e 'motivo' são obrigatórios para rotear_para_assistente");
       }
-      return await rotearParaAssistenteEspecializado(args.departamento, args.motivo);
+      return await rotearParaAssistenteEspecializado(args.assistantType, args.motivo);
 
     case 'verificar_conexao':
       if (!args.documento) {

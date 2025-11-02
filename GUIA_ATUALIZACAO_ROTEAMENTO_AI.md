@@ -77,21 +77,21 @@ Adicione esta seção **ANTES** da seção "## 🛠️ FERRAMENTAS DISPONÍVEIS"
 
 **Use `rotear_para_assistente` quando a solicitação for sobre:**
 - **Suporte Técnico** (internet lenta, sem conexão, problemas técnicos, senha WiFi, etc.)
-  → `rotear_para_assistente("suporte", "Cliente reportou [descrição do problema técnico]")`
+  → `rotear_para_assistente(assistantType="suporte", "Cliente reportou [descrição do problema técnico]")`
   
 - **Comercial** (contratar plano, upgrade, mudança de endereço, novos serviços)
-  → `rotear_para_assistente("comercial", "Cliente quer [descrição da solicitação comercial]")`
+  → `rotear_para_assistente(assistantType="comercial", "Cliente quer [descrição da solicitação comercial]")`
   
 - **Cancelamento** (cancelar serviço, insatisfação com atendimento)
-  → `rotear_para_assistente("cancelamento", "Cliente solicitou cancelamento por [motivo]")`
+  → `rotear_para_assistente(assistantType="cancelamento", "Cliente solicitou cancelamento por [motivo]")`
   
 - **Ouvidoria** (reclamações, sugestões, elogios)
-  → `rotear_para_assistente("ouvidoria", "Cliente tem [tipo de manifestação]")`
+  → `rotear_para_assistente(assistantType="ouvidoria", "Cliente tem [tipo de manifestação]")`
 
 **Exemplo:**
 Cliente: "Internet tá muito lenta"
 Lia: "Vou encaminhar você para o suporte técnico, eles vão te ajudar com isso! "
-[usa rotear_para_assistente com departamento="suporte", motivo="Internet lenta"]
+[usa rotear_para_assistente com assistantType="suporte", motivo="Internet lenta"]
 
 **ATENÇÃO:** Use `transferir_para_humano` **APENAS** quando:
 - Cliente solicitar explicitamente ("quero falar com alguém", "me transfere", "atendente", "pessoa")
@@ -122,21 +122,21 @@ Adicione esta seção **ANTES** da seção de ferramentas:
 
 **Use `rotear_para_assistente` quando a solicitação for sobre:**
 - **Suporte Técnico** (internet lenta, sem conexão, problemas técnicos, senha WiFi, etc.)
-  → `rotear_para_assistente("suporte", "Cliente reportou [descrição do problema técnico]")`
+  → `rotear_para_assistente(assistantType="suporte", "Cliente reportou [descrição do problema técnico]")`
   
 - **Financeiro** (boletos, pagamentos, desbloqueio, faturas)
-  → `rotear_para_assistente("financeiro", "Cliente quer [descrição da solicitação financeira]")`
+  → `rotear_para_assistente(assistantType="financeiro", "Cliente quer [descrição da solicitação financeira]")`
   
 - **Cancelamento** (cancelar serviço, insatisfação)
-  → `rotear_para_assistente("cancelamento", "Cliente solicitou cancelamento por [motivo]")`
+  → `rotear_para_assistente(assistantType="cancelamento", "Cliente solicitou cancelamento por [motivo]")`
   
 - **Ouvidoria** (reclamações, sugestões, elogios)
-  → `rotear_para_assistente("ouvidoria", "Cliente tem [tipo de manifestação]")`
+  → `rotear_para_assistente(assistantType="ouvidoria", "Cliente tem [tipo de manifestação]")`
 
 **Exemplo:**
 Cliente: "Minha internet tá caindo direto"
 Lia: "Vou encaminhar você para o suporte técnico, eles vão te ajudar com isso! "
-[usa rotear_para_assistente com departamento="suporte", motivo="Internet com quedas constantes"]
+[usa rotear_para_assistente com assistantType="suporte", motivo="Internet com quedas constantes"]
 
 **ATENÇÃO:** Use `transferir_para_humano` **APENAS** quando:
 - Cliente solicitar explicitamente ("quero falar com atendente", "transfere para uma pessoa")
@@ -165,21 +165,21 @@ Adicione esta seção **ANTES** da seção de ferramentas:
 
 **Use `rotear_para_assistente` quando a solicitação for sobre:**
 - **Financeiro** (boletos, pagamentos, desbloqueio, faturas, 2ª via)
-  → `rotear_para_assistente("financeiro", "Cliente quer [descrição da solicitação financeira]")`
+  → `rotear_para_assistente(assistantType="financeiro", "Cliente quer [descrição da solicitação financeira]")`
   
 - **Comercial** (contratar plano, upgrade, mudança de endereço, novos serviços)
-  → `rotear_para_assistente("comercial", "Cliente quer [descrição da solicitação comercial]")`
+  → `rotear_para_assistente(assistantType="comercial", "Cliente quer [descrição da solicitação comercial]")`
   
 - **Cancelamento** (cancelar serviço, insatisfação)
-  → `rotear_para_assistente("cancelamento", "Cliente solicitou cancelamento por [motivo]")`
+  → `rotear_para_assistente(assistantType="cancelamento", "Cliente solicitou cancelamento por [motivo]")`
   
 - **Ouvidoria** (reclamações, sugestões, elogios)
-  → `rotear_para_assistente("ouvidoria", "Cliente tem [tipo de manifestação]")`
+  → `rotear_para_assistente(assistantType="ouvidoria", "Cliente tem [tipo de manifestação]")`
 
 **Exemplo:**
 Cliente: "Preciso do boleto"
 Lia: "Vou encaminhar você para o financeiro, eles vão te ajudar com isso! "
-[usa rotear_para_assistente com departamento="financeiro", motivo="Solicitação de 2ª via de boleto"]
+[usa rotear_para_assistente com assistantType="financeiro", motivo="Solicitação de 2ª via de boleto"]
 
 **ATENÇÃO:** Use `transferir_para_humano` **APENAS** quando:
 - Cliente solicitar explicitamente atendente humano
@@ -209,21 +209,21 @@ Adicione esta seção **ANTES** da seção de ferramentas:
 
 **Use `rotear_para_assistente` quando a solicitação for sobre:**
 - **Suporte Técnico** (internet lenta, sem conexão, problemas técnicos)
-  → `rotear_para_assistente("suporte", "Cliente reportou [descrição do problema técnico]")`
+  → `rotear_para_assistente(assistantType="suporte", "Cliente reportou [descrição do problema técnico]")`
   
 - **Financeiro** (boletos, pagamentos, desbloqueio, faturas)
-  → `rotear_para_assistente("financeiro", "Cliente quer [descrição da solicitação financeira]")`
+  → `rotear_para_assistente(assistantType="financeiro", "Cliente quer [descrição da solicitação financeira]")`
   
 - **Comercial** (contratar plano, upgrade, mudança de endereço)
-  → `rotear_para_assistente("comercial", "Cliente quer [descrição da solicitação comercial]")`
+  → `rotear_para_assistente(assistantType="comercial", "Cliente quer [descrição da solicitação comercial]")`
   
 - **Ouvidoria** (reclamações formais, sugestões, elogios)
-  → `rotear_para_assistente("ouvidoria", "Cliente tem [tipo de manifestação]")`
+  → `rotear_para_assistente(assistantType="ouvidoria", "Cliente tem [tipo de manifestação]")`
 
 **Exemplo:**
 Cliente: "Quero saber do meu boleto"
 Lia: "Vou encaminhar você para o financeiro, eles vão te ajudar com isso! "
-[usa rotear_para_assistente com departamento="financeiro", motivo="Consulta de boleto"]
+[usa rotear_para_assistente com assistantType="financeiro", motivo="Consulta de boleto"]
 
 **ATENÇÃO:** Use `transferir_para_humano` **APENAS** quando:
 - Cliente solicitar explicitamente atendente humano
@@ -253,21 +253,21 @@ Adicione esta seção **ANTES** da seção de ferramentas:
 
 **Use `rotear_para_assistente` quando a solicitação for sobre:**
 - **Suporte Técnico** (internet lenta, sem conexão, problemas técnicos)
-  → `rotear_para_assistente("suporte", "Cliente reportou [descrição do problema técnico]")`
+  → `rotear_para_assistente(assistantType="suporte", "Cliente reportou [descrição do problema técnico]")`
   
 - **Financeiro** (boletos, pagamentos, desbloqueio, faturas)
-  → `rotear_para_assistente("financeiro", "Cliente quer [descrição da solicitação financeira]")`
+  → `rotear_para_assistente(assistantType="financeiro", "Cliente quer [descrição da solicitação financeira]")`
   
 - **Comercial** (contratar plano, upgrade, mudança de endereço)
-  → `rotear_para_assistente("comercial", "Cliente quer [descrição da solicitação comercial]")`
+  → `rotear_para_assistente(assistantType="comercial", "Cliente quer [descrição da solicitação comercial]")`
   
 - **Cancelamento** (cancelar serviço)
-  → `rotear_para_assistente("cancelamento", "Cliente solicitou cancelamento por [motivo]")`
+  → `rotear_para_assistente(assistantType="cancelamento", "Cliente solicitou cancelamento por [motivo]")`
 
 **Exemplo:**
 Cliente: "Preciso do boleto"
 Lia: "Vou encaminhar você para o financeiro, eles vão te ajudar com isso! "
-[usa rotear_para_assistente com departamento="financeiro", motivo="Solicitação de boleto"]
+[usa rotear_para_assistente com assistantType="financeiro", motivo="Solicitação de boleto"]
 
 **ATENÇÃO:** Use `transferir_para_humano` **APENAS** quando:
 - Cliente solicitar explicitamente atendente humano
@@ -284,44 +284,40 @@ Lia: "Vou encaminhar você para o financeiro, eles vão te ajudar com isso! "
 
 ---
 
-##  PASSO FINAL: Configurar Ferramenta no OpenAI Dashboard
+##  REFERÊNCIA: Configuração da Ferramenta no OpenAI Dashboard
 
-Depois de publicar todos os prompts, você **TAMBÉM precisa** adicionar a ferramenta `rotear_para_assistente` no OpenAI Dashboard para cada assistente:
+A ferramenta `rotear_para_assistente` **JÁ ESTÁ CONFIGURADA** no OpenAI Dashboard para os 5 assistentes especializados.
 
-1. Acesse: https://platform.openai.com/assistants
-2. Para cada assistente (Suporte, Comercial, Financeiro, Cancelamento, Ouvidoria):
-   - Abra o assistente
-   - Vá em **Tools** → **Add Function**
-   - Cole o JSON de `FUNCAO_ROTEAR_ASSISTENTE.md` (linhas 15-33)
-   - **Salve**
+Para referência futura, aqui está a configuração atual da ferramenta:
 
-**JSON da ferramenta (copie COMPLETO, incluindo todos os colchetes):**
+**JSON da ferramenta (configuração atual no OpenAI):**
 ```json
 {
   "type": "function",
   "function": {
     "name": "rotear_para_assistente",
-    "description": "Roteia a conversa para um ASSISTENTE DE IA especializado quando o cliente enviar uma solicitação FORA DO ESCOPO do assistente atual. Use esta função para encaminhar ao assistente de IA correto (suporte, comercial, financeiro, cancelamento, ouvidoria). NÃO confunda com transferir_para_humano - esta função mantém o atendimento com IA, apenas troca de assistente.",
+    "description": "Rotear conversa para assistente de IA especializado. Use quando cliente precisar de ajuda específica (boleto=financeiro, problema técnico=suporte, planos=comercial, etc). NÃO use para transferir para humano.",
+    "strict": false,
     "parameters": {
       "type": "object",
       "properties": {
-        "departamento": {
+        "assistantType": {
           "type": "string",
-          "description": "Tipo de assistente de IA para o qual rotear",
+          "description": "Tipo de assistente especializado",
           "enum": ["suporte", "comercial", "financeiro", "cancelamento", "ouvidoria"]
         },
         "motivo": {
           "type": "string",
-          "description": "Breve descrição do motivo do roteamento com contexto específico da solicitação do cliente (ex: 'Cliente reportou internet lenta há 2 dias', 'Cliente quer contratar plano 500 Mbps', 'Cliente solicitou 2ª via de boleto vencido')"
+          "description": "Motivo do roteamento"
         }
       },
-      "required": ["departamento", "motivo"]
+      "required": ["assistantType", "motivo"]
     }
   }
 }
 ```
 
-**IMPORTANTE**: Certifique-se de copiar o JSON completo com TODOS os colchetes de fechamento. Valide a sintaxe antes de colar no OpenAI Dashboard.
+**NOTA**: Esta ferramenta já está configurada. Não é necessário realizar nenhuma ação no OpenAI Dashboard.
 
 ---
 
@@ -332,7 +328,6 @@ Depois de publicar todos os prompts, você **TAMBÉM precisa** adicionar a ferra
 - [ ] Suporte atualizado e publicado (versão Minor)
 - [ ] Cancelamento atualizado e publicado (versão Minor)
 - [ ] Ouvidoria atualizado e publicado (versão Minor)
-- [ ] Ferramenta `rotear_para_assistente` adicionada aos 5 assistentes no OpenAI Dashboard
 
 ---
 
@@ -350,7 +345,7 @@ Financeiro → transferir_para_humano
 **Depois:**
 ```
 Cliente → Financeiro: "Internet lenta"  
-Financeiro → rotear_para_assistente("suporte", "Internet lenta") 
+Financeiro → rotear_para_assistente(assistantType="suporte", "Internet lenta") 
 → Assistente de Suporte assume (com contexto completo)
 → Cliente continua sendo atendido por IA
 ```
