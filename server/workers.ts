@@ -199,51 +199,54 @@ export async function sendWhatsAppMedia(
     const fullUrl = `${baseUrl}/message/${endpoint}/${evolutionInstance}`;
     console.log(`📤 [WhatsApp Media] Sending ${mediaType} to: ${phoneNumber} via ${fullUrl}`);
     
-    // Preparar body no formato correto da Evolution API
-    // A Evolution API aceita APENAS base64 puro (sem prefixo) ou URL
+    // Preparar body no formato correto da Evolution API V2
+    // Formato V2: todos os campos no root (não usar mediaMessage)
     
-    // Remover prefixo data URI se presente (Evolution API não aceita)
+    // Garantir que o base64 tenha o prefixo data URI (Evolution API V2 requer)
     let formattedMedia = mediaBase64;
-    if (formattedMedia.startsWith('data:')) {
-      // Remove o prefixo "data:image/jpeg;base64," e fica só com o base64 puro
-      const base64Match = formattedMedia.match(/^data:[^;]+;base64,(.+)$/);
-      if (base64Match) {
-        formattedMedia = base64Match[1];
+    if (!formattedMedia.startsWith('data:') && !formattedMedia.startsWith('http')) {
+      // Adicionar prefixo baseado no tipo de mídia
+      if (mediaType === 'image') {
+        formattedMedia = `data:image/jpeg;base64,${mediaBase64}`;
+      } else if (mediaType === 'document') {
+        formattedMedia = `data:application/pdf;base64,${mediaBase64}`;
+      } else if (mediaType === 'audio') {
+        formattedMedia = `data:audio/mpeg;base64,${mediaBase64}`;
       }
     }
     
+    // Formato V2: campos no root (não usar mediaMessage objeto)
     const body: any = {
       number: phoneNumber,
-      mediatype: mediaType, // Campo requerido pela Evolution API (versão específica)
-      mediaMessage: {
-        mediaType: mediaType,
-        media: formattedMedia, // Base64 com prefixo data: ou URL
-      }
+      mediatype: mediaType,
+      media: formattedMedia,
     };
 
-    // Adicionar campos opcionais ao mediaMessage
+    // Adicionar campos opcionais no root
     if (mediaType === 'image') {
-      body.mediaMessage.mimetype = 'image/jpeg';
-      if (fileName) body.mediaMessage.fileName = fileName || 'image.jpg';
-      if (caption) body.mediaMessage.caption = caption;
+      body.mimetype = 'image/jpeg';
+      if (fileName) body.fileName = fileName || 'image.jpg';
+      if (caption) body.caption = caption;
     } else if (mediaType === 'document') {
-      body.mediaMessage.mimetype = 'application/pdf';
-      body.mediaMessage.fileName = fileName || 'document.pdf';
-      if (caption) body.mediaMessage.caption = caption;
+      body.mimetype = 'application/pdf';
+      body.fileName = fileName || 'document.pdf';
+      if (caption) body.caption = caption;
     } else if (mediaType === 'audio') {
-      body.mediaMessage.mimetype = 'audio/mpeg';
-      if (fileName) body.mediaMessage.fileName = fileName || 'audio.mp3';
+      body.mimetype = 'audio/mpeg';
+      if (fileName) body.fileName = fileName || 'audio.mp3';
     }
     
     // Log payload completo para debug
-    console.log(`🔍 [WhatsApp Media Debug] Payload sendo enviado:`, {
+    console.log(`🔍 [WhatsApp Media Debug] Evolution API V2 Format - Payload:`, {
       url: fullUrl,
       number: phoneNumber,
       mediatype: body.mediatype,
-      mediaMessageKeys: Object.keys(body.mediaMessage),
-      mediaPrefix: formattedMedia.substring(0, 30) + '...',
+      mimetype: body.mimetype,
+      fileName: body.fileName,
+      hasCaption: !!body.caption,
+      mediaPrefix: formattedMedia.substring(0, 40) + '...',
       mediaLength: formattedMedia.length,
-      isPureBase64: !formattedMedia.startsWith('data:') && !formattedMedia.startsWith('http')
+      hasDataUriPrefix: formattedMedia.startsWith('data:')
     });
     
     const response = await fetch(fullUrl, {
