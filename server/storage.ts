@@ -2504,10 +2504,10 @@ export class DbStorage implements IStorage {
         eq(schema.conversations.status, 'active')
       ));
 
-    // Conversas finalizadas no período
+    // Conversas finalizadas no período (resolvidas pelo agente)
     const finishedInPeriod = await db.select().from(schema.conversations)
       .where(and(
-        eq(schema.conversations.assignedTo, userId),
+        eq(schema.conversations.resolvedBy, userId),
         eq(schema.conversations.status, 'resolved'),
         gte(schema.conversations.resolvedAt, periodStart)
       ));
@@ -2528,10 +2528,10 @@ export class DbStorage implements IStorage {
       avgResponseTime = Math.floor(totalTime / conversationsWithTime.length);
     }
 
-    // NPS pessoal (últimas 30 conversas)
+    // NPS pessoal (últimas 30 conversas resolvidas pelo agente)
     const personalFeedbacks = await db.select().from(schema.satisfactionFeedback)
       .innerJoin(schema.conversations, eq(schema.satisfactionFeedback.conversationId, schema.conversations.id))
-      .where(eq(schema.conversations.assignedTo, userId))
+      .where(eq(schema.conversations.resolvedBy, userId))
       .orderBy(desc(schema.satisfactionFeedback.createdAt))
       .limit(30);
 
@@ -2543,8 +2543,8 @@ export class DbStorage implements IStorage {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const sentimentData = await db.select().from(schema.conversations)
       .where(and(
-        eq(schema.conversations.assignedTo, userId),
-        gte(schema.conversations.createdAt, sevenDaysAgo)
+        eq(schema.conversations.resolvedBy, userId),
+        gte(schema.conversations.resolvedAt, sevenDaysAgo)
       ));
 
     const sentimentTrend = this.calculateSentimentTrend(sentimentData);
