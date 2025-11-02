@@ -9745,6 +9745,106 @@ A resposta deve:
     }
   });
 
+  // POST /api/prompts/:assistantType/consolidate-context-suggestions - Consolidate context suggestions intelligently
+  app.post("/api/prompts/:assistantType/consolidate-context-suggestions", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { assistantType } = req.params;
+      const userId = req.user!.userId;
+      const { hours = 168 } = req.body; // Default: last 7 days
+
+      console.log(`🔄 [Context Consolidation] Starting for ${assistantType}`);
+
+      // Get template
+      const template = await storage.getPromptTemplateByAssistantType(assistantType);
+      if (!template) {
+        return res.status(404).json({ error: "Prompt template não encontrado" });
+      }
+
+      // Get context suggestions
+      const allAlerts = await storage.getRecentContextQualityAlerts(Number(hours));
+      const assistantAlerts = allAlerts.filter(alert => alert.assistantType === assistantType);
+
+      if (assistantAlerts.length === 0) {
+        return res.status(400).json({ 
+          error: "Nenhuma sugestão de contexto encontrada para consolidar" 
+        });
+      }
+
+      // Group alerts by type and generate suggestions
+      const alertsByType: Record<string, typeof assistantAlerts> = {};
+      assistantAlerts.forEach(alert => {
+        if (!alertsByType[alert.alertType]) {
+          alertsByType[alert.alertType] = [];
+        }
+        alertsByType[alert.alertType].push(alert);
+      });
+
+      const { generatePromptSuggestions } = await import("./lib/prompt-suggestions");
+      const suggestions = await Promise.all(
+        Object.entries(alertsByType).map(async ([alertType, alerts]) => {
+          const suggestion = await generatePromptSuggestions(
+            alerts.map(a => ({
+              alertType: a.alertType,
+              severity: a.severity,
+              description: a.description,
+              conversationId: a.conversationId || '',
+              metadata: a.metadata || {},
+            })),
+            assistantType,
+            template?.content
+          );
+          
+          return {
+            problemSummary: suggestion.problemSummary,
+            rootCause: suggestion.rootCause,
+            suggestedFix: suggestion.suggestedFix,
+            priority: suggestion.priority,
+            count: alerts.length,
+          };
+        })
+      );
+
+      console.log(`🔄 [Context Consolidation] Generated ${suggestions.length} suggestions for ${assistantType}`);
+
+      // Call consolidation service
+      const { consolidateContextSuggestions } = await import("./lib/openai");
+      const consolidationResult = await consolidateContextSuggestions(
+        template.content,
+        suggestions,
+        assistantType
+      );
+
+      // Create or update draft with consolidated prompt
+      const existingDraft = await storage.getPromptDraft(template.id);
+      
+      let draft;
+      if (existingDraft) {
+        draft = await storage.updatePromptDraft(template.id, {
+          draftContent: consolidationResult.updatedPrompt,
+          lastEditedBy: userId,
+        });
+      } else {
+        draft = await storage.createPromptDraft({
+          promptTemplateId: template.id,
+          draftContent: consolidationResult.updatedPrompt,
+          lastEditedBy: userId,
+        });
+      }
+
+      console.log(`✅ [Context Consolidation] Draft updated for ${assistantType}`);
+
+      return res.json({
+        success: true,
+        summary: consolidationResult.summary,
+        draftId: draft.id,
+        message: `${suggestions.length} sugestões de contexto consolidadas com sucesso no rascunho`,
+      });
+    } catch (error) {
+      console.error("❌ [Context Consolidation] Error:", error);
+      return res.status(500).json({ error: "Erro ao consolidar sugestões de contexto" });
+    }
+  });
+
   // ===================================
   // GAMIFICATION ROUTES
   // ===================================

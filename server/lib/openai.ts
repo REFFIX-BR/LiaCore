@@ -2837,4 +2837,113 @@ ${suggestionsContext}
   }
 }
 
+/**
+ * Consolida sugestões de Contexto de forma inteligente usando GPT-4o
+ */
+export async function consolidateContextSuggestions(
+  currentPrompt: string,
+  suggestions: Array<{
+    problemSummary: string;
+    rootCause: string;
+    suggestedFix: string;
+    priority: string;
+    count: number;
+  }>,
+  assistantType: string
+): Promise<{ updatedPrompt: string; summary: string }> {
+  try {
+    console.log(`🔄 [Context Consolidation] Starting for ${assistantType} with ${suggestions.length} suggestions`);
+
+    const suggestionsContext = suggestions.map((s, i) => `
+SUGESTÃO ${i + 1}:
+- Problema: ${s.problemSummary}
+- Causa Raiz: ${s.rootCause}
+- Prioridade: ${s.priority}
+- Ocorrências: ${s.count}x
+- Correção Sugerida:
+${s.suggestedFix}
+`).join('\n---\n');
+
+    const consolidationPrompt = `Você é um especialista em consolidar correções de contexto e melhorar prompts de assistentes de IA.
+
+**CONTEXTO:**
+- Assistente: ${assistantType.toUpperCase()}
+- Setor: Telecomunicações (TR Telecom)
+- Prompt atual em produção: VER ABAIXO
+
+**PROMPT ATUAL (PRODUÇÃO):**
+${currentPrompt}
+
+**SUGESTÕES DE CORREÇÃO DO MONITOR DE CONTEXTO (${suggestions.length} no total):**
+${suggestionsContext}
+
+**SUA TAREFA:**
+1. Analise TODAS as ${suggestions.length} sugestões de correção
+2. Integre as correções de forma inteligente e coesa no prompt atual
+3. Organize as correções nas seções apropriadas do prompt (não adicione tudo no final)
+4. Mantenha o estilo markdown do prompt original
+5. Evite duplicação - se o prompt já aborda parcialmente um problema, MELHORE a seção existente
+
+**DIRETRIZES IMPORTANTES:**
+- PRESERVE a estrutura markdown (##, ###, -, etc.)
+- INTEGRE as correções nas seções relevantes (não crie seção separada no final)
+- Se uma correção é sobre "revisar histórico", adicione na seção de regras ou procedimentos existente
+- Remova redundâncias - consolide instruções similares
+- Use linguagem IMPERATIVA e CLARA (SEMPRE, NUNCA, OBRIGATÓRIO)
+- Mantenha tom profissional e direto
+
+**FORMATO DE RESPOSTA (JSON ESTRITO):**
+{
+  "updatedPrompt": "Prompt completo atualizado com as correções integradas de forma harmoniosa...",
+  "summary": "Resumo das ${suggestions.length} correções aplicadas: lista as principais mudanças feitas"
+}
+
+**IMPORTANTE:**
+- O updatedPrompt deve ser o prompt COMPLETO e final, pronto para uso
+- NÃO adicione seção "Novas Instruções" ou "Correções" no final
+- INTEGRE tudo de forma orgânica nas seções existentes
+- O resultado deve parecer que foi escrito por uma única pessoa, não como colagem de correções`;
+
+    const response = await openaiCircuitBreaker.execute(() =>
+      openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "Você é um especialista em engenharia de prompts que consolida feedback de forma inteligente e coesa."
+          },
+          {
+            role: "user",
+            content: consolidationPrompt
+          }
+        ],
+        temperature: 0.3,
+        response_format: { type: "json_object" }
+      })
+    );
+
+    const result = JSON.parse(response.choices[0].message.content || '{}');
+    
+    // Track token usage
+    if (response.usage) {
+      await trackTokenUsage(
+        "gpt-4o",
+        response.usage.prompt_tokens || 0,
+        response.usage.completion_tokens || 0
+      );
+    }
+    
+    console.log(`✅ [Context Consolidation] Completed for ${assistantType}`);
+    console.log(`📊 [Context Consolidation] Summary: ${result.summary}`);
+
+    return {
+      updatedPrompt: result.updatedPrompt || currentPrompt,
+      summary: result.summary || 'Consolidação concluída'
+    };
+  } catch (error) {
+    console.error(`❌ [Context Consolidation] Error:`, error);
+    throw error;
+  }
+}
+
 export { openai };
