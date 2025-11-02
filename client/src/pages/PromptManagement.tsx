@@ -733,7 +733,7 @@ export default function PromptManagement() {
                           hasLocalChangesRef.current = true; // Mark that we have local changes
                         }}
                         previousContent={(currentPrompt.draft as any)?.preConsolidationContent}
-                        className="flex-1 resize-none font-mono text-sm"
+                        className="flex-1 resize-none font-mono text-sm min-h-[600px]"
                         placeholder="Digite as instruções do assistente..."
                         data-testid="textarea-prompt-content"
                       />
