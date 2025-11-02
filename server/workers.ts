@@ -215,9 +215,11 @@ export async function sendWhatsAppMedia(
       }
     }
     
-    // Formato V1: usar objeto mediaMessage
+    // Formato híbrido: usar AMBOS mediatype (root) E mediaMessage (objeto)
+    // Algumas versões da Evolution API requerem ambos os campos
     const body: any = {
       number: phoneNumber,
+      mediatype: mediaType, // Campo no root (requerido por algumas versões)
       mediaMessage: {
         mediaType: mediaType,
         media: formattedMedia,
@@ -236,9 +238,10 @@ export async function sendWhatsAppMedia(
     }
     
     // Log payload completo para debug
-    console.log(`🔍 [WhatsApp Media Debug] Evolution API V1 Format - Payload:`, {
+    console.log(`🔍 [WhatsApp Media Debug] Evolution API Hybrid Format - Payload:`, {
       url: fullUrl,
       number: phoneNumber,
+      mediatypeRoot: body.mediatype,
       mediaType: body.mediaMessage.mediaType,
       fileName: body.mediaMessage.fileName,
       hasCaption: !!body.mediaMessage.caption,
