@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { DiffHighlightedTextarea } from "@/components/DiffHighlightedTextarea";
+import { DiffViewer } from "@/components/DiffViewer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -771,51 +772,39 @@ export default function PromptManagement() {
                 </TabsContent>
 
                 <TabsContent value="diff" className="flex-1 mt-4 px-4">
-                  <div className="grid grid-cols-2 gap-4 h-[calc(100vh-240px)]">
-                    <Card className="flex flex-col h-full overflow-hidden">
-                      <CardHeader className="flex-shrink-0">
-                        <CardTitle className="text-sm flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-green-600" />
-                          Produção (v{currentPrompt.version})
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="flex-1 p-0 overflow-hidden">
-                        <ScrollArea 
-                          ref={productionScrollRef}
-                          className="h-full w-full"
-                          data-testid="comparison-production-panel"
-                        >
-                          <div className="p-6">
-                            <pre className="text-xs font-mono whitespace-pre-wrap">
-                              {currentPrompt.content}
-                            </pre>
+                  <Card className="flex flex-col h-[calc(100vh-240px)] overflow-hidden">
+                    <CardHeader className="flex-shrink-0">
+                      <CardTitle className="text-sm flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <GitBranch className="w-4 h-4" />
+                          Comparação: Produção vs Rascunho
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <span className="inline-block w-3 h-3 bg-green-500/20 border border-green-500/50 rounded"></span>
+                            <span>Adições</span>
                           </div>
-                        </ScrollArea>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="flex flex-col h-full overflow-hidden">
-                      <CardHeader className="flex-shrink-0">
-                        <CardTitle className="text-sm flex items-center gap-2">
-                          <AlertCircle className="w-4 h-4 text-orange-600" />
-                          Rascunho (não publicado)
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="flex-1 p-0 overflow-hidden">
-                        <ScrollArea 
-                          ref={draftScrollRef}
-                          className="h-full w-full"
-                          data-testid="comparison-draft-panel"
-                        >
-                          <div className="p-6">
-                            <pre className="text-xs font-mono whitespace-pre-wrap">
-                              {draftContent || currentPrompt.draft?.draftContent || currentPrompt.content}
-                            </pre>
+                          <div className="flex items-center gap-1">
+                            <span className="inline-block w-3 h-3 bg-red-500/20 border border-red-500/50 rounded"></span>
+                            <span>Remoções</span>
                           </div>
-                        </ScrollArea>
-                      </CardContent>
-                    </Card>
-                  </div>
+                        </div>
+                      </CardTitle>
+                      <CardDescription>
+                        Visualização unificada mostrando mudanças entre versão em produção (v{currentPrompt.version}) e rascunho
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-1 p-0 overflow-hidden">
+                      <ScrollArea className="h-full w-full" data-testid="comparison-diff-panel">
+                        <div className="p-6">
+                          <DiffViewer
+                            oldText={currentPrompt.content}
+                            newText={draftContent || currentPrompt.draft?.draftContent || currentPrompt.content}
+                          />
+                        </div>
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
                 </TabsContent>
 
                 {/* Context Suggestions Tab */}
