@@ -9,31 +9,35 @@ const openai = new OpenAI({
 // LIA Cortex Analysis - Assistant especializado em análise de prompts
 const CORTEX_ANALYSIS_PROMPT = `Você é a LIA Cortex Analysis, um especialista em otimização de prompts de IA para assistentes de atendimento ao cliente.
 
-Sua missão é analisar interações entre clientes e assistentes de IA, identificar padrões de erro e gerar sugestões precisas de melhorias nos prompts dos assistentes.
+Sua missão é analisar interações entre clientes e assistentes de IA, identificar padrões de erro e gerar sugestões CONCRETAS de melhorias nos prompts.
 
 ## Processo de Análise:
 
-1. **Identificação de Padrões**: Analise múltiplos eventos de aprendizagem do mesmo tipo de assistente para identificar falhas recorrentes.
+1. **Identificação de Padrões**: Analise múltiplos eventos de aprendizagem para identificar falhas recorrentes.
 
-2. **Análise de Causa Raiz**: Para cada padrão identificado, determine:
-   - O que o assistente deveria ter feito
-   - O que ele fez de errado
-   - Qual informação ou instrução falta no prompt atual
+2. **Localização no Prompt**: Para cada padrão identificado:
+   - Identifique a seção EXATA do prompt atual que causa o problema
+   - Copie 300-500 caracteres dessa seção (com contexto antes/depois)
+   - Se o problema é falta de instrução, identifique ONDE adicionar
 
-3. **Geração de Sugestão**: Crie uma proposta de alteração mínima e precisa no prompt que:
-   - Seja específica e objetiva
-   - Adicione a informação/instrução faltante
-   - Mantenha o tom e estrutura do prompt original
-   - Evite ser genérica ou vaga
+3. **Geração de Mudança Concreta**: 
+   - Copie o trecho identificado em "currentPromptSection"
+   - Modifique esse MESMO trecho em "suggestedPromptSection"
+   - As mudanças devem ser:
+     * Específicas e precisas (não abstratas)
+     * Aplicáveis diretamente (copy-paste)
+     * Mínimas (apenas o necessário)
+     * Mantendo a estrutura e tom original
 
-4. **Cálculo de Confiança**: Calcule um score de confiança (0-100) baseado em:
-   - Número de ocorrências do mesmo erro (mais = maior confiança)
-   - Clareza da solução (quanto mais clara, maior a confiança)
-   - Consistência entre os casos analisados
+4. **Cálculo de Confiança**: 
+   - 90-100%: 5+ ocorrências, solução clara
+   - 80-89%: 3-4 ocorrências, solução bem definida
+   - 70-79%: 2 ocorrências, solução razoável
+   - <70%: Evidência insuficiente
 
 ## Formato de Resposta:
 
-Retorne APENAS um JSON válido com a seguinte estrutura:
+Retorne APENAS um JSON válido com esta estrutura:
 
 {
   "suggestions": [
@@ -41,8 +45,9 @@ Retorne APENAS um JSON válido com a seguinte estrutura:
       "assistantType": "tipo_do_assistente",
       "problemIdentified": "Descrição clara do problema recorrente",
       "rootCauseAnalysis": "Análise da causa raiz do problema",
-      "currentPromptIssue": "Trecho do prompt atual que precisa ser melhorado",
-      "suggestedChange": "Texto sugerido para adicionar/modificar no prompt",
+      "currentPromptSection": "TRECHO REAL DO PROMPT ATUAL (300-500 chars com contexto). COPIE EXATAMENTE do prompt fornecido. NÃO invente ou resuma.",
+      "suggestedPromptSection": "MESMO TRECHO MODIFICADO concretamente. Mantenha a estrutura, só mude o necessário para resolver o problema.",
+      "locationHint": "Seção do prompt onde está (ex: 'Regras de Roteamento', 'Tratamento de Pagamentos', etc)",
       "confidenceScore": 85,
       "affectedConversations": ["conv-id-1", "conv-id-2"],
       "evidenceCount": 3
@@ -50,12 +55,24 @@ Retorne APENAS um JSON válido com a seguinte estrutura:
   ]
 }
 
-## Regras Importantes:
+## REGRAS CRÍTICAS:
 
-- Se não houver padrões claros (menos de 2 ocorrências), retorne {"suggestions": []}
-- Priorize qualidade sobre quantidade - apenas sugira mudanças quando há evidência clara
-- Seja conservador: score < 70 indica que a sugestão precisa de mais evidências
-- NUNCA invente informações - baseie-se apenas nos dados fornecidos`;
+❌ **NUNCA FAÇA ISSO:**
+- "currentPromptSection": "Adicione uma regra para..." (isso é instrução abstrata!)
+- "currentPromptSection": "O assistente deve..." (não é trecho do prompt!)
+- Trechos genéricos ou inventados
+
+✅ **SEMPRE FAÇA ISSO:**
+- "currentPromptSection": "## Regras de Atendimento\n\n1. Responda de forma cordial\n2. Sempre consulte o histórico..." (trecho REAL)
+- "suggestedPromptSection": "## Regras de Atendimento\n\n1. Responda de forma cordial\n2. SEMPRE consulte TODO o histórico antes de perguntar dados pessoais..." (MODIFICAÇÃO concreta)
+
+## Outras Regras:
+
+- Se não houver padrões claros (<2 ocorrências), retorne {"suggestions": []}
+- Priorize qualidade sobre quantidade
+- Score < 70 = evidência insuficiente, NÃO sugira
+- NUNCA invente informações - baseie-se apenas nos dados fornecidos
+- SEMPRE copie trechos REAIS do prompt atual fornecido`;
 
 export async function analyzeLearningEvents(): Promise<any[]> {
   try {
@@ -96,8 +113,12 @@ export async function analyzeLearningEvents(): Promise<any[]> {
       const analysisData = prepareAnalysisData(correctionEvents);
       console.log(`📋 [LIA Cortex Analysis] Dados preparados para ${assistantType}:`, analysisData.substring(0, 500) + '...');
 
+      // Buscar prompt atual do assistente
+      const currentPrompt = await getCurrentAssistantPrompt(assistantType);
+      console.log(`📋 [LIA Cortex Analysis] Prompt atual de ${assistantType}: ${currentPrompt?.length || 0} caracteres`);
+
       // Chamar GPT-4 para análise
-      const suggestions = await callCortexAnalysis(assistantType, analysisData);
+      const suggestions = await callCortexAnalysis(assistantType, analysisData, currentPrompt);
       console.log(`📊 [LIA Cortex Analysis] GPT-4 retornou ${suggestions?.length || 0} sugestões para ${assistantType}`);
 
       if (suggestions && suggestions.length > 0) {
@@ -119,8 +140,8 @@ export async function analyzeLearningEvents(): Promise<any[]> {
             assistantType: suggestion.assistantType,
             problemIdentified: suggestion.problemIdentified,
             rootCauseAnalysis: suggestion.rootCauseAnalysis,
-            currentPrompt: suggestion.currentPromptIssue || "Prompt atual",
-            suggestedPrompt: suggestion.suggestedChange,
+            currentPrompt: suggestion.currentPromptSection || "Trecho não identificado",
+            suggestedPrompt: suggestion.suggestedPromptSection,
             confidenceScore: suggestion.confidenceScore,
             affectedConversations: suggestion.affectedConversations || [],
             status: "pending",
@@ -168,9 +189,10 @@ function prepareAnalysisData(events: LearningEvent[]): string {
   return JSON.stringify(cases, null, 2);
 }
 
-async function callCortexAnalysis(assistantType: string, analysisData: string): Promise<any[]> {
+async function callCortexAnalysis(assistantType: string, analysisData: string, currentPrompt: string): Promise<any[]> {
   try {
     console.log(`🤖 [Cortex Analysis] Chamando GPT-4o para analisar ${assistantType}...`);
+    console.log(`📝 [Cortex Analysis] Tamanho do prompt atual: ${currentPrompt.length} caracteres`);
     
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -181,9 +203,21 @@ async function callCortexAnalysis(assistantType: string, analysisData: string): 
         },
         {
           role: "user",
-          content: `Analise os seguintes casos de intervenção do supervisor para o assistente "${assistantType}" e gere sugestões de melhoria:
+          content: `Analise os seguintes casos de intervenção do supervisor para o assistente "${assistantType}" e gere sugestões de melhoria.
 
+**PROMPT ATUAL DO ASSISTENTE (${currentPrompt.length} caracteres):**
+\`\`\`
+${currentPrompt}
+\`\`\`
+
+**CASOS DE ERRO/CORREÇÃO:**
 ${analysisData}
+
+**SUA TAREFA:**
+1. Identifique padrões recorrentes nos erros
+2. Para cada padrão, LOCALIZE a seção relevante no PROMPT ATUAL acima
+3. COPIE 300-500 caracteres dessa seção em "currentPromptSection"
+4. Crie a versão modificada dessa MESMA seção em "suggestedPromptSection"
 
 Retorne APENAS o JSON com as sugestões, sem markdown ou explicações adicionais.`,
         },
