@@ -154,7 +154,7 @@ export interface IStorage {
   updateSuggestedResponse(id: string, updates: Partial<SuggestedResponse>): Promise<SuggestedResponse | undefined>;
   
   // Dashboard Metrics
-  getAgentMetrics(userId: string): Promise<{
+  getAgentMetrics(userId: string, period?: 'today' | 'week' | 'month'): Promise<{
     conversationsInQueue: number;
     conversationsFinishedToday: number;
     avgResponseTime: number;
@@ -2478,36 +2478,68 @@ export class DbStorage implements IStorage {
   }
 
   // Dashboard Metrics
-  async getAgentMetrics(userId: string) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  async getAgentMetrics(userId: string, period: 'today' | 'week' | 'month' = 'today') {
+    const now = new Date();
+    let periodStart = new Date();
+    
+    // Definir data de início baseado no período
+    switch (period) {
+      case 'today':
+        periodStart.setHours(0, 0, 0, 0);
+        break;
+      case 'week':
+        periodStart.setDate(now.getDate() - 7);
+        periodStart.setHours(0, 0, 0, 0);
+        break;
+      case 'month':
+        periodStart.setMonth(now.getMonth() - 1);
+        periodStart.setHours(0, 0, 0, 0);
+        break;
+    }
 
-    // Conversas atribuídas ao agente (em fila)
+    // Conversas atribuídas ao agente (em fila - sempre mostra atual)
     const queuedConversations = await db.select().from(schema.conversations)
       .where(and(
         eq(schema.conversations.assignedTo, userId),
         eq(schema.conversations.status, 'active')
       ));
 
-    // Conversas finalizadas hoje
-    const finishedToday = await db.select().from(schema.conversations)
+    // Conversas finalizadas no período
+    const finishedInPeriod = await db.select().from(schema.conversations)
       .where(and(
         eq(schema.conversations.assignedTo, userId),
         eq(schema.conversations.status, 'resolved'),
-        gte(schema.conversations.resolvedAt, today)
+        gte(schema.conversations.resolvedAt, periodStart)
       ));
+
+    // Calcular TMA (Tempo Médio de Atendimento) para conversas finalizadas no período
+    let avgResponseTime = 0;
+    const conversationsWithTime = finishedInPeriod.filter(c => 
+      c.createdAt && c.resolvedAt && c.resolvedAt > c.createdAt
+    );
+    
+    if (conversationsWithTime.length > 0) {
+      const totalTime = conversationsWithTime.reduce((sum, c) => {
+        const startTime = new Date(c.createdAt!).getTime();
+        const endTime = new Date(c.resolvedAt!).getTime();
+        const diffInSeconds = Math.floor((endTime - startTime) / 1000);
+        return sum + diffInSeconds;
+      }, 0);
+      avgResponseTime = Math.floor(totalTime / conversationsWithTime.length);
+    }
 
     // NPS pessoal (últimas 30 conversas)
     const personalFeedbacks = await db.select().from(schema.satisfactionFeedback)
       .innerJoin(schema.conversations, eq(schema.satisfactionFeedback.conversationId, schema.conversations.id))
       .where(eq(schema.conversations.assignedTo, userId))
+      .orderBy(desc(schema.satisfactionFeedback.createdAt))
       .limit(30);
 
     const avgNPS = personalFeedbacks.length > 0
       ? personalFeedbacks.reduce((sum, f) => sum + f.satisfaction_feedback.npsScore, 0) / personalFeedbacks.length
       : 0;
 
-    // Tendência de sentimento (últimos 7 dias)
+    // Tendência de sentimento (últimos 7 dias - sempre os últimos 7 dias independente do filtro)
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const sentimentData = await db.select().from(schema.conversations)
       .where(and(
@@ -2526,8 +2558,8 @@ export class DbStorage implements IStorage {
 
     return {
       conversationsInQueue: queuedConversations.length,
-      conversationsFinishedToday: finishedToday.length,
-      avgResponseTime: 0, // TODO: Implementar cálculo de TMA
+      conversationsFinishedToday: finishedInPeriod.length,
+      avgResponseTime,
       personalNPS: Math.round(avgNPS),
       sentimentTrend,
       recentFeedbacks

@@ -1,15 +1,18 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Inbox, CheckCircle2, Clock, Star, TrendingUp } from "lucide-react";
+import { Inbox, CheckCircle2, Clock, Star, TrendingUp, Calendar } from "lucide-react";
 import { Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 
 export function AgentDashboard() {
   const { user } = useAuth();
+  const [period, setPeriod] = useState<'today' | 'week' | 'month'>('today');
 
   const { data: metrics, isLoading } = useQuery({
-    queryKey: ["/api/dashboard/agent"],
+    queryKey: ["/api/dashboard/agent", { period }],
     refetchInterval: 30000, // 30 seconds
   });
 
@@ -21,13 +24,39 @@ export function AgentDashboard() {
     return <div className="flex items-center justify-center h-96">Erro ao carregar métricas</div>;
   }
 
+  const periodLabels = {
+    today: 'Hoje',
+    week: 'Semana',
+    month: 'Mês'
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold mb-1">Dashboard de Atendimento: {user?.fullName}</h1>
-        <p className="text-sm text-muted-foreground">
-          Visão geral do seu desempenho e atendimentos atuais
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold mb-1">Dashboard de Atendimento: {user?.fullName}</h1>
+          <p className="text-sm text-muted-foreground">
+            Visão geral do seu desempenho e atendimentos atuais
+          </p>
+        </div>
+        
+        {/* Filtros de Período */}
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <div className="flex gap-1">
+            {(['today', 'week', 'month'] as const).map((p) => (
+              <Button
+                key={p}
+                size="sm"
+                variant={period === p ? "default" : "outline"}
+                onClick={() => setPeriod(p)}
+                data-testid={`button-period-${p}`}
+              >
+                {periodLabels[p]}
+              </Button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* KPIs Principais */}
@@ -45,12 +74,16 @@ export function AgentDashboard() {
 
         <Card className="hover-elevate" data-testid="card-finished">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Finalizadas Hoje</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Finalizadas {period === 'today' ? 'Hoje' : period === 'week' ? 'na Semana' : 'no Mês'}
+            </CardTitle>
             <CheckCircle2 className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-finished-count">{metrics.conversationsFinishedToday}</div>
-            <p className="text-xs text-muted-foreground">Seu progresso do dia</p>
+            <p className="text-xs text-muted-foreground">
+              {period === 'today' ? 'Seu progresso do dia' : period === 'week' ? 'Últimos 7 dias' : 'Últimos 30 dias'}
+            </p>
           </CardContent>
         </Card>
 

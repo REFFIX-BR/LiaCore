@@ -7503,7 +7503,9 @@ A resposta deve:
   app.get("/api/dashboard/agent", authenticate, async (req, res) => {
     try {
       const userId = req.user!.userId;
-      const metrics = await storage.getAgentMetrics(userId);
+      const { period = 'today' } = req.query;
+      
+      const metrics = await storage.getAgentMetrics(userId, period as 'today' | 'week' | 'month');
       return res.json(metrics);
     } catch (error) {
       console.error("❌ [Dashboard] Error getting agent metrics:", error);
