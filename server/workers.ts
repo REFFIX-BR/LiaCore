@@ -217,10 +217,9 @@ export async function sendWhatsAppMedia(
     
     const body: any = {
       number: phoneNumber,
-      mediatype: mediaType, // Campo obrigatório no root
       mediaMessage: {
         mediaType: mediaType,
-        media: formattedMedia, // Base64 com prefixo data:
+        media: formattedMedia, // Base64 com prefixo data: ou URL
       }
     };
 
@@ -242,7 +241,6 @@ export async function sendWhatsAppMedia(
     console.log(`🔍 [WhatsApp Media Debug] Payload sendo enviado:`, {
       url: fullUrl,
       number: phoneNumber,
-      mediatype: body.mediatype,
       mediaMessageKeys: Object.keys(body.mediaMessage),
       mediaPrefix: formattedMedia.substring(0, 30) + '...',
       mediaLength: formattedMedia.length,
