@@ -200,9 +200,10 @@ export async function sendWhatsAppMedia(
     console.log(`📤 [WhatsApp Media] Sending ${mediaType} to: ${phoneNumber} via ${fullUrl}`);
     
     // Preparar body no formato correto da Evolution API
-    // Documentação: https://doc.evolution-api.com/v1/api-reference/message-controller/send-media
+    // A Evolution API requer AMBOS: mediatype (root) E mediaMessage (objeto)
     const body: any = {
       number: phoneNumber,
+      mediatype: mediaType, // Campo obrigatório no root
       mediaMessage: {
         mediaType: mediaType,
         media: mediaBase64,
