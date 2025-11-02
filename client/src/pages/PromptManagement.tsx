@@ -357,10 +357,9 @@ export default function PromptManagement() {
 
       setConsolidationResult(result.consolidation);
       
-      // Update draft content with the consolidated prompt
-      if (result.consolidation.updatedPrompt) {
-        setDraftContent(result.consolidation.updatedPrompt);
-      }
+      // Clear local draft content to force using server draft (which has preConsolidationContent)
+      setDraftContent("");
+      hasLocalChangesRef.current = false;
       
       queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/prompts", selectedAssistant] });
@@ -387,6 +386,10 @@ export default function PromptManagement() {
       return await apiRequest(`/api/prompts/${selectedAssistant}/consolidate-context-suggestions`, "POST", { hours: 168 });
     },
     onSuccess: (result: any) => {
+      // Clear local draft content to force using server draft (which has preConsolidationContent)
+      setDraftContent("");
+      hasLocalChangesRef.current = false;
+      
       queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/prompts", selectedAssistant] });
       queryClient.invalidateQueries({ queryKey: ["/api/prompts", selectedAssistant, "context-suggestions"] });
