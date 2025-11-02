@@ -84,7 +84,7 @@ app.use((req, res, next) => {
       console.log(`✅ [Server] Successfully listening on 0.0.0.0:${port}`);
       log(`serving on port ${port}`);
       
-      // Initialize prompt templates from OpenAI if database is empty
+      // Initialize prompt templates from OpenAI if database is empty or has placeholders
       (async () => {
         try {
           console.log('📝 [Prompts Init] Starting initialization check...');
@@ -93,46 +93,59 @@ app.use((req, res, next) => {
           const OpenAI = (await import('openai')).default;
           
           const templates = await storage.getAllPromptTemplates();
-          console.log(`📝 [Prompts Init] Database query returned ${templates.length} templates`);
+          console.log(`📝 [Prompts Init] Found ${templates.length} templates in database`);
           
-          if (templates.length === 0) {
-            console.log('📝 [Prompts Init] No prompts found in database - initializing from OpenAI...');
-            
-            const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-            const assistantTypes = [
-              "apresentacao",
-              "comercial",
-              "financeiro",
-              "suporte",
-              "ouvidoria",
-              "cancelamento",
-            ] as const;
+          // Update templates with real content from OpenAI if they have placeholders
+          const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+          const assistantTypes = [
+            "apresentacao",
+            "comercial",
+            "financeiro",
+            "suporte",
+            "ouvidoria",
+            "cancelamento",
+          ] as const;
 
-            for (const assistantType of assistantTypes) {
-              try {
-                console.log(`📝 [Prompts Init] Fetching ${assistantType} from OpenAI...`);
-                const assistantId = ASSISTANT_IDS[assistantType];
-                const assistant = await openai.beta.assistants.retrieve(assistantId);
-                const instructions = assistant.instructions || "";
+          for (const assistantType of assistantTypes) {
+            try {
+              const existingTemplate = templates.find(t => t.assistantType === assistantType);
+              
+              // Skip if template exists and has real content
+              if (existingTemplate && existingTemplate.content !== 'Template placeholder' && existingTemplate.content.length > 100) {
+                console.log(`⏭️  [Prompts Init] Skipping ${assistantType} - already has content (${existingTemplate.content.length} chars)`);
+                continue;
+              }
+              
+              console.log(`📝 [Prompts Init] Fetching ${assistantType} from OpenAI...`);
+              const assistantId = ASSISTANT_IDS[assistantType];
+              const assistant = await openai.beta.assistants.retrieve(assistantId);
+              const instructions = assistant.instructions || "";
 
+              if (existingTemplate) {
+                console.log(`📝 [Prompts Init] Updating template for ${assistantType}...`);
+                await storage.updatePromptTemplate(existingTemplate.id, {
+                  content: instructions,
+                  tokenCount: 0,
+                });
+                console.log(`✅ [Prompts Init] Updated template for ${assistantType} (${instructions.length} chars)`);
+              } else {
                 console.log(`📝 [Prompts Init] Creating template for ${assistantType}...`);
                 const template = await storage.createPromptTemplate({
                   assistantType,
                   assistantId,
+                  title: `Assistente ${assistantType.charAt(0).toUpperCase() + assistantType.slice(1)}`,
                   content: instructions,
                   version: "1.0.0",
+                  createdBy: "system",
                 });
-
-                console.log(`✅ [Prompts Init] Created template for ${assistantType} (ID: ${template.id}, ${instructions.length} chars)`);
-              } catch (error) {
-                console.error(`❌ [Prompts Init] Failed to initialize ${assistantType}:`, error);
+                console.log(`✅ [Prompts Init] Created template for ${assistantType} (${instructions.length} chars)`);
               }
+            } catch (error) {
+              console.error(`❌ [Prompts Init] Failed to initialize ${assistantType}:`, error);
             }
-            
-            console.log('✅ [Prompts Init] All prompts initialized successfully');
-          } else {
-            console.log(`✅ [Prompts Init] Found ${templates.length} prompts in database - skipping initialization`);
           }
+          
+          console.log('✅ [Prompts Init] All prompts initialized successfully');
         } catch (error) {
           console.error('❌ [Prompts Init] Failed to initialize prompts:', error);
         }
