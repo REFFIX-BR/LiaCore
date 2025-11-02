@@ -9595,6 +9595,10 @@ A resposta deve:
       // Save pre-consolidation content for diff highlighting
       const preConsolidationContent = existingDraft?.draftContent || template.content;
       
+      console.log(`📝 [Consolidation] Existing draft: ${existingDraft ? 'YES' : 'NO'}`);
+      console.log(`📝 [Consolidation] Pre-consolidation length: ${preConsolidationContent.length}`);
+      console.log(`📝 [Consolidation] New content length: ${consolidationResult.updatedPrompt.length}`);
+      
       let draft;
       if (existingDraft) {
         draft = await storage.updatePromptDraft(id, {
@@ -9602,6 +9606,7 @@ A resposta deve:
           lastEditedBy: userId,
           preConsolidationContent, // Save content before consolidation
         });
+        console.log(`📝 [Consolidation] Updated draft: ${draft.id}`);
       } else {
         draft = await storage.createPromptDraft({
           promptId: id,
@@ -9610,6 +9615,7 @@ A resposta deve:
           tokenCount: 0,
           preConsolidationContent, // Save content before consolidation
         });
+        console.log(`📝 [Consolidation] Created draft: ${draft.id}`);
       }
 
       console.log(`✅ [Consolidation] Created draft with ${consolidationResult.summary.appliedCount} suggestions applied`);
