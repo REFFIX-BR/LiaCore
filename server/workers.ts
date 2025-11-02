@@ -217,6 +217,7 @@ export async function sendWhatsAppMedia(
     
     const body: any = {
       number: phoneNumber,
+      mediatype: mediaType, // Campo requerido pela Evolution API (versão específica)
       mediaMessage: {
         mediaType: mediaType,
         media: formattedMedia, // Base64 com prefixo data: ou URL
