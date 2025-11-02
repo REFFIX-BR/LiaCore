@@ -596,20 +596,34 @@ export default function PromptManagement() {
                     Histórico
                   </Button>
                   {hasPendingEvolutions && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => consolidateEvolutionsMutation.mutate()}
-                      disabled={consolidateEvolutionsMutation.isPending}
-                      data-testid="button-consolidate-evolutions"
-                    >
-                      {consolidateEvolutionsMutation.isPending ? (
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Sparkles className="w-4 h-4 mr-2" />
-                      )}
-                      Consolidar Evoluções ({currentPrompt?.pendingEvolutionsCount})
-                    </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => consolidateEvolutionsMutation.mutate()}
+                            disabled={consolidateEvolutionsMutation.isPending}
+                            data-testid="button-consolidate-evolutions"
+                          >
+                            {consolidateEvolutionsMutation.isPending ? (
+                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Sparkles className="w-4 h-4 mr-2" />
+                            )}
+                            Consolidar Evoluções ({currentPrompt?.pendingEvolutionsCount})
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">
+                          <p className="text-xs font-semibold mb-1">Consolidação Inteligente com IA</p>
+                          <p className="text-xs">
+                            Usa GPT-4o para integrar TODAS as sugestões de contexto de forma inteligente ao prompt existente, 
+                            mantendo o estilo markdown e organizando tudo automaticamente. 
+                            Muito mais eficiente que adicionar uma por uma manualmente!
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   )}
                   <Button
                     variant="outline"
@@ -829,6 +843,26 @@ export default function PromptManagement() {
                                 {contextSuggestions.totalAlerts} alerta{contextSuggestions.totalAlerts !== 1 ? 's' : ''} detectado{contextSuggestions.totalAlerts !== 1 ? 's' : ''} nos últimos 7 dias
                               </CardDescription>
                             </CardHeader>
+                            <CardContent>
+                              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg p-4">
+                                <div className="flex gap-3">
+                                  <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                                  <div className="space-y-2 text-sm">
+                                    <p className="font-semibold text-blue-900 dark:text-blue-100">
+                                      Recomendação: Use o botão "Consolidar Evoluções"
+                                    </p>
+                                    <p className="text-blue-800 dark:text-blue-200">
+                                      Em vez de adicionar sugestões uma por uma, o botão <strong>"Consolidar Evoluções"</strong> no topo 
+                                      usa GPT-4o para integrar TODAS as sugestões de forma inteligente ao seu prompt, 
+                                      mantendo o estilo markdown e organizando tudo automaticamente.
+                                    </p>
+                                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                                      Mais rápido | Melhor formatação | Integração inteligente | Mantém o estilo do prompt
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
                           </Card>
 
                           {/* Suggestions List */}
@@ -937,10 +971,11 @@ export default function PromptManagement() {
                                           // Get current content (draft or production)
                                           const currentContent = draftContent || currentPrompt?.content || '';
                                           
-                                          // Add suggested fix to draft with proper spacing
-                                          const separator = '\n\n' + '='.repeat(50) + '\n';
-                                          const header = `CORREÇÃO SUGERIDA (${suggestion.problemSummary}):\n`;
-                                          const newContent = currentContent + separator + header + suggestion.suggestedFix + '\n\n';
+                                          // Add suggested fix to draft with clean markdown formatting
+                                          const header = `\n\n---\n\n### ${suggestion.problemSummary}\n\n`;
+                                          const content = suggestion.suggestedFix.trim();
+                                          const footer = '\n';
+                                          const newContent = currentContent + header + content + footer;
                                           
                                           setDraftContent(newContent);
                                           hasLocalChangesRef.current = true; // Mark that we have local changes
@@ -950,7 +985,7 @@ export default function PromptManagement() {
                                           
                                           toast({
                                             title: "Sugestão adicionada ao rascunho",
-                                            description: "A correção foi adicionada ao final do seu rascunho. Revise e ajuste conforme necessário.",
+                                            description: "A correção foi adicionada ao final do seu rascunho em formato markdown. Revise e reorganize conforme necessário.",
                                           });
                                         }}
                                         data-testid={`button-apply-suggestion-${index}`}
