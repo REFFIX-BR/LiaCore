@@ -84,6 +84,60 @@ app.use((req, res, next) => {
       console.log(`✅ [Server] Successfully listening on 0.0.0.0:${port}`);
       log(`serving on port ${port}`);
       
+      // Initialize prompt templates from OpenAI if database is empty
+      (async () => {
+        try {
+          console.log('📝 [Prompts Init] Starting initialization check...');
+          const { storage } = await import('./storage');
+          const { ASSISTANT_IDS } = await import('./lib/openai');
+          const OpenAI = (await import('openai')).default;
+          
+          const templates = await storage.getAllPromptTemplates();
+          console.log(`📝 [Prompts Init] Database query returned ${templates.length} templates`);
+          
+          if (templates.length === 0) {
+            console.log('📝 [Prompts Init] No prompts found in database - initializing from OpenAI...');
+            
+            const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+            const assistantTypes = [
+              "apresentacao",
+              "comercial",
+              "financeiro",
+              "suporte",
+              "ouvidoria",
+              "cancelamento",
+            ] as const;
+
+            for (const assistantType of assistantTypes) {
+              try {
+                console.log(`📝 [Prompts Init] Fetching ${assistantType} from OpenAI...`);
+                const assistantId = ASSISTANT_IDS[assistantType];
+                const assistant = await openai.beta.assistants.retrieve(assistantId);
+                const instructions = assistant.instructions || "";
+
+                console.log(`📝 [Prompts Init] Creating template for ${assistantType}...`);
+                const template = await storage.createPromptTemplate({
+                  assistantType,
+                  assistantId,
+                  content: instructions,
+                  version: "1.0.0",
+                });
+
+                console.log(`✅ [Prompts Init] Created template for ${assistantType} (ID: ${template.id}, ${instructions.length} chars)`);
+              } catch (error) {
+                console.error(`❌ [Prompts Init] Failed to initialize ${assistantType}:`, error);
+              }
+            }
+            
+            console.log('✅ [Prompts Init] All prompts initialized successfully');
+          } else {
+            console.log(`✅ [Prompts Init] Found ${templates.length} prompts in database - skipping initialization`);
+          }
+        } catch (error) {
+          console.error('❌ [Prompts Init] Failed to initialize prompts:', error);
+        }
+      })();
+      
       // Start learning scheduler for automatic analysis
       try {
         startLearningScheduler();

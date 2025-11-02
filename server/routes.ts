@@ -9235,6 +9235,67 @@ A resposta deve:
   // PROMPT MANAGEMENT SYSTEM ENDPOINTS
   // ===================================
 
+  // POST /api/prompts/initialize - Initialize prompt templates from OpenAI
+  app.post("/api/prompts/initialize", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const { ASSISTANT_IDS } = await import("./lib/openai");
+      const assistantTypes = [
+        "apresentacao",
+        "comercial",
+        "financeiro",
+        "suporte",
+        "ouvidoria",
+        "cancelamento",
+      ] as const;
+
+      const initializedPrompts = [];
+
+      for (const assistantType of assistantTypes) {
+        const assistantId = ASSISTANT_IDS[assistantType];
+        
+        // Check if already exists
+        const existing = await storage.getPromptTemplateByAssistantType(assistantType);
+        if (existing) {
+          console.log(`⏭️  [Prompts Init] Skipping ${assistantType} - already exists`);
+          continue;
+        }
+
+        // Fetch current instructions from OpenAI
+        const assistant = await openai.beta.assistants.retrieve(assistantId);
+        const instructions = assistant.instructions || "";
+
+        // Create template
+        const template = await storage.createPromptTemplate({
+          assistantType,
+          assistantId,
+          content: instructions,
+          version: "1.0.0",
+        });
+
+        // Create initial version
+        await storage.createPromptVersion({
+          promptId: template.id,
+          version: "1.0.0",
+          content: instructions,
+          createdBy: req.user!.userId,
+          tokenCount: 0,
+        });
+
+        console.log(`✅ [Prompts Init] Created template for ${assistantType}`);
+        initializedPrompts.push(template);
+      }
+
+      return res.json({
+        success: true,
+        initialized: initializedPrompts.length,
+        templates: initializedPrompts,
+      });
+    } catch (error) {
+      console.error("❌ [Prompts Init] Error initializing prompts:", error);
+      return res.status(500).json({ error: "Erro ao inicializar prompts" });
+    }
+  });
+
   // GET /api/prompts - List all prompt templates
   app.get("/api/prompts", authenticate, requireAdminOrSupervisor, async (req, res) => {
     try {
