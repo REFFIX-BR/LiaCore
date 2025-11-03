@@ -4073,7 +4073,7 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
             id: conv.id,
             clientName: conv.clientName,
             assistantType: conv.assistantType,
-            daysOld: Math.floor((Date.now() - conv.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
+            daysOld: conv.createdAt ? Math.floor((Date.now() - conv.createdAt.getTime()) / (1000 * 60 * 60 * 24)) : 0,
             createdAt: conv.createdAt,
             lastMessageTime: conv.lastMessageTime,
           }))
@@ -4087,7 +4087,7 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
       const results = await Promise.all(
         oldConversations.map(async (conv) => {
           try {
-            const daysOld = Math.floor((Date.now() - conv.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+            const daysOld = conv.createdAt ? Math.floor((Date.now() - conv.createdAt.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
             // Marcar conversa como resolvida
             const newMetadata = {
@@ -9391,8 +9391,11 @@ A resposta deve:
         const template = await storage.createPromptTemplate({
           assistantType,
           assistantId,
+          title: `Prompt do Assistente ${assistantType.charAt(0).toUpperCase() + assistantType.slice(1)}`,
           content: instructions,
+          status: "active",
           version: "1.0.0",
+          createdBy: req.user!.userId,
         });
 
         // Create initial version

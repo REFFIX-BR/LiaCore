@@ -186,6 +186,40 @@ export function AdminDashboard() {
     },
   });
 
+  const autoResolveOldMutation = useMutation({
+    mutationFn: async (params: { minDaysOld?: number; dryRun?: boolean }) => {
+      const response = await fetch('/api/admin/auto-resolve-old-conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+      if (!response.ok) throw new Error('Erro ao resolver conversas antigas');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.resolved === 0) {
+        toast({
+          title: data.message,
+          description: "Nenhuma conversa antiga foi encontrada.",
+        });
+      } else {
+        toast({
+          title: "Conversas Antigas Resolvidas",
+          description: `${data.resolved} conversa(s) antiga(s) resolvida(s) e NPS agendado para envio`,
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/monitor/conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/admin"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao Resolver Conversas Antigas",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -598,6 +632,25 @@ export function AdminDashboard() {
                   </>
                 )}
               </Button>
+              <Button
+                onClick={() => autoResolveOldMutation.mutate({ minDaysOld: 7, dryRun: false })}
+                disabled={autoResolveOldMutation.isPending}
+                variant="destructive"
+                className="flex items-center gap-2"
+                data-testid="button-auto-resolve-old"
+              >
+                {autoResolveOldMutation.isPending ? (
+                  <>
+                    <Clock className="h-4 w-4 animate-spin" />
+                    Resolvendo...
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="h-4 w-4" />
+                    Resolver Conversas Antigas (+7 dias) + Enviar NPS
+                  </>
+                )}
+              </Button>
             </div>
             <Separator className="my-3" />
             <div className="flex flex-col sm:flex-row gap-3">
@@ -623,7 +676,7 @@ export function AdminDashboard() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground mt-3">
-            <strong>Reprocessar:</strong> Reenfileira mensagens sem resposta da IA. <strong>Fechar Abandonadas:</strong> Finaliza conversas inativas (&gt;30min) e envia NPS automaticamente. <strong>Limpar Cache:</strong> Força recarregamento das instruções dos assistants do OpenAI Dashboard (use após atualizar prompts).
+            <strong>Reprocessar:</strong> Reenfileira mensagens sem resposta da IA. <strong>Fechar Abandonadas:</strong> Finaliza conversas inativas (&gt;30min) e envia NPS automaticamente. <strong>Resolver Antigas:</strong> Força encerramento de conversas travadas há mais de 7 dias (limite: 100 conversas/execução). <strong>Limpar Cache:</strong> Força recarregamento das instruções dos assistants do OpenAI Dashboard (use após atualizar prompts).
           </p>
         </CardContent>
       </Card>
