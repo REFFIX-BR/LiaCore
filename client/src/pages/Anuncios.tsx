@@ -89,8 +89,7 @@ export default function Anuncios() {
   // Mutation para criar
   const createMutation = useMutation({
     mutationFn: async (data: AnnouncementFormData) => {
-      const response = await apiRequest('/api/announcements', 'POST', data);
-      return response.json();
+      return await apiRequest('/api/announcements', 'POST', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/announcements'] });
@@ -113,8 +112,7 @@ export default function Anuncios() {
   // Mutation para atualizar
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<AnnouncementFormData> }) => {
-      const response = await apiRequest(`/api/announcements/${id}`, 'PATCH', data);
-      return response.json();
+      return await apiRequest(`/api/announcements/${id}`, 'PATCH', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/announcements'] });
@@ -138,8 +136,7 @@ export default function Anuncios() {
   // Mutation para deletar
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest(`/api/announcements/${id}`, 'DELETE');
-      return response.json();
+      return await apiRequest(`/api/announcements/${id}`, 'DELETE');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/announcements'] });
