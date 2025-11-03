@@ -1058,16 +1058,21 @@ if (redisConnection) {
         console.log(`⏩ [Worker] Skipping presentation message - routing already handled`);
       }
 
-      // 11. Handle inactivity follow-up (somente se conversa ainda estiver ativa com IA)
+      // 11. Handle inactivity follow-up (SEMPRE agendar quando conversa ainda estiver ativa)
+      // MUDANÇA: Agendar follow-up também após IA responder, não apenas quando cliente envia mensagem
+      // Isso previne conversas travadas quando IA dá despedida mas cliente nunca responde
       if (!result.transferred && !result.resolved && conversation.status === 'active') {
         try {
           const { addInactivityFollowupToQueue, cancelInactivityFollowup, cancelAutoClosure } = await import('./lib/queue');
           
-          // Cancelar qualquer follow-up e auto-closure anterior agendado (cliente está respondendo)
+          // Cancelar qualquer follow-up e auto-closure anterior agendado
           await cancelInactivityFollowup(conversationId);
           await cancelAutoClosure(conversationId);
           
           // Agendar novo follow-up para daqui a 10 minutos
+          // NOTA: Isso será agendado após CADA mensagem (cliente ou IA)
+          // Se o cliente não responder em 10min, enviará follow-up
+          // Se o cliente responder, o job será cancelado e reagendado
           await addInactivityFollowupToQueue({
             conversationId,
             chatId,
@@ -1075,10 +1080,10 @@ if (redisConnection) {
             clientName: clientName || 'Cliente',
             evolutionInstance,
             scheduledAt: Date.now(),
-            lastClientMessageTime: Date.now(), // Timestamp da última mensagem do cliente
+            lastClientMessageTime: Date.now(), // Timestamp da última mensagem (cliente OU IA)
           });
           
-          console.log(`⏰ [Worker] Follow-up de inatividade agendado para daqui a 10 minutos`);
+          console.log(`⏰ [Worker] Follow-up de inatividade agendado para daqui a 10 minutos (após ${result.resolved ? 'resolução' : 'resposta da IA'})`);
         } catch (followupError) {
           console.error(`❌ [Worker] Erro ao agendar follow-up de inatividade:`, followupError);
           // Não falhar o processamento da mensagem por causa disso

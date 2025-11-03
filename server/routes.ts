@@ -4033,6 +4033,127 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     }
   });
 
+  // Auto-resolve old stuck conversations (admin tool)
+  app.post("/api/admin/auto-resolve-old-conversations", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const { minDaysOld = 7, dryRun = false } = req.body;
+
+      // Buscar conversas antigas travadas: ativas, não transferidas, criadas há mais de X dias
+      const { db } = await import("./db");
+      const { conversations } = await import("@shared/schema");
+      const { sql, and, eq } = await import("drizzle-orm");
+
+      const oldConversations = await db.select()
+        .from(conversations)
+        .where(
+          and(
+            eq(conversations.status, 'active'),
+            eq(conversations.transferredToHuman, false),
+            sql`EXTRACT(EPOCH FROM (NOW() - ${conversations.createdAt})) / 86400 > ${minDaysOld}`
+          )
+        )
+        .limit(100); // Segurança: limitar a 100 conversas por vez
+
+      if (oldConversations.length === 0) {
+        return res.json({
+          success: true,
+          message: `Nenhuma conversa ativa com mais de ${minDaysOld} dias encontrada`,
+          resolved: 0,
+          conversations: []
+        });
+      }
+
+      // Se for dry run, apenas retornar lista sem fazer mudanças
+      if (dryRun) {
+        return res.json({
+          success: true,
+          message: `[DRY RUN] ${oldConversations.length} conversas seriam resolvidas`,
+          resolved: 0,
+          conversations: oldConversations.map(conv => ({
+            id: conv.id,
+            clientName: conv.clientName,
+            assistantType: conv.assistantType,
+            daysOld: Math.floor((Date.now() - conv.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
+            createdAt: conv.createdAt,
+            lastMessageTime: conv.lastMessageTime,
+          }))
+        });
+      }
+
+      // Importar funções de fila
+      const { addNPSSurveyToQueue } = await import("./lib/queue");
+
+      // Resolver cada conversa e enviar NPS
+      const results = await Promise.all(
+        oldConversations.map(async (conv) => {
+          try {
+            const daysOld = Math.floor((Date.now() - conv.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+
+            // Marcar conversa como resolvida
+            const newMetadata = {
+              autoClosed: true,
+              autoClosedReason: 'admin_old_conversation_cleanup',
+              autoClosedAt: new Date().toISOString(),
+              daysOldWhenClosed: daysOld,
+              npsSent: true,
+              npsScheduledAt: new Date().toISOString(),
+            };
+
+            await db.update(conversations)
+              .set({
+                status: 'resolved',
+                resolvedAt: new Date(),
+                autoClosed: true,
+                autoClosedReason: 'admin_old_conversation_cleanup',
+                autoClosedAt: new Date(),
+                metadata: sql`COALESCE(metadata, '{}'::jsonb) || ${JSON.stringify(newMetadata)}::jsonb`,
+              })
+              .where(eq(conversations.id, conv.id));
+
+            // Agendar envio de NPS
+            await addNPSSurveyToQueue({
+              conversationId: conv.id,
+              chatId: conv.chatId,
+              customerName: conv.clientName || 'Cliente',
+              wasResolved: false, // Consideramos não resolvida pois foi abandonada
+              evolutionInstance: conv.evolutionInstance ?? undefined,
+            }, 5000);
+
+            console.log(`✅ [ADMIN] Conversa antiga resolvida: ${conv.clientName} (${daysOld} dias)`);
+
+            return {
+              id: conv.id,
+              chatId: conv.chatId,
+              clientName: conv.clientName,
+              assistantType: conv.assistantType,
+              daysOld,
+              npsSent: true,
+            };
+          } catch (error) {
+            console.error(`❌ [ADMIN] Erro ao resolver conversa ${conv.id}:`, error);
+            return null;
+          }
+        })
+      );
+
+      const successfullyResolved = results.filter((item): item is NonNullable<typeof item> => item !== null);
+
+      return res.json({
+        success: true,
+        message: `${successfullyResolved.length} conversa(s) antiga(s) resolvida(s) e NPS agendado`,
+        resolved: successfullyResolved.length,
+        total: oldConversations.length,
+        conversations: successfullyResolved,
+      });
+    } catch (error) {
+      console.error("❌ [ADMIN] Erro ao resolver conversas antigas:", error);
+      return res.status(500).json({ 
+        error: "Erro ao resolver conversas antigas", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+
   // Get all active conversations for monitoring (includes resolved from last 24h)
   app.get("/api/monitor/conversations", authenticateWithTracking, async (req, res) => {
     try {
