@@ -39,6 +39,19 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, inspir
 - **Intelligent Farewell Detection & Auto-Resolution** (Nov 2025): The inactivity follow-up worker now detects when both client and AI exchange farewells (e.g., "obg"/"tenha um ótimo dia") and automatically resolves the conversation, sending NPS survey instead of follow-up messages. This prevents inappropriate "continuity" messages after natural conversation endings, improving UX when AI forgets to call `finalizar_conversa`.
 - **Payment Proof Auto-Resolution** (Nov 2025): The system now automatically resolves conversations when a client sends payment proof (e.g., Pix receipt), a CRM ticket is created, and the client doesn't respond to the continuity question ("Deseja continuar o atendimento?"). This prevents abandoned conversations from remaining open indefinitely after payment confirmation is received.
 
+## Scalability & Performance
+
+**Scaling Plan** (November 2025): Comprehensive scalability analysis and roadmap documented in `ESCALABILIDADE.md`. The plan addresses scaling to 160,000 messages at peak with 15,000 concurrent conversations through:
+- **Queue optimization**: Partitioned BullMQ queues per assistant domain
+- **Worker scaling**: Horizontal pod autoscaling (12-20 message processing pods)
+- **Database optimization**: PostgreSQL connection pooling (PgBouncer), composite indexes, weekly partitioning
+- **OpenAI optimization**: Embedding cache, intelligent model selection, batch RAG queries
+- **Infrastructure**: Multi-tier roadmap (Phases 0-4) spanning 6 months with progressive capacity increases from 50 msg/s (current) to 200+ msg/s (target)
+- **Observability**: Prometheus + Grafana dashboards for queue health, database performance, OpenAI metrics, and conversation throughput
+- **Cost projection**: $2,130/month (current) to $11,750/month (fully scaled) with detailed ROI analysis
+
+See `ESCALABILIDADE.md` for complete technical specifications, implementation roadmap, and cost breakdown.
+
 ## External Dependencies
 
 **Third-Party Services**:
