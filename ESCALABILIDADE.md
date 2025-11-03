@@ -282,7 +282,7 @@ EXCEDE O RATE LIMIT EM 2-3x ⚠️
                          │
                     ┌────▼─────┐
                     │PostgreSQL│  (Neon Scale)
-                    │+ PgBouncer│ (Connection pooling)
+                    │+PgBouncer│ (Connection pooling)
                     │+ Replicas│
                     └──────────┘
 ```
