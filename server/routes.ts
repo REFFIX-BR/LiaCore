@@ -6813,9 +6813,18 @@ A resposta deve:
       }
 
       // Atualizar conversa com agente atribuído
-      await storage.updateConversation(id, {
+      // Se a conversa ainda não foi transferida para humano, marcar agora
+      const updateData: any = {
         assignedTo: targetAgentId,
-      });
+      };
+      
+      if (!conversation.transferredToHuman) {
+        updateData.transferredToHuman = true;
+        updateData.transferredAt = new Date();
+        updateData.transferReason = 'Conversa atribuída diretamente para atendente';
+      }
+      
+      await storage.updateConversation(id, updateData);
 
       // Pegar apenas o primeiro nome do agente para mensagem ao cliente
       const agentFirstName = getFirstName(agent.fullName);
