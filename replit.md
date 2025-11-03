@@ -29,7 +29,7 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, inspir
 **Announcements/Communications System**: Centralized system for company-wide announcements with priority-based rotation and CRUD admin interface.
 
 ### System Design Choices
-- **Admin Tools**: Features for mass-closing abandoned conversations, reprocessing stuck messages, and configuration management.
+- **Admin Tools**: Features for mass-closing abandoned conversations, reprocessing stuck messages, auto-resolving old stuck conversations (+7 days), and configuration management.
 - **Media Handling**: Supervisors can download WhatsApp images and PDFs, with inline PDF viewing.
 - **Security & Compliance**: LGPD/GDPR-compliant logging, protected debug endpoints, and structured error handling.
 - **Failure Detection**: Enhanced massive failure detection supporting city-wide outages.
@@ -38,6 +38,7 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, inspir
 - **Conversation Reopening**: Automatically reopens resolved conversations when a client sends a new message.
 - **Intelligent Farewell Detection & Auto-Resolution** (Nov 2025): The inactivity follow-up worker now detects when both client and AI exchange farewells (e.g., "obg"/"tenha um ótimo dia") and automatically resolves the conversation, sending NPS survey instead of follow-up messages. This prevents inappropriate "continuity" messages after natural conversation endings, improving UX when AI forgets to call `finalizar_conversa`.
 - **Payment Proof Auto-Resolution** (Nov 2025): The system now automatically resolves conversations when a client sends payment proof (e.g., Pix receipt), a CRM ticket is created, and the client doesn't respond to the continuity question ("Deseja continuar o atendimento?"). This prevents abandoned conversations from remaining open indefinitely after payment confirmation is received.
+- **Comprehensive Auto-Closure System** (Nov 2025): Complete redesign of inactivity management to prevent stuck conversations. The system now schedules inactivity follow-ups after EVERY AI response (not just client messages), ensuring conversations are always tracked for auto-closure. If client doesn't respond within 10 minutes, sends follow-up message. If still no response after 20 more minutes, auto-resolves and sends NPS survey. Administrative endpoint `/api/admin/auto-resolve-old-conversations` provides manual cleanup for edge cases (conversations stuck for 7+ days), with dry-run support and batch limit of 100 conversations per execution for safety.
 
 ## Scalability & Performance
 
