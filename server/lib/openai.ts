@@ -395,12 +395,58 @@ export async function sendMessageAndGetResponse(
       throw new Error("Não foi possível processar sua mensagem no momento. Por favor, aguarde alguns segundos e tente novamente.");
     }
 
-    await openaiCircuitBreaker.execute(() =>
-      openai.beta.threads.messages.create(threadId, {
-        role: "user",
-        content: userMessage,
-      })
-    );
+    // Attempt to create message with retry logic for active run conflicts
+    let messageCreated = false;
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (!messageCreated && retryCount < maxRetries) {
+      try {
+        await openaiCircuitBreaker.execute(() =>
+          openai.beta.threads.messages.create(threadId, {
+            role: "user",
+            content: userMessage,
+          })
+        );
+        messageCreated = true;
+        console.log(`✅ [OpenAI] Message created successfully (attempt ${retryCount + 1})`);
+      } catch (messageError: any) {
+        // Check if error is due to active run
+        if (messageError?.message?.includes("while a run") && messageError?.message?.includes("is active")) {
+          retryCount++;
+          console.warn(`⚠️ [OpenAI] Active run detected during message creation (attempt ${retryCount}/${maxRetries})`);
+          
+          if (retryCount < maxRetries) {
+            // Extract run ID from error message if possible
+            const runIdMatch = messageError.message.match(/run (run_[a-zA-Z0-9]+) is active/);
+            const activeRunId = runIdMatch ? runIdMatch[1] : null;
+            
+            if (activeRunId) {
+              console.log(`🔄 [OpenAI] Attempting to cancel run ${activeRunId}`);
+              try {
+                await openaiCircuitBreaker.execute(() =>
+                  openai.beta.threads.runs.cancel(activeRunId, { thread_id: threadId })
+                );
+                console.log(`✅ [OpenAI] Run ${activeRunId} cancellation requested`);
+              } catch (cancelErr) {
+                console.warn(`⚠️ [OpenAI] Could not cancel run ${activeRunId}:`, cancelErr);
+              }
+            }
+            
+            // Wait before retry (exponential backoff: 2s, 4s, 8s)
+            const waitTime = Math.pow(2, retryCount) * 1000;
+            console.log(`⏳ [OpenAI] Waiting ${waitTime}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          } else {
+            console.error(`❌ [OpenAI] Failed to create message after ${maxRetries} attempts due to active runs`);
+            throw new Error("Desculpe, estou processando sua mensagem anterior. Por favor, aguarde um momento e tente novamente.");
+          }
+        } else {
+          // Different error, throw immediately
+          throw messageError;
+        }
+      }
+    }
 
     let run = await openaiCircuitBreaker.execute(() =>
       openai.beta.threads.runs.create(threadId, {
