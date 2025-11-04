@@ -694,7 +694,13 @@ export async function sendMessageAndGetResponse(
     console.error("⚠️ [OpenAI] No valid response from assistant");
     return { response: "Desculpe, não consegui processar sua mensagem." };
   } catch (error) {
-    console.error("Assistant run error:", error);
+    console.error("❌ [OpenAI] Assistant run error - Full details:");
+    console.error("Error name:", (error as Error).name);
+    console.error("Error message:", (error as Error).message);
+    console.error("Error stack:", (error as Error).stack);
+    console.error("Thread ID:", threadId);
+    console.error("Assistant ID:", assistantId);
+    console.error("Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     return { response: "Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente." };
   } finally {
     // Sempre libera o lock, mesmo em caso de erro (só se foi adquirido)
