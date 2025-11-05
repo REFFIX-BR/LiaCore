@@ -87,6 +87,15 @@ class CircuitBreaker {
 
 const openaiCircuitBreaker = new CircuitBreaker();
 
+// Circuit Breaker separado para consolidação com timeout maior (180s)
+// Consolidação de muitas sugestões pode demorar mais devido ao tamanho do prompt
+const consolidationCircuitBreaker = new CircuitBreaker(
+  5,     // failureThreshold
+  2,     // successThreshold  
+  180000, // 180s timeout (2x do padrão) para processar 50+ sugestões
+  30000  // resetTimeout
+);
+
 export async function generateEmbedding(text: string): Promise<number[]> {
   const response = await openaiCircuitBreaker.execute(() =>
     openai.embeddings.create({
@@ -2857,7 +2866,8 @@ ${suggestionsContext}
 - Mantenha o tom profissional e alinhado com a marca TR Telecom
 - Sempre retorne JSON válido e completo`;
 
-    const response = await openaiCircuitBreaker.execute(() =>
+    // Use circuit breaker com timeout estendido (180s) para consolidações grandes
+    const response = await consolidationCircuitBreaker.execute(() =>
       openai.chat.completions.create({
         model: "gpt-4o",
         messages: [{ role: "user", content: consolidationPrompt }],
@@ -2991,7 +3001,8 @@ ${suggestionsContext}
 - INTEGRE tudo de forma orgânica nas seções existentes
 - O resultado deve parecer que foi escrito por uma única pessoa, não como colagem de correções`;
 
-    const response = await openaiCircuitBreaker.execute(() =>
+    // Use circuit breaker com timeout estendido (180s) para consolidações grandes
+    const response = await consolidationCircuitBreaker.execute(() =>
       openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
