@@ -2878,11 +2878,19 @@ ${suggestionsContext}
     }
 
     // Validate and sanitize result with Zod
-    const validatedResult = consolidationResultSchema.parse(rawResult);
+    let validatedResult;
+    try {
+      validatedResult = consolidationResultSchema.parse(rawResult);
+    } catch (zodError: any) {
+      console.error("❌ [Consolidation] Zod validation failed:", zodError);
+      console.error("❌ [Consolidation] Raw result:", JSON.stringify(rawResult, null, 2).substring(0, 1000));
+      throw new Error(`Validação de schema falhou: ${zodError.message || JSON.stringify(zodError.errors?.slice(0, 3) || 'erro desconhecido')}`);
+    }
 
     // CRITICAL: Validate that updatedPrompt is actually a complete prompt, not a placeholder
     if (validatedResult.updatedPrompt.length < 100) {
-      throw new Error(`Erro ao consolidar sugestões de evolução: GPT-4o retornou um prompt muito curto (${validatedResult.updatedPrompt.length} caracteres). Esperado: várias centenas ou milhares de caracteres.`);
+      console.error(`❌ [Consolidation] Prompt muito curto: ${validatedResult.updatedPrompt.length} caracteres`);
+      throw new Error(`GPT-4o retornou um prompt muito curto (${validatedResult.updatedPrompt.length} caracteres). Esperado: várias centenas ou milhares de caracteres.`);
     }
 
     // Check for common placeholder messages
@@ -2895,7 +2903,8 @@ ${suggestionsContext}
     const lowerPrompt = validatedResult.updatedPrompt.toLowerCase();
     for (const placeholder of placeholderMessages) {
       if (lowerPrompt.includes(placeholder)) {
-        throw new Error(`Erro ao consolidar sugestões de evolução: GPT-4o retornou um placeholder ao invés do prompt completo. Texto retornado: "${validatedResult.updatedPrompt.substring(0, 100)}..."`);
+        console.error(`❌ [Consolidation] Placeholder detectado: "${validatedResult.updatedPrompt.substring(0, 100)}..."`);
+        throw new Error(`GPT-4o retornou um placeholder ao invés do prompt completo. Texto retornado: "${validatedResult.updatedPrompt.substring(0, 100)}..."`);
       }
     }
 
@@ -2907,7 +2916,11 @@ ${suggestionsContext}
     return validatedResult;
   } catch (error) {
     console.error("❌ [Consolidation] Error:", error);
-    throw new Error("Erro ao consolidar sugestões de evolução");
+    console.error("❌ [Consolidation] Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+    
+    // Return more specific error message
+    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido ao consolidar";
+    throw new Error(`Erro ao consolidar sugestões: ${errorMessage}`);
   }
 }
 
