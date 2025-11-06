@@ -53,5 +53,6 @@ export function getUserFromUser(user: User) {
     lastLoginAt: user.lastLoginAt,
     createdAt: user.createdAt,
     departments: user.departments,
+    participatesInGamification: user.participatesInGamification,
   };
 }
