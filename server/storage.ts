@@ -4632,18 +4632,23 @@ export class DbStorage implements IStorage {
         continue;
       }
 
-      // Pega feedbacks NPS do período
-      const feedbacks = await db.select()
+      // Pega feedbacks NPS do período (baseado na data de resolução da conversa, não na data de criação do feedback)
+      const feedbacks = await db.select({
+        feedback: schema.satisfactionFeedback,
+      })
         .from(schema.satisfactionFeedback)
+        .innerJoin(schema.conversations, eq(schema.satisfactionFeedback.conversationId, schema.conversations.id))
         .where(and(
-          sql`${schema.satisfactionFeedback.conversationId} IN (SELECT id FROM ${schema.conversations} WHERE ${schema.conversations.resolvedBy} = ${agent.id})`,
-          gte(schema.satisfactionFeedback.createdAt, startDate),
-          lte(schema.satisfactionFeedback.createdAt, endDate)
+          eq(schema.conversations.resolvedBy, agent.id),
+          eq(schema.conversations.status, 'resolved'),
+          isNotNull(schema.conversations.resolvedAt),
+          gte(schema.conversations.resolvedAt, startDate),
+          lte(schema.conversations.resolvedAt, endDate)
         ));
 
       // Calcula NPS médio
       const avgNps = feedbacks.length > 0
-        ? Math.round(feedbacks.reduce((sum, f) => sum + (f.npsScore || 0), 0) / feedbacks.length)
+        ? Math.round(feedbacks.reduce((sum, f) => sum + (f.feedback.npsScore || 0), 0) / feedbacks.length)
         : 0;
 
       // Calcula taxa de sucesso (baseado em sentimento positivo/neutro)
