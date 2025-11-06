@@ -34,6 +34,7 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("AGENT"), // 'ADMIN', 'SUPERVISOR', or 'AGENT'
   status: text("status").notNull().default("ACTIVE"), // 'ACTIVE' or 'INACTIVE'
   departments: text("departments").array().default(sql`'{general}'::text[]`), // Departamentos do atendente: 'commercial', 'support', 'financial', 'cancellation', 'general'
+  participatesInGamification: boolean("participates_in_gamification").default(true), // Se o usuário participa do ranking de gamificação
   lastLoginAt: timestamp("last_login_at"),
   lastActivityAt: timestamp("last_activity_at"), // Track real-time activity for status
   createdAt: timestamp("created_at").defaultNow(),
@@ -298,6 +299,7 @@ export const updateUserSchema = z.object({
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
   password: z.string().min(6, "Senha deve ter no mínimo 6 caracteres").optional(),
   departments: z.array(z.string()).optional(),
+  participatesInGamification: z.boolean().optional(),
 });
 
 export const loginSchema = z.object({

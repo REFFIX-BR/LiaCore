@@ -44,6 +44,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 
 const userFormSchema = z.object({
   username: z.string().min(3, "Usuário deve ter no mínimo 3 caracteres"),
@@ -71,6 +72,7 @@ interface User {
   role: "ADMIN" | "SUPERVISOR" | "AGENT";
   status: "ACTIVE" | "INACTIVE";
   departments?: string[] | null;
+  participatesInGamification?: boolean | null;
 }
 
 export default function Users() {
@@ -193,6 +195,27 @@ export default function Users() {
       toast({
         title: "Erro",
         description: error?.message || "Erro ao atualizar departamentos",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Toggle gamification participation mutation
+  const toggleGamificationMutation = useMutation({
+    mutationFn: async ({ id, participates }: { id: string; participates: boolean }) => {
+      return apiRequest(`/api/users/${id}`, "PATCH", { participatesInGamification: participates });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Sucesso",
+        description: "Participação na gamificação atualizada",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error?.message || "Erro ao atualizar participação",
         variant: "destructive",
       });
     },
@@ -499,13 +522,14 @@ export default function Users() {
                   <TableHead>Papel</TableHead>
                   <TableHead>Departamentos</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Gamificação</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground">
                       Nenhum usuário encontrado
                     </TableCell>
                   </TableRow>
@@ -523,6 +547,24 @@ export default function Users() {
                       <TableCell>{getRoleBadge(user.role)}</TableCell>
                       <TableCell>{getDepartmentBadges(user.departments)}</TableCell>
                       <TableCell>{getStatusBadge(user.status)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={user.participatesInGamification ?? true}
+                            onCheckedChange={(checked) => {
+                              toggleGamificationMutation.mutate({
+                                id: user.id,
+                                participates: checked,
+                              });
+                            }}
+                            disabled={toggleGamificationMutation.isPending}
+                            data-testid={`switch-gamification-${user.id}`}
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            {user.participatesInGamification ?? true ? "Sim" : "Não"}
+                          </span>
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Dialog

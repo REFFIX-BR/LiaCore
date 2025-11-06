@@ -4594,11 +4594,12 @@ export class DbStorage implements IStorage {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
-    // Pega todos os agentes ativos
+    // Pega todos os agentes ativos que participam da gamificação
     const agents = await db.select()
       .from(schema.users)
       .where(and(
         eq(schema.users.status, 'ACTIVE'),
+        eq(schema.users.participatesInGamification, true),
         or(
           eq(schema.users.role, 'AGENT'),
           eq(schema.users.role, 'SUPERVISOR')
