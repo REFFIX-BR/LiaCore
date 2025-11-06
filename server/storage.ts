@@ -4953,7 +4953,10 @@ export class DbStorage implements IStorage {
     })
       .from(schema.gamificationScores)
       .leftJoin(schema.users, eq(schema.gamificationScores.agentId, schema.users.id))
-      .where(eq(schema.gamificationScores.period, targetPeriod))
+      .where(and(
+        eq(schema.gamificationScores.period, targetPeriod),
+        eq(schema.users.participatesInGamification, true)
+      ))
       .orderBy(desc(schema.gamificationScores.totalScore));
 
     // Para cada agente, pega os badges
@@ -4969,6 +4972,7 @@ export class DbStorage implements IStorage {
         return {
           ...item.score,
           agentName: item.agent?.fullName || 'Desconhecido',
+          agentId: item.score.agentId,
           badges: badges.map(b => ({
             type: b.badgeType,
             metric: b.metric,
