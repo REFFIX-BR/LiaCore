@@ -55,6 +55,16 @@ export async function getTwilioFromPhoneNumber() {
   return phoneNumber;
 }
 
+export async function getTwilioAuthToken(): Promise<string> {
+  await getCredentials();
+  
+  if (!connectionSettings || !connectionSettings.settings.auth_token) {
+    throw new Error('Twilio auth token not available from Replit integration');
+  }
+  
+  return connectionSettings.settings.auth_token;
+}
+
 export async function validateTwilioConnection(): Promise<{ valid: boolean; error?: string; details?: any }> {
   try {
     const client = await getTwilioClient();

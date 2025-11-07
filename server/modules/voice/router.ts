@@ -9,33 +9,39 @@ import twilio from 'twilio';
 const router = express.Router();
 
 // Middleware para verificar assinatura Twilio
-function validateTwilioSignature(req: express.Request, res: express.Response, next: express.NextFunction) {
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const baseUrl = process.env.WEBHOOK_BASE_URL;
+async function validateTwilioSignature(req: express.Request, res: express.Response, next: express.NextFunction) {
+  try {
+    const { getTwilioAuthToken } = await import('../../lib/twilioIntegration');
+    const authToken = await getTwilioAuthToken();
+    const baseUrl = process.env.WEBHOOK_BASE_URL;
 
-  if (!authToken || !baseUrl) {
-    console.error('❌ [Twilio Webhook] Missing TWILIO_AUTH_TOKEN or WEBHOOK_BASE_URL');
+    if (!baseUrl) {
+      console.error('❌ [Twilio Webhook] Missing WEBHOOK_BASE_URL');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
+    const twilioSignature = req.headers['x-twilio-signature'] as string;
+    if (!twilioSignature) {
+      console.error('❌ [Twilio Webhook] Missing X-Twilio-Signature header');
+      return res.status(403).json({ error: 'Forbidden: Missing signature' });
+    }
+
+    const url = `${baseUrl}${req.originalUrl}`;
+    const params = req.method === 'POST' ? req.body : req.query;
+
+    const isValid = twilio.validateRequest(authToken, twilioSignature, url, params);
+
+    if (!isValid) {
+      console.error('❌ [Twilio Webhook] Invalid signature');
+      return res.status(403).json({ error: 'Forbidden: Invalid signature' });
+    }
+
+    console.log('✅ [Twilio Webhook] Signature validated');
+    next();
+  } catch (error: any) {
+    console.error('❌ [Twilio Webhook] Error validating signature:', error.message);
     return res.status(500).json({ error: 'Server configuration error' });
   }
-
-  const twilioSignature = req.headers['x-twilio-signature'] as string;
-  if (!twilioSignature) {
-    console.error('❌ [Twilio Webhook] Missing X-Twilio-Signature header');
-    return res.status(403).json({ error: 'Forbidden: Missing signature' });
-  }
-
-  const url = `${baseUrl}${req.originalUrl}`;
-  const params = req.method === 'POST' ? req.body : req.query;
-
-  const isValid = twilio.validateRequest(authToken, twilioSignature, url, params);
-
-  if (!isValid) {
-    console.error('❌ [Twilio Webhook] Invalid signature');
-    return res.status(403).json({ error: 'Forbidden: Invalid signature' });
-  }
-
-  console.log('✅ [Twilio Webhook] Signature validated');
-  next();
 }
 
 // Middleware para verificar se o módulo está habilitado
