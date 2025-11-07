@@ -1234,6 +1234,7 @@ export const voiceCampaignTargets = pgTable("voice_campaign_targets", {
   // Dados do devedor (pode vir do CRM)
   phoneNumber: text("phone_number").notNull(), // Telefone principal
   alternativePhones: text("alternative_phones").array(), // Telefones alternativos
+  contactMethod: text("contact_method").notNull().default("voice"), // 'whatsapp' | 'voice' - Método de contato preferencial
   debtorName: text("debtor_name").notNull(),
   debtorDocument: text("debtor_document"), // CPF/CNPJ
   debtAmount: integer("debt_amount"), // Valor da dívida em centavos

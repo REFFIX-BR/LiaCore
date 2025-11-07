@@ -27,8 +27,14 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, inspir
 **Role-Based Access Control (RBAC)**: A 3-tier system (ADMIN, SUPERVISOR, AGENT) with granular permissions.
 **Contact Management System**: Centralized client database with automatic WhatsApp contact sync.
 **Announcements/Communications System**: Centralized system for company-wide announcements with priority-based rotation and CRUD admin interface.
-**LIA VOICE - Outbound Debt Collection Module** (Nov 2025): Complete production-ready backend implementation for proactive voice calls using Twilio + OpenAI Realtime API. Features include:
-- **5 BullMQ Workers**: campaign-ingest, scheduling, dialer, post-call, promise-monitor for autonomous operations
+**LIA VOICE - Hybrid Debt Collection Module** (Nov 2025): Complete production-ready implementation supporting two collection methods - proactive voice calls (Twilio + OpenAI Realtime API) and automated WhatsApp messaging (Evolution API + IA Financeiro). Features include:
+- **6 BullMQ Workers**: campaign-ingest, scheduling, dialer, post-call, promise-monitor, **whatsapp-collection** for autonomous operations
+- **Hybrid Routing System**: Per-target choice between voice calls and WhatsApp messages via `contactMethod` field. Router (`activateVoiceCampaign`) analyzes each target and dispatches to appropriate queue:
+  - `contactMethod='voice'` → voice-scheduling queue (Twilio calls)
+  - `contactMethod='whatsapp'` → voice-whatsapp-collection queue (WhatsApp messages)
+- **WhatsApp Collection Worker**: Automated debt collection via WhatsApp using Evolution API "Cobranca" instance. Sends professional messages, validates Evolution API success before marking completed, respects business hours (8h-20h Mon-Fri), max 3 attempts, rate limit 10 msg/min. IA Financeiro automatically resumes conversation when client responds.
+- **Centralized WhatsApp Module** (`server/lib/whatsapp.ts`): Shared function `sendWhatsAppMessage()` supporting 3 Evolution instances (Principal, Cobranca, Leads) with success validation.
+- **UI Contact Method Selector**: RadioGroup in VoiceCampaigns page allows operators to choose voice/WhatsApp when importing targets via Excel/CSV.
 - **Twilio Integration**: Uses Replit's native Twilio integration for improved security and credential management (via `twilioIntegration.ts` module). Includes secure webhook signature verification (HMAC), call recording, status tracking, and `/api/voice/test-twilio` endpoint for connection validation
 - **OpenAI Realtime API**: WebSocket bridge at `/api/voice/webhook/stream` for bidirectional audio streaming (Twilio Media Stream ↔ OpenAI)
 - **Audio Protocol**: Adaptive batching (every 10 chunks), inactivity timer (250ms auto-commit), final flush on disconnect, correct `input_audio_buffer.commit` and `response.output_audio_buffer.commit` with `response_id`

@@ -7,11 +7,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Phone, Plus, Upload, TrendingUp, Users, CheckCircle2, XCircle, Calendar, FileUp, AlertCircle } from 'lucide-react';
+import { Phone, Plus, Upload, TrendingUp, Users, CheckCircle2, XCircle, Calendar, FileUp, AlertCircle, MessageSquare } from 'lucide-react';
 import { useState, useRef, useCallback } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -58,6 +60,7 @@ export default function VoiceCampaigns() {
   const [togglingCampaignId, setTogglingCampaignId] = useState<string | null>(null);
   const [uploadedTargets, setUploadedTargets] = useState<TargetData[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [contactMethod, setContactMethod] = useState<'voice' | 'whatsapp'>('voice');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: campaigns, isLoading } = useQuery<Campaign[]>({
@@ -108,11 +111,11 @@ export default function VoiceCampaigns() {
   });
 
   const uploadTargetsMutation = useMutation({
-    mutationFn: async ({ campaignId, targets }: { campaignId: string; targets: TargetData[] }) => {
+    mutationFn: async ({ campaignId, targets, contactMethod }: { campaignId: string; targets: TargetData[]; contactMethod: 'voice' | 'whatsapp' }) => {
       const response = await fetch(`/api/voice/campaigns/${campaignId}/targets`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targets }),
+        body: JSON.stringify({ targets, contactMethod }),
       });
       if (!response.ok) throw new Error(await response.text());
       return response.json();
@@ -277,6 +280,7 @@ export default function VoiceCampaigns() {
     uploadTargetsMutation.mutate({
       campaignId: selectedCampaignId,
       targets: uploadedTargets,
+      contactMethod,
     });
   };
 
@@ -364,6 +368,34 @@ export default function VoiceCampaigns() {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Método de Contato</label>
+                  <RadioGroup value={contactMethod} onValueChange={(value) => setContactMethod(value as 'voice' | 'whatsapp')}>
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="voice" id="contact-voice" data-testid="radio-contact-voice" />
+                        <Label htmlFor="contact-voice" className="flex items-center gap-2 cursor-pointer">
+                          <Phone className="h-4 w-4" />
+                          Ligação (Voice)
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="whatsapp" id="contact-whatsapp" data-testid="radio-contact-whatsapp" />
+                        <Label htmlFor="contact-whatsapp" className="flex items-center gap-2 cursor-pointer">
+                          <MessageSquare className="h-4 w-4" />
+                          WhatsApp (IA Financeiro)
+                        </Label>
+                      </div>
+                    </div>
+                  </RadioGroup>
+                  <p className="text-xs text-muted-foreground">
+                    {contactMethod === 'voice' 
+                      ? 'Ligações automatizadas usando Twilio + OpenAI Realtime API'
+                      : 'Mensagens via WhatsApp usando IA Financeiro da LIA CORTEX'
+                    }
+                  </p>
                 </div>
 
                 <Alert>

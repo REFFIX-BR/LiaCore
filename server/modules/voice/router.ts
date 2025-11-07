@@ -5,7 +5,7 @@ import { storage } from '../../storage';
 import { insertVoiceCampaignSchema, insertVoiceCampaignTargetSchema } from '@shared/schema';
 import { z } from 'zod';
 import twilio from 'twilio';
-import { addVoiceSchedulingToQueue } from '../../lib/queue';
+import { addVoiceSchedulingToQueue, addVoiceWhatsAppCollectionToQueue } from '../../lib/queue';
 
 const router = express.Router();
 
@@ -38,18 +38,35 @@ async function activateVoiceCampaign(campaignId: string): Promise<{ enqueued: nu
   
   for (const target of pendingTargets) {
     try {
-      // IMMEDIATE execution (no delay) to test if delayed jobs are the problem
-      const scheduledFor = new Date(Date.now());
-      
-      await addVoiceSchedulingToQueue({
-        targetId: target.id,
-        campaignId,
-        scheduledFor,
-        attemptNumber: 1,
-      });
-      
-      enqueued++;
-      console.log(`✅ [Voice Activation] Enqueued target: ${target.debtorName} (${target.phoneNumber})`);
+      // Route based on contactMethod: 'whatsapp' or 'voice'
+      if (target.contactMethod === 'whatsapp') {
+        // WhatsApp collection - enqueue directly to WhatsApp worker
+        await addVoiceWhatsAppCollectionToQueue({
+          targetId: target.id,
+          campaignId,
+          phoneNumber: target.phoneNumber,
+          clientName: target.debtorName,
+          clientDocument: target.debtorDocument || 'N/A',
+          debtAmount: target.debtAmount || 0,
+          attemptNumber: 1,
+        }, 0); // No delay - send immediately
+        
+        enqueued++;
+        console.log(`✅ [Voice Activation] Enqueued WhatsApp target: ${target.debtorName} (${target.phoneNumber})`);
+      } else {
+        // Voice call - use scheduling queue (default behavior)
+        const scheduledFor = new Date(Date.now());
+        
+        await addVoiceSchedulingToQueue({
+          targetId: target.id,
+          campaignId,
+          scheduledFor,
+          attemptNumber: 1,
+        });
+        
+        enqueued++;
+        console.log(`✅ [Voice Activation] Enqueued Voice target: ${target.debtorName} (${target.phoneNumber})`);
+      }
     } catch (error: any) {
       console.error(`❌ [Voice Activation] Failed to enqueue target ${target.id}:`, error.message);
       skipped++;
@@ -308,7 +325,7 @@ router.get('/campaigns/:campaignId/targets', authenticate, requireAdminOrSupervi
 router.post('/campaigns/:campaignId/targets', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
   try {
     const { campaignId } = req.params;
-    const { targets } = req.body;
+    const { targets, contactMethod = 'voice' } = req.body; // Default to 'voice' for backward compatibility
     
     if (!Array.isArray(targets) || targets.length === 0) {
       return res.status(400).json({ error: 'Lista de targets é obrigatória' });
@@ -317,6 +334,7 @@ router.post('/campaigns/:campaignId/targets', authenticate, requireAdminOrSuperv
     const targetsWithCampaign = targets.map(t => ({
       ...t,
       campaignId,
+      contactMethod, // Apply contactMethod to all targets in the batch
     }));
     
     const created = await storage.createVoiceCampaignTargets(targetsWithCampaign);
@@ -324,7 +342,7 @@ router.post('/campaigns/:campaignId/targets', authenticate, requireAdminOrSuperv
     // Recalculate campaign statistics
     await storage.recalculateVoiceCampaignStats(campaignId);
     
-    console.log(`✅ [Voice API] ${created.length} targets created for campaign ${campaignId}`);
+    console.log(`✅ [Voice API] ${created.length} targets created for campaign ${campaignId} (method: ${contactMethod})`);
     res.status(201).json({ success: true, count: created.length, targets: created });
   } catch (error: any) {
     console.error('❌ [Voice API] Error creating targets:', error);

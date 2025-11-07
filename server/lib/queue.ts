@@ -16,6 +16,7 @@ export const QUEUE_NAMES = {
   VOICE_DIALER: 'voice-dialer',
   VOICE_POST_CALL: 'voice-post-call',
   VOICE_PROMISE_MONITOR: 'voice-promise-monitor',
+  VOICE_WHATSAPP_COLLECTION: 'voice-whatsapp-collection', // Cobrança via WhatsApp IA
 } as const;
 
 // Queue configurations with different priorities and retry strategies
@@ -201,6 +202,21 @@ export const QUEUE_CONFIGS = {
       },
     },
   },
+  [QUEUE_NAMES.VOICE_WHATSAPP_COLLECTION]: {
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: {
+        type: 'exponential' as const,
+        delay: 5000,
+      },
+      removeOnComplete: {
+        count: 300, // Keep for audit
+      },
+      removeOnFail: {
+        count: 100,
+      },
+    },
+  },
 };
 
 // Create queues
@@ -298,6 +314,14 @@ export const voicePromiseMonitorQueue = new Queue(
   {
     connection: redisConnection,
     ...QUEUE_CONFIGS[QUEUE_NAMES.VOICE_PROMISE_MONITOR],
+  }
+);
+
+export const voiceWhatsAppCollectionQueue = new Queue(
+  QUEUE_NAMES.VOICE_WHATSAPP_COLLECTION,
+  {
+    connection: redisConnection,
+    ...QUEUE_CONFIGS[QUEUE_NAMES.VOICE_WHATSAPP_COLLECTION],
   }
 );
 
@@ -419,6 +443,16 @@ export interface VoicePromiseMonitorJob {
   dueDate: Date;
   targetId: string;
   campaignId: string;
+}
+
+export interface VoiceWhatsAppCollectionJob {
+  targetId: string;
+  campaignId: string;
+  phoneNumber: string;
+  clientName: string;
+  clientDocument: string;
+  debtAmount: number;
+  attemptNumber: number;
 }
 
 // Helper functions to add jobs
@@ -548,6 +582,14 @@ export async function addVoicePromiseMonitorToQueue(data: VoicePromiseMonitorJob
     delay,
     jobId: `promise-${data.promiseId}`,
     priority: 4,
+  });
+}
+
+export async function addVoiceWhatsAppCollectionToQueue(data: VoiceWhatsAppCollectionJob, delay?: number) {
+  return await voiceWhatsAppCollectionQueue.add('send-whatsapp', data, {
+    delay: delay || 0,
+    // No fixed jobId to allow retries
+    priority: 2,
   });
 }
 
