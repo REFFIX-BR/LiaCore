@@ -2195,6 +2195,51 @@ Fonte: ${fonte}`;
           });
         }
 
+      case "atualizar_status_cobranca":
+        console.log(`💰 [Cobranças] Atualizando status do target - CPF/CNPJ: ${args.cpf_cnpj}, Status: ${args.status}`);
+        
+        try {
+          const { storage: storageCobranca } = await import("../storage");
+          const { db: dbCobranca } = await import("../db");
+          const { voiceCampaignTargets } = await import("../../shared/schema");
+          const { eq: eqCobranca } = await import("drizzle-orm");
+          
+          // Buscar target por CPF/CNPJ
+          const target = await dbCobranca.query.voiceCampaignTargets.findFirst({
+            where: eqCobranca(voiceCampaignTargets.debtorDocument, args.cpf_cnpj)
+          });
+          
+          if (!target) {
+            console.warn(`⚠️ [Cobranças] Nenhum target encontrado com CPF/CNPJ: ${args.cpf_cnpj}`);
+            return JSON.stringify({
+              success: false,
+              mensagem: "Registro de cobrança não encontrado para este cliente."
+            });
+          }
+          
+          // Atualizar outcome do target
+          await dbCobranca.update(voiceCampaignTargets)
+            .set({
+              outcome: args.status, // 'paid' ou 'promise_made'
+              outcomeDetails: args.observacao || null,
+              completedAt: new Date(),
+              updatedAt: new Date()
+            })
+            .where(eqCobranca(voiceCampaignTargets.id, target.id));
+          
+          console.log(`✅ [Cobranças] Target ${target.id} atualizado para status: ${args.status}`);
+          
+          return JSON.stringify({
+            success: true,
+            mensagem: `Status atualizado com sucesso! Cliente marcado como ${args.status === 'paid' ? 'pago' : 'promessa registrada'}.`
+          });
+        } catch (error) {
+          console.error("❌ [Cobranças] Erro ao atualizar status:", error);
+          return JSON.stringify({
+            error: "Não foi possível atualizar o status. Tente novamente."
+          });
+        }
+
       case "validar_cpf_cnpj":
         const { validarCpfCnpj } = await import("../ai-tools");
         
