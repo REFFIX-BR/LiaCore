@@ -281,7 +281,7 @@ const menuCategories: MenuCategory[] = [
     ],
   },
   {
-    title: "LIA VOICE",
+    title: "COBRANÇAS",
     icon: Phone,
     roles: ["ADMIN", "SUPERVISOR"],
     items: [

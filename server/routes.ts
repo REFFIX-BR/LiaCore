@@ -10295,11 +10295,11 @@ A resposta deve:
   });
 
   // ============================================================================
-  // LIA VOICE - Módulo de Cobrança Ativa por Telefone
+  // COBRANÇAS - Módulo de Cobrança Ativa por Telefone
   // ============================================================================
   const voiceRouter = await import('./modules/voice/router');
   app.use('/api/voice', voiceRouter.default);
-  console.log('📞 [LIA VOICE] Rotas do módulo voice registradas em /api/voice');
+  console.log('📞 [COBRANÇAS] Rotas do módulo voice registradas em /api/voice');
 
   return httpServer;
 }

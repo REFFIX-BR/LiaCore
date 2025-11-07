@@ -1172,7 +1172,7 @@ export type GamificationSettings = typeof gamificationSettings.$inferSelect;
 export type UpdateGamificationSettings = z.infer<typeof updateGamificationSettingsSchema>;
 
 // ============================================================================
-// LIA VOICE - Módulo de Cobrança Ativa por Telefone
+// COBRANÇAS - Módulo de Cobrança Ativa por Telefone
 // ============================================================================
 
 // Feature Flags - Sistema de controle de features
@@ -1382,7 +1382,7 @@ export const voiceMessagingSettings = pgTable("voice_messaging_settings", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Insert Schemas - LIA VOICE
+// Insert Schemas - COBRANÇAS
 export const insertVoiceFeatureFlagSchema = createInsertSchema(voiceFeatureFlags).omit({
   createdAt: true,
   updatedAt: true,
@@ -1450,7 +1450,7 @@ export const insertVoiceMessagingSettingsSchema = createInsertSchema(voiceMessag
 
 export const updateVoiceMessagingSettingsSchema = insertVoiceMessagingSettingsSchema.partial();
 
-// Types - LIA VOICE
+// Types - COBRANÇAS
 export type VoiceFeatureFlag = typeof voiceFeatureFlags.$inferSelect;
 export type InsertVoiceFeatureFlag = z.infer<typeof insertVoiceFeatureFlagSchema>;
 

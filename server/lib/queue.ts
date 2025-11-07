@@ -10,7 +10,7 @@ export const QUEUE_NAMES = {
   LEARNING_TASKS: 'learning-tasks',
   INACTIVITY_FOLLOWUP: 'inactivity-followup',
   AUTO_CLOSURE: 'auto-closure',
-  // LIA VOICE - Módulo de Cobrança Ativa
+  // COBRANÇAS - Módulo de Cobrança Ativa
   VOICE_CAMPAIGN_INGEST: 'voice-campaign-ingest',
   VOICE_SCHEDULING: 'voice-scheduling',
   VOICE_DIALER: 'voice-dialer',
@@ -126,7 +126,7 @@ export const QUEUE_CONFIGS = {
       },
     },
   },
-  // LIA VOICE - Configurations
+  // COBRANÇAS - Configurations
   [QUEUE_NAMES.VOICE_CAMPAIGN_INGEST]: {
     defaultJobOptions: {
       attempts: 3,
@@ -276,7 +276,7 @@ export const autoClosureQueue = new Queue(
   }
 );
 
-// LIA VOICE - Queue instances
+// COBRANÇAS - Queue instances
 export const voiceCampaignIngestQueue = new Queue(
   QUEUE_NAMES.VOICE_CAMPAIGN_INGEST,
   {
@@ -401,7 +401,7 @@ export interface AutoClosureJob {
   followupSentAt: number;
 }
 
-// LIA VOICE - Job data types
+// COBRANÇAS - Job data types
 export interface VoiceCampaignIngestJob {
   campaignId: string;
   crmApiUrl: string;
@@ -542,7 +542,7 @@ export async function cancelAutoClosure(conversationId: string) {
   }
 }
 
-// LIA VOICE - Helper functions
+// COBRANÇAS - Helper functions
 export async function addVoiceCampaignIngestToQueue(data: VoiceCampaignIngestJob) {
   return await voiceCampaignIngestQueue.add('ingest-campaign', data, {
     priority: 5,
@@ -621,7 +621,7 @@ export async function closeQueues() {
   await learningTasksQueue.close();
   await inactivityFollowupQueue.close();
   await autoClosureQueue.close();
-  // LIA VOICE queues
+  // COBRANÇAS queues
   await voiceCampaignIngestQueue.close();
   await voiceSchedulingQueue.close();
   await voiceDialerQueue.close();

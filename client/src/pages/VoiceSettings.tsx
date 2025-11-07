@@ -77,7 +77,7 @@ export default function VoiceSettings() {
       queryClient.invalidateQueries({ queryKey: ['/api/voice/feature-flags'] });
       toast({
         title: isModuleEnabled ? 'Módulo desativado' : 'Módulo ativado',
-        description: `LIA VOICE foi ${isModuleEnabled ? 'desativado' : 'ativado'} com sucesso.`,
+        description: `COBRANÇAS foi ${isModuleEnabled ? 'desativado' : 'ativado'} com sucesso.`,
       });
     },
     onError: (error: any) => {
@@ -134,7 +134,7 @@ export default function VoiceSettings() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Settings className="h-8 w-8" />
-            Configurações LIA VOICE
+            Configurações COBRANÇAS
           </h1>
           <p className="text-muted-foreground">Gerenciar configurações do módulo de voz</p>
         </div>
@@ -149,7 +149,7 @@ export default function VoiceSettings() {
                   <Power className="h-5 w-5" />
                   Status do Módulo
                 </CardTitle>
-                <CardDescription>Ativar ou desativar o módulo LIA VOICE</CardDescription>
+                <CardDescription>Ativar ou desativar o módulo COBRANÇAS</CardDescription>
               </div>
               <div className="flex items-center gap-4">
                 {isModuleEnabled ? (

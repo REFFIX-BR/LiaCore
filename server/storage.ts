@@ -439,7 +439,7 @@ export interface IStorage {
   markContextQualityAlertsAsResolved(assistantType: string, since: Date): Promise<number>; // Mark alerts as resolved, returns count
 
   // ============================================================================
-  // LIA VOICE - Módulo de Cobrança Ativa por Telefone
+  // COBRANÇAS - Módulo de Cobrança Ativa por Telefone
   // ============================================================================
 
   // Voice Campaigns
@@ -5197,7 +5197,7 @@ export class DbStorage implements IStorage {
   }
 
   // ============================================================================
-  // LIA VOICE - Módulo de Cobrança Ativa por Telefone
+  // COBRANÇAS - Módulo de Cobrança Ativa por Telefone
   // ============================================================================
 
   // Voice Campaigns

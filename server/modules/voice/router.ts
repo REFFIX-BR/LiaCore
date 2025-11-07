@@ -119,7 +119,7 @@ async function requireVoiceModule(req: express.Request, res: express.Response, n
   const isEnabled = await isFeatureEnabled('voice_outbound_enabled');
   if (!isEnabled) {
     return res.status(503).json({ 
-      error: 'Módulo LIA VOICE não está habilitado',
+      error: 'Módulo COBRANÇAS não está habilitado',
       code: 'VOICE_MODULE_DISABLED'
     });
   }

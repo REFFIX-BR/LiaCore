@@ -399,7 +399,7 @@ export default function VoiceCampaigns() {
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold">LIA VOICE</h1>
+            <h1 className="text-3xl font-bold">COBRANÇAS</h1>
             <p className="text-muted-foreground">Campanhas de Cobrança por Voz</p>
           </div>
         </div>
@@ -423,7 +423,7 @@ export default function VoiceCampaigns() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Phone className="h-8 w-8" />
-            LIA VOICE
+            COBRANÇAS
           </h1>
           <p className="text-muted-foreground">Campanhas de Cobrança por Voz</p>
         </div>
