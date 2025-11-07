@@ -9858,6 +9858,38 @@ A resposta deve:
 
       console.log(`✅ [Consolidation] Created draft with ${consolidationResult.summary.appliedCount} suggestions applied`);
       
+      // STEP 6: Mark suggestions as "consolidated" immediately
+      // This prevents them from reappearing as "pending" in subsequent consolidations
+      const appliedSuggestionIds = (consolidationResult.appliedSuggestions || [])
+        .filter((s: any) => s.applied)
+        .map((s: any) => s.suggestionId);
+      
+      console.log(`🏷️  [Consolidation] Marking ${appliedSuggestionIds.length} suggestions as consolidated...`);
+      
+      // Mark applied suggestions as "consolidated" (not "applied" - that's reserved for published versions)
+      for (const suggestionId of appliedSuggestionIds) {
+        await storage.updatePromptSuggestion(suggestionId, {
+          status: "consolidated",
+        });
+      }
+      
+      // Mark duplicate suggestions as consolidated with linkage
+      const duplicateGroups = consolidationResult.duplicateGroups || [];
+      if (duplicateGroups.length > 0) {
+        console.log(`🏷️  [Consolidation] Marking ${duplicateGroups.length} duplicate groups as consolidated...`);
+        
+        for (const group of duplicateGroups) {
+          for (const duplicateId of group.duplicateIds) {
+            await storage.updatePromptSuggestion(duplicateId, {
+              status: "consolidated",
+              consolidatedWith: [group.mainSuggestionId, ...group.duplicateIds.filter((id: string) => id !== duplicateId)],
+            });
+          }
+        }
+      }
+      
+      console.log(`✅ [Consolidation] All suggestions marked as consolidated (no longer pending)`);
+      
       return res.json({
         draft,
         consolidation: consolidationResult,
