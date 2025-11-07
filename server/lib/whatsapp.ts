@@ -9,9 +9,9 @@ const EVOLUTION_CONFIG = {
   apiUrl: process.env.EVOLUTION_API_URL || '',
   instance: 'Principal', // Default instance
   apiKeys: {
-    Principal: process.env.EVOLUTION_API_KEY || '',
-    Leads: process.env.EVOLUTION_API_INSTANCE_LEADS || '',
-    Cobranca: process.env.EVOLUTION_API_INSTANCE_COBRANCA || '',
+    Principal: process.env.EVOLUTION_API_KEY_PRINCIPAL || process.env.EVOLUTION_API_KEY || '',
+    Leads: process.env.EVOLUTION_API_KEY_LEADS || '',
+    Cobranca: process.env.EVOLUTION_API_KEY_COBRANCA || '',
   },
 };
 
