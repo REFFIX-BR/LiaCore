@@ -91,6 +91,60 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
         return { success: true, rescheduled: true, nextSlot };
       }
 
+      // ============================================================================
+      // VERIFICAÇÃO PRÉ-ENVIO: Consultar CRM para verificar se já pagou
+      // ============================================================================
+      if (clientDocument) {
+        console.log(`🔍 [Voice WhatsApp] Verificando status de pagamento via CRM para CPF/CNPJ: ${clientDocument}`);
+        
+        try {
+          // Normalizar documento (remover formatação)
+          const documentoNormalizado = clientDocument.replace(/\D/g, '');
+          
+          // Consultar API de boletos (mesmo endpoint usado pela IA)
+          const response = await fetch("https://webhook.trtelecom.net/webhook/consulta_boleto", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ documento: documentoNormalizado }),
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          const boletos = await response.json() as any[];
+          
+          // Se não houver boletos pendentes, cliente já pagou!
+          if (!boletos || boletos.length === 0) {
+            console.log(`✅ [Voice WhatsApp] Cliente ${clientName} já está em dia - marcando target como 'paid' e pulando envio`);
+            
+            await storage.updateVoiceCampaignTarget(targetId, {
+              state: 'completed',
+              outcome: 'paid',
+              outcomeDetails: 'Cliente já estava em dia no momento da verificação pré-envio',
+              completedAt: new Date(),
+            });
+            
+            return {
+              success: true,
+              skipped: true,
+              reason: 'already_paid',
+              clientName,
+            };
+          }
+          
+          console.log(`📋 [Voice WhatsApp] Cliente possui ${boletos.length} boleto(s) pendente(s) - prosseguindo com envio`);
+          
+        } catch (error) {
+          console.error(`❌ [Voice WhatsApp] Erro ao verificar status de pagamento:`, error);
+          console.log(`⚠️ [Voice WhatsApp] Continuando com envio por segurança (em caso de erro de API)`);
+        }
+      } else {
+        console.warn(`⚠️ [Voice WhatsApp] CPF/CNPJ não disponível - pulando verificação pré-envio`);
+      }
+      
       console.log(`✅ [Voice WhatsApp] Enviando mensagem de cobrança para ${phoneNumber}`);
       
       await storage.updateVoiceCampaignTarget(targetId, { 

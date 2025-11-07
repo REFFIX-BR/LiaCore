@@ -2217,9 +2217,10 @@ Fonte: ${fonte}`;
             });
           }
           
-          // Atualizar outcome do target
+          // Atualizar state e outcome do target
           await dbCobranca.update(voiceCampaignTargets)
             .set({
+              state: 'completed', // Marcar target como completo
               outcome: args.status, // 'paid' ou 'promise_made'
               outcomeDetails: args.observacao || null,
               completedAt: new Date(),
