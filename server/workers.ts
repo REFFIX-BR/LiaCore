@@ -1276,6 +1276,13 @@ Por favor, responda apenas com um número de 0 a 10.
           return { skipped: true, reason: 'transferred_to_human' };
         }
 
+        // 3.5. Skip campaign conversations - they are proactive, client may take longer to respond
+        if (conversation.conversationSource === 'whatsapp_campaign' || conversation.conversationSource === 'voice_campaign') {
+          console.log(`⚠️ [Inactivity Worker] Conversa é de campanha de cobrança - ignorando follow-up/auto-closure automático`);
+          await markJobProcessed(job.id!);
+          return { skipped: true, reason: 'campaign_conversation' };
+        }
+
         // 4. Check if client sent a new message since we scheduled this job
         if (conversation.lastMessageTime && new Date(conversation.lastMessageTime).getTime() > lastClientMessageTime) {
           console.log(`⚠️ [Inactivity Worker] Cliente já respondeu - cancelando follow-up`);
