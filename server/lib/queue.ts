@@ -10,6 +10,12 @@ export const QUEUE_NAMES = {
   LEARNING_TASKS: 'learning-tasks',
   INACTIVITY_FOLLOWUP: 'inactivity-followup',
   AUTO_CLOSURE: 'auto-closure',
+  // LIA VOICE - Módulo de Cobrança Ativa
+  VOICE_CAMPAIGN_INGEST: 'voice:campaign-ingest',
+  VOICE_SCHEDULING: 'voice:scheduling',
+  VOICE_DIALER: 'voice:dialer',
+  VOICE_POST_CALL: 'voice:post-call',
+  VOICE_PROMISE_MONITOR: 'voice:promise-monitor',
 } as const;
 
 // Queue configurations with different priorities and retry strategies
@@ -119,6 +125,82 @@ export const QUEUE_CONFIGS = {
       },
     },
   },
+  // LIA VOICE - Configurations
+  [QUEUE_NAMES.VOICE_CAMPAIGN_INGEST]: {
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: {
+        type: 'exponential' as const,
+        delay: 2000,
+      },
+      removeOnComplete: {
+        count: 50,
+      },
+      removeOnFail: {
+        count: 100,
+      },
+    },
+  },
+  [QUEUE_NAMES.VOICE_SCHEDULING]: {
+    defaultJobOptions: {
+      attempts: 2,
+      backoff: {
+        type: 'exponential' as const,
+        delay: 5000,
+      },
+      removeOnComplete: {
+        count: 200,
+      },
+      removeOnFail: {
+        count: 100,
+      },
+    },
+  },
+  [QUEUE_NAMES.VOICE_DIALER]: {
+    defaultJobOptions: {
+      attempts: 2,
+      backoff: {
+        type: 'fixed' as const,
+        delay: 10000, // Wait 10s between call retries (compliance)
+      },
+      removeOnComplete: {
+        count: 500, // Keep more for audit
+      },
+      removeOnFail: {
+        count: 200,
+      },
+    },
+  },
+  [QUEUE_NAMES.VOICE_POST_CALL]: {
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: {
+        type: 'exponential' as const,
+        delay: 3000,
+      },
+      removeOnComplete: {
+        count: 300,
+      },
+      removeOnFail: {
+        count: 100,
+      },
+    },
+  },
+  [QUEUE_NAMES.VOICE_PROMISE_MONITOR]: {
+    defaultJobOptions: {
+      attempts: 2,
+      backoff: {
+        type: 'exponential' as const,
+        delay: 10000,
+      },
+      removeOnComplete: {
+        count: 100,
+      },
+      removeOnFail: {
+        count: 50,
+      },
+    },
+  },
 };
 
 // Create queues
@@ -175,6 +257,47 @@ export const autoClosureQueue = new Queue(
   {
     connection: redisConnection,
     ...QUEUE_CONFIGS[QUEUE_NAMES.AUTO_CLOSURE],
+  }
+);
+
+// LIA VOICE - Queue instances
+export const voiceCampaignIngestQueue = new Queue(
+  QUEUE_NAMES.VOICE_CAMPAIGN_INGEST,
+  {
+    connection: redisConnection,
+    ...QUEUE_CONFIGS[QUEUE_NAMES.VOICE_CAMPAIGN_INGEST],
+  }
+);
+
+export const voiceSchedulingQueue = new Queue(
+  QUEUE_NAMES.VOICE_SCHEDULING,
+  {
+    connection: redisConnection,
+    ...QUEUE_CONFIGS[QUEUE_NAMES.VOICE_SCHEDULING],
+  }
+);
+
+export const voiceDialerQueue = new Queue(
+  QUEUE_NAMES.VOICE_DIALER,
+  {
+    connection: redisConnection,
+    ...QUEUE_CONFIGS[QUEUE_NAMES.VOICE_DIALER],
+  }
+);
+
+export const voicePostCallQueue = new Queue(
+  QUEUE_NAMES.VOICE_POST_CALL,
+  {
+    connection: redisConnection,
+    ...QUEUE_CONFIGS[QUEUE_NAMES.VOICE_POST_CALL],
+  }
+);
+
+export const voicePromiseMonitorQueue = new Queue(
+  QUEUE_NAMES.VOICE_PROMISE_MONITOR,
+  {
+    connection: redisConnection,
+    ...QUEUE_CONFIGS[QUEUE_NAMES.VOICE_PROMISE_MONITOR],
   }
 );
 
@@ -252,6 +375,50 @@ export interface AutoClosureJob {
   evolutionInstance?: string;
   scheduledAt: number;
   followupSentAt: number;
+}
+
+// LIA VOICE - Job data types
+export interface VoiceCampaignIngestJob {
+  campaignId: string;
+  crmApiUrl: string;
+  crmApiKey?: string;
+  filters?: Record<string, any>;
+}
+
+export interface VoiceSchedulingJob {
+  targetId: string;
+  campaignId: string;
+  scheduledFor: Date;
+  attemptNumber: number;
+}
+
+export interface VoiceDialerJob {
+  targetId: string;
+  campaignId: string;
+  phoneNumber: string;
+  clientName: string;
+  clientDocument: string;
+  debtAmount: number;
+  attemptNumber: number;
+}
+
+export interface VoicePostCallJob {
+  attemptId: string;
+  targetId: string;
+  campaignId: string;
+  callSid: string;
+  callDuration: number;
+  callStatus: string;
+  recordingUrl?: string;
+  transcription?: string;
+  conversationData?: Record<string, any>;
+}
+
+export interface VoicePromiseMonitorJob {
+  promiseId: string;
+  dueDate: Date;
+  targetId: string;
+  campaignId: string;
 }
 
 // Helper functions to add jobs
@@ -341,6 +508,65 @@ export async function cancelAutoClosure(conversationId: string) {
   }
 }
 
+// LIA VOICE - Helper functions
+export async function addVoiceCampaignIngestToQueue(data: VoiceCampaignIngestJob) {
+  return await voiceCampaignIngestQueue.add('ingest-campaign', data, {
+    priority: 5,
+  });
+}
+
+export async function addVoiceSchedulingToQueue(data: VoiceSchedulingJob) {
+  const delay = Math.max(0, new Date(data.scheduledFor).getTime() - Date.now());
+  
+  return await voiceSchedulingQueue.add('schedule-call', data, {
+    delay,
+    jobId: `schedule-${data.targetId}-${data.attemptNumber}`,
+    priority: 3,
+  });
+}
+
+export async function addVoiceDialerToQueue(data: VoiceDialerJob, delay?: number) {
+  return await voiceDialerQueue.add('make-call', data, {
+    delay: delay || 0,
+    jobId: `dial-${data.targetId}-${data.attemptNumber}`,
+    priority: 2,
+  });
+}
+
+export async function addVoicePostCallToQueue(data: VoicePostCallJob) {
+  return await voicePostCallQueue.add('process-call-result', data, {
+    priority: 3,
+  });
+}
+
+export async function addVoicePromiseMonitorToQueue(data: VoicePromiseMonitorJob) {
+  const delay = Math.max(0, new Date(data.dueDate).getTime() - Date.now());
+  
+  return await voicePromiseMonitorQueue.add('check-promise', data, {
+    delay,
+    jobId: `promise-${data.promiseId}`,
+    priority: 4,
+  });
+}
+
+export async function cancelVoiceScheduledCall(targetId: string, attemptNumber: number) {
+  try {
+    const jobId = `schedule-${targetId}-${attemptNumber}`;
+    const job = await voiceSchedulingQueue.getJob(jobId);
+    
+    if (job) {
+      await job.remove();
+      console.log(`✅ [Voice] Chamada agendada cancelada: ${jobId}`);
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error(`❌ [Voice] Erro ao cancelar chamada agendada:`, error);
+    return false;
+  }
+}
+
 // Graceful shutdown
 export async function closeQueues() {
   console.log('🔴 Closing queues...');
@@ -351,6 +577,12 @@ export async function closeQueues() {
   await learningTasksQueue.close();
   await inactivityFollowupQueue.close();
   await autoClosureQueue.close();
+  // LIA VOICE queues
+  await voiceCampaignIngestQueue.close();
+  await voiceSchedulingQueue.close();
+  await voiceDialerQueue.close();
+  await voicePostCallQueue.close();
+  await voicePromiseMonitorQueue.close();
   await redisConnection.quit();
   console.log('✅ Queues closed successfully');
 }
