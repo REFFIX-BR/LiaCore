@@ -126,6 +126,7 @@ function validateAssistantEnvVars() {
     suporte: process.env.OPENAI_SUPORTE_ASSISTANT_ID,
     ouvidoria: process.env.OPENAI_OUVIDOIRA_ASSISTANT_ID,
     cancelamento: process.env.OPENAI_CANCELAMENTO_ASSISTANT_ID,
+    cobranca: process.env.OPENAI_COBRANCA_ASSISTANT_ID,
   };
 
   const missing: string[] = [];
@@ -161,6 +162,7 @@ export const ASSISTANT_IDS = {
   suporte: process.env.OPENAI_SUPORTE_ASSISTANT_ID!,
   ouvidoria: process.env.OPENAI_OUVIDOIRA_ASSISTANT_ID!,
   cancelamento: process.env.OPENAI_CANCELAMENTO_ASSISTANT_ID!,
+  cobranca: process.env.OPENAI_COBRANCA_ASSISTANT_ID!,
 };
 
 // Mapeamento de assistente para departamento
@@ -172,6 +174,7 @@ export const ASSISTANT_TO_DEPARTMENT: Record<string, string> = {
   suporte: "support",
   ouvidoria: "cancellation",
   cancelamento: "cancellation",
+  cobranca: "financial",
 };
 
 export interface RouterResult {
@@ -180,20 +183,31 @@ export interface RouterResult {
   confidence: number;
 }
 
-export async function routeMessage(message: string): Promise<RouterResult> {
+export async function routeMessage(message: string, conversationSource?: string): Promise<RouterResult> {
+  // Se a conversa veio de campanha de cobrança, rotear diretamente para IA Cobrança
+  if (conversationSource === 'voice_campaign' || conversationSource === 'whatsapp_campaign') {
+    console.log(`🎯 [Routing] Campanha de cobrança detectada - roteando para IA Cobrança`);
+    return {
+      assistantType: "cobranca",
+      assistantId: ASSISTANT_IDS.cobranca,
+      confidence: 1.0,
+    };
+  }
+
   const routingPrompt = `Analise a mensagem do cliente e determine qual assistente especializado deve atendê-lo:
 
 Assistentes disponíveis:
 - suporte: Problemas técnicos, conexão, velocidade, equipamentos
 - comercial: Vendas, planos, upgrade, contratação
-- financeiro: Faturas, pagamentos, cobranças, dúvidas financeiras
+- financeiro: Faturas, pagamentos, dúvidas financeiras gerais
+- cobranca: Negociação de débitos, promessas de pagamento, acordos, boletos vencidos
 - apresentacao: Apresentação da empresa, novos clientes
 - ouvidoria: Reclamações formais, SAC
 - cancelamento: Cancelamento de serviço
 
 Mensagem do cliente: "${message}"
 
-Responda apenas com o nome do assistente (suporte, comercial, financeiro, apresentacao, ouvidoria, ou cancelamento).`;
+Responda apenas com o nome do assistente (suporte, comercial, financeiro, cobranca, apresentacao, ouvidoria, ou cancelamento).`;
 
   try {
     // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
@@ -214,7 +228,7 @@ Responda apenas com o nome do assistente (suporte, comercial, financeiro, aprese
     }
 
     const assistantType = response.choices[0].message.content?.trim().toLowerCase() || "suporte";
-    const validTypes = ["suporte", "comercial", "financeiro", "apresentacao", "ouvidoria", "cancelamento"];
+    const validTypes = ["suporte", "comercial", "financeiro", "cobranca", "apresentacao", "ouvidoria", "cancelamento"];
     const finalType = validTypes.includes(assistantType) ? assistantType : "suporte";
     
     const assistantId = ASSISTANT_IDS[finalType as keyof typeof ASSISTANT_IDS] || ASSISTANT_IDS.suporte;

@@ -45,6 +45,7 @@ import VoiceTargets from "@/pages/VoiceTargets";
 import VoicePromises from "@/pages/VoicePromises";
 import VoiceSettings from "@/pages/VoiceSettings";
 import MessagingControl from "@/pages/MessagingControl";
+import CobrancasMonitor from "@/pages/CobrancasMonitor";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -248,6 +249,9 @@ function Router() {
       </Route>
       <Route path="/voice/campaigns">
         {() => <AdminSupervisorRoute component={VoiceCampaigns} />}
+      </Route>
+      <Route path="/voice/monitor">
+        {() => <AdminSupervisorRoute component={CobrancasMonitor} />}
       </Route>
       <Route path="/voice/targets">
         {() => <AdminSupervisorRoute component={VoiceTargets} />}

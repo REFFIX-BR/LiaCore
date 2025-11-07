@@ -286,6 +286,12 @@ const menuCategories: MenuCategory[] = [
     roles: ["ADMIN", "SUPERVISOR"],
     items: [
       {
+        title: "Monitor de Cobranças",
+        url: "/voice/monitor",
+        icon: Activity,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
         title: "Campanhas",
         url: "/voice/campaigns",
         icon: PhoneCall,

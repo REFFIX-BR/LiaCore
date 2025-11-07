@@ -418,7 +418,7 @@ export const insertTrainingSessionSchema = createInsertSchema(trainingSessions).
   appliedBy: true,
   improvedPrompt: true,
 }).extend({
-  assistantType: z.enum(["suporte", "comercial", "financeiro", "apresentacao", "ouvidoria", "cancelamento"]),
+  assistantType: z.enum(["suporte", "comercial", "financeiro", "apresentacao", "ouvidoria", "cancelamento", "cobranca"]),
   trainingType: z.enum(["manual", "conversation"]),
   status: z.enum(["active", "completed", "applied"]).default("active"),
 });
@@ -971,7 +971,7 @@ export const insertPromptTemplateSchema = createInsertSchema(promptTemplates).om
   createdAt: true,
   updatedAt: true,
 }).extend({
-  assistantType: z.enum(["apresentacao", "comercial", "suporte", "financeiro", "ouvidoria", "cancelamento"]),
+  assistantType: z.enum(["apresentacao", "comercial", "suporte", "financeiro", "ouvidoria", "cancelamento", "cobranca"]),
   status: z.enum(["active", "archived"]).default("active"),
   version: z.string().regex(/^\d+\.\d+\.\d+$/).default("1.0.0"), // Semantic version pattern
 });

@@ -6,6 +6,7 @@ import { insertVoiceCampaignSchema, insertVoiceCampaignTargetSchema } from '@sha
 import { z } from 'zod';
 import twilio from 'twilio';
 import { addVoiceSchedulingToQueue, addVoiceWhatsAppCollectionToQueue } from '../../lib/queue';
+import { getVoiceMetrics } from './metrics';
 
 const router = express.Router();
 
@@ -884,6 +885,20 @@ router.post('/webhook/recording', express.urlencoded({ extended: false }), valid
   } catch (error: any) {
     console.error('❌ [Voice Webhook] Error processing recording:', error);
     res.sendStatus(500);
+  }
+});
+
+// ===== UNIFIED METRICS =====
+router.get('/metrics', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+  try {
+    console.log('📊 [Voice Metrics API] Fetching unified metrics...');
+    
+    const metrics = await getVoiceMetrics();
+    
+    res.json(metrics);
+  } catch (error: any) {
+    console.error('❌ [Voice Metrics API] Error fetching metrics:', error);
+    res.status(500).json({ error: 'Erro ao buscar métricas de cobrança' });
   }
 });
 

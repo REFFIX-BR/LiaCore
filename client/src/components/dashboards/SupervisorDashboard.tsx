@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageSquare, Users, Clock, TrendingUp, AlertTriangle, Bot, CheckCircle2, UserX, Smile, Frown, Meh } from "lucide-react";
+import { MessageSquare, Users, Clock, TrendingUp, AlertTriangle, Bot, CheckCircle2, UserX, Smile, Frown, Meh, Phone } from "lucide-react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -12,8 +13,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useLocation } from "wouter";
 
 export function SupervisorDashboard() {
+  const [, setLocation] = useLocation();
+
   const { data: metrics, isLoading } = useQuery({
     queryKey: ["/api/dashboard/supervisor"],
     refetchInterval: 30000, // 30 seconds
@@ -22,6 +26,13 @@ export function SupervisorDashboard() {
   const { data: aiMetrics, isLoading: isLoadingAI } = useQuery({
     queryKey: ["/api/dashboard/ai-performance"],
     refetchInterval: 30000, // 30 seconds
+  });
+
+  // Fetch voice metrics for cobranças badge
+  const { data: voiceMetrics } = useQuery({
+    queryKey: ["/api/voice/metrics"],
+    refetchInterval: 60000, // 1 minute
+    retry: false, // Don't retry if feature is disabled
   });
 
   if (isLoading) {
@@ -34,11 +45,30 @@ export function SupervisorDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold mb-1">Dashboard do Supervisor</h1>
-        <p className="text-sm text-muted-foreground">
-          Visão geral da saúde do atendimento, performance da IA e da equipe
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold mb-1">Dashboard do Supervisor</h1>
+          <p className="text-sm text-muted-foreground">
+            Visão geral da saúde do atendimento, performance da IA e da equipe
+          </p>
+        </div>
+        
+        {/* Cobranças Badge - Only show if there are pending promises */}
+        {voiceMetrics && voiceMetrics.pendingPromises > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setLocation('/voice/monitor')}
+            className="gap-2"
+            data-testid="button-cobrancas-alert"
+          >
+            <Phone className="h-4 w-4" />
+            <span>Cobranças</span>
+            <Badge variant="destructive" className="ml-1">
+              {voiceMetrics.pendingPromises}
+            </Badge>
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
