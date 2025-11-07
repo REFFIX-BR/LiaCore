@@ -85,7 +85,7 @@ export async function initiateVoiceCall(
 }
 
 export interface OpenAIConversationOptions {
-  systemPrompt: string;
+  systemPrompt?: string;
   clientName: string;
   debtAmount: number;
   debtDetails?: string;

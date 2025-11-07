@@ -285,7 +285,7 @@ router.patch('/campaigns/:id', authenticate, requireAdminOrSupervisor, requireVo
       }
       
       // Check if at least one campaign method is globally enabled
-      const hasEnabledMethod = campaignMethods.some(method => {
+      const hasEnabledMethod = campaignMethods.some((method: string) => {
         if (method === 'voice') return globalSettings.voiceEnabled;
         if (method === 'whatsapp') return globalSettings.whatsappEnabled;
         return false;
@@ -673,13 +673,26 @@ router.get('/stats', authenticate, requireAdminOrSupervisor, requireVoiceModule,
     const allCampaigns = await storage.getAllVoiceCampaigns();
     const activeCampaigns = await storage.getActiveVoiceCampaigns();
     const allPromises = await storage.getAllVoicePromises();
+    const allTargets = await storage.getAllVoiceCampaignTargets();
     
+    // Overall stats (legacy compatibility)
     const totalCalls = allCampaigns.reduce((sum, c) => sum + (c.contactedTargets || 0), 0);
     const successfulCalls = allCampaigns.reduce((sum, c) => sum + (c.successfulContacts || 0), 0);
     const promisesMade = allPromises.length;
     const promisesFulfilled = allPromises.filter(p => p.status === 'fulfilled').length;
     
+    // Separate metrics by contact method
+    const voiceTargets = allTargets.filter(t => t.contactMethod === 'voice');
+    const whatsappTargets = allTargets.filter(t => t.contactMethod === 'whatsapp');
+    
+    const voiceContacted = voiceTargets.filter(t => t.state === 'contacted' || t.state === 'completed').length;
+    const voiceSuccessful = voiceTargets.filter(t => (t.attemptCount || 0) > 0 && t.state === 'completed').length;
+    
+    const whatsappContacted = whatsappTargets.filter(t => t.state === 'contacted' || t.state === 'completed').length;
+    const whatsappSuccessful = whatsappTargets.filter(t => (t.attemptCount || 0) > 0 && t.state === 'completed').length;
+    
     res.json({
+      // Overall metrics
       totalCampaigns: allCampaigns.length,
       activeCampaigns: activeCampaigns.length,
       totalCalls,
@@ -688,6 +701,22 @@ router.get('/stats', authenticate, requireAdminOrSupervisor, requireVoiceModule,
       promisesMade,
       promisesFulfilled,
       promiseFulfillmentRate: promisesMade > 0 ? (promisesFulfilled / promisesMade * 100).toFixed(2) : 0,
+      
+      // Method-specific metrics
+      byMethod: {
+        voice: {
+          totalTargets: voiceTargets.length,
+          contacted: voiceContacted,
+          successful: voiceSuccessful,
+          successRate: voiceContacted > 0 ? ((voiceSuccessful / voiceContacted) * 100).toFixed(2) : 0,
+        },
+        whatsapp: {
+          totalTargets: whatsappTargets.length,
+          contacted: whatsappContacted,
+          successful: whatsappSuccessful,
+          successRate: whatsappContacted > 0 ? ((whatsappSuccessful / whatsappContacted) * 100).toFixed(2) : 0,
+        },
+      },
     });
   } catch (error: any) {
     console.error('❌ [Voice API] Error fetching stats:', error);
@@ -751,7 +780,6 @@ router.post('/webhook/twiml', express.text({ type: '*/*' }), validateTwilioSigna
     const { createOpenAIRealtimeSession } = await import('../../lib/voiceCall');
     
     const openAISession = await createOpenAIRealtimeSession({
-      systemPrompt: campaign.systemPrompt || '',
       clientName: target.debtorName,
       debtAmount: target.debtAmount || 0,
       debtDetails: target.debtorMetadata ? JSON.stringify(target.debtorMetadata) : undefined,
@@ -782,8 +810,7 @@ router.post('/webhook/status', express.urlencoded({ extended: false }), validate
     console.log(`📊 [Voice Webhook] Status update: ${CallSid} - ${CallStatus}`);
 
     if (CallStatus === 'completed') {
-      const attempts = await storage.getAllVoiceCallAttempts();
-      const attempt = attempts.find(a => a.callSid === CallSid);
+      const attempt = await storage.getVoiceCallAttemptByCallSid(CallSid);
       
       if (attempt) {
         await storage.updateVoiceCallAttempt(attempt.id, {
@@ -821,8 +848,7 @@ router.post('/webhook/recording', express.urlencoded({ extended: false }), valid
     
     console.log(`🎙️ [Voice Webhook] Recording received: ${RecordingSid}`);
 
-    const attempts = await storage.getAllVoiceCallAttempts();
-    const attempt = attempts.find(a => a.callSid === CallSid);
+    const attempt = await storage.getVoiceCallAttemptByCallSid(CallSid);
     
     if (attempt) {
       await storage.updateVoiceCallAttempt(attempt.id, {

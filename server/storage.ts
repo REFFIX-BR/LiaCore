@@ -474,6 +474,7 @@ export interface IStorage {
   getVoiceCallAttempts(targetId: string): Promise<VoiceCallAttempt[]>;
   getVoiceCallAttemptsByCampaign(campaignId: string): Promise<VoiceCallAttempt[]>;
   getVoiceCallAttempt(id: string): Promise<VoiceCallAttempt | undefined>;
+  getVoiceCallAttemptByCallSid(callSid: string): Promise<VoiceCallAttempt | undefined>;
   createVoiceCallAttempt(attempt: InsertVoiceCallAttempt): Promise<VoiceCallAttempt>;
   updateVoiceCallAttempt(id: string, updates: Partial<VoiceCallAttempt>): Promise<VoiceCallAttempt | undefined>;
 
@@ -5372,6 +5373,13 @@ export class DbStorage implements IStorage {
   async getVoiceCallAttempt(id: string): Promise<VoiceCallAttempt | undefined> {
     const attempts = await db.select().from(schema.voiceCallAttempts)
       .where(eq(schema.voiceCallAttempts.id, id))
+      .limit(1);
+    return attempts[0];
+  }
+
+  async getVoiceCallAttemptByCallSid(callSid: string): Promise<VoiceCallAttempt | undefined> {
+    const attempts = await db.select().from(schema.voiceCallAttempts)
+      .where(eq(schema.voiceCallAttempts.callSid, callSid))
       .limit(1);
     return attempts[0];
   }
