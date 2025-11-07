@@ -44,6 +44,7 @@ import VoiceCampaigns from "@/pages/VoiceCampaigns";
 import VoiceTargets from "@/pages/VoiceTargets";
 import VoicePromises from "@/pages/VoicePromises";
 import VoiceSettings from "@/pages/VoiceSettings";
+import MessagingControl from "@/pages/MessagingControl";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -256,6 +257,9 @@ function Router() {
       </Route>
       <Route path="/voice/settings">
         {() => <AdminSupervisorRoute component={VoiceSettings} />}
+      </Route>
+      <Route path="/voice/messaging">
+        {() => <AdminSupervisorRoute component={MessagingControl} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

@@ -309,6 +309,12 @@ const menuCategories: MenuCategory[] = [
         icon: Cog,
         roles: ["ADMIN", "SUPERVISOR"],
       },
+      {
+        title: "Gestão de Mensagens",
+        url: "/voice/messaging",
+        icon: MessageSquare,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
     ],
   },
   {
