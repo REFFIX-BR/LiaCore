@@ -2241,6 +2241,116 @@ Fonte: ${fonte}`;
           });
         }
 
+      case "registrar_promessa_pagamento":
+        console.log(`📝 [Promessa] Registrando promessa de pagamento - CPF/CNPJ: ${args.cpf_cnpj}, Data: ${args.data_prevista_pagamento}`);
+        
+        if (!conversationId) {
+          console.error("❌ [Promessa] Chamada sem conversationId");
+          return JSON.stringify({
+            error: "Contexto de conversa não disponível"
+          });
+        }
+        
+        try {
+          const { storage: storagePromessa } = await import("../storage");
+          const { db: dbPromessa } = await import("../db");
+          const { voiceCampaignTargets, conversations } = await import("../../shared/schema");
+          const { eq: eqPromessa } = await import("drizzle-orm");
+          const { addVoicePromiseMonitorToQueue } = await import("../lib/queue");
+          
+          // Buscar conversa para obter informações
+          const conversation = await storagePromessa.getConversation(conversationId);
+          if (!conversation) {
+            return JSON.stringify({
+              error: "Conversa não encontrada"
+            });
+          }
+          
+          // Buscar target por CPF/CNPJ
+          const target = await dbPromessa.query.voiceCampaignTargets.findFirst({
+            where: eqPromessa(voiceCampaignTargets.debtorDocument, args.cpf_cnpj)
+          });
+          
+          if (!target) {
+            console.warn(`⚠️ [Promessa] Target não encontrado - criando promessa sem vínculo de campanha`);
+          }
+          
+          // Converter data_prevista_pagamento (string DD/MM/YYYY) para Date
+          // IMPORTANTE: Definir horário como 23:59:59 para que a promessa seja válida durante TODO o dia prometido
+          let dueDate: Date;
+          try {
+            const [day, month, year] = args.data_prevista_pagamento.split('/');
+            dueDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 23, 59, 59, 999);
+          } catch (error) {
+            return JSON.stringify({
+              error: "Data inválida. Use o formato DD/MM/YYYY (ex: 15/01/2025)"
+            });
+          }
+          
+          // Validar se a data é futura
+          if (dueDate <= new Date()) {
+            return JSON.stringify({
+              error: "A data de pagamento deve ser no futuro"
+            });
+          }
+          
+          // Criar promessa de pagamento
+          const promise = await storagePromessa.createVoicePromise({
+            campaignId: target?.campaignId || conversation.voiceCampaignTargetId || 'manual',
+            targetId: target?.id || null,
+            contactId: null, // Pode ser vinculado depois se necessário
+            contactName: conversation.clientName || args.nome || 'Cliente',
+            contactDocument: args.cpf_cnpj,
+            phoneNumber: conversation.clientId || 'unknown',
+            promisedAmount: args.valor_prometido ? parseInt(args.valor_prometido.toString()) : null,
+            dueDate,
+            paymentMethod: args.metodo_pagamento || 'boleto',
+            status: 'pending',
+            notes: args.observacoes || `Promessa registrada via WhatsApp pela IA Cobrança`,
+            recordedBy: 'ai',
+          });
+          
+          console.log(`✅ [Promessa] Promessa ${promise.id} criada com sucesso - vencimento: ${dueDate.toISOString()}`);
+          
+          // Atualizar target se existir
+          if (target) {
+            await dbPromessa.update(voiceCampaignTargets)
+              .set({
+                state: 'contacted', // Não marca como 'completed' pois ainda não pagou
+                outcome: 'promise_made',
+                outcomeDetails: `Promessa de pagamento registrada para ${args.data_prevista_pagamento}`,
+                updatedAt: new Date()
+              })
+              .where(eqPromessa(voiceCampaignTargets.id, target.id));
+            
+            console.log(`✅ [Promessa] Target ${target.id} atualizado com outcome='promise_made'`);
+          }
+          
+          // Agendar monitoramento da promessa (verificar 1 dia após vencimento)
+          const monitorDelay = dueDate.getTime() + (24 * 60 * 60 * 1000) - Date.now();
+          if (monitorDelay > 0) {
+            await addVoicePromiseMonitorToQueue({
+              promiseId: promise.id,
+              dueDate,
+              targetId: target?.id || null,
+              campaignId: target?.campaignId || 'manual',
+            }, monitorDelay);
+            
+            console.log(`📅 [Promessa] Monitoramento agendado para ${new Date(Date.now() + monitorDelay).toISOString()}`);
+          }
+          
+          return JSON.stringify({
+            success: true,
+            promiseId: promise.id,
+            mensagem: `Promessa registrada com sucesso! Vou anotar que você prometeu pagar até ${args.data_prevista_pagamento}. Não vou te cobrar até essa data. 😊`
+          });
+        } catch (error) {
+          console.error("❌ [Promessa] Erro ao registrar promessa:", error);
+          return JSON.stringify({
+            error: "Não foi possível registrar a promessa. Tente novamente."
+          });
+        }
+
       case "validar_cpf_cnpj":
         const { validarCpfCnpj } = await import("../ai-tools");
         

@@ -135,14 +135,75 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
             };
           }
           
-          console.log(`📋 [Voice WhatsApp] Cliente possui ${boletos.length} boleto(s) pendente(s) - prosseguindo com envio`);
+          console.log(`📋 [Voice WhatsApp] Cliente possui ${boletos.length} boleto(s) pendente(s) - verificando promessas...`);
           
         } catch (error) {
           console.error(`❌ [Voice WhatsApp] Erro ao verificar status de pagamento:`, error);
           console.log(`⚠️ [Voice WhatsApp] Continuando com envio por segurança (em caso de erro de API)`);
         }
+        
+        // ============================================================================
+        // VERIFICAÇÃO DE PROMESSAS PENDENTES VÁLIDAS
+        // ============================================================================
+        console.log(`🔍 [Voice WhatsApp] Verificando promessas de pagamento para CPF/CNPJ: ${clientDocument}`);
+        
+        try {
+          const { db } = await import('../../../db');
+          const { voicePromises } = await import('../../../../shared/schema');
+          const { and, eq, gte } = await import('drizzle-orm');
+          
+          // Buscar promessas pendentes com vencimento futuro
+          const now = new Date();
+          const pendingPromises = await db.query.voicePromises.findMany({
+            where: and(
+              eq(voicePromises.contactDocument, clientDocument),
+              eq(voicePromises.status, 'pending'),
+              gte(voicePromises.dueDate, now)
+            ),
+            orderBy: (voicePromises, { asc }) => [asc(voicePromises.dueDate)]
+          });
+          
+          if (pendingPromises && pendingPromises.length > 0) {
+            const nextPromise = pendingPromises[0];
+            
+            if (!nextPromise.dueDate) {
+              console.warn(`⚠️ [Voice WhatsApp] Promessa ${nextPromise.id} sem data de vencimento - ignorando`);
+              console.log(`✅ [Voice WhatsApp] Prosseguindo com envio`);
+            } else {
+              const dueDate = new Date(nextPromise.dueDate);
+              const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              
+              console.log(`⏳ [Voice WhatsApp] Cliente tem promessa pendente válida - vencimento: ${dueDate.toISOString()} (${daysUntilDue} dias)`);
+              console.log(`✅ [Voice WhatsApp] Pulando envio - cliente prometeu pagar até ${dueDate.toLocaleDateString('pt-BR')}`);
+              
+              // Não marcar como 'completed', apenas documentar que foi pulado por promessa
+              await storage.updateVoiceCampaignTarget(targetId, {
+                state: 'contacted', // Mantém como 'contacted' (já foi contatado antes e fez promessa)
+                outcome: 'promise_made',
+                outcomeDetails: `Cliente possui promessa pendente válida até ${dueDate.toLocaleDateString('pt-BR')}. Envio pulado para evitar contato duplicado durante período de promessa.`,
+                updatedAt: new Date(),
+              });
+              
+              return {
+                success: true,
+                skipped: true,
+                reason: 'active_promise',
+                promiseId: nextPromise.id,
+                dueDate: dueDate.toISOString(),
+                daysUntilDue,
+                clientName,
+              };
+            }
+          }
+          
+          console.log(`✅ [Voice WhatsApp] Nenhuma promessa pendente válida encontrada - prosseguindo com envio`);
+          
+        } catch (error) {
+          console.error(`❌ [Voice WhatsApp] Erro ao verificar promessas:`, error);
+          console.log(`⚠️ [Voice WhatsApp] Continuando com envio por segurança`);
+        }
       } else {
-        console.warn(`⚠️ [Voice WhatsApp] CPF/CNPJ não disponível - pulando verificação pré-envio`);
+        console.warn(`⚠️ [Voice WhatsApp] CPF/CNPJ não disponível - pulando verificações pré-envio`);
       }
       
       console.log(`✅ [Voice WhatsApp] Enviando mensagem de cobrança para ${phoneNumber}`);
