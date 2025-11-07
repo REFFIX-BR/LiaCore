@@ -1290,6 +1290,26 @@ export default function PromptManagement() {
           {consolidationResult && (
             <ScrollArea className="max-h-[60vh] pr-4">
               <div className="space-y-4">
+                {/* Deduplication Alert */}
+                {consolidationResult.summary.duplicatesCount > 0 && (
+                  <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-1">
+                          Deduplicação Inteligente Ativada
+                        </h4>
+                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                          O sistema detectou e consolidou automaticamente{' '}
+                          <span className="font-semibold">{consolidationResult.summary.duplicatesCount} evoluções duplicadas</span>
+                          {' '}({Math.round((consolidationResult.summary.duplicatesCount / consolidationResult.summary.totalSuggestions) * 100)}% do total).
+                          Apenas as evoluções únicas e mais relevantes foram processadas, economizando tempo e recursos.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Summary */}
                 <div className="grid grid-cols-4 gap-3">
                   <Card>

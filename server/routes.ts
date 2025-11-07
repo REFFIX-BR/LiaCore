@@ -9779,20 +9779,53 @@ A resposta deve:
 
       console.log(`🔄 [Consolidation] Starting for ${template.assistantType} with ${pendingSuggestions.length} suggestions`);
 
-      // Call consolidation service
+      // STEP 1: Deduplicate suggestions first
+      const { deduplicateEvolutions } = await import("./lib/evolution-deduplicator");
+      
+      const mappedSuggestions = pendingSuggestions.map((s: any) => ({
+        id: s.id,
+        problemIdentified: s.problemIdentified,
+        rootCauseAnalysis: s.rootCauseAnalysis,
+        currentPrompt: s.currentPrompt,
+        suggestedPrompt: s.suggestedPrompt,
+        confidenceScore: s.confidenceScore,
+      }));
+
+      const deduplicationResult = await deduplicateEvolutions(mappedSuggestions);
+      
+      console.log(`🧹 [Deduplication] Results:`);
+      console.log(`   - Original: ${deduplicationResult.statistics.total} evoluções`);
+      console.log(`   - Únicas: ${deduplicationResult.statistics.unique} evoluções`);
+      console.log(`   - Duplicadas: ${deduplicationResult.statistics.duplicates} (${deduplicationResult.statistics.duplicatePercentage}%)`);
+
+      // STEP 2: Consolidate only unique suggestions
       const { consolidateEvolutionSuggestions } = await import("./lib/openai");
       const consolidationResult = await consolidateEvolutionSuggestions(
         template.content,
-        pendingSuggestions.map((s: any) => ({
-          id: s.id,
-          problemIdentified: s.problemIdentified,
-          rootCauseAnalysis: s.rootCauseAnalysis,
-          currentPrompt: s.currentPrompt,
-          suggestedPrompt: s.suggestedPrompt,
-          confidenceScore: s.confidenceScore,
-        })),
+        deduplicationResult.uniqueSuggestions,
         template.assistantType
       );
+
+      // STEP 3: Ensure summary exists (defense against incomplete OpenAI responses)
+      if (!consolidationResult.summary) {
+        console.warn("⚠️  [Consolidation] Summary missing from OpenAI response, creating default");
+        consolidationResult.summary = {
+          totalSuggestions: deduplicationResult.statistics.total,
+          appliedCount: 0,
+          duplicatesCount: deduplicationResult.statistics.duplicates,
+          conflictsCount: 0,
+        };
+      }
+
+      // STEP 4: Merge deduplication groups with consolidation result
+      consolidationResult.duplicateGroups = [
+        ...(consolidationResult.duplicateGroups || []),
+        ...deduplicationResult.duplicateGroups,
+      ];
+
+      // STEP 5: Update statistics to reflect deduplication
+      consolidationResult.summary.totalSuggestions = deduplicationResult.statistics.total;
+      consolidationResult.summary.duplicatesCount = (consolidationResult.summary.duplicatesCount || 0) + deduplicationResult.statistics.duplicates;
 
       // Create or update draft with consolidated prompt
       const existingDraft = await storage.getPromptDraft(id);
