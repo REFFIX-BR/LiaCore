@@ -101,7 +101,10 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
 
       // Formatar número WhatsApp (remover caracteres especiais)
       const cleanPhone = phoneNumber.replace(/\D/g, '');
-      const chatId = `${cleanPhone}@s.whatsapp.net`;
+      
+      // IMPORTANTE: Usar formato normalizado consistente com webhook (whatsapp_NUMERO)
+      // para garantir que as respostas do cliente sejam processadas na mesma conversa
+      const chatId = `whatsapp_${cleanPhone}`;
 
       // Verificar se já existe conversa para este chatId
       let conversation = await storage.getConversationByChatId(chatId);
