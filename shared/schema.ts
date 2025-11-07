@@ -88,6 +88,8 @@ export const conversations = pgTable("conversations", {
   verifiedAt: timestamp("verified_at"), // Quando a conversa foi verificada pelo supervisor
   verifiedBy: varchar("verified_by"), // ID do supervisor que verificou
   lastCoverageCheck: jsonb("last_coverage_check"), // Resultado da última verificação de cobertura via buscar_cep (para validação de vendas)
+  conversationSource: text("conversation_source").default("inbound"), // Origem da conversa: 'inbound' (recebida), 'voice_campaign' (voz ativa), 'whatsapp_campaign' (WhatsApp ativo)
+  voiceCampaignTargetId: varchar("voice_campaign_target_id"), // ID do target de campanha de cobrança (se aplicável)
 }, (table) => ({
   // Índices para performance em queries de dashboard e monitor
   lastMessageTimeIdx: index("conversations_last_message_time_idx").on(table.lastMessageTime),
@@ -1259,6 +1261,9 @@ export const voiceCampaignTargets = pgTable("voice_campaign_targets", {
   outcome: text("outcome"), // 'promise_made', 'paid', 'refused', 'no_answer', 'invalid_number', 'do_not_call'
   outcomeDetails: text("outcome_details"), // Detalhes adicionais do resultado
   completedAt: timestamp("completed_at"),
+  
+  // Vínculo com conversa (se enviada via WhatsApp)
+  conversationId: varchar("conversation_id"), // ID da conversa criada (para mensagens via WhatsApp)
   
   // Auditoria
   createdAt: timestamp("created_at").defaultNow(),
