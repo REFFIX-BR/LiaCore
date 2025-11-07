@@ -2869,7 +2869,7 @@ ${suggestionsContext}
     // Use circuit breaker com timeout estendido (180s) para consolidações grandes
     const response = await consolidationCircuitBreaker.execute(() =>
       openai.chat.completions.create({
-        model: "gpt-4o-mini", // Usando mini para economizar custos
+        model: "gpt-4o",
         messages: [{ role: "user", content: consolidationPrompt }],
         response_format: { type: "json_object" },
         temperature: 0.3, // Lower temperature for more conservative/consistent consolidation
