@@ -5279,7 +5279,7 @@ export class DbStorage implements IStorage {
       .from(schema.voiceCallAttempts)
       .where(and(
         eq(schema.voiceCallAttempts.campaignId, campaignId),
-        eq(schema.voiceCallAttempts.outcome, 'success')
+        eq(schema.voiceCallAttempts.status, 'completed')
       ));
 
     await this.updateVoiceCampaignStats(campaignId, {
