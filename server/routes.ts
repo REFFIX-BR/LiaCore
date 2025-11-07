@@ -2513,11 +2513,20 @@ Qualquer coisa, estamos à disposição! 😊
         // 1. Resolved conversation without awaiting NPS - reopen normally
         // 2. Resolved conversation awaiting NPS but client sent non-NPS message - clear flag and reopen
         if (conversation.status === 'resolved') {
-          console.log(`🔄 [Evolution Reopen] Reabrindo conversa finalizada: ${chatId} (${clientName}) - Resetando para Apresentação`);
+          // CAMPAIGN CONVERSATIONS: Manter assistente original (financeiro para cobranças)
+          // NORMAL CONVERSATIONS: Resetar para recepcionista
+          const isCampaignConversation = conversation.conversationSource === 'whatsapp_campaign' || 
+                                         conversation.conversationSource === 'voice_campaign';
+          
+          const targetAssistant = isCampaignConversation 
+            ? conversation.assistantType // Manter assistente original (financeiro)
+            : 'apresentacao';             // Resetar para recepcionista
+          
+          console.log(`🔄 [Evolution Reopen] Reabrindo conversa finalizada: ${chatId} (${clientName}) - Assistente: ${targetAssistant}${isCampaignConversation ? ' (campanha)' : ''}`);
           
           const updateData: any = {
             status: 'active',
-            assistantType: 'apresentacao', // SEMPRE volta para apresentação em nova conversa
+            assistantType: targetAssistant,
           };
           
           // Se estava aguardando NPS mas cliente enviou outra mensagem, limpar flag
