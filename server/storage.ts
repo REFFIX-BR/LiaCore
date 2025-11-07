@@ -62,7 +62,9 @@ import {
   type VoicePromise,
   type InsertVoicePromise,
   type VoiceConfig,
-  type InsertVoiceConfig
+  type InsertVoiceConfig,
+  type VoiceMessagingSettings,
+  type InsertVoiceMessagingSettings
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { localCache } from "./lib/redis-cache";
@@ -490,6 +492,10 @@ export interface IStorage {
   getAllVoiceConfigs(): Promise<VoiceConfig[]>;
   setVoiceConfig(config: InsertVoiceConfig): Promise<VoiceConfig>;
   deleteVoiceConfig(key: string): Promise<void>;
+
+  // Voice Messaging Settings
+  getVoiceMessagingSettings(): Promise<VoiceMessagingSettings | undefined>;
+  updateVoiceMessagingSettings(settings: Partial<InsertVoiceMessagingSettings>): Promise<VoiceMessagingSettings>;
 }
 
 export class MemStorage implements IStorage {
@@ -5470,6 +5476,59 @@ export class DbStorage implements IStorage {
 
   async deleteVoiceConfig(key: string): Promise<void> {
     await db.delete(schema.voiceConfigs).where(eq(schema.voiceConfigs.key, key));
+  }
+
+  // Voice Messaging Settings
+  async getVoiceMessagingSettings(): Promise<VoiceMessagingSettings | undefined> {
+    const settings = await db.select()
+      .from(schema.voiceMessagingSettings)
+      .limit(1);
+    
+    // Se não existir, criar com valores padrão
+    if (!settings[0]) {
+      const [created] = await db.insert(schema.voiceMessagingSettings)
+        .values({
+          voiceEnabled: true,
+          whatsappEnabled: true,
+          defaultMethod: 'voice',
+          fallbackOrder: ['voice', 'whatsapp'],
+        })
+        .returning();
+      return created;
+    }
+    
+    return settings[0];
+  }
+
+  async updateVoiceMessagingSettings(settings: Partial<InsertVoiceMessagingSettings>): Promise<VoiceMessagingSettings> {
+    // Buscar o registro existente ou criar se não existir
+    const existing = await this.getVoiceMessagingSettings();
+    
+    if (!existing) {
+      // Criar novo registro
+      const [created] = await db.insert(schema.voiceMessagingSettings)
+        .values({
+          voiceEnabled: settings.voiceEnabled ?? true,
+          whatsappEnabled: settings.whatsappEnabled ?? true,
+          defaultMethod: settings.defaultMethod ?? 'voice',
+          fallbackOrder: settings.fallbackOrder ?? ['voice', 'whatsapp'],
+          description: settings.description,
+          updatedBy: settings.updatedBy,
+        })
+        .returning();
+      return created;
+    }
+    
+    // Atualizar registro existente
+    const [updated] = await db.update(schema.voiceMessagingSettings)
+      .set({
+        ...settings,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.voiceMessagingSettings.id, existing.id))
+      .returning();
+    
+    return updated;
   }
 }
 

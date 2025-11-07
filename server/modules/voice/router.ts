@@ -567,6 +567,66 @@ router.delete('/configs/:key', authenticate, requireAdmin, requireVoiceModule, a
   }
 });
 
+// ===== MESSAGING CONFIG =====
+router.get('/messaging-config', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+  try {
+    const config = await storage.getVoiceMessagingSettings();
+    
+    if (!config) {
+      return res.status(404).json({ error: 'Configuração não encontrada' });
+    }
+    
+    res.json(config);
+  } catch (error: any) {
+    console.error('❌ [Voice API] Error fetching messaging config:', error);
+    res.status(500).json({ error: 'Erro ao buscar configuração de mensagens' });
+  }
+});
+
+router.put('/messaging-config', authenticate, requireAdmin, requireVoiceModule, async (req, res) => {
+  try {
+    const { voiceEnabled, whatsappEnabled, defaultMethod, fallbackOrder, description } = req.body;
+    
+    // Validar que pelo menos um método está habilitado
+    if (!voiceEnabled && !whatsappEnabled) {
+      return res.status(400).json({ 
+        error: 'Pelo menos um método de contato deve estar habilitado' 
+      });
+    }
+    
+    // Validar que os métodos no fallbackOrder estão habilitados
+    if (fallbackOrder && Array.isArray(fallbackOrder)) {
+      for (const method of fallbackOrder) {
+        if (method === 'voice' && !voiceEnabled) {
+          return res.status(400).json({ 
+            error: 'Não é possível incluir "voice" no fallback quando está desabilitado' 
+          });
+        }
+        if (method === 'whatsapp' && !whatsappEnabled) {
+          return res.status(400).json({ 
+            error: 'Não é possível incluir "whatsapp" no fallback quando está desabilitado' 
+          });
+        }
+      }
+    }
+    
+    const config = await storage.updateVoiceMessagingSettings({
+      voiceEnabled,
+      whatsappEnabled,
+      defaultMethod,
+      fallbackOrder,
+      description,
+      updatedBy: req.user?.userId || null,
+    });
+    
+    console.log('✅ [Voice API] Messaging config updated');
+    res.json(config);
+  } catch (error: any) {
+    console.error('❌ [Voice API] Error updating messaging config:', error);
+    res.status(500).json({ error: 'Erro ao atualizar configuração de mensagens' });
+  }
+});
+
 // ===== STATS =====
 router.get('/stats', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
   try {
