@@ -34,8 +34,8 @@ async function activateVoiceCampaign(campaignId: string): Promise<{ enqueued: nu
   
   for (const target of pendingTargets) {
     try {
-      // Schedule for 2 seconds from now (reduced for testing to avoid restart-induced job loss)
-      const scheduledFor = new Date(Date.now() + 2000);
+      // IMMEDIATE execution (no delay) to test if delayed jobs are the problem
+      const scheduledFor = new Date(Date.now());
       
       await addVoiceSchedulingToQueue({
         targetId: target.id,
