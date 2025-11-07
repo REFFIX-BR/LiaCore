@@ -1884,7 +1884,7 @@ export class MemStorage implements IStorage {
 }
 
 import { db } from "./db";
-import { eq, desc, and, or, gte, lte, lt, isNotNull, isNull, not, sql, inArray, ilike } from "drizzle-orm";
+import { eq, desc, asc, and, or, gte, lte, lt, isNotNull, isNull, not, sql, inArray, ilike } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { trainingSessions } from "@shared/schema";
 
