@@ -5,8 +5,49 @@ import { storage } from '../../storage';
 import { insertVoiceCampaignSchema, insertVoiceCampaignTargetSchema } from '@shared/schema';
 import { z } from 'zod';
 import twilio from 'twilio';
+import { addVoiceSchedulingToQueue } from '../../lib/queue';
 
 const router = express.Router();
+
+/**
+ * Service to activate a voice campaign by enqueuing all pending targets
+ * This is idempotent - won't duplicate jobs for already-scheduled targets
+ */
+async function activateVoiceCampaign(campaignId: string): Promise<{ enqueued: number; skipped: number }> {
+  console.log(`🚀 [Voice Activation] Activating campaign ${campaignId}`);
+  
+  const targets = await storage.getVoiceCampaignTargets(campaignId);
+  const pendingTargets = targets.filter(t => t.state === 'pending' && t.attemptCount === 0);
+  
+  console.log(`📊 [Voice Activation] Found ${pendingTargets.length} pending targets (${targets.length} total)`);
+  
+  let enqueued = 0;
+  let skipped = 0;
+  
+  for (const target of pendingTargets) {
+    try {
+      // Schedule for 10 seconds from now to allow time for logs to be visible
+      const scheduledFor = new Date(Date.now() + 10000);
+      
+      await addVoiceSchedulingToQueue({
+        targetId: target.id,
+        campaignId,
+        scheduledFor,
+        attemptNumber: 1,
+      });
+      
+      enqueued++;
+      console.log(`✅ [Voice Activation] Enqueued target: ${target.debtorName} (${target.phoneNumber})`);
+    } catch (error: any) {
+      console.error(`❌ [Voice Activation] Failed to enqueue target ${target.id}:`, error.message);
+      skipped++;
+    }
+  }
+  
+  console.log(`🎉 [Voice Activation] Campaign activated: ${enqueued} enqueued, ${skipped} skipped`);
+  
+  return { enqueued, skipped };
+}
 
 // Middleware para verificar assinatura Twilio
 async function validateTwilioSignature(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -184,14 +225,35 @@ router.patch('/campaigns/:id', authenticate, requireAdminOrSupervisor, requireVo
     const { id } = req.params;
     const updates = req.body;
     
-    const campaign = await storage.updateVoiceCampaign(id, updates);
+    // Get current campaign to detect status change
+    const currentCampaign = await storage.getVoiceCampaign(id);
+    if (!currentCampaign) {
+      return res.status(404).json({ error: 'Campanha não encontrada' });
+    }
     
+    // Update campaign
+    const campaign = await storage.updateVoiceCampaign(id, updates);
     if (!campaign) {
       return res.status(404).json({ error: 'Campanha não encontrada' });
     }
     
     console.log('✅ [Voice API] Campaign updated:', id);
-    res.json(campaign);
+    
+    // If status changed to 'active', enqueue all pending targets
+    if (updates.status === 'active' && currentCampaign.status !== 'active') {
+      console.log('🚀 [Voice API] Status changed to active, triggering campaign activation...');
+      try {
+        const result = await activateVoiceCampaign(id);
+        console.log(`✅ [Voice API] Campaign activation complete: ${result.enqueued} targets enqueued`);
+        res.json({ ...campaign, activationResult: result });
+      } catch (activationError: any) {
+        console.error('❌ [Voice API] Error during campaign activation:', activationError);
+        // Campaign was updated but activation failed - still return success but with warning
+        res.json({ ...campaign, activationWarning: 'Campaign updated but target scheduling failed' });
+      }
+    } else {
+      res.json(campaign);
+    }
   } catch (error: any) {
     console.error('❌ [Voice API] Error updating campaign:', error);
     res.status(500).json({ error: 'Erro ao atualizar campanha' });
