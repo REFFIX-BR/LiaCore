@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Switch } from '@/components/ui/switch';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,6 +44,8 @@ interface Campaign {
   successfulContacts?: number;
   promisesMade?: number;
   createdAt?: string;
+  allowedMethods?: ('voice' | 'whatsapp')[];
+  fallbackOrder?: ('voice' | 'whatsapp')[];
 }
 
 interface TargetData {
@@ -61,6 +65,15 @@ export default function VoiceCampaigns() {
   const [uploadedTargets, setUploadedTargets] = useState<TargetData[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [contactMethod, setContactMethod] = useState<'voice' | 'whatsapp'>('voice');
+  const [isMethodsDrawerOpen, setIsMethodsDrawerOpen] = useState(false);
+  const [selectedCampaignForMethods, setSelectedCampaignForMethods] = useState<Campaign | null>(null);
+  const [methodsConfig, setMethodsConfig] = useState<{
+    allowedMethods: ('voice' | 'whatsapp')[];
+    fallbackOrder: ('voice' | 'whatsapp')[];
+  }>({
+    allowedMethods: ['voice', 'whatsapp'],
+    fallbackOrder: ['voice', 'whatsapp'],
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: campaigns, isLoading } = useQuery<Campaign[]>({
@@ -173,6 +186,28 @@ export default function VoiceCampaigns() {
       toast({
         title: 'Erro ao atualizar campanha',
         description: error.message || 'Ocorreu um erro ao atualizar o status.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const updateMethodsMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedCampaignForMethods) throw new Error('Nenhuma campanha selecionada');
+      return apiRequest(`/api/voice/campaigns/${selectedCampaignForMethods.id}`, 'PATCH', methodsConfig);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/campaigns'] });
+      toast({
+        title: 'Métodos atualizados',
+        description: 'As configurações de métodos de contato foram salvas com sucesso.',
+      });
+      setIsMethodsDrawerOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao atualizar métodos',
+        description: error.message || 'Ocorreu um erro ao salvar as configurações.',
         variant: 'destructive',
       });
     },
@@ -727,6 +762,22 @@ export default function VoiceCampaigns() {
                       <Upload className="h-4 w-4 mr-2" />
                       Importar Alvos
                     </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      data-testid={`button-methods-${campaign.id}`}
+                      onClick={() => {
+                        setSelectedCampaignForMethods(campaign);
+                        setMethodsConfig({
+                          allowedMethods: campaign.allowedMethods || ['voice', 'whatsapp'],
+                          fallbackOrder: campaign.fallbackOrder || ['voice', 'whatsapp'],
+                        });
+                        setIsMethodsDrawerOpen(true);
+                      }}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Métodos
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
@@ -763,6 +814,153 @@ export default function VoiceCampaigns() {
           </Card>
         )}
       </div>
+
+      <Sheet open={isMethodsDrawerOpen} onOpenChange={setIsMethodsDrawerOpen}>
+        <SheetContent className="w-[400px] sm:w-[540px]">
+          <SheetHeader>
+            <SheetTitle>Configurar Métodos de Contato</SheetTitle>
+            <SheetDescription>
+              {selectedCampaignForMethods?.name}
+            </SheetDescription>
+          </SheetHeader>
+          <div className="space-y-6 mt-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="voice-enabled" className="text-base">
+                    Ligações por Voz
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Permite contato via Twilio + OpenAI Realtime API
+                  </p>
+                </div>
+                <Switch
+                  id="voice-enabled"
+                  checked={methodsConfig.allowedMethods.includes('voice')}
+                  onCheckedChange={(checked) => {
+                    setMethodsConfig((prev) => {
+                      const newAllowedMethods = (checked
+                        ? [...prev.allowedMethods, 'voice']
+                        : prev.allowedMethods.filter((m) => m !== 'voice')) as ('voice' | 'whatsapp')[];
+                      
+                      const newFallbackOrder = newAllowedMethods.filter((m) =>
+                        prev.fallbackOrder.includes(m)
+                      ) as ('voice' | 'whatsapp')[];
+                      
+                      if (newFallbackOrder.length === 0 && newAllowedMethods.length > 0) {
+                        newFallbackOrder.push(newAllowedMethods[0]);
+                      }
+                      
+                      return {
+                        allowedMethods: newAllowedMethods,
+                        fallbackOrder: newFallbackOrder,
+                      };
+                    });
+                  }}
+                  data-testid="switch-voice-enabled"
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="whatsapp-enabled" className="text-base">
+                    WhatsApp
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Permite contato via Evolution API + IA Financeiro
+                  </p>
+                </div>
+                <Switch
+                  id="whatsapp-enabled"
+                  checked={methodsConfig.allowedMethods.includes('whatsapp')}
+                  onCheckedChange={(checked) => {
+                    setMethodsConfig((prev) => {
+                      const newAllowedMethods = (checked
+                        ? [...prev.allowedMethods, 'whatsapp']
+                        : prev.allowedMethods.filter((m) => m !== 'whatsapp')) as ('voice' | 'whatsapp')[];
+                      
+                      const newFallbackOrder = newAllowedMethods.filter((m) =>
+                        prev.fallbackOrder.includes(m)
+                      ) as ('voice' | 'whatsapp')[];
+                      
+                      if (newFallbackOrder.length === 0 && newAllowedMethods.length > 0) {
+                        newFallbackOrder.push(newAllowedMethods[0]);
+                      }
+                      
+                      return {
+                        allowedMethods: newAllowedMethods,
+                        fallbackOrder: newFallbackOrder,
+                      };
+                    });
+                  }}
+                  data-testid="switch-whatsapp-enabled"
+                />
+              </div>
+            </div>
+
+            {methodsConfig.allowedMethods.length > 1 && (
+              <div className="space-y-3">
+                <Label className="text-base">Ordem de Fallback</Label>
+                <p className="text-sm text-muted-foreground">
+                  Se o método principal falhar, qual será o próximo?
+                </p>
+                <RadioGroup
+                  value={methodsConfig.fallbackOrder[0]}
+                  onValueChange={(value) => {
+                    const first = value as 'voice' | 'whatsapp';
+                    const second = first === 'voice' ? 'whatsapp' : 'voice';
+                    setMethodsConfig((prev) => ({
+                      ...prev,
+                      fallbackOrder: [first, second],
+                    }));
+                  }}
+                  data-testid="radiogroup-fallback-order"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="voice" id="fallback-voice" />
+                    <Label htmlFor="fallback-voice" className="font-normal cursor-pointer">
+                      Voice → WhatsApp
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="whatsapp" id="fallback-whatsapp" />
+                    <Label htmlFor="fallback-whatsapp" className="font-normal cursor-pointer">
+                      WhatsApp → Voice
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
+
+            <div className="pt-4 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsMethodsDrawerOpen(false)}
+                data-testid="button-cancel-methods"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => updateMethodsMutation.mutate()}
+                disabled={updateMethodsMutation.isPending || methodsConfig.allowedMethods.length === 0}
+                data-testid="button-save-methods"
+              >
+                {updateMethodsMutation.isPending ? 'Salvando...' : 'Salvar'}
+              </Button>
+            </div>
+
+            {methodsConfig.allowedMethods.length === 0 && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Atenção</AlertTitle>
+                <AlertDescription>
+                  É necessário ativar pelo menos um método de contato.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

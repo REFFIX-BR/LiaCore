@@ -260,7 +260,48 @@ router.patch('/campaigns/:id', authenticate, requireAdminOrSupervisor, requireVo
       return res.status(404).json({ error: 'Campanha não encontrada' });
     }
     
-    // Update campaign
+    // VALIDATION: If status changing to 'active', validate global messaging settings BEFORE updating
+    if (updates.status === 'active' && currentCampaign.status !== 'active') {
+      console.log('🚀 [Voice API] Status changing to active, validating global messaging settings...');
+      
+      // Fetch global settings
+      const globalSettings = await storage.getVoiceMessagingSettings();
+      if (!globalSettings) {
+        return res.status(400).json({ 
+          error: 'Configurações globais de mensagens não encontradas.',
+          details: 'Configure os métodos de contato em Gestão de Mensagens primeiro.'
+        });
+      }
+      
+      // Get campaign's allowed methods (use current campaign data + updates)
+      const campaignMethods = updates.allowedMethods || currentCampaign.allowedMethods || ['voice', 'whatsapp'];
+      
+      // Check if campaign has at least one method configured
+      if (!campaignMethods || campaignMethods.length === 0) {
+        return res.status(400).json({ 
+          error: 'Não é possível ativar a campanha: nenhum método de contato configurado.',
+          details: 'Configure pelo menos um método (Voice ou WhatsApp) nas configurações da campanha.'
+        });
+      }
+      
+      // Check if at least one campaign method is globally enabled
+      const hasEnabledMethod = campaignMethods.some(method => {
+        if (method === 'voice') return globalSettings.voiceEnabled;
+        if (method === 'whatsapp') return globalSettings.whatsappEnabled;
+        return false;
+      });
+      
+      if (!hasEnabledMethod) {
+        return res.status(400).json({ 
+          error: 'Não é possível ativar a campanha: nenhum método de contato permitido está habilitado globalmente.',
+          details: 'Ative pelo menos um método (Voice ou WhatsApp) em Gestão de Mensagens primeiro.'
+        });
+      }
+      
+      console.log('✅ [Voice API] Validation passed, proceeding with campaign activation...');
+    }
+    
+    // Update campaign (validation passed or status not changing to active)
     const campaign = await storage.updateVoiceCampaign(id, updates);
     if (!campaign) {
       return res.status(404).json({ error: 'Campanha não encontrada' });
@@ -270,7 +311,6 @@ router.patch('/campaigns/:id', authenticate, requireAdminOrSupervisor, requireVo
     
     // If status changed to 'active', enqueue all pending targets
     if (updates.status === 'active' && currentCampaign.status !== 'active') {
-      console.log('🚀 [Voice API] Status changed to active, triggering campaign activation...');
       try {
         const result = await activateVoiceCampaign(id);
         console.log(`✅ [Voice API] Campaign activation complete: ${result.enqueued} targets enqueued`);
