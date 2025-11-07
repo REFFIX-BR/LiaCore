@@ -31,7 +31,7 @@ type CampaignFormData = z.infer<typeof campaignSchema>;
 interface Campaign {
   id: string;
   name: string;
-  status: 'active' | 'completed' | 'paused';
+  status: 'draft' | 'active' | 'completed' | 'paused';
   systemPrompt?: string;
   startDate?: string;
   endDate?: string;
@@ -132,6 +132,49 @@ export default function VoiceCampaigns() {
       toast({
         title: 'Erro ao importar alvos',
         description: error.message || 'Ocorreu um erro ao importar os alvos.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const toggleCampaignStatusMutation = useMutation({
+    mutationFn: async ({ campaignId, newStatus }: { campaignId: string; newStatus: 'active' | 'paused' | 'draft' }) => {
+      const response = await fetch(`/api/voice/campaigns/${campaignId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Erro ao atualizar status');
+      }
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/stats'] });
+      
+      if (variables.newStatus === 'active' && data.activationResult) {
+        toast({
+          title: '🚀 Campanha Ativada!',
+          description: `${data.activationResult.enqueued} ligações agendadas. As chamadas começarão em instantes.`,
+        });
+      } else if (variables.newStatus === 'paused') {
+        toast({
+          title: 'Campanha Pausada',
+          description: 'A campanha foi pausada com sucesso.',
+        });
+      } else {
+        toast({
+          title: 'Status Atualizado',
+          description: 'O status da campanha foi atualizado.',
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao atualizar campanha',
+        description: error.message || 'Ocorreu um erro ao atualizar o status.',
         variant: 'destructive',
       });
     },
@@ -248,11 +291,13 @@ export default function VoiceCampaigns() {
 
   const getStatusBadge = (status: string) => {
     const variants = {
+      draft: 'outline',
       active: 'default',
       completed: 'secondary',
       paused: 'outline',
     } as const;
     const labels = {
+      draft: 'Rascunho',
       active: 'Ativa',
       completed: 'Concluída',
       paused: 'Pausada',
@@ -613,18 +658,49 @@ export default function VoiceCampaigns() {
                       })}
                     </CardDescription>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    data-testid={`button-upload-${campaign.id}`}
-                    onClick={() => {
-                      setSelectedCampaignId(campaign.id);
-                      setIsUploadDialogOpen(true);
-                    }}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Importar Alvos
-                  </Button>
+                  <div className="flex gap-2">
+                    {campaign.status !== 'active' && (
+                      <Button 
+                        variant="default" 
+                        size="sm" 
+                        data-testid={`button-activate-${campaign.id}`}
+                        onClick={() => toggleCampaignStatusMutation.mutate({ 
+                          campaignId: campaign.id, 
+                          newStatus: 'active' 
+                        })}
+                        disabled={toggleCampaignStatusMutation.isPending}
+                      >
+                        <Phone className="h-4 w-4 mr-2" />
+                        Ativar
+                      </Button>
+                    )}
+                    {campaign.status === 'active' && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        data-testid={`button-pause-${campaign.id}`}
+                        onClick={() => toggleCampaignStatusMutation.mutate({ 
+                          campaignId: campaign.id, 
+                          newStatus: 'paused' 
+                        })}
+                        disabled={toggleCampaignStatusMutation.isPending}
+                      >
+                        Pausar
+                      </Button>
+                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      data-testid={`button-upload-${campaign.id}`}
+                      onClick={() => {
+                        setSelectedCampaignId(campaign.id);
+                        setIsUploadDialogOpen(true);
+                      }}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Importar Alvos
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
