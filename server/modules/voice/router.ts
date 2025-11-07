@@ -25,9 +25,13 @@ async function activateVoiceCampaign(campaignId: string): Promise<{ enqueued: nu
     keys: Object.keys(targets[0])
   } : 'No targets');
   
-  const pendingTargets = targets.filter(t => t.state === 'pending' && t.attemptCount === 0);
+  // Accept both 'pending' and 'scheduled' states when attemptCount is 0
+  // This allows reactivating campaigns that were previously paused
+  const pendingTargets = targets.filter(t => 
+    (t.state === 'pending' || t.state === 'scheduled') && t.attemptCount === 0
+  );
   
-  console.log(`📊 [Voice Activation] Found ${pendingTargets.length} pending targets (${targets.length} total)`);
+  console.log(`📊 [Voice Activation] Found ${pendingTargets.length} pending/scheduled targets (${targets.length} total)`);
   
   let enqueued = 0;
   let skipped = 0;
