@@ -151,10 +151,15 @@ export default function VoiceCampaigns() {
           const phone = String(row.telefone || row.Telefone || row.phone || row.Phone || '');
           const formattedPhone = phone.startsWith('+') ? phone : `+${phone.replace(/\D/g, '')}`;
           
+          const valorRaw = row.valorDivida || row['valor_divida'] || row.valor || row.Valor || row.Valor;
+          const debtAmount = valorRaw 
+            ? Math.round(parseFloat(String(valorRaw).replace(',', '.')) * 100)
+            : undefined;
+          
           return {
             debtorName: row.nome || row.Nome || row.name || row.Name || '',
             phoneNumber: formattedPhone,
-            debtAmount: row.valorDivida || row['valor_divida'] || row.valor || row.Valor || undefined,
+            debtAmount,
             debtorDocument: row.cpf_cnpj || row.cpf || row.cnpj || row.document || undefined,
             address: row.endereco || row.address || undefined,
           };
