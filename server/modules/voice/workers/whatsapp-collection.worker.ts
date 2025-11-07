@@ -99,6 +99,30 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
         lastAttemptAt: new Date(),
       });
 
+      // Formatar número WhatsApp (remover caracteres especiais)
+      const cleanPhone = phoneNumber.replace(/\D/g, '');
+      const chatId = `${cleanPhone}@s.whatsapp.net`;
+
+      // Verificar se já existe conversa para este chatId
+      let conversation = await storage.getConversationByChatId(chatId);
+      
+      if (!conversation) {
+        // Criar nova conversa de cobrança
+        console.log(`📝 [Voice WhatsApp] Criando conversa de cobrança para ${clientName}`);
+        conversation = await storage.createConversation({
+          chatId,
+          clientName,
+          clientId: cleanPhone,
+          clientDocument: clientDocument || null,
+          assistantType: 'financeiro',
+          department: 'financial',
+          status: 'active',
+          evolutionInstance: 'Cobranca',
+          conversationSource: 'whatsapp_campaign',
+          voiceCampaignTargetId: targetId,
+        });
+      }
+
       // Formatar valor da dívida
       const debtValue = (debtAmount / 100).toFixed(2).replace('.', ',');
 
@@ -125,18 +149,34 @@ Como podemos ajudar?`;
 
       console.log(`✅ [Voice WhatsApp] Mensagem enviada para ${clientName}`);
 
-      // Atualizar target - a conversa será automaticamente retomada pela IA Financeira
+      // Registrar mensagem no histórico da conversa
+      await storage.createMessage({
+        conversationId: conversation.id,
+        role: 'assistant',
+        content: message,
+        assistant: 'financeiro',
+        sendBy: 'ai',
+      });
+
+      // Atualizar conversa com última mensagem
+      await storage.updateConversation(conversation.id, {
+        lastMessage: message,
+        lastMessageTime: new Date(),
+      });
+
+      // Atualizar target - a conversa foi criada e está pronta para respostas
       await storage.updateVoiceCampaignTarget(targetId, {
-        state: 'completed',
+        state: 'contacted',
         outcome: 'whatsapp_sent',
         outcomeDetails: `Mensagem de cobrança enviada via WhatsApp (tentativa ${attemptNumber})`,
-        completedAt: new Date(),
+        conversationId: conversation.id,
       });
 
       return {
         success: true,
         messageSent: true,
         phoneNumber,
+        conversationId: conversation.id,
       };
 
     } catch (error: any) {
