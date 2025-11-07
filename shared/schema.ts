@@ -1214,6 +1214,10 @@ export const voiceCampaigns = pgTable("voice_campaigns", {
   promisesMade: integer("promises_made").default(0), // Promessas de pagamento
   promisesFulfilled: integer("promises_fulfilled").default(0), // Promessas cumpridas
   
+  // Configuração de métodos de contato (override da configuração global)
+  allowedMethods: text("allowed_methods").array(), // ['voice', 'whatsapp'] ou null para usar config global
+  fallbackOrder: text("fallback_order").array(), // ['voice', 'whatsapp'] ordem de fallback ou null para usar config global
+  
   // Auditoria
   createdBy: varchar("created_by").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
@@ -1360,6 +1364,19 @@ export const voiceConfigs = pgTable("voice_configs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Voice Messaging Settings - Configuração global de métodos de envio de mensagens
+export const voiceMessagingSettings = pgTable("voice_messaging_settings", {
+  id: serial("id").primaryKey(),
+  voiceEnabled: boolean("voice_enabled").notNull().default(true), // Habilitar ligações por voz
+  whatsappEnabled: boolean("whatsapp_enabled").notNull().default(true), // Habilitar WhatsApp
+  defaultMethod: text("default_method").notNull().default("voice"), // 'voice' | 'whatsapp' | 'hybrid'
+  fallbackOrder: text("fallback_order").array().notNull().default(sql`ARRAY['voice', 'whatsapp']::text[]`), // Ordem de fallback
+  description: text("description"),
+  updatedBy: varchar("updated_by"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert Schemas - LIA VOICE
 export const insertVoiceFeatureFlagSchema = createInsertSchema(voiceFeatureFlags).omit({
   createdAt: true,
@@ -1418,6 +1435,16 @@ export const insertVoiceConfigSchema = createInsertSchema(voiceConfigs).omit({
   updatedAt: true,
 });
 
+export const insertVoiceMessagingSettingsSchema = createInsertSchema(voiceMessagingSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  defaultMethod: z.enum(["voice", "whatsapp", "hybrid"]).default("voice"),
+});
+
+export const updateVoiceMessagingSettingsSchema = insertVoiceMessagingSettingsSchema.partial();
+
 // Types - LIA VOICE
 export type VoiceFeatureFlag = typeof voiceFeatureFlags.$inferSelect;
 export type InsertVoiceFeatureFlag = z.infer<typeof insertVoiceFeatureFlagSchema>;
@@ -1436,3 +1463,7 @@ export type InsertVoicePromise = z.infer<typeof insertVoicePromiseSchema>;
 
 export type VoiceConfig = typeof voiceConfigs.$inferSelect;
 export type InsertVoiceConfig = z.infer<typeof insertVoiceConfigSchema>;
+
+export type VoiceMessagingSettings = typeof voiceMessagingSettings.$inferSelect;
+export type InsertVoiceMessagingSettings = z.infer<typeof insertVoiceMessagingSettingsSchema>;
+export type UpdateVoiceMessagingSettings = z.infer<typeof updateVoiceMessagingSettingsSchema>;
