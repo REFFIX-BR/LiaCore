@@ -52,7 +52,17 @@ import {
   type InsertPromptDraft,
   type UpdatePromptDraft,
   type ContextQualityAlert,
-  type InsertContextQualityAlert
+  type InsertContextQualityAlert,
+  type VoiceCampaign,
+  type InsertVoiceCampaign,
+  type VoiceCampaignTarget,
+  type InsertVoiceCampaignTarget,
+  type VoiceCallAttempt,
+  type InsertVoiceCallAttempt,
+  type VoicePromise,
+  type InsertVoicePromise,
+  type VoiceConfig,
+  type InsertVoiceConfig
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { localCache } from "./lib/redis-cache";
@@ -425,6 +435,59 @@ export interface IStorage {
   }>;
   deleteOldContextQualityAlerts(daysAgo: number): Promise<number>; // Returns number of deleted alerts
   markContextQualityAlertsAsResolved(assistantType: string, since: Date): Promise<number>; // Mark alerts as resolved, returns count
+
+  // ============================================================================
+  // LIA VOICE - Módulo de Cobrança Ativa por Telefone
+  // ============================================================================
+
+  // Voice Campaigns
+  getAllVoiceCampaigns(): Promise<VoiceCampaign[]>;
+  getVoiceCampaign(id: string): Promise<VoiceCampaign | undefined>;
+  getVoiceCampaignsByStatus(status: string): Promise<VoiceCampaign[]>;
+  getActiveVoiceCampaigns(): Promise<VoiceCampaign[]>;
+  createVoiceCampaign(campaign: InsertVoiceCampaign): Promise<VoiceCampaign>;
+  updateVoiceCampaign(id: string, updates: Partial<VoiceCampaign>): Promise<VoiceCampaign | undefined>;
+  deleteVoiceCampaign(id: string): Promise<void>;
+  updateVoiceCampaignStats(id: string, stats: {
+    totalTargets?: number;
+    contactedTargets?: number;
+    successfulContacts?: number;
+    promisesMade?: number;
+    promisesFulfilled?: number;
+  }): Promise<void>;
+
+  // Voice Campaign Targets
+  getVoiceCampaignTargets(campaignId: string): Promise<VoiceCampaignTarget[]>;
+  getVoiceCampaignTarget(id: string): Promise<VoiceCampaignTarget | undefined>;
+  getVoiceCampaignTargetsByState(campaignId: string, state: string): Promise<VoiceCampaignTarget[]>;
+  getNextScheduledTargets(limit: number): Promise<VoiceCampaignTarget[]>;
+  createVoiceCampaignTarget(target: InsertVoiceCampaignTarget): Promise<VoiceCampaignTarget>;
+  createVoiceCampaignTargets(targets: InsertVoiceCampaignTarget[]): Promise<VoiceCampaignTarget[]>;
+  updateVoiceCampaignTarget(id: string, updates: Partial<VoiceCampaignTarget>): Promise<VoiceCampaignTarget | undefined>;
+  incrementTargetAttempt(id: string, nextAttemptAt?: Date): Promise<void>;
+
+  // Voice Call Attempts
+  getVoiceCallAttempts(targetId: string): Promise<VoiceCallAttempt[]>;
+  getVoiceCallAttemptsByCampaign(campaignId: string): Promise<VoiceCallAttempt[]>;
+  getVoiceCallAttempt(id: string): Promise<VoiceCallAttempt | undefined>;
+  createVoiceCallAttempt(attempt: InsertVoiceCallAttempt): Promise<VoiceCallAttempt>;
+  updateVoiceCallAttempt(id: string, updates: Partial<VoiceCallAttempt>): Promise<VoiceCallAttempt | undefined>;
+
+  // Voice Promises
+  getAllVoicePromises(): Promise<VoicePromise[]>;
+  getVoicePromise(id: string): Promise<VoicePromise | undefined>;
+  getVoicePromisesByCampaign(campaignId: string): Promise<VoicePromise[]>;
+  getVoicePromisesByStatus(status: string): Promise<VoicePromise[]>;
+  getPendingVoicePromisesByDueDate(dueDate: Date): Promise<VoicePromise[]>;
+  createVoicePromise(promise: InsertVoicePromise): Promise<VoicePromise>;
+  updateVoicePromise(id: string, updates: Partial<VoicePromise>): Promise<VoicePromise | undefined>;
+  markVoicePromiseAsFulfilled(id: string): Promise<void>;
+
+  // Voice Configs
+  getVoiceConfig(key: string): Promise<VoiceConfig | undefined>;
+  getAllVoiceConfigs(): Promise<VoiceConfig[]>;
+  setVoiceConfig(config: InsertVoiceConfig): Promise<VoiceConfig>;
+  deleteVoiceConfig(key: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -5122,6 +5185,240 @@ export class DbStorage implements IStorage {
       .returning();
 
     return updated;
+  }
+
+  // ============================================================================
+  // LIA VOICE - Módulo de Cobrança Ativa por Telefone
+  // ============================================================================
+
+  // Voice Campaigns
+  async getAllVoiceCampaigns(): Promise<VoiceCampaign[]> {
+    return await db.select().from(schema.voiceCampaigns).orderBy(desc(schema.voiceCampaigns.createdAt));
+  }
+
+  async getVoiceCampaign(id: string): Promise<VoiceCampaign | undefined> {
+    const campaigns = await db.select().from(schema.voiceCampaigns).where(eq(schema.voiceCampaigns.id, id)).limit(1);
+    return campaigns[0];
+  }
+
+  async getVoiceCampaignsByStatus(status: string): Promise<VoiceCampaign[]> {
+    return await db.select().from(schema.voiceCampaigns).where(eq(schema.voiceCampaigns.status, status));
+  }
+
+  async getActiveVoiceCampaigns(): Promise<VoiceCampaign[]> {
+    return await db.select().from(schema.voiceCampaigns).where(eq(schema.voiceCampaigns.status, 'active'));
+  }
+
+  async createVoiceCampaign(campaign: InsertVoiceCampaign): Promise<VoiceCampaign> {
+    const [created] = await db.insert(schema.voiceCampaigns).values(campaign).returning();
+    return created;
+  }
+
+  async updateVoiceCampaign(id: string, updates: Partial<VoiceCampaign>): Promise<VoiceCampaign | undefined> {
+    const [updated] = await db.update(schema.voiceCampaigns)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(schema.voiceCampaigns.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteVoiceCampaign(id: string): Promise<void> {
+    await db.delete(schema.voiceCampaigns).where(eq(schema.voiceCampaigns.id, id));
+  }
+
+  async updateVoiceCampaignStats(id: string, stats: {
+    totalTargets?: number;
+    contactedTargets?: number;
+    successfulContacts?: number;
+    promisesMade?: number;
+    promisesFulfilled?: number;
+  }): Promise<void> {
+    await db.update(schema.voiceCampaigns)
+      .set({ ...stats, updatedAt: new Date() })
+      .where(eq(schema.voiceCampaigns.id, id));
+  }
+
+  // Voice Campaign Targets
+  async getVoiceCampaignTargets(campaignId: string): Promise<VoiceCampaignTarget[]> {
+    return await db.select().from(schema.voiceCampaignTargets)
+      .where(eq(schema.voiceCampaignTargets.campaignId, campaignId))
+      .orderBy(desc(schema.voiceCampaignTargets.priority), asc(schema.voiceCampaignTargets.createdAt));
+  }
+
+  async getVoiceCampaignTarget(id: string): Promise<VoiceCampaignTarget | undefined> {
+    const targets = await db.select().from(schema.voiceCampaignTargets)
+      .where(eq(schema.voiceCampaignTargets.id, id))
+      .limit(1);
+    return targets[0];
+  }
+
+  async getVoiceCampaignTargetsByState(campaignId: string, state: string): Promise<VoiceCampaignTarget[]> {
+    return await db.select().from(schema.voiceCampaignTargets)
+      .where(and(
+        eq(schema.voiceCampaignTargets.campaignId, campaignId),
+        eq(schema.voiceCampaignTargets.state, state)
+      ));
+  }
+
+  async getNextScheduledTargets(limit: number): Promise<VoiceCampaignTarget[]> {
+    return await db.select().from(schema.voiceCampaignTargets)
+      .where(and(
+        eq(schema.voiceCampaignTargets.state, 'scheduled'),
+        lte(schema.voiceCampaignTargets.nextAttemptAt, new Date())
+      ))
+      .orderBy(asc(schema.voiceCampaignTargets.nextAttemptAt))
+      .limit(limit);
+  }
+
+  async createVoiceCampaignTarget(target: InsertVoiceCampaignTarget): Promise<VoiceCampaignTarget> {
+    const [created] = await db.insert(schema.voiceCampaignTargets).values(target).returning();
+    return created;
+  }
+
+  async createVoiceCampaignTargets(targets: InsertVoiceCampaignTarget[]): Promise<VoiceCampaignTarget[]> {
+    if (targets.length === 0) return [];
+    return await db.insert(schema.voiceCampaignTargets).values(targets).returning();
+  }
+
+  async updateVoiceCampaignTarget(id: string, updates: Partial<VoiceCampaignTarget>): Promise<VoiceCampaignTarget | undefined> {
+    const [updated] = await db.update(schema.voiceCampaignTargets)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(schema.voiceCampaignTargets.id, id))
+      .returning();
+    return updated;
+  }
+
+  async incrementTargetAttempt(id: string, nextAttemptAt?: Date): Promise<void> {
+    await db.update(schema.voiceCampaignTargets)
+      .set({
+        attemptCount: sql`${schema.voiceCampaignTargets.attemptCount} + 1`,
+        lastAttemptAt: new Date(),
+        nextAttemptAt: nextAttemptAt || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.voiceCampaignTargets.id, id));
+  }
+
+  // Voice Call Attempts
+  async getVoiceCallAttempts(targetId: string): Promise<VoiceCallAttempt[]> {
+    return await db.select().from(schema.voiceCallAttempts)
+      .where(eq(schema.voiceCallAttempts.targetId, targetId))
+      .orderBy(desc(schema.voiceCallAttempts.attemptNumber));
+  }
+
+  async getVoiceCallAttemptsByCampaign(campaignId: string): Promise<VoiceCallAttempt[]> {
+    return await db.select().from(schema.voiceCallAttempts)
+      .where(eq(schema.voiceCallAttempts.campaignId, campaignId))
+      .orderBy(desc(schema.voiceCallAttempts.dialedAt));
+  }
+
+  async getVoiceCallAttempt(id: string): Promise<VoiceCallAttempt | undefined> {
+    const attempts = await db.select().from(schema.voiceCallAttempts)
+      .where(eq(schema.voiceCallAttempts.id, id))
+      .limit(1);
+    return attempts[0];
+  }
+
+  async createVoiceCallAttempt(attempt: InsertVoiceCallAttempt): Promise<VoiceCallAttempt> {
+    const [created] = await db.insert(schema.voiceCallAttempts).values(attempt).returning();
+    return created;
+  }
+
+  async updateVoiceCallAttempt(id: string, updates: Partial<VoiceCallAttempt>): Promise<VoiceCallAttempt | undefined> {
+    const [updated] = await db.update(schema.voiceCallAttempts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(schema.voiceCallAttempts.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Voice Promises
+  async getAllVoicePromises(): Promise<VoicePromise[]> {
+    return await db.select().from(schema.voicePromises)
+      .orderBy(desc(schema.voicePromises.recordedAt));
+  }
+
+  async getVoicePromise(id: string): Promise<VoicePromise | undefined> {
+    const promises = await db.select().from(schema.voicePromises)
+      .where(eq(schema.voicePromises.id, id))
+      .limit(1);
+    return promises[0];
+  }
+
+  async getVoicePromisesByCampaign(campaignId: string): Promise<VoicePromise[]> {
+    return await db.select().from(schema.voicePromises)
+      .where(eq(schema.voicePromises.campaignId, campaignId))
+      .orderBy(desc(schema.voicePromises.recordedAt));
+  }
+
+  async getVoicePromisesByStatus(status: string): Promise<VoicePromise[]> {
+    return await db.select().from(schema.voicePromises)
+      .where(eq(schema.voicePromises.status, status))
+      .orderBy(asc(schema.voicePromises.dueDate));
+  }
+
+  async getPendingVoicePromisesByDueDate(dueDate: Date): Promise<VoicePromise[]> {
+    return await db.select().from(schema.voicePromises)
+      .where(and(
+        eq(schema.voicePromises.status, 'pending'),
+        lte(schema.voicePromises.dueDate, dueDate)
+      ))
+      .orderBy(asc(schema.voicePromises.dueDate));
+  }
+
+  async createVoicePromise(promise: InsertVoicePromise): Promise<VoicePromise> {
+    const [created] = await db.insert(schema.voicePromises).values(promise).returning();
+    return created;
+  }
+
+  async updateVoicePromise(id: string, updates: Partial<VoicePromise>): Promise<VoicePromise | undefined> {
+    const [updated] = await db.update(schema.voicePromises)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(schema.voicePromises.id, id))
+      .returning();
+    return updated;
+  }
+
+  async markVoicePromiseAsFulfilled(id: string): Promise<void> {
+    await db.update(schema.voicePromises)
+      .set({
+        status: 'fulfilled',
+        fulfilledAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.voicePromises.id, id));
+  }
+
+  // Voice Configs
+  async getVoiceConfig(key: string): Promise<VoiceConfig | undefined> {
+    const configs = await db.select().from(schema.voiceConfigs)
+      .where(eq(schema.voiceConfigs.key, key))
+      .limit(1);
+    return configs[0];
+  }
+
+  async getAllVoiceConfigs(): Promise<VoiceConfig[]> {
+    return await db.select().from(schema.voiceConfigs);
+  }
+
+  async setVoiceConfig(config: InsertVoiceConfig): Promise<VoiceConfig> {
+    const [created] = await db.insert(schema.voiceConfigs)
+      .values(config)
+      .onConflictDoUpdate({
+        target: schema.voiceConfigs.key,
+        set: {
+          value: config.value,
+          description: config.description,
+          updatedBy: config.updatedBy,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return created;
+  }
+
+  async deleteVoiceConfig(key: string): Promise<void> {
+    await db.delete(schema.voiceConfigs).where(eq(schema.voiceConfigs.key, key));
   }
 }
 
