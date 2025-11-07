@@ -313,9 +313,9 @@ export default function VoiceCampaigns() {
                     data-testid="select-campaign-upload"
                   >
                     <option value="">Selecione uma campanha...</option>
-                    {campaigns?.filter(c => c.status === 'active').map((campaign) => (
+                    {campaigns?.map((campaign) => (
                       <option key={campaign.id} value={campaign.id}>
-                        {campaign.name}
+                        {campaign.name} ({campaign.status})
                       </option>
                     ))}
                   </select>
