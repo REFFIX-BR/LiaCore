@@ -141,10 +141,7 @@ export default function VoiceCampaigns() {
   const toggleCampaignStatusMutation = useMutation({
     mutationFn: async ({ campaignId, newStatus }: { campaignId: string; newStatus: 'active' | 'paused' | 'draft' }) => {
       setTogglingCampaignId(campaignId);
-      return apiRequest(`/api/voice/campaigns/${campaignId}`, {
-        method: 'PATCH',
-        body: { status: newStatus },
-      });
+      return apiRequest(`/api/voice/campaigns/${campaignId}`, 'PATCH', { status: newStatus });
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/voice/campaigns'] });
