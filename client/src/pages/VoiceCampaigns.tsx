@@ -43,9 +43,11 @@ interface Campaign {
 }
 
 interface TargetData {
-  nome: string;
-  telefone: string;
-  valorDivida?: number;
+  debtorName: string;
+  phoneNumber: string;
+  debtAmount?: number;
+  debtorDocument?: string;
+  address?: string;
 }
 
 export default function VoiceCampaigns() {
@@ -106,7 +108,7 @@ export default function VoiceCampaigns() {
 
   const uploadTargetsMutation = useMutation({
     mutationFn: async ({ campaignId, targets }: { campaignId: string; targets: TargetData[] }) => {
-      const response = await fetch(`/api/voice/campaigns/${campaignId}/targets/upload`, {
+      const response = await fetch(`/api/voice/campaigns/${campaignId}/targets`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targets }),
@@ -145,13 +147,20 @@ export default function VoiceCampaigns() {
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json<any>(firstSheet);
 
-        const parsedTargets: TargetData[] = jsonData.map((row: any) => ({
-          nome: row.nome || row.Nome || row.name || row.Name || '',
-          telefone: String(row.telefone || row.Telefone || row.phone || row.Phone || '').replace(/\D/g, ''),
-          valorDivida: row.valorDivida || row['valor_divida'] || row.valor || row.Valor || undefined,
-        }));
+        const parsedTargets: TargetData[] = jsonData.map((row: any) => {
+          const phone = String(row.telefone || row.Telefone || row.phone || row.Phone || '');
+          const formattedPhone = phone.startsWith('+') ? phone : `+${phone.replace(/\D/g, '')}`;
+          
+          return {
+            debtorName: row.nome || row.Nome || row.name || row.Name || '',
+            phoneNumber: formattedPhone,
+            debtAmount: row.valorDivida || row['valor_divida'] || row.valor || row.Valor || undefined,
+            debtorDocument: row.cpf_cnpj || row.cpf || row.cnpj || row.document || undefined,
+            address: row.endereco || row.address || undefined,
+          };
+        });
 
-        const validTargets = parsedTargets.filter(t => t.nome && t.telefone);
+        const validTargets = parsedTargets.filter(t => t.debtorName && t.phoneNumber);
 
         if (validTargets.length === 0) {
           toast({
@@ -374,11 +383,11 @@ export default function VoiceCampaigns() {
                         <TableBody>
                           {uploadedTargets.slice(0, 10).map((target, idx) => (
                             <TableRow key={idx}>
-                              <TableCell>{target.nome}</TableCell>
-                              <TableCell>{target.telefone}</TableCell>
+                              <TableCell>{target.debtorName}</TableCell>
+                              <TableCell>{target.phoneNumber}</TableCell>
                               <TableCell>
-                                {target.valorDivida
-                                  ? `R$ ${(target.valorDivida / 100).toFixed(2)}`
+                                {target.debtAmount
+                                  ? `R$ ${(target.debtAmount / 100).toFixed(2)}`
                                   : '-'}
                               </TableCell>
                             </TableRow>

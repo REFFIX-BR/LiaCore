@@ -457,6 +457,7 @@ export interface IStorage {
   }): Promise<void>;
 
   // Voice Campaign Targets
+  getAllVoiceCampaignTargets(): Promise<VoiceCampaignTarget[]>;
   getVoiceCampaignTargets(campaignId: string): Promise<VoiceCampaignTarget[]>;
   getVoiceCampaignTarget(id: string): Promise<VoiceCampaignTarget | undefined>;
   getVoiceCampaignTargetsByState(campaignId: string, state: string): Promise<VoiceCampaignTarget[]>;
@@ -5239,6 +5240,11 @@ export class DbStorage implements IStorage {
   }
 
   // Voice Campaign Targets
+  async getAllVoiceCampaignTargets(): Promise<VoiceCampaignTarget[]> {
+    return await db.select().from(schema.voiceCampaignTargets)
+      .orderBy(desc(schema.voiceCampaignTargets.createdAt));
+  }
+
   async getVoiceCampaignTargets(campaignId: string): Promise<VoiceCampaignTarget[]> {
     return await db.select().from(schema.voiceCampaignTargets)
       .where(eq(schema.voiceCampaignTargets.campaignId, campaignId))

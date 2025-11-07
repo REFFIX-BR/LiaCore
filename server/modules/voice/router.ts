@@ -212,6 +212,38 @@ router.post('/campaigns/:campaignId/targets', authenticate, requireAdminOrSuperv
   }
 });
 
+router.get('/targets', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+  try {
+    const { campaignId, state, search } = req.query;
+    
+    let targets;
+    if (campaignId && typeof campaignId === 'string') {
+      if (state && typeof state === 'string') {
+        targets = await storage.getVoiceCampaignTargetsByState(campaignId, state);
+      } else {
+        targets = await storage.getVoiceCampaignTargets(campaignId);
+      }
+    } else {
+      // Get all targets across all campaigns
+      targets = await storage.getAllVoiceCampaignTargets();
+    }
+    
+    // Apply search filter if provided
+    if (search && typeof search === 'string' && targets) {
+      const searchLower = search.toLowerCase();
+      targets = targets.filter((t: any) => 
+        (t.debtorName && t.debtorName.toLowerCase().includes(searchLower)) ||
+        (t.phoneNumber && t.phoneNumber.includes(search))
+      );
+    }
+    
+    res.json(targets || []);
+  } catch (error: any) {
+    console.error('❌ [Voice API] Error fetching targets:', error);
+    res.status(500).json({ error: 'Erro ao buscar alvos' });
+  }
+});
+
 router.get('/targets/:id', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
   try {
     const { id } = req.params;

@@ -1379,6 +1379,8 @@ export const insertVoiceCampaignSchema = createInsertSchema(voiceCampaigns).omit
 }).extend({
   status: z.enum(["draft", "scheduled", "active", "paused", "completed", "cancelled"]).default("draft"),
   strategy: z.enum(["sequential", "priority", "random"]).default("sequential"),
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
 });
 
 export const insertVoiceCampaignTargetSchema = createInsertSchema(voiceCampaignTargets).omit({

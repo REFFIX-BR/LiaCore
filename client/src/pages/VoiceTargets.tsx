@@ -174,7 +174,7 @@ export default function VoiceTargets() {
                         {target.debtorName}
                       </TableCell>
                       <TableCell data-testid={`cell-phone-${target.id}`}>
-                        {target.debtorPhone}
+                        {target.phoneNumber}
                       </TableCell>
                       <TableCell data-testid={`cell-amount-${target.id}`}>
                         {target.debtAmount
