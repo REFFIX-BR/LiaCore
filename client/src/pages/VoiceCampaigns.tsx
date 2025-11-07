@@ -11,10 +11,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Phone, Plus, Upload, TrendingUp, Users, CheckCircle2, XCircle, Calendar } from 'lucide-react';
-import { useState } from 'react';
+import { Phone, Plus, Upload, TrendingUp, Users, CheckCircle2, XCircle, Calendar, FileUp, AlertCircle } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import * as XLSX from 'xlsx';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const campaignSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -39,9 +42,20 @@ interface Campaign {
   createdAt?: string;
 }
 
+interface TargetData {
+  nome: string;
+  telefone: string;
+  valorDivida?: number;
+}
+
 export default function VoiceCampaigns() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
+  const [uploadedTargets, setUploadedTargets] = useState<TargetData[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: campaigns, isLoading } = useQuery<Campaign[]>({
     queryKey: ['/api/voice/campaigns'],
@@ -89,6 +103,130 @@ export default function VoiceCampaigns() {
       });
     },
   });
+
+  const uploadTargetsMutation = useMutation({
+    mutationFn: async ({ campaignId, targets }: { campaignId: string; targets: TargetData[] }) => {
+      const response = await fetch(`/api/voice/campaigns/${campaignId}/targets/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targets }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/targets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/stats'] });
+      toast({
+        title: 'Alvos importados',
+        description: `${data.imported || uploadedTargets.length} alvos foram importados com sucesso.`,
+      });
+      setIsUploadDialogOpen(false);
+      setUploadedTargets([]);
+      setSelectedCampaignId('');
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao importar alvos',
+        description: error.message || 'Ocorreu um erro ao importar os alvos.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleFileSelect = useCallback((file: File) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json<any>(firstSheet);
+
+        const parsedTargets: TargetData[] = jsonData.map((row: any) => ({
+          nome: row.nome || row.Nome || row.name || row.Name || '',
+          telefone: String(row.telefone || row.Telefone || row.phone || row.Phone || '').replace(/\D/g, ''),
+          valorDivida: row.valorDivida || row['valor_divida'] || row.valor || row.Valor || undefined,
+        }));
+
+        const validTargets = parsedTargets.filter(t => t.nome && t.telefone);
+
+        if (validTargets.length === 0) {
+          toast({
+            title: 'Planilha inválida',
+            description: 'Nenhum registro válido encontrado. Certifique-se de que há colunas "nome" e "telefone".',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        setUploadedTargets(validTargets);
+        toast({
+          title: 'Planilha carregada',
+          description: `${validTargets.length} alvos encontrados.`,
+        });
+      } catch (error) {
+        toast({
+          title: 'Erro ao ler planilha',
+          description: 'Ocorreu um erro ao processar a planilha.',
+          variant: 'destructive',
+        });
+      }
+    };
+
+    reader.readAsBinaryString(file);
+  }, [toast]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files[0];
+    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv'))) {
+      handleFileSelect(file);
+    } else {
+      toast({
+        title: 'Arquivo inválido',
+        description: 'Por favor, selecione um arquivo Excel (.xlsx, .xls) ou CSV.',
+        variant: 'destructive',
+      });
+    }
+  }, [handleFileSelect, toast]);
+
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  }, [handleFileSelect]);
+
+  const handleUploadTargets = () => {
+    if (!selectedCampaignId || uploadedTargets.length === 0) {
+      toast({
+        title: 'Dados incompletos',
+        description: 'Selecione uma campanha e carregue uma planilha válida.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    uploadTargetsMutation.mutate({
+      campaignId: selectedCampaignId,
+      targets: uploadedTargets,
+    });
+  };
 
   const onSubmit = (data: CampaignFormData) => {
     createMutation.mutate(data);
@@ -141,13 +279,154 @@ export default function VoiceCampaigns() {
           </h1>
           <p className="text-muted-foreground">Campanhas de Cobrança por Voz</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-campaign">
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Campanha
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" data-testid="button-upload-targets">
+                <Upload className="h-4 w-4 mr-2" />
+                Importar Alvos
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Importar Alvos de Planilha</DialogTitle>
+                <DialogDescription>
+                  Faça upload de uma planilha Excel (.xlsx) ou CSV com os alvos da campanha
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Selecionar Campanha</label>
+                  <select
+                    className="w-full p-2 border rounded-md"
+                    value={selectedCampaignId}
+                    onChange={(e) => setSelectedCampaignId(e.target.value)}
+                    data-testid="select-campaign-upload"
+                  >
+                    <option value="">Selecione uma campanha...</option>
+                    {campaigns?.filter(c => c.status === 'active').map((campaign) => (
+                      <option key={campaign.id} value={campaign.id}>
+                        {campaign.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Formato da Planilha</AlertTitle>
+                  <AlertDescription>
+                    A planilha deve conter as colunas: <strong>nome</strong>, <strong>telefone</strong> e opcionalmente <strong>valorDivida</strong>
+                  </AlertDescription>
+                </Alert>
+
+                <div
+                  className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                    isDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'
+                  }`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  data-testid="dropzone-upload"
+                >
+                  <FileUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-lg font-medium mb-1">
+                    Arraste e solte sua planilha aqui
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    ou clique para selecionar (Excel .xlsx ou CSV)
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={handleFileInputChange}
+                    className="hidden"
+                    data-testid="input-file-upload"
+                  />
+                </div>
+
+                {uploadedTargets.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-medium">
+                        Preview ({uploadedTargets.length} alvos)
+                      </h3>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setUploadedTargets([])}
+                        data-testid="button-clear-upload"
+                      >
+                        Limpar
+                      </Button>
+                    </div>
+                    <div className="border rounded-md max-h-64 overflow-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Nome</TableHead>
+                            <TableHead>Telefone</TableHead>
+                            <TableHead>Valor da Dívida</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {uploadedTargets.slice(0, 10).map((target, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell>{target.nome}</TableCell>
+                              <TableCell>{target.telefone}</TableCell>
+                              <TableCell>
+                                {target.valorDivida
+                                  ? `R$ ${(target.valorDivida / 100).toFixed(2)}`
+                                  : '-'}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          {uploadedTargets.length > 10 && (
+                            <TableRow>
+                              <TableCell colSpan={3} className="text-center text-muted-foreground">
+                                ... e mais {uploadedTargets.length - 10} alvos
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsUploadDialogOpen(false)}
+                    data-testid="button-cancel-upload"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleUploadTargets}
+                    disabled={
+                      !selectedCampaignId ||
+                      uploadedTargets.length === 0 ||
+                      uploadTargetsMutation.isPending
+                    }
+                    data-testid="button-confirm-upload"
+                  >
+                    {uploadTargetsMutation.isPending ? 'Importando...' : 'Importar Alvos'}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-create-campaign">
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Campanha
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Criar Nova Campanha</DialogTitle>
@@ -237,6 +516,7 @@ export default function VoiceCampaigns() {
             </Form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4 mb-6">
@@ -319,7 +599,15 @@ export default function VoiceCampaigns() {
                       })}
                     </CardDescription>
                   </div>
-                  <Button variant="outline" size="sm" data-testid={`button-upload-${campaign.id}`}>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    data-testid={`button-upload-${campaign.id}`}
+                    onClick={() => {
+                      setSelectedCampaignId(campaign.id);
+                      setIsUploadDialogOpen(true);
+                    }}
+                  >
                     <Upload className="h-4 w-4 mr-2" />
                     Importar Alvos
                   </Button>

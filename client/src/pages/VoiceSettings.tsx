@@ -199,7 +199,7 @@ export default function VoiceSettings() {
                 placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                 value={configs.TWILIO_ACCOUNT_SID}
                 onChange={(e) => handleConfigChange('TWILIO_ACCOUNT_SID', e.target.value)}
-                data-testid="input-twilio-sid"
+                data-testid="input-twilio-account-sid"
               />
             </div>
             <div className="space-y-2">
@@ -210,7 +210,7 @@ export default function VoiceSettings() {
                 placeholder="••••••••••••••••••••••••••••••••"
                 value={configs.TWILIO_AUTH_TOKEN}
                 onChange={(e) => handleConfigChange('TWILIO_AUTH_TOKEN', e.target.value)}
-                data-testid="input-twilio-token"
+                data-testid="input-twilio-auth-token"
               />
             </div>
             <div className="space-y-2">
@@ -221,7 +221,7 @@ export default function VoiceSettings() {
                 placeholder="+5511999999999"
                 value={configs.TWILIO_PHONE_NUMBER}
                 onChange={(e) => handleConfigChange('TWILIO_PHONE_NUMBER', e.target.value)}
-                data-testid="input-twilio-phone"
+                data-testid="input-twilio-phone-number"
               />
             </div>
             <div className="space-y-2">
@@ -232,7 +232,7 @@ export default function VoiceSettings() {
                 placeholder="https://your-app.replit.app"
                 value={configs.VOICE_WEBHOOK_BASE_URL}
                 onChange={(e) => handleConfigChange('VOICE_WEBHOOK_BASE_URL', e.target.value)}
-                data-testid="input-webhook-url"
+                data-testid="input-webhook-base-url"
               />
               <p className="text-xs text-muted-foreground">
                 URL base da aplicação para receber webhooks do Twilio

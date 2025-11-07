@@ -170,18 +170,24 @@ export default function VoiceTargets() {
                 {filteredTargets && filteredTargets.length > 0 ? (
                   filteredTargets.map((target) => (
                     <TableRow key={target.id} data-testid={`row-target-${target.id}`}>
-                      <TableCell className="font-medium">{target.debtorName}</TableCell>
-                      <TableCell>{target.debtorPhone}</TableCell>
-                      <TableCell>
+                      <TableCell className="font-medium" data-testid={`cell-name-${target.id}`}>
+                        {target.debtorName}
+                      </TableCell>
+                      <TableCell data-testid={`cell-phone-${target.id}`}>
+                        {target.debtorPhone}
+                      </TableCell>
+                      <TableCell data-testid={`cell-amount-${target.id}`}>
                         {target.debtAmount
                           ? `R$ ${(target.debtAmount / 100).toFixed(2)}`
                           : '-'}
                       </TableCell>
-                      <TableCell>
+                      <TableCell data-testid={`cell-attempts-${target.id}`}>
                         {target.attemptsMade || 0} / {target.maxAttempts || 3}
                       </TableCell>
-                      <TableCell>{getStatusBadge(target.status)}</TableCell>
-                      <TableCell>
+                      <TableCell data-testid={`cell-status-${target.id}`}>
+                        {getStatusBadge(target.status)}
+                      </TableCell>
+                      <TableCell data-testid={`cell-last-attempt-${target.id}`}>
                         {target.lastAttemptAt
                           ? formatDistanceToNow(new Date(target.lastAttemptAt), {
                               addSuffix: true,

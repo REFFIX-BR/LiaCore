@@ -184,15 +184,15 @@ export default function VoicePromises() {
                         data-testid={`row-promise-${promise.id}`}
                         className={isOverdue ? 'bg-destructive/5' : ''}
                       >
-                        <TableCell className="font-medium">
+                        <TableCell className="font-medium" data-testid={`cell-name-${promise.id}`}>
                           {promise.debtorName || '-'}
                         </TableCell>
-                        <TableCell>
+                        <TableCell data-testid={`cell-amount-${promise.id}`}>
                           {promise.amount
                             ? `R$ ${(promise.amount / 100).toFixed(2)}`
                             : '-'}
                         </TableCell>
-                        <TableCell>
+                        <TableCell data-testid={`cell-due-date-${promise.id}`}>
                           {promise.dueDate ? (
                             <div className="flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -207,9 +207,13 @@ export default function VoicePromises() {
                             '-'
                           )}
                         </TableCell>
-                        <TableCell>{promise.paymentMethod || '-'}</TableCell>
-                        <TableCell>{getStatusBadge(promise.status)}</TableCell>
-                        <TableCell>
+                        <TableCell data-testid={`cell-payment-method-${promise.id}`}>
+                          {promise.paymentMethod || '-'}
+                        </TableCell>
+                        <TableCell data-testid={`cell-status-${promise.id}`}>
+                          {getStatusBadge(promise.status)}
+                        </TableCell>
+                        <TableCell data-testid={`cell-created-${promise.id}`}>
                           {promise.createdAt
                             ? formatDistanceToNow(new Date(promise.createdAt), {
                                 addSuffix: true,
