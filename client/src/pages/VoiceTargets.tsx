@@ -1,14 +1,17 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Phone, Search, PhoneCall, PhoneOff, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Phone, Search, PhoneCall, PhoneOff, Clock, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 
 interface Target {
   id: string;
@@ -26,9 +29,11 @@ interface Target {
 }
 
 export default function VoiceTargets() {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [campaignFilter, setCampaignFilter] = useState<string>('all');
+  const [targetToDelete, setTargetToDelete] = useState<Target | null>(null);
 
   const { data: targets, isLoading } = useQuery<Target[]>({
     queryKey: ['/api/voice/targets'],
@@ -36,6 +41,29 @@ export default function VoiceTargets() {
 
   const { data: campaigns } = useQuery<any[]>({
     queryKey: ['/api/voice/campaigns'],
+  });
+
+  const deleteTargetMutation = useMutation({
+    mutationFn: async (targetId: string) => {
+      return apiRequest(`/api/voice/targets/${targetId}`, 'DELETE', {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/targets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/stats'] });
+      toast({
+        title: 'Alvo excluído',
+        description: 'O alvo foi excluído com sucesso.',
+      });
+      setTargetToDelete(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao excluir alvo',
+        description: error.message || 'Ocorreu um erro ao excluir o alvo.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const getStatusBadge = (status: string) => {
@@ -174,7 +202,7 @@ export default function VoiceTargets() {
                         {target.debtorName}
                       </TableCell>
                       <TableCell data-testid={`cell-phone-${target.id}`}>
-                        {target.phoneNumber}
+                        {target.debtorPhone}
                       </TableCell>
                       <TableCell data-testid={`cell-amount-${target.id}`}>
                         {target.debtAmount
@@ -196,13 +224,23 @@ export default function VoiceTargets() {
                           : '-'}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          data-testid={`button-details-${target.id}`}
-                        >
-                          Ver Detalhes
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            data-testid={`button-details-${target.id}`}
+                          >
+                            Ver Detalhes
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setTargetToDelete(target)}
+                            data-testid={`button-delete-${target.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -218,6 +256,36 @@ export default function VoiceTargets() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Confirm Delete Dialog */}
+      <Dialog open={!!targetToDelete} onOpenChange={(open) => !open && setTargetToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir o alvo "{targetToDelete?.debtorName}"?
+              Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setTargetToDelete(null)}
+              data-testid="button-cancel-delete"
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => targetToDelete && deleteTargetMutation.mutate(targetToDelete.id)}
+              disabled={deleteTargetMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deleteTargetMutation.isPending ? 'Excluindo...' : 'Excluir'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
