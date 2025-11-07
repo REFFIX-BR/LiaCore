@@ -565,6 +565,40 @@ router.get('/stats', authenticate, requireAdminOrSupervisor, requireVoiceModule,
   }
 });
 
+// ===== RECENT ACTIVITY =====
+router.get('/activity', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 10;
+    const allTargets = await storage.getAllVoiceCampaignTargets();
+    
+    const recentActivity = allTargets
+      .filter(t => t.state !== 'pending' || (t.attemptCount || 0) > 0)
+      .sort((a, b) => {
+        const aTime = a.lastAttemptAt || a.createdAt;
+        const bTime = b.lastAttemptAt || b.createdAt;
+        if (!aTime) return 1;
+        if (!bTime) return -1;
+        return bTime.getTime() - aTime.getTime();
+      })
+      .slice(0, limit)
+      .map(t => ({
+        id: t.id,
+        campaignId: t.campaignId,
+        debtorName: t.debtorName,
+        phoneNumber: t.phoneNumber,
+        state: t.state,
+        outcome: t.outcome,
+        attemptCount: t.attemptCount || 0,
+        lastAttemptAt: t.lastAttemptAt,
+      }));
+    
+    res.json(recentActivity);
+  } catch (error: any) {
+    console.error('❌ [Voice API] Error fetching activity:', error);
+    res.status(500).json({ error: 'Erro ao buscar atividades' });
+  }
+});
+
 // ===== TWILIO WEBHOOKS (Twilio signature verification) =====
 router.post('/webhook/twiml', express.text({ type: '*/*' }), validateTwilioSignature, async (req, res) => {
   try {
