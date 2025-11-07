@@ -55,6 +55,7 @@ export default function VoiceCampaigns() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
+  const [togglingCampaignId, setTogglingCampaignId] = useState<string | null>(null);
   const [uploadedTargets, setUploadedTargets] = useState<TargetData[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -139,24 +140,20 @@ export default function VoiceCampaigns() {
 
   const toggleCampaignStatusMutation = useMutation({
     mutationFn: async ({ campaignId, newStatus }: { campaignId: string; newStatus: 'active' | 'paused' | 'draft' }) => {
-      const response = await fetch(`/api/voice/campaigns/${campaignId}`, {
+      setTogglingCampaignId(campaignId);
+      return apiRequest(`/api/voice/campaigns/${campaignId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: { status: newStatus },
       });
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Erro ao atualizar status');
-      }
-      return response.json();
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/voice/campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['/api/voice/stats'] });
+      setTogglingCampaignId(null);
       
       if (variables.newStatus === 'active' && data.activationResult) {
         toast({
-          title: '🚀 Campanha Ativada!',
+          title: 'Campanha Ativada',
           description: `${data.activationResult.enqueued} ligações agendadas. As chamadas começarão em instantes.`,
         });
       } else if (variables.newStatus === 'paused') {
@@ -172,6 +169,7 @@ export default function VoiceCampaigns() {
       }
     },
     onError: (error: any) => {
+      setTogglingCampaignId(null);
       toast({
         title: 'Erro ao atualizar campanha',
         description: error.message || 'Ocorreu um erro ao atualizar o status.',
@@ -668,10 +666,10 @@ export default function VoiceCampaigns() {
                           campaignId: campaign.id, 
                           newStatus: 'active' 
                         })}
-                        disabled={toggleCampaignStatusMutation.isPending}
+                        disabled={togglingCampaignId === campaign.id}
                       >
                         <Phone className="h-4 w-4 mr-2" />
-                        Ativar
+                        {togglingCampaignId === campaign.id ? 'Ativando...' : 'Ativar'}
                       </Button>
                     )}
                     {campaign.status === 'active' && (
@@ -683,9 +681,9 @@ export default function VoiceCampaigns() {
                           campaignId: campaign.id, 
                           newStatus: 'paused' 
                         })}
-                        disabled={toggleCampaignStatusMutation.isPending}
+                        disabled={togglingCampaignId === campaign.id}
                       >
-                        Pausar
+                        {togglingCampaignId === campaign.id ? 'Pausando...' : 'Pausar'}
                       </Button>
                     )}
                     <Button 
