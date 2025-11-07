@@ -204,6 +204,9 @@ router.post('/campaigns/:campaignId/targets', authenticate, requireAdminOrSuperv
     
     const created = await storage.createVoiceCampaignTargets(targetsWithCampaign);
     
+    // Recalculate campaign statistics
+    await storage.recalculateVoiceCampaignStats(campaignId);
+    
     console.log(`✅ [Voice API] ${created.length} targets created for campaign ${campaignId}`);
     res.status(201).json({ success: true, count: created.length, targets: created });
   } catch (error: any) {

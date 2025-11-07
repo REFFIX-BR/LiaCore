@@ -455,6 +455,7 @@ export interface IStorage {
     promisesMade?: number;
     promisesFulfilled?: number;
   }): Promise<void>;
+  recalculateVoiceCampaignStats(campaignId: string): Promise<void>;
 
   // Voice Campaign Targets
   getAllVoiceCampaignTargets(): Promise<VoiceCampaignTarget[]>;
@@ -5237,6 +5238,50 @@ export class DbStorage implements IStorage {
     await db.update(schema.voiceCampaigns)
       .set({ ...stats, updatedAt: new Date() })
       .where(eq(schema.voiceCampaigns.id, id));
+  }
+
+  async recalculateVoiceCampaignStats(campaignId: string): Promise<void> {
+    const [totalTargetsResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(schema.voiceCampaignTargets)
+      .where(eq(schema.voiceCampaignTargets.campaignId, campaignId));
+
+    const [contactedResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(schema.voiceCampaignTargets)
+      .where(and(
+        eq(schema.voiceCampaignTargets.campaignId, campaignId),
+        eq(schema.voiceCampaignTargets.state, 'completed')
+      ));
+
+    const [promisesResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(schema.voicePromises)
+      .where(eq(schema.voicePromises.campaignId, campaignId));
+
+    const [fulfilledResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(schema.voicePromises)
+      .where(and(
+        eq(schema.voicePromises.campaignId, campaignId),
+        eq(schema.voicePromises.status, 'fulfilled')
+      ));
+
+    const [successfulResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(schema.voiceCallAttempts)
+      .where(and(
+        eq(schema.voiceCallAttempts.campaignId, campaignId),
+        eq(schema.voiceCallAttempts.status, 'completed')
+      ));
+
+    await this.updateVoiceCampaignStats(campaignId, {
+      totalTargets: totalTargetsResult?.count || 0,
+      contactedTargets: contactedResult?.count || 0,
+      successfulContacts: successfulResult?.count || 0,
+      promisesMade: promisesResult?.count || 0,
+      promisesFulfilled: fulfilledResult?.count || 0,
+    });
   }
 
   // Voice Campaign Targets
