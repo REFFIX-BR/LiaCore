@@ -81,6 +81,43 @@ router.put('/feature-flags/:key', authenticate, requireAdmin, async (req, res) =
   }
 });
 
+// ===== TWILIO CONNECTION TEST =====
+router.get('/test-twilio', authenticate, requireAdminOrSupervisor, async (req, res) => {
+  try {
+    const { getTwilioClient, getTwilioFromPhoneNumber } = await import('../../lib/twilioIntegration');
+    
+    const twilioClient = await getTwilioClient();
+    const fromPhoneNumber = await getTwilioFromPhoneNumber();
+    const webhookBaseUrl = process.env.WEBHOOK_BASE_URL;
+    
+    const account = await twilioClient.api.accounts(twilioClient.accountSid).fetch();
+    
+    const maskString = (str: string, visibleChars: number = 4) => {
+      if (!str || str.length <= visibleChars) return str;
+      return str.slice(0, visibleChars) + '***' + str.slice(-visibleChars);
+    };
+    
+    res.json({
+      success: true,
+      connection: {
+        accountSid: maskString(account.sid),
+        accountStatus: account.status,
+        accountFriendlyName: account.friendlyName,
+        fromPhoneNumber: fromPhoneNumber,
+        webhookBaseUrl: webhookBaseUrl || 'NOT_CONFIGURED',
+      },
+      message: 'Conexão Twilio validada com sucesso',
+    });
+  } catch (error: any) {
+    console.error('❌ [Voice API] Error testing Twilio connection:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erro ao testar conexão Twilio',
+      details: error.message,
+    });
+  }
+});
+
 // ===== CAMPAIGNS =====
 router.get('/campaigns', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
   try {
