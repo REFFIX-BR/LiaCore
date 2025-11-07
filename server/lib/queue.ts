@@ -11,11 +11,11 @@ export const QUEUE_NAMES = {
   INACTIVITY_FOLLOWUP: 'inactivity-followup',
   AUTO_CLOSURE: 'auto-closure',
   // LIA VOICE - Módulo de Cobrança Ativa
-  VOICE_CAMPAIGN_INGEST: 'voice:campaign-ingest',
-  VOICE_SCHEDULING: 'voice:scheduling',
-  VOICE_DIALER: 'voice:dialer',
-  VOICE_POST_CALL: 'voice:post-call',
-  VOICE_PROMISE_MONITOR: 'voice:promise-monitor',
+  VOICE_CAMPAIGN_INGEST: 'voice-campaign-ingest',
+  VOICE_SCHEDULING: 'voice-scheduling',
+  VOICE_DIALER: 'voice-dialer',
+  VOICE_POST_CALL: 'voice-post-call',
+  VOICE_PROMISE_MONITOR: 'voice-promise-monitor',
 } as const;
 
 // Queue configurations with different priorities and retry strategies

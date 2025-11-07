@@ -173,6 +173,13 @@ app.use((req, res, next) => {
           console.error('❌ [Workers] Failed to start workers:', error);
           console.log('   Falling back to async processing');
         });
+        
+        import('./modules/voice/workers').then(() => {
+          console.log('✅ [Voice Workers] Voice module workers initialized with Redis');
+        }).catch((error) => {
+          console.error('❌ [Voice Workers] Failed to start voice workers:', error);
+          console.log('   Voice module will be disabled');
+        });
       }
     });
 

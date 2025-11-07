@@ -9,10 +9,10 @@ export function setupWebSockets(server: Server) {
 
   // Manually handle HTTP upgrade requests
   server.on('upgrade', (req, socket, head) => {
-    const path = req.url;
+    const path = req.url?.split('?')[0];
     
     // Only handle our specific paths, let Vite handle its own
-    if (path === '/ws/webhook-logs' || path === '/ws/reasoning') {
+    if (path === '/ws/webhook-logs' || path === '/ws/reasoning' || path === '/api/voice/webhook/stream') {
       wss.handleUpgrade(req, socket, head, (ws) => {
         if (path === '/ws/webhook-logs') {
           console.log('🔌 [WebSocket] Cliente conectado ao monitor de webhook');
@@ -20,6 +20,14 @@ export function setupWebSockets(server: Server) {
         } else if (path === '/ws/reasoning') {
           console.log('🤖 [Agent Logger] Cliente conectado ao monitor de agentes');
           agentLogger.handleConnection(ws);
+        } else if (path === '/api/voice/webhook/stream') {
+          console.log('📞 [Voice Bridge] Twilio stream connection incoming');
+          import('../modules/voice/websocket-bridge').then(({ handleTwilioOpenAIBridge }) => {
+            handleTwilioOpenAIBridge(ws, req);
+          }).catch((error) => {
+            console.error('❌ [Voice Bridge] Error loading handler:', error);
+            ws.close(1011, 'Internal error');
+          });
         }
       });
     }

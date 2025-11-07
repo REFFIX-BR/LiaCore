@@ -4,8 +4,39 @@ import { authenticate, requireAdmin, requireAdminOrSupervisor } from '../../midd
 import { storage } from '../../storage';
 import { insertVoiceCampaignSchema, insertVoiceCampaignTargetSchema } from '@shared/schema';
 import { z } from 'zod';
+import twilio from 'twilio';
 
 const router = express.Router();
+
+// Middleware para verificar assinatura Twilio
+function validateTwilioSignature(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const baseUrl = process.env.VOICE_WEBHOOK_BASE_URL;
+
+  if (!authToken || !baseUrl) {
+    console.error('❌ [Twilio Webhook] Missing TWILIO_AUTH_TOKEN or VOICE_WEBHOOK_BASE_URL');
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
+
+  const twilioSignature = req.headers['x-twilio-signature'] as string;
+  if (!twilioSignature) {
+    console.error('❌ [Twilio Webhook] Missing X-Twilio-Signature header');
+    return res.status(403).json({ error: 'Forbidden: Missing signature' });
+  }
+
+  const url = `${baseUrl}${req.originalUrl}`;
+  const params = req.method === 'POST' ? req.body : req.query;
+
+  const isValid = twilio.validateRequest(authToken, twilioSignature, url, params);
+
+  if (!isValid) {
+    console.error('❌ [Twilio Webhook] Invalid signature');
+    return res.status(403).json({ error: 'Forbidden: Invalid signature' });
+  }
+
+  console.log('✅ [Twilio Webhook] Signature validated');
+  next();
+}
 
 // Middleware para verificar se o módulo está habilitado
 async function requireVoiceModule(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -391,6 +422,115 @@ router.get('/stats', authenticate, requireAdminOrSupervisor, requireVoiceModule,
   } catch (error: any) {
     console.error('❌ [Voice API] Error fetching stats:', error);
     res.status(500).json({ error: 'Erro ao buscar estatísticas' });
+  }
+});
+
+// ===== TWILIO WEBHOOKS (Twilio signature verification) =====
+router.post('/webhook/twiml', express.text({ type: '*/*' }), validateTwilioSignature, async (req, res) => {
+  try {
+    const { targetId, campaignId, attemptNumber } = req.query;
+    
+    console.log(`📞 [Voice Webhook] TwiML requested for target ${targetId}`);
+
+    const target = await storage.getVoiceCampaignTarget(targetId as string);
+    if (!target) {
+      console.error(`❌ [Voice Webhook] Target ${targetId} not found`);
+      return res.status(404).send('<?xml version="1.0" encoding="UTF-8"?><Response><Say>Erro no sistema.</Say><Hangup/></Response>');
+    }
+
+    const campaign = await storage.getVoiceCampaign(campaignId as string);
+    if (!campaign) {
+      console.error(`❌ [Voice Webhook] Campaign ${campaignId} not found`);
+      return res.status(404).send('<?xml version="1.0" encoding="UTF-8"?><Response><Say>Erro no sistema.</Say><Hangup/></Response>');
+    }
+
+    const { createOpenAIRealtimeSession } = await import('../../lib/voiceCall');
+    
+    const openAISession = await createOpenAIRealtimeSession({
+      systemPrompt: campaign.systemPrompt || '',
+      clientName: target.debtorName,
+      debtAmount: target.debtAmount || 0,
+      debtDetails: target.debtorMetadata ? JSON.stringify(target.debtorMetadata) : undefined,
+    });
+
+    const baseUrl = process.env.VOICE_WEBHOOK_BASE_URL || '';
+    const streamUrl = `wss://${baseUrl.replace('https://', '')}/api/voice/webhook/stream?sessionId=${openAISession.sessionId}&targetId=${targetId}`;
+
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Connect>
+    <Stream url="${streamUrl}" />
+  </Connect>
+</Response>`;
+
+    console.log(`✅ [Voice Webhook] TwiML generated for target ${targetId}`);
+    res.type('text/xml').send(twiml);
+  } catch (error: any) {
+    console.error('❌ [Voice Webhook] Error generating TwiML:', error);
+    res.type('text/xml').send('<?xml version="1.0" encoding="UTF-8"?><Response><Say>Desculpe, ocorreu um erro.</Say><Hangup/></Response>');
+  }
+});
+
+router.post('/webhook/status', express.urlencoded({ extended: false }), validateTwilioSignature, async (req, res) => {
+  try {
+    const { CallSid, CallStatus, CallDuration, RecordingUrl } = req.body;
+    
+    console.log(`📊 [Voice Webhook] Status update: ${CallSid} - ${CallStatus}`);
+
+    if (CallStatus === 'completed') {
+      const attempts = await storage.getAllVoiceCallAttempts();
+      const attempt = attempts.find(a => a.callSid === CallSid);
+      
+      if (attempt) {
+        await storage.updateVoiceCallAttempt(attempt.id, {
+          status: 'completed',
+          durationSeconds: parseInt(CallDuration || '0', 10),
+          recordingUrl: RecordingUrl,
+        });
+
+        const { addVoicePostCallToQueue } = await import('../../lib/queue');
+        await addVoicePostCallToQueue({
+          attemptId: attempt.id,
+          targetId: attempt.targetId,
+          campaignId: attempt.campaignId,
+          callSid: CallSid,
+          callDuration: parseInt(CallDuration || '0', 10),
+          callStatus: CallStatus,
+          recordingUrl: RecordingUrl,
+          conversationData: {},
+        });
+
+        console.log(`✅ [Voice Webhook] Post-call processing queued for attempt ${attempt.id}`);
+      }
+    }
+
+    res.sendStatus(200);
+  } catch (error: any) {
+    console.error('❌ [Voice Webhook] Error processing status:', error);
+    res.sendStatus(500);
+  }
+});
+
+router.post('/webhook/recording', express.urlencoded({ extended: false }), validateTwilioSignature, async (req, res) => {
+  try {
+    const { CallSid, RecordingUrl, RecordingSid } = req.body;
+    
+    console.log(`🎙️ [Voice Webhook] Recording received: ${RecordingSid}`);
+
+    const attempts = await storage.getAllVoiceCallAttempts();
+    const attempt = attempts.find(a => a.callSid === CallSid);
+    
+    if (attempt) {
+      await storage.updateVoiceCallAttempt(attempt.id, {
+        recordingUrl: RecordingUrl,
+      });
+      console.log(`✅ [Voice Webhook] Recording URL saved for attempt ${attempt.id}`);
+    }
+
+    res.sendStatus(200);
+  } catch (error: any) {
+    console.error('❌ [Voice Webhook] Error processing recording:', error);
+    res.sendStatus(500);
   }
 });
 

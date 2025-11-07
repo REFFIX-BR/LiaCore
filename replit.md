@@ -27,6 +27,17 @@ The frontend uses React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, inspir
 **Role-Based Access Control (RBAC)**: A 3-tier system (ADMIN, SUPERVISOR, AGENT) with granular permissions.
 **Contact Management System**: Centralized client database with automatic WhatsApp contact sync.
 **Announcements/Communications System**: Centralized system for company-wide announcements with priority-based rotation and CRUD admin interface.
+**LIA VOICE - Outbound Debt Collection Module** (Nov 2025): Complete production-ready backend implementation for proactive voice calls using Twilio + OpenAI Realtime API. Features include:
+- **5 BullMQ Workers**: campaign-ingest, scheduling, dialer, post-call, promise-monitor for autonomous operations
+- **Twilio Integration**: Pre-flight credential validation (ACCOUNT_SID, AUTH_TOKEN, PHONE_NUMBER, WEBHOOK_BASE_URL), secure webhook signature verification (HMAC), call recording, status tracking
+- **OpenAI Realtime API**: WebSocket bridge at `/api/voice/webhook/stream` for bidirectional audio streaming (Twilio Media Stream ↔ OpenAI)
+- **Audio Protocol**: Adaptive batching (every 10 chunks), inactivity timer (250ms auto-commit), final flush on disconnect, correct `input_audio_buffer.commit` and `response.output_audio_buffer.commit` with `response_id`
+- **Session Security**: Redis-based one-time credential caching with TTL, credentials deleted after use
+- **Compliance**: ANATEL regulations enforced (08:00-20:00 hours only, max 3 attempts/client)
+- **Graceful Degradation**: Workers skip without consuming attempts if credentials missing
+- **Feature Flag**: `voice_outbound_enabled` ensures zero impact on WhatsApp flows
+- **Campaign Management**: Full CRUD for campaigns, targets, promises with admin/supervisor UI
+- **Target**: 200 clients/day with 3 attempts each, integrated with CRM via API
 
 ### System Design Choices
 - **Admin Tools**: Features for mass-closing abandoned conversations, reprocessing stuck messages, auto-resolving old stuck conversations (+7 days), conversation assignment bug fixes, and configuration management.
