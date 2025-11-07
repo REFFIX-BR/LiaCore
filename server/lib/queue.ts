@@ -529,7 +529,8 @@ export async function addVoiceSchedulingToQueue(data: VoiceSchedulingJob) {
 export async function addVoiceDialerToQueue(data: VoiceDialerJob, delay?: number) {
   return await voiceDialerQueue.add('make-call', data, {
     delay: delay || 0,
-    jobId: `dial-${data.targetId}-${data.attemptNumber}`,
+    // Remove fixed jobId to allow retries - BullMQ will auto-generate unique IDs
+    // jobId: `dial-${data.targetId}-${data.attemptNumber}`,
     priority: 2,
   });
 }
