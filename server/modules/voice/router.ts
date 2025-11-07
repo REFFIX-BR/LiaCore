@@ -34,8 +34,8 @@ async function activateVoiceCampaign(campaignId: string): Promise<{ enqueued: nu
   
   for (const target of pendingTargets) {
     try {
-      // Schedule for 10 seconds from now to allow time for logs to be visible
-      const scheduledFor = new Date(Date.now() + 10000);
+      // Schedule for 2 seconds from now (reduced for testing to avoid restart-induced job loss)
+      const scheduledFor = new Date(Date.now() + 2000);
       
       await addVoiceSchedulingToQueue({
         targetId: target.id,
