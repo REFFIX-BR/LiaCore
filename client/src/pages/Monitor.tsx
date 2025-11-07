@@ -5,10 +5,16 @@ import { ConversationDetails } from "@/components/ConversationDetails";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search } from "lucide-react";
+import { Search, ChevronDown, Check } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { monitorAPI } from "@/lib/api";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -700,47 +706,65 @@ export default function Monitor() {
         </Button>
       </div>
 
-      {/* Filtro por Origem da Conversa */}
+      {/* Menu Hierárquico de Cobranças */}
       <div className="flex gap-2 p-3 border rounded-lg bg-muted/30">
         <div className="flex items-center gap-1 text-sm font-medium text-muted-foreground mr-2">
-          Origem:
+          Cobranças:
         </div>
-        <Button
-          variant={conversationSourceFilter === "all" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setConversationSourceFilter("all")}
-          data-testid="source-filter-all"
-          className="gap-2"
-        >
-          📱 Todas
-        </Button>
-        <Button
-          variant={conversationSourceFilter === "inbound" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setConversationSourceFilter("inbound")}
-          data-testid="source-filter-inbound"
-          className="gap-2"
-        >
-          📥 Entrada
-        </Button>
-        <Button
-          variant={conversationSourceFilter === "whatsapp_campaign" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setConversationSourceFilter("whatsapp_campaign")}
-          data-testid="source-filter-whatsapp"
-          className="gap-2"
-        >
-          💬 Campanha WhatsApp
-        </Button>
-        <Button
-          variant={conversationSourceFilter === "voice_campaign" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setConversationSourceFilter("voice_campaign")}
-          data-testid="source-filter-voice"
-          className="gap-2"
-        >
-          📞 Campanha Voz
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="button-cobrancas-menu"
+              className="gap-2"
+            >
+              {conversationSourceFilter === "all" && "📱 Todas"}
+              {conversationSourceFilter === "inbound" && "📥 Entrada"}
+              {conversationSourceFilter === "whatsapp_campaign" && "💬 Campanha WhatsApp"}
+              {conversationSourceFilter === "voice_campaign" && "📞 Campanha Voz"}
+              <ChevronDown className="h-4 w-4 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" data-testid="menu-cobrancas-content">
+            <DropdownMenuItem
+              onClick={() => setConversationSourceFilter("all")}
+              data-testid="source-filter-all"
+              className="gap-2"
+            >
+              {conversationSourceFilter === "all" && <Check className="h-4 w-4" />}
+              {conversationSourceFilter !== "all" && <div className="h-4 w-4" />}
+              📱 Todas
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setConversationSourceFilter("inbound")}
+              data-testid="source-filter-inbound"
+              className="gap-2"
+            >
+              {conversationSourceFilter === "inbound" && <Check className="h-4 w-4" />}
+              {conversationSourceFilter !== "inbound" && <div className="h-4 w-4" />}
+              📥 Entrada
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setConversationSourceFilter("whatsapp_campaign")}
+              data-testid="source-filter-whatsapp"
+              className="gap-2"
+            >
+              {conversationSourceFilter === "whatsapp_campaign" && <Check className="h-4 w-4" />}
+              {conversationSourceFilter !== "whatsapp_campaign" && <div className="h-4 w-4" />}
+              💬 Campanha WhatsApp
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setConversationSourceFilter("voice_campaign")}
+              data-testid="source-filter-voice"
+              className="gap-2"
+            >
+              {conversationSourceFilter === "voice_campaign" && <Check className="h-4 w-4" />}
+              {conversationSourceFilter !== "voice_campaign" && <div className="h-4 w-4" />}
+              📞 Campanha Voz
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {viewMode === "finalizadas" && (
