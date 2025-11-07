@@ -9858,25 +9858,24 @@ A resposta deve:
 
       console.log(`✅ [Consolidation] Created draft with ${consolidationResult.summary.appliedCount} suggestions applied`);
       
-      // STEP 6: Mark suggestions as "consolidated" immediately
+      // STEP 6: Mark ALL processed suggestions as "consolidated" immediately
+      // This includes: applied, rejected/ignored, and duplicates
       // This prevents them from reappearing as "pending" in subsequent consolidations
-      const appliedSuggestionIds = (consolidationResult.appliedSuggestions || [])
-        .filter((s: any) => s.applied)
-        .map((s: any) => s.suggestionId);
       
-      console.log(`🏷️  [Consolidation] Marking ${appliedSuggestionIds.length} suggestions as consolidated...`);
+      console.log(`🏷️  [Consolidation] Marking ALL ${pendingSuggestions.length} processed suggestions as consolidated...`);
       
-      // Mark applied suggestions as "consolidated" (not "applied" - that's reserved for published versions)
-      for (const suggestionId of appliedSuggestionIds) {
-        await storage.updatePromptSuggestion(suggestionId, {
+      // Mark ALL pending suggestions that were processed as "consolidated"
+      // This ensures the counter goes to zero, regardless of applied/rejected status
+      for (const suggestion of pendingSuggestions) {
+        await storage.updatePromptSuggestion(suggestion.id, {
           status: "consolidated",
         });
       }
       
-      // Mark duplicate suggestions as consolidated with linkage
+      // Additionally, mark duplicate suggestions with linkage information
       const duplicateGroups = consolidationResult.duplicateGroups || [];
       if (duplicateGroups.length > 0) {
-        console.log(`🏷️  [Consolidation] Marking ${duplicateGroups.length} duplicate groups as consolidated...`);
+        console.log(`🔗 [Consolidation] Linking ${duplicateGroups.length} duplicate groups...`);
         
         for (const group of duplicateGroups) {
           for (const duplicateId of group.duplicateIds) {
@@ -9888,7 +9887,7 @@ A resposta deve:
         }
       }
       
-      console.log(`✅ [Consolidation] All suggestions marked as consolidated (no longer pending)`);
+      console.log(`✅ [Consolidation] All ${pendingSuggestions.length} suggestions marked as consolidated (counter will now be zero)`);
       
       return res.json({
         draft,
