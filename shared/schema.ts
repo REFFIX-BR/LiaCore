@@ -650,7 +650,7 @@ export const sales = pgTable("sales", {
   reference: text("reference"), // Ponto de referência
   
   // Service
-  planId: varchar("plan_id").notNull(), // Referência ao plano
+  planId: varchar("plan_id"), // Referência ao plano (opcional para leads de prospecção)
   billingDay: integer("billing_day"), // Dia de vencimento (5, 10 ou 15)
   preferredInstallDate: text("preferred_install_date"), // Data preferida instalação
   availability: text("availability"), // "Manhã", "Tarde", "Comercial"
