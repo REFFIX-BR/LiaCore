@@ -11,10 +11,10 @@ const router = express.Router();
 // Middleware para verificar assinatura Twilio
 function validateTwilioSignature(req: express.Request, res: express.Response, next: express.NextFunction) {
   const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const baseUrl = process.env.VOICE_WEBHOOK_BASE_URL;
+  const baseUrl = process.env.WEBHOOK_BASE_URL;
 
   if (!authToken || !baseUrl) {
-    console.error('❌ [Twilio Webhook] Missing TWILIO_AUTH_TOKEN or VOICE_WEBHOOK_BASE_URL');
+    console.error('❌ [Twilio Webhook] Missing TWILIO_AUTH_TOKEN or WEBHOOK_BASE_URL');
     return res.status(500).json({ error: 'Server configuration error' });
   }
 

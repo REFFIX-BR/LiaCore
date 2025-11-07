@@ -22,24 +22,13 @@ const worker = new Worker<VoiceDialerJob>(
     console.log(`📞 [Voice Dialer] Dialing ${phoneNumber} (${clientName}) - Attempt #${attemptNumber}`);
 
     try {
-      if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
-        console.error('❌ [Voice Dialer] Twilio credentials not configured - cannot place calls');
+      if (!process.env.WEBHOOK_BASE_URL) {
+        console.error('❌ [Voice Dialer] WEBHOOK_BASE_URL not configured');
         console.error('⚠️  [Voice Dialer] Skipping attempt without consuming retry count');
         
         return {
           success: false,
-          error: 'Twilio credentials not configured - please configure TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER',
-          configError: true,
-        };
-      }
-
-      if (!process.env.VOICE_WEBHOOK_BASE_URL) {
-        console.error('❌ [Voice Dialer] VOICE_WEBHOOK_BASE_URL not configured');
-        console.error('⚠️  [Voice Dialer] Skipping attempt without consuming retry count');
-        
-        return {
-          success: false,
-          error: 'VOICE_WEBHOOK_BASE_URL not configured - required for Twilio callbacks',
+          error: 'WEBHOOK_BASE_URL not configured - required for Twilio callbacks',
           configError: true,
         };
       }

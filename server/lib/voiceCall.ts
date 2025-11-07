@@ -1,17 +1,5 @@
-import twilio from 'twilio';
 import { WebSocket } from 'ws';
-
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
-
-if (!accountSid || !authToken || !twilioPhoneNumber) {
-  console.warn('⚠️ [Voice Call] Twilio credentials not configured - voice calls disabled');
-}
-
-const twilioClient = accountSid && authToken 
-  ? twilio(accountSid, authToken)
-  : null;
+import { getTwilioClient, getTwilioFromPhoneNumber } from './twilioIntegration';
 
 export interface VoiceCallOptions {
   phoneNumber: string;
@@ -56,19 +44,14 @@ export async function initiateVoiceCall(
 
   console.log(`📞 [Voice Call] Initiating call to ${phoneNumber} (${clientName})`);
 
-  if (!twilioClient || !twilioPhoneNumber) {
-    console.error('❌ [Voice Call] Twilio client not configured');
-    return {
-      success: false,
-      error: 'Twilio not configured',
-    };
-  }
-
   try {
-    const baseUrl = process.env.VOICE_WEBHOOK_BASE_URL;
+    const twilioClient = await getTwilioClient();
+    const twilioPhoneNumber = await getTwilioFromPhoneNumber();
+
+    const baseUrl = process.env.WEBHOOK_BASE_URL;
     
     if (!baseUrl) {
-      throw new Error('VOICE_WEBHOOK_BASE_URL environment variable not configured');
+      throw new Error('WEBHOOK_BASE_URL environment variable not configured');
     }
 
     const webhookUrl = `${baseUrl}/api/voice/webhook/twiml`;
