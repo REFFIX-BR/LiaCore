@@ -224,16 +224,20 @@ export default function VoiceCampaigns() {
         const jsonData = XLSX.utils.sheet_to_json<any>(firstSheet);
 
         const parsedTargets: TargetData[] = jsonData.map((row: any) => {
-          const phone = String(row.telefone || row.Telefone || row.phone || row.Phone || '');
+          const phone = String(
+            row.telefone || row.Telefone || row.phone || row.Phone || 
+            row.Cel1 || row.cel1 || row.Cel2 || row.cel2 || 
+            row.celular || row.Celular || ''
+          );
           const formattedPhone = phone.startsWith('+') ? phone : `+${phone.replace(/\D/g, '')}`;
           
-          const valorRaw = row.valorDivida || row['valor_divida'] || row.valor || row.Valor || row.Valor;
+          const valorRaw = row.valorDivida || row['valor_divida'] || row.valor || row.Valor || row['Valor'];
           const debtAmount = valorRaw 
             ? Math.round(parseFloat(String(valorRaw).replace(',', '.')) * 100)
             : undefined;
           
           return {
-            debtorName: row.nome || row.Nome || row.name || row.Name || '',
+            debtorName: row.nome || row.Nome || row.name || row.Name || row.Login || row.login || '',
             phoneNumber: formattedPhone,
             debtAmount,
             debtorDocument: row.cpf_cnpj || row.cpf || row.cnpj || row.document || undefined,
