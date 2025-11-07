@@ -17,6 +17,14 @@ async function activateVoiceCampaign(campaignId: string): Promise<{ enqueued: nu
   console.log(`🚀 [Voice Activation] Activating campaign ${campaignId}`);
   
   const targets = await storage.getVoiceCampaignTargets(campaignId);
+  
+  console.log(`🔍 [Voice Activation] DEBUG - First target:`, targets[0] ? {
+    id: targets[0].id,
+    state: targets[0].state,
+    attemptCount: targets[0].attemptCount,
+    keys: Object.keys(targets[0])
+  } : 'No targets');
+  
   const pendingTargets = targets.filter(t => t.state === 'pending' && t.attemptCount === 0);
   
   console.log(`📊 [Voice Activation] Found ${pendingTargets.length} pending targets (${targets.length} total)`);
