@@ -456,6 +456,29 @@ router.patch('/targets/:id', authenticate, requireAdminOrSupervisor, requireVoic
   }
 });
 
+router.delete('/targets/:id', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Verificar se target existe antes de deletar
+    const target = await storage.getVoiceCampaignTarget(id);
+    if (!target) {
+      return res.status(404).json({ error: 'Alvo não encontrado' });
+    }
+    
+    await storage.deleteVoiceCampaignTarget(id);
+    
+    // Recalcular estatísticas da campanha
+    await storage.recalculateVoiceCampaignStats(target.campaignId);
+    
+    console.log(`✅ [Voice API] Target deleted: ${id} from campaign ${target.campaignId}`);
+    res.json({ success: true, message: 'Alvo excluído com sucesso' });
+  } catch (error: any) {
+    console.error('❌ [Voice API] Error deleting target:', error);
+    res.status(500).json({ error: 'Erro ao excluir alvo' });
+  }
+});
+
 // ===== CALL ATTEMPTS =====
 router.get('/targets/:targetId/attempts', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
   try {

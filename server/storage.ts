@@ -5357,6 +5357,11 @@ export class DbStorage implements IStorage {
       .where(eq(schema.voiceCampaignTargets.id, id));
   }
 
+  async deleteVoiceCampaignTarget(id: string): Promise<void> {
+    await db.delete(schema.voiceCampaignTargets)
+      .where(eq(schema.voiceCampaignTargets.id, id));
+  }
+
   // Voice Call Attempts
   async getVoiceCallAttempts(targetId: string): Promise<VoiceCallAttempt[]> {
     return await db.select().from(schema.voiceCallAttempts)

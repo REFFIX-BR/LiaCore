@@ -56,6 +56,20 @@ interface TargetData {
   address?: string;
 }
 
+interface Target {
+  id: string;
+  campaignId: string;
+  debtorName: string;
+  phoneNumber: string;
+  debtAmount?: number;
+  debtorDocument?: string;
+  state: string;
+  attemptCount?: number;
+  contactMethod: 'voice' | 'whatsapp';
+  outcome?: string;
+  lastAttemptAt?: string;
+}
+
 export default function VoiceCampaigns() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -67,6 +81,9 @@ export default function VoiceCampaigns() {
   const [contactMethod, setContactMethod] = useState<'voice' | 'whatsapp'>('voice');
   const [isMethodsDrawerOpen, setIsMethodsDrawerOpen] = useState(false);
   const [selectedCampaignForMethods, setSelectedCampaignForMethods] = useState<Campaign | null>(null);
+  const [isTargetsDrawerOpen, setIsTargetsDrawerOpen] = useState(false);
+  const [selectedCampaignForTargets, setSelectedCampaignForTargets] = useState<Campaign | null>(null);
+  const [targetToDelete, setTargetToDelete] = useState<Target | null>(null);
   const [methodsConfig, setMethodsConfig] = useState<{
     allowedMethods: ('voice' | 'whatsapp')[];
     fallbackOrder: ('voice' | 'whatsapp')[];
@@ -82,6 +99,17 @@ export default function VoiceCampaigns() {
 
   const { data: stats } = useQuery<any>({
     queryKey: ['/api/voice/stats'],
+  });
+
+  // Query targets for selected campaign
+  const { data: targets = [], isLoading: isLoadingTargets } = useQuery<Target[]>({
+    queryKey: ['/api/voice/targets', selectedCampaignForTargets?.id],
+    enabled: !!selectedCampaignForTargets?.id,
+    queryFn: async () => {
+      const res = await fetch(`/api/voice/targets?campaignId=${selectedCampaignForTargets?.id}`);
+      if (!res.ok) throw new Error('Erro ao buscar alvos');
+      return res.json();
+    },
   });
 
   const form = useForm<CampaignFormData>({
@@ -208,6 +236,29 @@ export default function VoiceCampaigns() {
       toast({
         title: 'Erro ao atualizar métodos',
         description: error.message || 'Ocorreu um erro ao salvar as configurações.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const deleteTargetMutation = useMutation({
+    mutationFn: async (targetId: string) => {
+      return apiRequest(`/api/voice/targets/${targetId}`, 'DELETE', {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/targets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/stats'] });
+      toast({
+        title: 'Alvo excluído',
+        description: 'O alvo foi excluído com sucesso.',
+      });
+      setTargetToDelete(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao excluir alvo',
+        description: error.message || 'Ocorreu um erro ao excluir o alvo.',
         variant: 'destructive',
       });
     },
@@ -769,6 +820,18 @@ export default function VoiceCampaigns() {
                     <Button 
                       variant="outline" 
                       size="sm" 
+                      data-testid={`button-view-targets-${campaign.id}`}
+                      onClick={() => {
+                        setSelectedCampaignForTargets(campaign);
+                        setIsTargetsDrawerOpen(true);
+                      }}
+                    >
+                      <Users className="h-4 w-4 mr-2" />
+                      Ver Alvos
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
                       data-testid={`button-methods-${campaign.id}`}
                       onClick={() => {
                         setSelectedCampaignForMethods(campaign);
@@ -965,6 +1028,104 @@ export default function VoiceCampaigns() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Targets Drawer */}
+      <Sheet open={isTargetsDrawerOpen} onOpenChange={setIsTargetsDrawerOpen}>
+        <SheetContent className="w-[600px] sm:w-[700px]">
+          <SheetHeader>
+            <SheetTitle>Lista de Alvos</SheetTitle>
+            <SheetDescription>
+              {selectedCampaignForTargets?.name}
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6">
+            {isLoadingTargets ? (
+              <p className="text-center text-muted-foreground">Carregando alvos...</p>
+            ) : targets.length === 0 ? (
+              <p className="text-center text-muted-foreground">Nenhum alvo encontrado</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Método</TableHead>
+                    <TableHead>Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {targets.map((target) => (
+                    <TableRow key={target.id}>
+                      <TableCell>{target.debtorName}</TableCell>
+                      <TableCell className="font-mono text-sm">{target.phoneNumber}</TableCell>
+                      <TableCell>
+                        {target.debtAmount 
+                          ? `R$ ${(target.debtAmount / 100).toFixed(2)}`
+                          : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          target.state === 'completed' ? 'default' :
+                          target.state === 'contacted' ? 'secondary' :
+                          target.state === 'pending' ? 'outline' :
+                          'destructive'
+                        }>
+                          {target.state}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {target.contactMethod === 'voice' ? '📞 Voz' : '💬 WhatsApp'}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setTargetToDelete(target)}
+                          data-testid={`button-delete-target-${target.id}`}
+                        >
+                          <XCircle className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Confirm Delete Dialog */}
+      <Dialog open={!!targetToDelete} onOpenChange={(open) => !open && setTargetToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir o alvo "{targetToDelete?.debtorName}"?
+              Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setTargetToDelete(null)}
+              data-testid="button-cancel-delete"
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => targetToDelete && deleteTargetMutation.mutate(targetToDelete.id)}
+              disabled={deleteTargetMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deleteTargetMutation.isPending ? 'Excluindo...' : 'Excluir'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
