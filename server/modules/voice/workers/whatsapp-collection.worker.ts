@@ -121,6 +121,20 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
           conversationSource: 'whatsapp_campaign',
           voiceCampaignTargetId: targetId,
         });
+      } else {
+        // Atualizar conversa existente para marcar como campanha de cobrança
+        console.log(`🔄 [Voice WhatsApp] Atualizando conversa existente ${conversation.id} para campanha de cobrança`);
+        await storage.updateConversation(conversation.id, {
+          conversationSource: 'whatsapp_campaign',
+          voiceCampaignTargetId: targetId,
+          assistantType: 'financeiro',
+          department: 'financial',
+          evolutionInstance: 'Cobranca',
+          status: 'active', // Reativar se estiver resolvida
+        });
+        
+        // Atualizar referência local para ter os campos atualizados
+        conversation = await storage.getConversation(conversation.id) || conversation;
       }
 
       // Formatar valor da dívida

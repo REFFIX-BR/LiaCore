@@ -18,6 +18,7 @@ export default function Monitor() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeDepartment, setActiveDepartment] = useState("all");
   const [resolvedSubFilter, setResolvedSubFilter] = useState("all"); // all, ai, agent, auto
+  const [conversationSourceFilter, setConversationSourceFilter] = useState("all"); // all, inbound, whatsapp_campaign, voice_campaign
   const [viewMode, setViewMode] = useState<"todas" | "ia_atendendo" | "aguardando" | "em_atendimento" | "finalizadas" | "historico_completo">("todas"); // NEW: 6 estados
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
@@ -253,6 +254,7 @@ export default function Monitor() {
     let passesSearchFilter = true;
     let passesResolvedSubFilter = true;
     let passesViewModeFilter = true;
+    let passesSourceFilter = true;
 
     // Apply viewMode filter (6 estados)
     if (viewMode === "ia_atendendo") {
@@ -320,7 +322,13 @@ export default function Monitor() {
         conv.clientName.toLowerCase().includes(searchLower);
     }
 
-    return passesViewModeFilter && passesDepartmentFilter && passesSearchFilter && passesResolvedSubFilter;
+    // Filtro por origem da conversa
+    if (conversationSourceFilter !== "all") {
+      const convSource = (conv as any).conversationSource || "inbound";
+      passesSourceFilter = convSource === conversationSourceFilter;
+    }
+
+    return passesViewModeFilter && passesDepartmentFilter && passesSearchFilter && passesResolvedSubFilter && passesSourceFilter;
   });
 
   const getConversationCountByDepartment = (deptValue: string) => {
@@ -689,6 +697,49 @@ export default function Monitor() {
           className="gap-2"
         >
           📜 Histórico Completo
+        </Button>
+      </div>
+
+      {/* Filtro por Origem da Conversa */}
+      <div className="flex gap-2 p-3 border rounded-lg bg-muted/30">
+        <div className="flex items-center gap-1 text-sm font-medium text-muted-foreground mr-2">
+          Origem:
+        </div>
+        <Button
+          variant={conversationSourceFilter === "all" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setConversationSourceFilter("all")}
+          data-testid="source-filter-all"
+          className="gap-2"
+        >
+          📱 Todas
+        </Button>
+        <Button
+          variant={conversationSourceFilter === "inbound" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setConversationSourceFilter("inbound")}
+          data-testid="source-filter-inbound"
+          className="gap-2"
+        >
+          📥 Entrada
+        </Button>
+        <Button
+          variant={conversationSourceFilter === "whatsapp_campaign" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setConversationSourceFilter("whatsapp_campaign")}
+          data-testid="source-filter-whatsapp"
+          className="gap-2"
+        >
+          💬 Campanha WhatsApp
+        </Button>
+        <Button
+          variant={conversationSourceFilter === "voice_campaign" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setConversationSourceFilter("voice_campaign")}
+          data-testid="source-filter-voice"
+          className="gap-2"
+        >
+          📞 Campanha Voz
         </Button>
       </div>
 
