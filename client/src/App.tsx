@@ -40,6 +40,10 @@ import PromptManagement from "@/pages/PromptManagement";
 import ContextQuality from "@/pages/ContextQuality";
 import Gamification from "@/pages/Gamification";
 import GamificationSettings from "@/pages/GamificationSettings";
+import VoiceCampaigns from "@/pages/VoiceCampaigns";
+import VoiceTargets from "@/pages/VoiceTargets";
+import VoicePromises from "@/pages/VoicePromises";
+import VoiceSettings from "@/pages/VoiceSettings";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -240,6 +244,18 @@ function Router() {
       </Route>
       <Route path="/anuncios">
         {() => <AdminSupervisorRoute component={Anuncios} />}
+      </Route>
+      <Route path="/voice/campaigns">
+        {() => <AdminSupervisorRoute component={VoiceCampaigns} />}
+      </Route>
+      <Route path="/voice/targets">
+        {() => <AdminSupervisorRoute component={VoiceTargets} />}
+      </Route>
+      <Route path="/voice/promises">
+        {() => <AdminSupervisorRoute component={VoicePromises} />}
+      </Route>
+      <Route path="/voice/settings">
+        {() => <AdminSupervisorRoute component={VoiceSettings} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

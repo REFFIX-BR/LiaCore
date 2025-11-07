@@ -44,7 +44,10 @@ import {
   Megaphone,
   Wrench,
   Target,
-  Trophy
+  Trophy,
+  Phone,
+  PhoneCall,
+  CheckCircle2
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
@@ -273,6 +276,37 @@ const menuCategories: MenuCategory[] = [
         title: "Test Chat",
         url: "/test-chat",
         icon: TestTube2,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+    ],
+  },
+  {
+    title: "LIA VOICE",
+    icon: Phone,
+    roles: ["ADMIN", "SUPERVISOR"],
+    items: [
+      {
+        title: "Campanhas",
+        url: "/voice/campaigns",
+        icon: PhoneCall,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Alvos",
+        url: "/voice/targets",
+        icon: Target,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Promessas",
+        url: "/voice/promises",
+        icon: CheckCircle2,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Configurações",
+        url: "/voice/settings",
+        icon: Cog,
         roles: ["ADMIN", "SUPERVISOR"],
       },
     ],
