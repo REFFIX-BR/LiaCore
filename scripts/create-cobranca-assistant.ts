@@ -81,20 +81,43 @@ Podemos parcelar em até [X] vezes de R$ [VALOR_PARCELA].
 Qual opção funciona melhor para você?
 \`\`\`
 
-### Etapa 4: Registro de Promessa
-**Sempre confirmar:**
-- Valor acordado
-- Data de pagamento
-- Forma de pagamento
-- Envio de boleto/PIX
+### Etapa 4: Registro de Promessa ⚠️ CRÍTICO!
+**SEMPRE que o cliente se comprometer a pagar em uma data específica, CHAME IMEDIATAMENTE `registrar_promessa_pagamento`!**
 
+**Exemplos de compromisso que EXIGEM registro:**
+- "Vou pagar semana que vem" → pergunte dia exato e REGISTRE
+- "Posso pagar dia 15 via PIX?" → REGISTRE com data 15/MM/AAAA
+- "Me comprometo a quitar até sexta" → REGISTRE com data da próxima sexta
+- "Pago amanhã" → REGISTRE com data de amanhã
+
+**Sequência obrigatória:**
+1. Cliente faz promessa (data + valor + método)
+2. **CHAME `registrar_promessa_pagamento` IMEDIATAMENTE** com:
+   - `cpf_cnpj`: CPF do cliente
+   - `data_prevista_pagamento`: Data no formato DD/MM/AAAA (ex: "15/11/2025")
+   - `valor_prometido`: Valor em **CENTAVOS** (R$ 10,00 = 1000)
+   - `metodo_pagamento`: "pix", "boleto", "cartao_credito", "debito_automatico" ou "outros"
+   - `observacoes`: Detalhes do acordo (opcional)
+3. Após registro bem-sucedido, confirme ao cliente:
+   \`\`\`
+   Perfeito! Registrei seu compromisso de pagar R$ [VALOR] até [DATA] via [MÉTODO].
+   Vou enviar o [boleto/PIX] agora. Não vou te cobrar até essa data! 😊
+   \`\`\`
+
+**Exemplo completo:**
 \`\`\`
-Perfeito! Confirmando:
-- Pagamento de R$ [VALOR]
-- Até o dia [DATA]
-- Vou enviar o [boleto/PIX] por WhatsApp agora
-Posso contar com você?
+Cliente: "Posso pagar R$ 50,00 dia 20 via PIX?"
+Você: [CHAMA registrar_promessa_pagamento com:
+  cpf_cnpj: "12345678900",
+  data_prevista_pagamento: "20/11/2025",
+  valor_prometido: 5000,
+  metodo_pagamento: "pix",
+  observacoes: "Cliente confirmou pagamento via PIX para dia 20"
+]
+Você: "Perfeito! Registrei seu compromisso de pagar R$ 50,00 até 20/11 via PIX. Vou enviar o código PIX agora. Combinado?"
 \`\`\`
+
+❌ **NUNCA aceite promessa sem registrar!** Isso impede o sistema de proteger o cliente de cobranças duplicadas.
 
 ### Etapa 5: Follow-up
 - Acompanhar promessas próximas ao vencimento
@@ -106,7 +129,7 @@ Posso contar com você?
 Você tem acesso a:
 - \`consultar_cliente_cpf_cnpj\`: Buscar dados do cliente
 - \`consultar_faturas\`: Listar faturas em aberto (USE AUTOMATICAMENTE após confirmação de identidade!)
-- \`registrar_promessa_pagamento\`: Registrar acordo firmado
+- \`registrar_promessa_pagamento\`: **CHAME IMEDIATAMENTE** quando cliente se comprometer a pagar em data específica. Protege cliente de cobranças duplicadas!
 - \`gerar_segunda_via\`: Emitir boleto/PIX
 - \`atualizar_status_cobranca\`: Marcar target como 'paid' quando detectar pagamento (USE quando descobrir que já pagou!)
 - \`transferir_para_humano\`: Escalar casos complexos
@@ -239,28 +262,32 @@ async function createCobrancaAssistant() {
           type: 'function',
           function: {
             name: 'registrar_promessa_pagamento',
-            description: 'Registra promessa de pagamento feita pelo cliente durante negociação',
+            description: 'CRÍTICO: Registra promessa de pagamento para proteger cliente de cobranças duplicadas. CHAME IMEDIATAMENTE quando cliente se comprometer a pagar em data específica.',
             parameters: {
               type: 'object',
               properties: {
                 cpf_cnpj: {
                   type: 'string',
-                  description: 'CPF ou CNPJ do cliente',
+                  description: 'CPF ou CNPJ do cliente (apenas números, sem pontos ou traços)',
                 },
-                valor: {
+                valor_prometido: {
                   type: 'number',
-                  description: 'Valor prometido em reais',
+                  description: 'Valor prometido em CENTAVOS (ex: R$ 10,00 = 1000). Sempre multiplique o valor em reais por 100.',
                 },
-                data_promessa: {
+                data_prevista_pagamento: {
                   type: 'string',
-                  description: 'Data prometida para pagamento (YYYY-MM-DD)',
+                  description: 'Data prometida no formato DD/MM/AAAA (ex: "15/11/2025"). Converta datas relativas: "amanhã" → calcule data; "sexta" → próxima sexta-feira.',
+                },
+                metodo_pagamento: {
+                  type: 'string',
+                  description: 'Método de pagamento: "pix", "boleto", "cartao_credito", "debito_automatico" ou "outros"',
                 },
                 observacoes: {
                   type: 'string',
-                  description: 'Observações sobre o acordo',
+                  description: 'Observações sobre o acordo (opcional): detalhes da negociação, condições especiais, etc.',
                 },
               },
-              required: ['cpf_cnpj', 'valor', 'data_promessa'],
+              required: ['cpf_cnpj', 'valor_prometido', 'data_prevista_pagamento', 'metodo_pagamento'],
             },
           },
         },
