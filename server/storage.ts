@@ -626,6 +626,11 @@ export class MemStorage implements IStorage {
     const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
     
     return Array.from(this.conversations.values()).filter((conv) => {
+      // ⚡ ISOLAMENTO: Excluir conversas de cobrança - elas vão pro Monitor de Cobranças
+      if (conv.conversationSource === 'whatsapp_campaign' || conv.conversationSource === 'voice_campaign') {
+        return false;
+      }
+      
       // Show active conversations OR queued conversations OR resolved conversations from last 12h
       if (conv.status === 'active') return true;
       if (conv.status === 'queued') return true;
@@ -641,6 +646,11 @@ export class MemStorage implements IStorage {
     
     return Array.from(this.conversations.values()).filter((conv) => {
       if (conv.transferredToHuman !== true) return false;
+      
+      // ⚡ ISOLAMENTO: Excluir conversas de cobrança - elas vão pro Monitor de Cobranças
+      if (conv.conversationSource === 'whatsapp_campaign' || conv.conversationSource === 'voice_campaign') {
+        return false;
+      }
       
       // Apenas conversas NÃO atribuídas (disponíveis para atribuição)
       if (conv.assignedTo !== null) return false;

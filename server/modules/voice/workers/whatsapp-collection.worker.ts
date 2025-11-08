@@ -4,6 +4,12 @@ import { QUEUE_NAMES, VoiceWhatsAppCollectionJob, addVoiceWhatsAppCollectionToQu
 import { storage } from '../../../storage';
 import { isFeatureEnabled } from '../../../lib/featureFlags';
 import { sendWhatsAppMessage } from '../../../lib/whatsapp';
+import { createThread } from '../../../lib/openai';
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 console.log('💬 [Voice WhatsApp] Worker starting...');
 
@@ -237,7 +243,6 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
           clientId: cleanPhone,
           clientDocument: clientDocument || null,
           assistantType: 'cobranca', // IMPORTANTE: IA Cobrança especializada
-          assignedAssistant: 'cobranca', // Garantir que IA Cobrança atenda
           department: 'financial',
           status: 'active',
           evolutionInstance: 'Cobranca',
@@ -252,7 +257,6 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
           conversationSource: 'whatsapp_campaign',
           voiceCampaignTargetId: targetId,
           assistantType: 'cobranca', // IA Cobrança
-          assignedAssistant: 'cobranca', // Garantir atribuição
           department: 'financial',
           evolutionInstance: 'Cobranca',
           status: 'active', // Reativar se estiver resolvida
@@ -291,6 +295,33 @@ Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar 
       }
 
       console.log(`✅ [Voice WhatsApp] Mensagem enviada para ${clientName}`);
+
+      // ============================================================================
+      // CRITICAL FIX: Adicionar mensagem à thread da OpenAI também!
+      // ============================================================================
+      
+      // Garantir que a conversa tenha uma thread
+      let threadId = conversation.threadId;
+      
+      if (!threadId) {
+        console.log(`🔧 [Voice WhatsApp] Criando thread da OpenAI para conversa ${conversation.id}`);
+        threadId = await createThread();
+        await storage.updateConversation(conversation.id, { threadId });
+        console.log(`✅ [Voice WhatsApp] Thread criada: ${threadId}`);
+      }
+      
+      // Adicionar mensagem à thread da OpenAI
+      try {
+        console.log(`💾 [Voice WhatsApp] Adicionando mensagem inicial à thread ${threadId}`);
+        await openai.beta.threads.messages.create(threadId, {
+          role: 'assistant',
+          content: message,
+        });
+        console.log(`✅ [Voice WhatsApp] Mensagem adicionada à thread da OpenAI`);
+      } catch (error: any) {
+        console.error(`❌ [Voice WhatsApp] Erro ao adicionar mensagem à thread:`, error);
+        // Não falhar o job inteiro por isso, mas registrar
+      }
 
       // Registrar mensagem no histórico da conversa (IA Cobrança)
       await storage.createMessage({
