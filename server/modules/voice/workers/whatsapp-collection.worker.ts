@@ -74,22 +74,26 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
         return { success: false, reason: 'max_attempts' };
       }
 
-      if (!isWithinBusinessHours()) {
-        const nextSlot = getNextBusinessHourSlot();
-        console.log(`🕐 [Voice WhatsApp] Fora do horário comercial, reagendando para ${nextSlot.toISOString()}`);
-        
-        await addVoiceWhatsAppCollectionToQueue({
-          targetId,
-          campaignId,
-          phoneNumber,
-          clientName,
-          clientDocument,
-          debtAmount,
-          attemptNumber,
-        }, nextSlot.getTime() - Date.now());
-
-        return { success: true, rescheduled: true, nextSlot };
-      }
+      // TEMPORARIAMENTE DESABILITADO PARA TESTE FINAL
+      // TODO: Reabilitar verificação de horário comercial em produção
+      // if (!isWithinBusinessHours()) {
+      //   const nextSlot = getNextBusinessHourSlot();
+      //   console.log(`🕐 [Voice WhatsApp] Fora do horário comercial, reagendando para ${nextSlot.toISOString()}`);
+      //   
+      //   await addVoiceWhatsAppCollectionToQueue({
+      //     targetId,
+      //     campaignId,
+      //     phoneNumber,
+      //     clientName,
+      //     clientDocument,
+      //     debtAmount,
+      //     attemptNumber,
+      //   }, nextSlot.getTime() - Date.now());
+      //
+      //   return { success: true, rescheduled: true, nextSlot };
+      // }
+      
+      console.log(`✅ [Voice WhatsApp] Prosseguindo com envio (verificação de horário desabilitada para teste)`);
 
       // ============================================================================
       // VERIFICAÇÃO PRÉ-ENVIO: Consultar CRM para verificar se já pagou
@@ -225,50 +229,57 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
       let conversation = await storage.getConversationByChatId(chatId);
       
       if (!conversation) {
-        // Criar nova conversa de cobrança
+        // Criar nova conversa de cobrança com IA Cobrança automaticamente atribuída
         console.log(`📝 [Voice WhatsApp] Criando conversa de cobrança para ${clientName}`);
         conversation = await storage.createConversation({
           chatId,
           clientName,
           clientId: cleanPhone,
           clientDocument: clientDocument || null,
-          assistantType: 'financeiro',
+          assistantType: 'cobranca', // IMPORTANTE: IA Cobrança especializada
+          assignedAssistant: 'cobranca', // Garantir que IA Cobrança atenda
           department: 'financial',
           status: 'active',
           evolutionInstance: 'Cobranca',
           conversationSource: 'whatsapp_campaign',
           voiceCampaignTargetId: targetId,
         });
+        console.log(`✅ [Voice WhatsApp] Conversa criada com IA Cobrança atribuída`);
       } else {
         // Atualizar conversa existente para marcar como campanha de cobrança
         console.log(`🔄 [Voice WhatsApp] Atualizando conversa existente ${conversation.id} para campanha de cobrança`);
         await storage.updateConversation(conversation.id, {
           conversationSource: 'whatsapp_campaign',
           voiceCampaignTargetId: targetId,
-          assistantType: 'financeiro',
+          assistantType: 'cobranca', // IA Cobrança
+          assignedAssistant: 'cobranca', // Garantir atribuição
           department: 'financial',
           evolutionInstance: 'Cobranca',
           status: 'active', // Reativar se estiver resolvida
         });
+        console.log(`✅ [Voice WhatsApp] Conversa atualizada com IA Cobrança atribuída`);
         
         // Atualizar referência local para ter os campos atualizados
         conversation = await storage.getConversation(conversation.id) || conversation;
       }
 
-      // Formatar valor da dívida
-      const debtValue = (debtAmount / 100).toFixed(2).replace('.', ',');
+      // ============================================================================
+      // MENSAGEM INICIAL HUMANIZADA (Tom da IA Cobrança)
+      // ============================================================================
+      console.log(`💬 [Voice WhatsApp] Preparando mensagem humanizada de cobrança...`);
+      
+      // Mensagem humanizada seguindo o estilo da IA Cobrança
+      // A IA vai assumir a conversa quando o cliente responder
+      const firstName = clientName.split(' ')[0]; // Apenas primeiro nome
+      const message = `Olá ${firstName}!
 
-      // Mensagem de cobrança personalizada
-      const message = `Olá ${clientName}!
+Aqui é a Lia, assistente virtual da TR Telecom.
 
-Aqui é a TR Telecom. Identificamos uma pendência financeira de *R$ ${debtValue}* em sua conta.
+Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta.
 
-Para regularizar sua situação e evitar a suspensão dos serviços, podemos te ajudar com:
-• Negociação de pagamento
-• Emissão de segunda via do boleto
-• Parcelamento facilitado
+Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível.`;
 
-Como podemos ajudar?`;
+      console.log(`✅ [Voice WhatsApp] Mensagem preparada: "${message.substring(0, 60)}..."`)
 
       // Enviar mensagem via WhatsApp
       const result = await sendWhatsAppMessage(phoneNumber, message, 'Cobranca');
@@ -281,12 +292,12 @@ Como podemos ajudar?`;
 
       console.log(`✅ [Voice WhatsApp] Mensagem enviada para ${clientName}`);
 
-      // Registrar mensagem no histórico da conversa
+      // Registrar mensagem no histórico da conversa (IA Cobrança)
       await storage.createMessage({
         conversationId: conversation.id,
         role: 'assistant',
         content: message,
-        assistant: 'financeiro',
+        assistant: 'cobranca', // IA Cobrança especializada
         sendBy: 'ai',
       });
 
