@@ -1,5 +1,4 @@
 import { Worker, Job } from 'bullmq';
-import IORedis from 'ioredis';
 import {
   QUEUE_NAMES,
   MessageProcessingJob,
@@ -9,37 +8,7 @@ import {
   AutoClosureJob,
   addAutoClosureToQueue,
 } from './lib/queue';
-
-// Redis connection for workers (BullMQ requirement)
-let redisConnection: IORedis | null = null;
-
-try {
-  redisConnection = new IORedis({
-    host: process.env.UPSTASH_REDIS_HOST || process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.UPSTASH_REDIS_PORT || process.env.REDIS_PORT || '6379'),
-    password: process.env.UPSTASH_REDIS_PASSWORD || process.env.REDIS_PASSWORD,
-    maxRetriesPerRequest: null, // BullMQ requirement for blocking commands
-    enableReadyCheck: false,
-    // TLS configuration for Upstash (rediss://)
-    tls: process.env.UPSTASH_REDIS_HOST ? {
-      rejectUnauthorized: false, // Upstash uses self-signed certs
-    } : undefined,
-  });
-
-  // Handle Redis errors gracefully
-  redisConnection.on('error', (err) => {
-    if (err.message.includes('max requests limit exceeded')) {
-      console.error('❌ [Redis] Max requests limit exceeded - workers disabled');
-      console.log('   Please reset Redis in Upstash dashboard');
-      console.log('   App will continue with fallback processing');
-    } else {
-      console.error('❌ [Redis] Connection error:', err.message);
-    }
-  });
-} catch (error) {
-  console.error('❌ [Workers] Failed to create Redis connection:', error);
-  console.log('   App will continue with fallback processing');
-}
+import { redisConnection } from './lib/redis-config';
 
 // Import processing functions
 import { sendMessageAndGetResponse } from './lib/openai';
