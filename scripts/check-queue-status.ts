@@ -1,46 +1,40 @@
-import { Queue } from 'bullmq';
-import { redisConnection } from '../server/lib/redis-config';
+import { messageQueue } from '../server/lib/queue';
 
-async function checkQueue() {
-  const queue = new Queue('voice-whatsapp-collection', {
-    connection: redisConnection
-  });
-
-  console.log('\n📊 Verificando fila de WhatsApp...\n');
+async function checkStatus() {
+  console.log('🔍 Verificando status da fila...\n');
   
-  const waiting = await queue.getWaiting();
-  const active = await queue.getActive();
-  const completed = await queue.getCompleted();
-  const failed = await queue.getFailed();
+  const waiting = await messageQueue.getWaiting();
+  const active = await messageQueue.getActive();
+  const completed = await messageQueue.getCompleted();
+  const failed = await messageQueue.getFailed();
   
-  console.log(`⏳ Aguardando: ${waiting.length}`);
-  console.log(`⚙️  Ativos: ${active.length}`);
-  console.log(`✅ Completados: ${completed.length}`);
-  console.log(`❌ Falhos: ${failed.length}\n`);
+  console.log(`⏳ Jobs aguardando: ${waiting.length}`);
+  console.log(`⚡ Jobs ativos: ${active.length}`);
+  console.log(`✅ Jobs completos (últimos): ${completed.length}`);
+  console.log(`❌ Jobs falhados: ${failed.length}\n`);
   
   if (waiting.length > 0) {
     console.log('📋 Jobs aguardando:');
-    waiting.forEach(job => {
-      console.log(`  - Job ${job.id}: ${job.data.clientName}`);
-    });
-  }
-  
-  if (active.length > 0) {
-    console.log('\n⚙️  Jobs ativos:');
-    active.forEach(job => {
-      console.log(`  - Job ${job.id}: ${job.data.clientName}`);
-    });
-  }
-  
-  if (failed.length > 0) {
-    console.log('\n❌ Jobs falhos:');
-    for (const job of failed.slice(0, 3)) {
-      console.log(`  - Job ${job.id}: ${job.data.clientName}`);
-      console.log(`    Erro: ${job.failedReason}`);
+    for (const job of waiting.slice(0, 3)) {
+      console.log(`  - Job ${job.id}: ${job.data.conversationId} (${job.data.chatId})`);
     }
   }
   
-  await queue.close();
+  if (active.length > 0) {
+    console.log('\n⚡ Jobs ativos:');
+    for (const job of active) {
+      console.log(`  - Job ${job.id}: ${job.data.conversationId} (processando...)`);
+    }
+  }
+  
+  if (failed.length > 0) {
+    console.log('\n❌ Jobs falhados recentes:');
+    for (const job of failed.slice(0, 3)) {
+      console.log(`  - Job ${job.id}: ${job.failedReason}`);
+    }
+  }
+  
+  await messageQueue.close();
 }
 
-checkQueue().catch(console.error);
+checkStatus().catch(console.error);
