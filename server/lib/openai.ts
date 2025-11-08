@@ -1681,10 +1681,11 @@ Fonte: ${fonte}`;
           });
         }
 
+      case "consultar_faturas":
       case "consultar_boleto_cliente":
-        console.log(`🚨 [DEBUG] ENTRANDO NO CASE consultar_boleto_cliente - conversationId: ${conversationId || 'UNDEFINED'}`);
+        console.log(`🚨 [DEBUG] ENTRANDO NO CASE ${functionName} - conversationId: ${conversationId || 'UNDEFINED'}`);
         if (!conversationId) {
-          console.error("❌ [AI Tool] consulta_boleto_cliente chamada sem conversationId");
+          console.error(`❌ [AI Tool] ${functionName} chamada sem conversationId`);
           return JSON.stringify({
             error: "Contexto de conversa não disponível para consulta de boletos"
           });
