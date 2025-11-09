@@ -6848,7 +6848,7 @@ A resposta deve:
       // Buscar template de mensagem de boas-vindas
       const welcomeTemplate = await storage.getMessageTemplateByKey('agent_welcome');
       let welcomeMessage = welcomeTemplate?.template || 
-        `Olá! Sou *${agentFirstName}*, seu atendente. Assumí esta conversa e darei continuidade ao seu atendimento. Como posso ajudá-lo?`;
+        `Olá! Sou *${agentFirstName}*, seu atendente. Assumí esta conversa e darei continuidade ao seu atendimento.`;
       
       // Substituir variáveis no template
       welcomeMessage = welcomeMessage.replace(/{agentName}/g, agentFirstName);
