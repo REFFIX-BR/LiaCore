@@ -4799,7 +4799,8 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
   // Knowledge base search
   app.post("/api/knowledge/search", authenticate, async (req, res) => {
     try {
-      const { query, topK = 20 } = req.body;
+      // OTIMIZAÇÃO DE CUSTO: Reduzido default topK de 20 para 5 (75% menos tokens RAG)
+      const { query, topK = 5 } = req.body;
 
       if (!query) {
         return res.status(400).json({ error: "Query is required" });

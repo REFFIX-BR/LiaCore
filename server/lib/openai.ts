@@ -9,6 +9,10 @@ const openai = new OpenAI({
   organization: "org-AaGGTB8W7UF7Cyzrxi12lVL8",
 });
 
+// OTIMIZAÇÃO DE CUSTO: Limitar contexto para reduzir tokens
+// Mantém apenas as últimas N mensagens no thread (média ideal: 10-15)
+const MAX_THREAD_MESSAGES = 10;
+
 // Circuit Breaker para proteger contra falhas em cascata
 class CircuitBreaker {
   private failureCount = 0;
@@ -325,6 +329,180 @@ async function releaseThreadLock(threadId: string, lockValue: string): Promise<v
   }
 }
 
+/**
+ * OTIMIZAÇÃO DE CUSTO: Trunca mensagens antigas do thread para reduzir tokens
+ * Mantém apenas as últimas MAX_THREAD_MESSAGES mensagens em pares user+assistant
+ * 
+ * Regras de preservação:
+ * - NUNCA deleta mensagens de sistema (role='system')
+ * - NUNCA deleta mensagens vinculadas a runs ativos
+ * - SEMPRE preserva pares completos user+assistant (continuidade)
+ * - Mensagens com file_ids só são deletadas quando o par completo está fora da janela
+ * 
+ * Pricing: GPT-4o ~$5/1M input, ~$15/1M output
+ */
+async function truncateThreadMessages(threadId: string): Promise<void> {
+  try {
+    // Pagina TODAS as mensagens do thread (ordem DESC = mais recentes primeiro)
+    let allMessages: any[] = [];
+    let hasMore = true;
+    let after: string | undefined = undefined;
+    
+    while (hasMore) {
+      const response = await openaiCircuitBreaker.execute(() =>
+        openai.beta.threads.messages.list(threadId, { 
+          limit: 100, 
+          order: 'desc',
+          after 
+        })
+      );
+      
+      allMessages = allMessages.concat(response.data);
+      hasMore = response.hasMore;
+      
+      if (hasMore && response.data.length > 0) {
+        after = response.data[response.data.length - 1].id;
+      }
+    }
+    
+    const totalMessages = allMessages.length;
+    
+    // Se tiver menos que o limite, não precisa truncar
+    if (totalMessages <= MAX_THREAD_MESSAGES) {
+      console.log(`✅ [Cost Opt] Thread ${threadId}: ${totalMessages} mensagens (limite: ${MAX_THREAD_MESSAGES})`);
+      return;
+    }
+    
+    console.log(`🔍 [Cost Opt] Thread ${threadId}: ${totalMessages} mensagens - truncando para ${MAX_THREAD_MESSAGES}`);
+    
+    // Build keep-set: últimas MAX_THREAD_MESSAGES + mensagens de sistema + runs ativos
+    const keepSet = new Set<string>();
+    
+    // 1. Adiciona as últimas MAX_THREAD_MESSAGES ao keep-set
+    for (let i = 0; i < Math.min(MAX_THREAD_MESSAGES, allMessages.length); i++) {
+      keepSet.add(allMessages[i].id);
+    }
+    
+    // 2. Sempre preserva mensagens de sistema
+    for (const msg of allMessages) {
+      if (msg.role === 'system') {
+        keepSet.add(msg.id);
+      }
+    }
+    
+    // 3. Verifica runs ativos e preserva mensagens vinculadas
+    const activeRunIds = new Set<string>();
+    try {
+      const activeRuns = await openaiCircuitBreaker.execute(() =>
+        openai.beta.threads.runs.list(threadId, { limit: 50 }) // Aumentado de 10 para 50
+      );
+      
+      for (const run of activeRuns.data) {
+        if (run.status === 'requires_action' || run.status === 'in_progress' || run.status === 'queued') {
+          activeRunIds.add(run.id);
+        }
+      }
+      
+      console.log(`✅ [Cost Opt] Encontrados ${activeRunIds.size} runs ativos em ${activeRuns.data.length} runs totais`);
+    } catch (runError) {
+      console.warn(`⚠️  [Cost Opt] Erro ao verificar runs ativos - preservando todas as mensagens por segurança`);
+      return; // Aborta truncamento por segurança
+    }
+    
+    for (const msg of allMessages) {
+      if (msg.run_id && activeRunIds.has(msg.run_id)) {
+        keepSet.add(msg.id);
+      }
+    }
+    
+    // 4. Garante pares user+assistant (continuidade conversacional)
+    // Itera em ordem cronológica reversa (mais antiga → mais recente)
+    const chronologicalMessages = [...allMessages].reverse();
+    
+    for (let i = 0; i < chronologicalMessages.length; i++) {
+      const msg = chronologicalMessages[i];
+      
+      if (keepSet.has(msg.id)) {
+        // Se essa mensagem está no keep-set, garante que o par também está
+        if (msg.role === 'user' && i + 1 < chronologicalMessages.length) {
+          // User message: preserva a resposta do assistant (próxima mensagem)
+          const nextMsg = chronologicalMessages[i + 1];
+          if (nextMsg.role === 'assistant') {
+            keepSet.add(nextMsg.id);
+          }
+        } else if (msg.role === 'assistant' && i > 0) {
+          // Assistant message: preserva a pergunta do user (mensagem anterior)
+          const prevMsg = chronologicalMessages[i - 1];
+          if (prevMsg.role === 'user') {
+            keepSet.add(prevMsg.id);
+          }
+        }
+      }
+    }
+    
+    // 5. Deleta mensagens que NÃO estão no keep-set (com retry)
+    let deletedCount = 0;
+    let skippedCount = 0;
+    let failedCount = 0;
+    
+    for (const msg of allMessages) {
+      if (keepSet.has(msg.id)) {
+        skippedCount++;
+        continue;
+      }
+      
+      // Deleta a mensagem com retry (3 tentativas)
+      let deleted = false;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          await openaiCircuitBreaker.execute(() =>
+            openai.beta.threads.messages.del(threadId, msg.id)
+          );
+          deletedCount++;
+          deleted = true;
+          break;
+        } catch (deleteError) {
+          if (attempt === 3) {
+            console.error(`❌ [Cost Opt] Falha ao deletar mensagem ${msg.id} após 3 tentativas:`, deleteError);
+            failedCount++;
+          } else {
+            // Espera 500ms antes de tentar de novo (exponential backoff)
+            await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+          }
+        }
+      }
+    }
+    
+    console.log(`✅ [Cost Opt] Truncamento: ${deletedCount} deletadas, ${keepSet.size} mantidas, ${failedCount} falhas`);
+    
+    // Log de economia estimada (GPT-4o pricing: ~$5/1M input)
+    const estimatedTokensSaved = deletedCount * 150; // ~150 tokens por mensagem (conservador)
+    const estimatedCostSaved = (estimatedTokensSaved / 1000000) * 5.00; // $5.00 por 1M tokens input
+    console.log(`💰 [Cost Opt] Economia estimada: ~${estimatedTokensSaved} tokens (~$${estimatedCostSaved.toFixed(4)} USD)`);
+    
+    // Track total savings for monitoring
+    if (deletedCount > 0) {
+      await trackTokenUsage({
+        model: 'context-truncation',
+        inputTokens: 0,
+        outputTokens: 0,
+        cost: -estimatedCostSaved, // Negative = savings
+        metadata: {
+          threadId,
+          messagesDeleted: deletedCount,
+          messagesMaintained: keepSet.size,
+          tokensSaved: estimatedTokensSaved,
+          operation: 'truncate-context'
+        }
+      });
+    }
+    
+  } catch (error) {
+    // Não bloqueia o fluxo se truncamento falhar
+    console.error(`❌ [Cost Opt] Erro ao truncar thread ${threadId}:`, error);
+  }
+}
+
 export async function sendMessageAndGetResponse(
   threadId: string,
   assistantId: string,
@@ -418,6 +596,9 @@ export async function sendMessageAndGetResponse(
       throw new Error("Não foi possível processar sua mensagem no momento. Por favor, aguarde alguns segundos e tente novamente.");
     }
 
+    // OTIMIZAÇÃO DE CUSTO: Trunca mensagens antigas ANTES de adicionar nova mensagem
+    await truncateThreadMessages(threadId);
+    
     // Attempt to create message with retry logic for active run conflicts
     let messageCreated = false;
     let retryCount = 0;

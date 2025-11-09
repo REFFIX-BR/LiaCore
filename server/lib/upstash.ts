@@ -18,7 +18,8 @@ export interface KnowledgeChunk {
   metadata?: Record<string, any>;
 }
 
-export async function searchKnowledge(query: string, topK: number = 20): Promise<Array<{
+// OTIMIZAÇÃO DE CUSTO: Reduzido topK de 20 para 5 (economia 75% nos tokens de contexto RAG)
+export async function searchKnowledge(query: string, topK: number = 5): Promise<Array<{
   chunk: KnowledgeChunk;
   score: number;
 }>> {
