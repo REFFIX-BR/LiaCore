@@ -2361,8 +2361,8 @@ Fonte: ${fonte}`;
           await addVoicePromiseMonitorToQueue({
             promiseId: promise.id,
             dueDate,
-            targetId: target?.id || null,
-            campaignId: target?.campaignId || 'manual',
+            targetId: target?.id ?? null,
+            campaignId: target?.campaignId ?? 'manual',
           });
           
           console.log(`📅 [Promessa] Monitoramento agendado para verificar vencimento em ${dueDate.toISOString()}`);

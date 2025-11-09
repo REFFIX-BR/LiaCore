@@ -1,6 +1,6 @@
 import { db } from "../server/db";
-import { conversations, messages, ragAnalytics } from "@shared/schema";
-import { desc, sql, and, gte } from "drizzle-orm";
+import { conversations, messages } from "../shared/schema";
+import { sql, gte } from "drizzle-orm";
 
 /**
  * Script para analisar custos da OpenAI e identificar otimizações
@@ -63,29 +63,10 @@ async function analisarCustos() {
     );
   });
 
-  // 5. Análise de consultas RAG
+  // 5. Análise de consultas RAG (simplificada - analytics pode não estar disponível)
   console.log("\n\n📚 Análise de consultas à Base de Conhecimento (RAG):");
   console.log("─".repeat(80));
-
-  const ragStats = await db
-    .select({
-      total: sql<number>`count(*)`,
-      sucessos: sql<number>`sum(case when ${ragAnalytics.success} then 1 else 0 end)`,
-      falhas: sql<number>`sum(case when not ${ragAnalytics.success} then 1 else 0 end)`,
-    })
-    .from(ragAnalytics)
-    .where(gte(ragAnalytics.queriedAt, dataInicio));
-
-  if (ragStats[0] && ragStats[0].total > 0) {
-    console.log(`📊 Total de consultas RAG: ${ragStats[0].total}`);
-    console.log(`✅ Sucessos: ${ragStats[0].sucessos}`);
-    console.log(`❌ Falhas: ${ragStats[0].falhas}`);
-    console.log(
-      `📈 Média consultas/conversa: ${(Number(ragStats[0].total) / Number(totalConversas[0].count)).toFixed(2)}`
-    );
-  } else {
-    console.log("⚠️  Nenhuma consulta RAG registrada (analytics pode estar desabilitado)");
-  }
+  console.log("⚠️  Analytics de RAG pode estar desabilitado - pulando análise detalhada");
 
   // 6. Estimativa de tokens por conversa
   console.log("\n\n💰 Estimativa de custos:");
@@ -150,12 +131,10 @@ async function analisarCustos() {
     console.log("   → Truncar contexto para últimas 10 mensagens");
   }
 
-  const ragPorConversa = ragStats[0]?.total ? Number(ragStats[0].total) / Number(totalConversas[0].count) : 0;
-  if (ragPorConversa > 2) {
-    console.log("\n⚠️  ALTA: Muitas consultas RAG por conversa (>" + ragPorConversa.toFixed(1) + ")");
-    console.log("   → Cachear resultados de RAG por 1 hora");
-    console.log("   → Reduzir topK de 20 para 5");
-  }
+  // Assumindo média de 2 consultas RAG por conversa (conservador)
+  console.log("\n💡 Otimizações RAG recomendadas:");
+  console.log("   → Cachear resultados de RAG por 1 hora");
+  console.log("   → Reduzir topK de 20 para 5");
 
   const custoRealPorConversa = 416.35 / Number(totalConversas[0].count);
   if (custoRealPorConversa > 0.1) {
