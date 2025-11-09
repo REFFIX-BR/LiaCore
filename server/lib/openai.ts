@@ -597,7 +597,8 @@ export async function sendMessageAndGetResponse(
     }
 
     // OTIMIZAÇÃO DE CUSTO: Trunca mensagens antigas ANTES de adicionar nova mensagem
-    await truncateThreadMessages(threadId);
+    // DESABILITADO: OpenAI não permite deletar mensagens individuais via API
+    // await truncateThreadMessages(threadId);
     
     // Attempt to create message with retry logic for active run conflicts
     let messageCreated = false;
