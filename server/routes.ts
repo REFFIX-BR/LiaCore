@@ -2815,7 +2815,14 @@ Qualquer coisa, estamos à disposição! 😊
             return res.json({ success: true, processed: false, reason: "no_thread" });
           }
 
-          const assistantId = (conversation.metadata as any)?.routing?.assistantId;
+          // 🎯 CRITICAL FIX: Use conversation.assistantType if set (prevents campaign conversations from being re-routed)
+          const { ASSISTANT_IDS } = await import("./lib/openai");
+          let assistantId = conversation.assistantType && ASSISTANT_IDS[conversation.assistantType as keyof typeof ASSISTANT_IDS]
+            ? ASSISTANT_IDS[conversation.assistantType as keyof typeof ASSISTANT_IDS]
+            : (conversation.metadata as any)?.routing?.assistantId;
+          
+          console.log(`🎯 [Assistant Selection] Using assistant: ${conversation.assistantType} (ID: ${assistantId})`);
+          
           const clientPhoneNumber = phoneNumber;
           const conversationRef = conversation;
         
