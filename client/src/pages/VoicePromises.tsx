@@ -8,14 +8,19 @@ import { ptBR } from 'date-fns/locale';
 
 interface Promise {
   id: string;
-  targetId: string;
+  targetId?: string;
   campaignId: string;
-  debtorName?: string;
-  amount?: number;
+  contactName: string;
+  contactDocument?: string;
+  phoneNumber: string;
+  promisedAmount?: number;
   dueDate?: string;
   paymentMethod?: string;
   status: 'pending' | 'fulfilled' | 'broken';
-  monitoredUntil?: string;
+  notes?: string;
+  crmReference?: string;
+  recordingUrl?: string;
+  recordedAt?: string;
   createdAt?: string;
 }
 
@@ -185,11 +190,18 @@ export default function VoicePromises() {
                         className={isOverdue ? 'bg-destructive/5' : ''}
                       >
                         <TableCell className="font-medium" data-testid={`cell-name-${promise.id}`}>
-                          {promise.debtorName || '-'}
+                          <div>
+                            <div>{promise.contactName}</div>
+                            {promise.contactDocument && (
+                              <div className="text-xs text-muted-foreground">
+                                CPF/CNPJ: {promise.contactDocument}
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell data-testid={`cell-amount-${promise.id}`}>
-                          {promise.amount
-                            ? `R$ ${(promise.amount / 100).toFixed(2)}`
+                          {promise.promisedAmount
+                            ? `R$ ${(promise.promisedAmount / 100).toFixed(2)}`
                             : '-'}
                         </TableCell>
                         <TableCell data-testid={`cell-due-date-${promise.id}`}>
