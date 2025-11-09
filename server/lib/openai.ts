@@ -333,6 +333,9 @@ async function releaseThreadLock(threadId: string, lockValue: string): Promise<v
  * OTIMIZAÇÃO DE CUSTO: Trunca mensagens antigas do thread para reduzir tokens
  * Mantém apenas as últimas MAX_THREAD_MESSAGES mensagens em pares user+assistant
  * 
+ * DESABILITADO: A OpenAI Assistants API não permite deletar mensagens individuais
+ * Solução futura: Rotação de threads (criar nova thread periodicamente)
+ * 
  * Regras de preservação:
  * - NUNCA deleta mensagens de sistema (role='system')
  * - NUNCA deleta mensagens vinculadas a runs ativos
@@ -341,7 +344,7 @@ async function releaseThreadLock(threadId: string, lockValue: string): Promise<v
  * 
  * Pricing: GPT-4o ~$5/1M input, ~$15/1M output
  */
-async function truncateThreadMessages(threadId: string): Promise<void> {
+/* async function truncateThreadMessages(threadId: string): Promise<void> {
   try {
     // Pagina TODAS as mensagens do thread (ordem DESC = mais recentes primeiro)
     let allMessages: any[] = [];
@@ -501,7 +504,7 @@ async function truncateThreadMessages(threadId: string): Promise<void> {
     // Não bloqueia o fluxo se truncamento falhar
     console.error(`❌ [Cost Opt] Erro ao truncar thread ${threadId}:`, error);
   }
-}
+} */
 
 export async function sendMessageAndGetResponse(
   threadId: string,
@@ -2543,7 +2546,7 @@ Fonte: ${fonte}`;
           await addVoicePromiseMonitorToQueue({
             promiseId: promise.id,
             dueDate,
-            targetId: target?.id ?? null,
+            targetId: target?.id ?? '',
             campaignId: target?.campaignId ?? 'manual',
           });
           
