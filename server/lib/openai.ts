@@ -2295,6 +2295,36 @@ Fonte: ${fonte}`;
             });
           }
           
+          // ============================================================================
+          // VALIDAÇÃO: Cliente só pode ter UMA promessa ativa por vez
+          // ============================================================================
+          const { voicePromises } = await import("../../shared/schema");
+          const { and: andPromise, gte: gtePromise } = await import("drizzle-orm");
+          
+          const existingActivePromises = await dbPromessa.query.voicePromises.findMany({
+            where: andPromise(
+              eqPromessa(voicePromises.contactDocument, args.cpf_cnpj),
+              eqPromessa(voicePromises.status, 'pending'),
+              gtePromise(voicePromises.dueDate, new Date()) // Promessa ainda válida (não vencida)
+            )
+          });
+          
+          if (existingActivePromises.length > 0) {
+            const existingPromise = existingActivePromises[0];
+            const existingDate = new Date(existingPromise.dueDate!);
+            const formattedDate = `${existingDate.getDate().toString().padStart(2, '0')}/${(existingDate.getMonth() + 1).toString().padStart(2, '0')}/${existingDate.getFullYear()}`;
+            
+            console.warn(`⚠️ [Promessa] Cliente ${args.cpf_cnpj} já tem promessa ativa até ${formattedDate}`);
+            
+            return JSON.stringify({
+              success: false,
+              mensagem: `Você já tem um compromisso de pagamento registrado para o dia ${formattedDate}. ` +
+                       `Não é possível fazer uma nova promessa. Por favor, cumpra a promessa atual primeiro. 🙏`
+            });
+          }
+          
+          console.log(`✅ [Promessa] Cliente ${args.cpf_cnpj} não tem promessas ativas - prosseguindo com registro`);
+          
           // Criar promessa de pagamento
           const promise = await storagePromessa.createVoicePromise({
             campaignId: target?.campaignId || conversation.voiceCampaignTargetId || 'manual',
@@ -2327,18 +2357,15 @@ Fonte: ${fonte}`;
             console.log(`✅ [Promessa] Target ${target.id} atualizado com outcome='promise_made'`);
           }
           
-          // Agendar monitoramento da promessa (verificar 1 dia após vencimento)
-          const monitorDelay = dueDate.getTime() + (24 * 60 * 60 * 1000) - Date.now();
-          if (monitorDelay > 0) {
-            await addVoicePromiseMonitorToQueue({
-              promiseId: promise.id,
-              dueDate,
-              targetId: target?.id || null,
-              campaignId: target?.campaignId || 'manual',
-            }, monitorDelay);
-            
-            console.log(`📅 [Promessa] Monitoramento agendado para ${new Date(Date.now() + monitorDelay).toISOString()}`);
-          }
+          // Agendar monitoramento da promessa (função calcula delay automaticamente)
+          await addVoicePromiseMonitorToQueue({
+            promiseId: promise.id,
+            dueDate,
+            targetId: target?.id || null,
+            campaignId: target?.campaignId || 'manual',
+          });
+          
+          console.log(`📅 [Promessa] Monitoramento agendado para verificar vencimento em ${dueDate.toISOString()}`);
           
           return JSON.stringify({
             success: true,

@@ -155,20 +155,25 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
         // ============================================================================
         // VERIFICAÇÃO DE PROMESSAS PENDENTES VÁLIDAS
         // ============================================================================
-        console.log(`🔍 [Voice WhatsApp] Verificando promessas de pagamento para CPF/CNPJ: ${clientDocument}`);
+        // IMPORTANTE: Apenas promessas 'pending' com vencimento FUTURO bloqueiam envio.
+        // Promessas 'broken' (quebradas) ou 'fulfilled' (cumpridas) NÃO bloqueiam,
+        // permitindo que o cliente receba cobranças diárias até regularizar o pagamento.
+        // ============================================================================
+        console.log(`🔍 [Voice WhatsApp] Verificando promessas ATIVAS para CPF/CNPJ: ${clientDocument}`);
         
         try {
           const { db } = await import('../../../db');
           const { voicePromises } = await import('../../../../shared/schema');
           const { and, eq, gte } = await import('drizzle-orm');
           
-          // Buscar promessas pendentes com vencimento futuro
+          // Buscar APENAS promessas pendentes com vencimento futuro (promessas ativas)
+          // Promessas 'broken' ou 'fulfilled' são ignoradas e NÃO bloqueiam envio
           const now = new Date();
           const pendingPromises = await db.query.voicePromises.findMany({
             where: and(
               eq(voicePromises.contactDocument, clientDocument),
-              eq(voicePromises.status, 'pending'),
-              gte(voicePromises.dueDate, now)
+              eq(voicePromises.status, 'pending'),    // Apenas 'pending' bloqueia
+              gte(voicePromises.dueDate, now)         // Apenas com vencimento futuro
             ),
             orderBy: (voicePromises, { asc }) => [asc(voicePromises.dueDate)]
           });

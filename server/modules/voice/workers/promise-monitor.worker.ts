@@ -1,94 +1,217 @@
 import { Worker, Job } from 'bullmq';
 import { redisConnection } from '../../../lib/redis-config';
-import { QUEUE_NAMES, VoicePromiseMonitorJob } from '../../../lib/queue';
-import { storage } from '../../../storage';
+import { QUEUE_NAMES } from '../../../lib/queue';
+import { db } from '../../../db';
+import { voicePromises, voiceCampaignTargets } from '../../../../shared/schema';
+import { and, eq, lte, gte, lt } from 'drizzle-orm';
+import { sendWhatsAppMessage } from '../../../lib/whatsapp';
 
-console.log('👁️ [Voice Promise Monitor] Worker starting...');
+console.log('👁️ [Promise Monitor] Worker starting...');
 
-const worker = new Worker<VoicePromiseMonitorJob>(
+/**
+ * Worker Unificado de Monitoramento de Promessas
+ * 
+ * Funções:
+ * 1. LEMBRETE: Envia lembretes no dia do vencimento
+ * 2. QUEBRA: Marca como 'broken' promessas vencidas não cumpridas
+ * 3. CUMPRIMENTO: Marca como 'fulfilled' promessas pagas
+ */
+
+const worker = new Worker(
   QUEUE_NAMES.VOICE_PROMISE_MONITOR,
-  async (job: Job<VoicePromiseMonitorJob>) => {
-    const { promiseId, dueDate, targetId, campaignId } = job.data;
-
-    console.log(`📊 [Voice Promise Monitor] Checking promise ${promiseId}`);
-
+  async (job: Job) => {
+    console.log('👁️ [Promise Monitor] Running scheduled check...');
+    
     try {
-      const promise = await storage.getVoicePromise(promiseId);
-      if (!promise) {
-        console.log(`⚠️ [Voice Promise Monitor] Promise ${promiseId} não encontrada`);
-        return { success: false, reason: 'promise_not_found' };
-      }
-
-      if (promise.status === 'fulfilled') {
-        console.log(`✅ [Voice Promise Monitor] Promise ${promiseId} já cumprida`);
-        return { success: true, reason: 'already_fulfilled' };
-      }
-
       const now = new Date();
-      const promiseDueDate = new Date(dueDate);
-      const daysSinceDue = Math.floor((now.getTime() - promiseDueDate.getTime()) / (1000 * 60 * 60 * 24));
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
 
-      if (daysSinceDue <= 0) {
-        console.log(`⏰ [Voice Promise Monitor] Promise ${promiseId} ainda não vencida (vence em ${Math.abs(daysSinceDue)} dias)`);
-        return { success: true, reason: 'not_due_yet' };
-      }
-
-      console.log(`⚠️ [Voice Promise Monitor] Promise ${promiseId} vencida há ${daysSinceDue} dias`);
-
-      if (daysSinceDue >= 7) {
-        console.log(`❌ [Voice Promise Monitor] Promise ${promiseId} quebrada (>7 dias vencida)`);
-        
-        await storage.updateVoicePromise(promiseId, {
-          status: 'broken',
-        });
-
-        if (targetId) {
-          await storage.updateVoiceCampaignTarget(targetId, {
-            outcome: 'promise_broken',
-            outcomeDetails: `Promessa quebrada - ${daysSinceDue} dias após vencimento`,
-          });
-        }
-
-        const allPromises = await storage.getVoicePromisesByCampaign(campaignId);
-        await storage.updateVoiceCampaignStats(campaignId, {
-          promisesFulfilled: allPromises.filter(p => p.status === 'fulfilled').length,
-          promisesMade: allPromises.length,
-        });
-
-        return { success: true, status: 'broken', daysSinceDue };
-      }
-
-      console.log(`🔔 [Voice Promise Monitor] Promise ${promiseId} aguardando verificação manual (${daysSinceDue} dias vencida)`);
+      // ===== TAREFA 1: ENVIAR LEMBRETES =====
+      console.log('🔔 [Promise Monitor] Checking for payment reminders...');
       
-      return { success: true, status: 'monitoring', daysSinceDue };
+      const promisesToRemind = await db.query.voicePromises.findMany({
+        where: and(
+          eq(voicePromises.status, 'pending'),
+          gte(voicePromises.dueDate, startOfDay),
+          lte(voicePromises.dueDate, endOfDay),
+          eq(voicePromises.reminderSent, false)
+        )
+      });
 
-    } catch (error: any) {
-      console.error(`❌ [Voice Promise Monitor] Error checking promise ${promiseId}:`, error);
+      console.log(`📊 [Promise Monitor] Found ${promisesToRemind.length} promise(s) needing reminders`);
+
+      let remindersSent = 0;
+      for (const promise of promisesToRemind) {
+        try {
+          const amount = promise.promisedAmount ? (promise.promisedAmount / 100).toFixed(2) : 'não especificado';
+          
+          const message = `Olá ${promise.contactName}! 😊
+
+Aqui é a Lia da TR Telecom. 
+
+🔔 **Lembrete Amigável**
+
+Hoje é o dia que você se comprometeu a regularizar o pagamento de R$ ${amount}.
+
+Você pode pagar agora mesmo via PIX ou Boleto. É só me chamar que eu te envio!
+
+Obrigada pela sua confiança! 💙`;
+
+          await sendWhatsAppMessage(
+            promise.phoneNumber.replace(/\D/g, ''),
+            message,
+            'Cobranca'
+          );
+
+          await db.update(voicePromises)
+            .set({
+              reminderSent: true,
+              reminderSentAt: new Date(),
+              updatedAt: new Date()
+            })
+            .where(eq(voicePromises.id, promise.id));
+
+          console.log(`✅ [Promise Monitor] Reminder sent to ${promise.contactName}`);
+          remindersSent++;
+
+        } catch (error) {
+          console.error(`❌ [Promise Monitor] Failed to send reminder:`, error);
+        }
+      }
+
+      // ===== TAREFA 2: DETECTAR PROMESSAS QUEBRADAS =====
+      console.log('💔 [Promise Monitor] Checking for broken promises...');
+      
+      const overduePromises = await db.query.voicePromises.findMany({
+        where: and(
+          eq(voicePromises.status, 'pending'),
+          lt(voicePromises.dueDate, now)
+        )
+      });
+
+      console.log(`📊 [Promise Monitor] Found ${overduePromises.length} overdue promise(s)`);
+
+      let broken = 0;
+      let fulfilled = 0;
+
+      for (const promise of overduePromises) {
+        try {
+          // ============================================================================
+          // CRITICAL: Verificação segura de pagamento via CRM
+          // ============================================================================
+          // Só marcamos a promessa como 'broken' se CONFIRMARMOS que o cliente NÃO pagou.
+          // Se houver erro na consulta ao CRM, NÃO assumimos nada e pulamos essa promessa
+          // para evitar marcar como inadimplente um cliente que já pagou.
+          // ============================================================================
+          
+          let hasPaid = false;
+          let verificationSuccessful = false;
+          
+          if (promise.contactDocument) {
+            try {
+              const documentoNormalizado = promise.contactDocument.replace(/\D/g, '');
+              
+              const response = await fetch("https://webhook.trtelecom.net/webhook/consulta_boleto", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ documento: documentoNormalizado }),
+              });
+              
+              if (response.ok) {
+                const boletos = await response.json() as any[];
+                hasPaid = !boletos || boletos.length === 0;
+                verificationSuccessful = true; // Verificação bem-sucedida!
+              } else {
+                console.warn(`⚠️ [Promise Monitor] CRM retornou HTTP ${response.status} - pulando promessa ${promise.id}`);
+              }
+            } catch (error) {
+              console.error(`❌ [Promise Monitor] Erro ao verificar pagamento (CRM indisponível) - pulando promessa ${promise.id}:`, error);
+            }
+          } else {
+            console.warn(`⚠️ [Promise Monitor] Promessa ${promise.id} sem CPF/CNPJ - impossível verificar pagamento`);
+          }
+
+          // ============================================================================
+          // Só processar se a verificação foi bem-sucedida
+          // ============================================================================
+          if (!verificationSuccessful) {
+            console.log(`⏭️ [Promise Monitor] Pulando promessa ${promise.id} - verificação não conclusiva (será tentada novamente)`);
+            continue; // Pula para a próxima promessa
+          }
+
+          if (hasPaid) {
+            // Cliente pagou!
+            await db.update(voicePromises)
+              .set({
+                status: 'fulfilled',
+                fulfilledAt: new Date(),
+                updatedAt: new Date()
+              })
+              .where(eq(voicePromises.id, promise.id));
+
+            console.log(`✅ [Promise Monitor] Promise ${promise.id} fulfilled - cliente pagou!`);
+            fulfilled++;
+
+          } else {
+            // Cliente NÃO pagou (confirmado via CRM) - quebrou a promessa
+            await db.update(voicePromises)
+              .set({
+                status: 'broken',
+                brokenAt: new Date(),
+                updatedAt: new Date()
+              })
+              .where(eq(voicePromises.id, promise.id));
+
+            console.log(`💔 [Promise Monitor] Promise ${promise.id} broken - pagamento não detectado`);
+            broken++;
+
+            // Atualizar target para permitir novas cobranças
+            if (promise.targetId) {
+              await db.update(voiceCampaignTargets)
+                .set({
+                  state: 'contacted',
+                  outcome: 'promise_broken',
+                  outcomeDetails: 'Promessa não cumprida - cliente pode receber cobranças novamente',
+                  updatedAt: new Date()
+                })
+                .where(eq(voiceCampaignTargets.id, promise.targetId));
+            }
+          }
+
+        } catch (error) {
+          console.error(`❌ [Promise Monitor] Failed to process promise:`, error);
+        }
+      }
+
+      console.log(`📊 [Promise Monitor] Summary: ${remindersSent} reminders sent, ${broken} broken, ${fulfilled} fulfilled`);
+
+      return {
+        success: true,
+        remindersSent,
+        broken,
+        fulfilled
+      };
+
+    } catch (error) {
+      console.error('❌ [Promise Monitor] Worker error:', error);
       throw error;
     }
   },
   {
     connection: redisConnection,
-    concurrency: 10,
-    limiter: {
-      max: 100,
-      duration: 60000,
-    },
+    concurrency: 1,
   }
 );
 
-worker.on('completed', (job: Job) => {
-  console.log(`✅ [Voice Promise Monitor] Job ${job.id} completed`);
+worker.on('completed', (job) => {
+  console.log(`✅ [Promise Monitor] Job ${job.id} completed`);
 });
 
-worker.on('failed', (job: Job | undefined, error: Error) => {
-  console.error(`❌ [Voice Promise Monitor] Job ${job?.id} failed:`, error.message);
+worker.on('failed', (job, err) => {
+  console.error(`❌ [Promise Monitor] Job ${job?.id} failed:`, err);
 });
 
-worker.on('error', (error: Error) => {
-  console.error('❌ [Voice Promise Monitor] Worker error:', error);
-});
-
-console.log('✅ [Voice Promise Monitor] Worker ready');
+console.log('✅ [Promise Monitor] Worker ready');
 
 export default worker;

@@ -1338,6 +1338,11 @@ export const voicePromises = pgTable("voice_promises", {
   // Status da promessa
   status: text("status").notNull().default("pending"), // 'pending', 'fulfilled', 'broken', 'renegotiated'
   fulfilledAt: timestamp("fulfilled_at"),
+  brokenAt: timestamp("broken_at"), // Quando a promessa foi quebrada (não cumprida)
+  
+  // Sistema de Lembretes
+  reminderSent: boolean("reminder_sent").default(false), // Se lembrete foi enviado
+  reminderSentAt: timestamp("reminder_sent_at"), // Quando o lembrete foi enviado
   
   // Detalhes
   notes: text("notes"), // Observações da conversa
