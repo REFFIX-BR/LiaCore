@@ -559,64 +559,273 @@ Você não receberá mais cobranças. 😊"
 
 ---
 
-## Sistema de Proteção de Promessas
+## Sistema de Promessas de Pagamento
 
-### Como Funciona
+### 📋 Visão Geral & Objetivos
 
-1. **Cliente faz promessa** → IA registra com `dueDate = DD/MM/YYYY 23:59:59`
-2. **Promessa armazenada** → Tabela `voicePromises` com status `pending`
-3. **Target atualizado** → `outcome = 'promise_made'`
-4. **Próxima tentativa** → Worker verifica promessas válidas
-5. **Se promessa ativa** → Envio PULADO automaticamente
-6. **Após vencimento** → Promessa expira, cliente volta à fila
+O **Sistema de Promessas de Pagamento** é um módulo completo e autônomo que gerencia compromissos de pagamento registrados pela IA Cobrança durante negociações com clientes. 
 
-### Exemplo Prático
+**Objetivos principais:**
+- ✅ **Proteger clientes** que assumiram compromissos, evitando cobranças repetitivas
+- ✅ **Validar cumprimento** de promessas através de verificação automática via CRM
+- ✅ **Enviar lembretes** no dia do vencimento para auxiliar o cliente
+- ✅ **Detectar quebras** quando promessas não são cumpridas, reativando cobranças
+- ✅ **Garantir unicidade** - cliente só pode ter UMA promessa ativa por vez
+- ✅ **Proteção crítica** contra falhas do CRM para evitar falsos positivos
+
+---
+
+### 🗄️ Estrutura de Dados
 
 ```typescript
-// Data: 10/01/2025 10:00
-// Cliente faz promessa para 15/01/2025
-
-// 1. IA registra promessa
-const promise = {
-  contactDocument: "123.456.789-00",
-  dueDate: new Date(2025, 0, 15, 23, 59, 59, 999), // 15/01/2025 23:59:59
-  amount: 179.80,
-  status: 'pending'
-};
-
-// 2. Dias seguintes (11, 12, 13, 14, 15/01)
-// Worker verifica antes de enviar:
-const now = new Date(); // 12/01/2025 14:00
-const pendingPromises = await db.query.voicePromises.findMany({
-  where: and(
-    eq(voicePromises.contactDocument, "123.456.789-00"),
-    eq(voicePromises.status, 'pending'),
-    gte(voicePromises.dueDate, now) // 15/01 23:59:59 >= 12/01 14:00 ✓
-  )
-});
-
-if (pendingPromises.length > 0) {
-  console.log("⏳ Cliente tem promessa válida - PULANDO envio");
-  return { skipped: true, reason: 'active_promise' };
-}
-
-// 3. Dia 16/01/2025 08:00
-// Promessa expirou (15/01 23:59:59 < 16/01 08:00)
-const pendingPromises = await db.query.voicePromises.findMany({
-  where: and(
-    eq(voicePromises.contactDocument, "123.456.789-00"),
-    eq(voicePromises.status, 'pending'),
-    gte(voicePromises.dueDate, now) // 15/01 23:59:59 >= 16/01 08:00 ✗
-  )
-});
-
-if (pendingPromises.length === 0) {
-  console.log("✅ Promessa expirada - RETOMANDO cobranças");
-  await sendWhatsAppMessage(...);
+// Tabela: voice_promises
+interface VoicePromise {
+  id: string;                    // UUID da promessa
+  campaignId: string;            // ID da campanha de cobrança
+  targetId: string | null;       // ID do target na campanha (opcional)
+  contactId: string | null;      // ID do contato no sistema
+  contactName: string;           // Nome do cliente
+  contactDocument: string;       // CPF/CNPJ (chave de busca)
+  phoneNumber: string;           // Telefone do cliente
+  promisedAmount: number | null; // Valor prometido (em centavos)
+  dueDate: Date;                 // Data de vencimento (23:59:59)
+  paymentMethod: string;         // pix, boleto, cartao_credito, etc.
+  status: string;                // pending, reminderSent, fulfilled, broken
+  reminderSent: boolean;         // Lembrete foi enviado?
+  reminderSentAt: Date | null;   // Quando o lembrete foi enviado
+  verified: boolean;             // Pagamento foi verificado?
+  verifiedAt: Date | null;       // Quando foi verificada
+  completedAt: Date | null;      // Quando foi finalizada (fulfilled/broken)
+  notes: string | null;          // Observações adicionais
+  recordedBy: string;            // 'ai' ou 'manual'
+  createdAt: Date;
+  updatedAt: Date;
 }
 ```
 
-### Proteção Durante TODO o Dia Prometido
+**Relacionamentos:**
+- `campaignId` → `voiceCampaigns.id` (campanha de origem)
+- `targetId` → `voiceCampaignTargets.id` (target específico, se houver)
+- `contactDocument` → usado para validação e verificações
+
+---
+
+### 🔄 Ciclo de Vida Completo
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  ESTADOS DA PROMESSA                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  PENDING          → Ativa, cliente protegido de cobranças       │
+│      │                                                           │
+│      ▼ (no dia do vencimento)                                   │
+│  REMINDER_SENT    → Lembrete enviado, aguardando vencimento     │
+│      │                                                           │
+│      ▼ (após vencimento + verificação CRM)                      │
+│      ├──→ FULFILLED   → Cliente pagou ✅ (proteção permanente)  │
+│      └──→ BROKEN      → Não pagou ⚠️ (volta a receber cobranças)│
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Tabela de Estados e Gatilhos
+
+| Estado | Descrição | Proteção Ativa? | Gatilho para Transição | Próximo Estado |
+|--------|-----------|----------------|------------------------|----------------|
+| `pending` | Promessa ativa, aguardando vencimento | ✅ SIM | Chegou dia do vencimento | `reminderSent` |
+| `reminderSent` | Lembrete enviado, aguardando fim do dia | ✅ SIM | Passou do vencimento + CRM confirmou pagamento | `fulfilled` |
+| `reminderSent` | Lembrete enviado, aguardando fim do dia | ✅ SIM | Passou do vencimento + CRM confirmou NÃO pagamento | `broken` |
+| `fulfilled` | Cliente cumpriu promessa | ✅ SIM (permanente) | - | Estado final |
+| `broken` | Cliente quebrou promessa | ❌ NÃO | - | Estado final |
+
+**Regras de Negócio:**
+- WhatsApp Worker **bloqueia envio** apenas para status `pending` ou `reminderSent` com `dueDate >= hoje`
+- Promessas `broken` **permitem cobranças** normalmente
+- Promessas `fulfilled` **bloqueiam cobranças** permanentemente (cliente está regular)
+
+---
+
+### ✅ Validação de Promessa Única
+
+**Regra:** Cliente só pode ter **UMA** promessa ativa por vez.
+
+```typescript
+// Implementação em server/lib/openai.ts (linhas 2304-2324)
+// Função: registrar_promessa_pagamento
+
+// ANTES de criar nova promessa, busca promessas ativas
+const existingActivePromises = await db.query.voicePromises.findMany({
+  where: and(
+    eq(voicePromises.contactDocument, cpf_cnpj),
+    eq(voicePromises.status, 'pending'),
+    gte(voicePromises.dueDate, new Date()) // Promessa ainda não venceu
+  )
+});
+
+if (existingActivePromises.length > 0) {
+  const existingPromise = existingActivePromises[0];
+  const formattedDate = formatDate(existingPromise.dueDate); // "15/02/2025"
+  
+  // Retorna mensagem humanizada para a IA
+  return {
+    success: false,
+    mensagem: `Você já tem um compromisso de pagamento registrado para o dia ${formattedDate}. ` +
+             `Não é possível fazer uma nova promessa. Por favor, cumpra a promessa atual primeiro. 🙏`
+  };
+}
+```
+
+**Fluxo com o Cliente:**
+```
+Cliente: "Posso pagar dia 20/02"
+IA: [tenta registrar promessa]
+Sistema: [detecta promessa existente para 15/02]
+IA: "Você já tem um compromisso de pagamento registrado para o dia 15/02. 
+     Não é possível fazer uma nova promessa. Por favor, cumpra a promessa atual primeiro. 🙏"
+Cliente: "Ah é verdade, desculpa!"
+```
+
+---
+
+### ⚙️ Worker Unificado de Monitoramento
+
+**Arquivo:** `server/modules/voice/workers/promise-monitor.worker.ts`
+
+**Função:** Monitora diariamente todas as promessas e executa ações automáticas:
+1. 📅 **Envio de Lembretes** (no dia do vencimento)
+2. ✅ **Verificação de Pagamento** (após vencimento)
+3. ⚠️ **Detecção de Quebra** (quando não pagou)
+
+#### Lógica do Worker (Pseudo-código)
+
+```typescript
+// Execução: A cada 1 hora
+async function processPromiseMonitor() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // ========================================================
+  // PARTE 1: LEMBRETES (promessas vencendo HOJE)
+  // ========================================================
+  const promisesDueToday = await db.query.voicePromises.findMany({
+    where: and(
+      eq(voicePromises.status, 'pending'),
+      gte(voicePromises.dueDate, today),
+      lt(voicePromises.dueDate, addDays(today, 1)),
+      eq(voicePromises.reminderSent, false)
+    )
+  });
+  
+  for (const promise of promisesDueToday) {
+    const message = `Olá ${promise.contactName}! 👋
+    
+Este é um lembrete amigável: hoje (${formatDate(promise.dueDate)}) é o dia que você prometeu regularizar sua situação conosco.
+
+Valor: R$ ${(promise.promisedAmount / 100).toFixed(2)}
+
+Se já pagou, desconsidere esta mensagem. Caso precise de ajuda, estamos à disposição! 💙`;
+    
+    await sendWhatsAppMessage(promise.phoneNumber, message);
+    
+    await db.update(voicePromises)
+      .set({
+        reminderSent: true,
+        reminderSentAt: new Date(),
+        status: 'reminderSent'
+      })
+      .where(eq(voicePromises.id, promise.id));
+    
+    console.log(`📅 Lembrete enviado: ${promise.contactDocument}`);
+  }
+  
+  // ========================================================
+  // PARTE 2: VERIFICAÇÃO (promessas VENCIDAS)
+  // ========================================================
+  const expiredPromises = await db.query.voicePromises.findMany({
+    where: and(
+      inArray(voicePromises.status, ['pending', 'reminderSent']),
+      lt(voicePromises.dueDate, today), // Venceu antes de hoje
+      eq(voicePromises.verified, false)
+    )
+  });
+  
+  for (const promise of expiredPromises) {
+    // ⚠️ PROTEÇÃO CRÍTICA: Verificar pagamento via CRM
+    let verificationSuccessful = false;
+    let isPaid = false;
+    
+    try {
+      const crmResponse = await fetch(
+        'https://api.trtelecom.net/v1/clientes/consultar_inadimplencia',
+        {
+          method: 'POST',
+          body: JSON.stringify({ cpf_cnpj: promise.contactDocument }),
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+      
+      if (crmResponse.ok) {
+        const data = await crmResponse.json();
+        verificationSuccessful = true;
+        isPaid = (data.valor_total === 0 || data.faturas_em_aberto === 0);
+      } else {
+        console.warn(`⚠️ CRM retornou erro ${crmResponse.status} - PULANDO promessa ${promise.id}`);
+      }
+    } catch (error) {
+      console.error(`❌ Erro ao verificar CRM para ${promise.contactDocument}:`, error);
+      // NÃO marca como broken - será verificado novamente no próximo ciclo
+    }
+    
+    // ========================================================
+    // CRÍTICO: Só atualiza status se verificação foi bem-sucedida
+    // ========================================================
+    if (verificationSuccessful) {
+      if (isPaid) {
+        // ✅ Cliente PAGOU - marcar como cumprida
+        await db.update(voicePromises)
+          .set({
+            status: 'fulfilled',
+            verified: true,
+            verifiedAt: new Date(),
+            completedAt: new Date()
+          })
+          .where(eq(voicePromises.id, promise.id));
+        
+        // Atualizar target da campanha
+        if (promise.targetId) {
+          await db.update(voiceCampaignTargets)
+            .set({
+              state: 'completed',
+              outcome: 'paid',
+              outcomeDetails: 'Pagamento confirmado via CRM após promessa cumprida'
+            })
+            .where(eq(voiceCampaignTargets.id, promise.targetId));
+        }
+        
+        console.log(`✅ Promessa CUMPRIDA: ${promise.contactDocument}`);
+      } else {
+        // ⚠️ Cliente NÃO pagou - marcar como quebrada
+        await db.update(voicePromises)
+          .set({
+            status: 'broken',
+            verified: true,
+            verifiedAt: new Date(),
+            completedAt: new Date()
+          })
+          .where(eq(voicePromises.id, promise.id));
+        
+        console.log(`⚠️ Promessa QUEBRADA: ${promise.contactDocument} - cliente voltará à fila de cobranças`);
+      }
+    } else {
+      // Verificação falhou - promessa será verificada novamente no próximo ciclo
+      console.log(`⏭️ Promessa ${promise.id} PULADA - aguardando próxima verificação`);
+    }
+  }
+}
+```
+
+#### Proteção Durante TODO o Dia Prometido
 
 ```
 Cenário: Cliente promete pagar dia 15/01/2025
@@ -632,6 +841,309 @@ dueDate = new Date(2025, 0, 15, 23, 59, 59, 999)
 → Cliente SÓ é cobrado no dia 16
 → Honra o compromisso até o final do dia prometido
 ```
+
+---
+
+### 🛡️ Proteções Críticas contra Falhas do CRM
+
+**Problema:** Se o CRM estiver offline ou retornar erro, o sistema NÃO deve marcar promessas como "quebradas" incorretamente.
+
+**Solução:** Verificação em 3 camadas:
+
+```typescript
+// 1. Variável de controle
+let verificationSuccessful = false;
+
+// 2. Tentar verificar via CRM
+try {
+  const response = await fetch(CRM_API_URL, {...});
+  if (response.ok) {
+    verificationSuccessful = true; // ✅ CRM respondeu
+  } else {
+    console.warn(`CRM erro ${response.status} - PULANDO promessa`);
+  }
+} catch (error) {
+  console.error(`CRM offline - PULANDO promessa`);
+}
+
+// 3. Só atualizar se verificação foi bem-sucedida
+if (verificationSuccessful) {
+  // Atualizar status: fulfilled ou broken
+} else {
+  // PULAR promessa - será verificada novamente no próximo ciclo
+  console.log(`Promessa PULADA - aguardando próxima verificação`);
+}
+```
+
+**Comportamento Seguro:**
+- ✅ CRM OK + Cliente pagou → `fulfilled`
+- ✅ CRM OK + Cliente não pagou → `broken`
+- ⏭️ CRM com erro/offline → Promessa **PULADA** (mantém status atual, tenta novamente depois)
+
+Isso **previne falsos positivos** onde clientes que pagaram seriam marcados como inadimplentes por falha técnica.
+
+---
+
+### 📡 Integração com Canais de Cobrança
+
+#### WhatsApp Collection Worker
+
+**Arquivo:** `server/modules/voice/workers/whatsapp-collection.worker.ts`
+
+```typescript
+// Verificação ANTES de enviar mensagem
+const pendingPromises = await db.query.voicePromises.findMany({
+  where: and(
+    eq(voicePromises.contactDocument, target.clientDocument),
+    eq(voicePromises.status, 'pending'),
+    gte(voicePromises.dueDate, new Date()) // Promessa ainda válida?
+  )
+});
+
+if (pendingPromises.length > 0) {
+  const promise = pendingPromises[0];
+  console.log(`🛡️ Cliente ${target.contactDocument} tem promessa ativa até ${promise.dueDate}`);
+  
+  await storage.updateVoiceCampaignTarget(target.id, {
+    state: 'skipped',
+    outcome: 'active_promise',
+    outcomeDetails: `Promessa válida até ${formatDate(promise.dueDate)}`
+  });
+  
+  return { success: true, skipped: true, reason: 'active_promise' };
+}
+
+// Se não tem promessa ativa, prossegue com envio
+await sendWhatsAppMessage(target.phoneNumber, collectionMessage);
+```
+
+**Lógica de Bloqueio:**
+- Status `pending` + vencimento futuro → ❌ BLOQUEIA
+- Status `reminderSent` + vencimento futuro → ❌ BLOQUEIA  
+- Status `broken` → ✅ PERMITE (proteção removida)
+- Status `fulfilled` → ❌ BLOQUEIA (cliente regular)
+
+---
+
+### 🧪 Guia de Testes
+
+#### 1️⃣ Teste de Registro de Promessa
+
+```sql
+-- 1.1 Criar target de teste
+INSERT INTO voice_campaign_targets (
+  campaign_id, contact_name, contact_phone, 
+  contact_document, state, contact_method
+) VALUES (
+  'sua-campanha-id',
+  'Cliente Teste',
+  '5511999887766',
+  '12345678900',
+  'pending',
+  'whatsapp'
+) RETURNING id;
+
+-- 1.2 Criar promessa para AMANHÃ
+INSERT INTO voice_promises (
+  campaign_id, target_id, contact_name, contact_document,
+  phone_number, promised_amount, due_date, payment_method,
+  status, notes, recorded_by
+) VALUES (
+  'sua-campanha-id',
+  'target-id-retornado-acima',
+  'Cliente Teste',
+  '12345678900',
+  '5511999887766',
+  15000,
+  CURRENT_DATE + INTERVAL '1 day' + INTERVAL '23 hours 59 minutes 59 seconds',
+  'pix',
+  'pending',
+  'Teste de promessa',
+  'manual'
+) RETURNING id, due_date, status;
+```
+
+#### 2️⃣ Teste de Promessa Única
+
+```sql
+-- Verificar se existe promessa ativa
+SELECT 
+  id, contact_document, due_date, status,
+  CASE 
+    WHEN due_date >= CURRENT_DATE THEN '🛡️ ATIVA (bloqueará nova promessa)'
+    ELSE 'VENCIDA (permite nova promessa)'
+  END as situacao
+FROM voice_promises 
+WHERE contact_document = '12345678900'
+  AND status = 'pending'
+ORDER BY created_at DESC;
+
+-- Se tentar criar segunda promessa, a IA retornará erro
+```
+
+#### 3️⃣ Teste de Lembrete (Simular Dia do Vencimento)
+
+```sql
+-- Alterar promessa para vencer HOJE
+UPDATE voice_promises 
+SET 
+  due_date = CURRENT_DATE + INTERVAL '23 hours 59 minutes',
+  reminder_sent = false,
+  reminder_sent_at = NULL
+WHERE contact_document = '12345678900'
+  AND status = 'pending'
+RETURNING id, due_date;
+
+-- Aguardar worker executar (a cada 1 hora)
+-- Verificar se lembrete foi enviado:
+SELECT id, reminder_sent, reminder_sent_at, status
+FROM voice_promises
+WHERE contact_document = '12345678900';
+```
+
+#### 4️⃣ Teste de Verificação (Simular Promessa Vencida)
+
+```sql
+-- Alterar promessa para ONTEM (já vencida)
+UPDATE voice_promises 
+SET 
+  due_date = CURRENT_DATE - INTERVAL '1 day',
+  reminder_sent = true
+WHERE contact_document = '12345678900'
+  AND status = 'pending'
+RETURNING id, due_date;
+
+-- Aguardar worker executar
+-- Verificar resultado:
+SELECT 
+  id, contact_document, status, verified, verified_at,
+  CASE 
+    WHEN status = 'fulfilled' THEN '✅ PAGOU'
+    WHEN status = 'broken' THEN '⚠️ NÃO PAGOU'
+    ELSE 'Aguardando verificação'
+  END as resultado
+FROM voice_promises
+WHERE contact_document = '12345678900';
+```
+
+#### 5️⃣ Painel de Monitoramento
+
+```sql
+-- Ver TODAS as promessas e seus estados
+SELECT 
+  id,
+  contact_name,
+  contact_document,
+  due_date::date as vencimento,
+  status,
+  reminder_sent,
+  verified,
+  promised_amount / 100.0 as valor_R$,
+  CASE 
+    WHEN status = 'pending' AND due_date >= CURRENT_DATE 
+    THEN '🛡️ ATIVA (protegido)'
+    WHEN status = 'pending' AND due_date < CURRENT_DATE
+    THEN '⏳ Aguardando verificação'
+    WHEN status = 'broken'
+    THEN '⚠️ QUEBRADA (pode cobrar)'
+    WHEN status = 'fulfilled'
+    THEN '✅ CUMPRIDA (pago)'
+    ELSE status
+  END as situacao,
+  created_at::date as criada_em
+FROM voice_promises 
+ORDER BY created_at DESC 
+LIMIT 20;
+```
+
+---
+
+### 💡 Exemplos de Uso
+
+#### Exemplo 1: Registro Bem-Sucedido
+
+```
+Cliente: "Não posso pagar hoje, mas dia 20 eu consigo"
+IA: [chama registrar_promessa_pagamento({
+  cpf_cnpj: "123.456.789-00",
+  data_prevista_pagamento: "20/02/2025",
+  valor_prometido: 17980,
+  metodo_pagamento: "pix"
+})]
+
+Sistema retorna:
+{
+  success: true,
+  mensagem: "Promessa registrada! Cliente NÃO receberá cobranças até 20/02/2025"
+}
+
+IA: "Perfeito! Registrei que você vai pagar R$ 179,80 dia 20/02 via Pix. 
+     Fique tranquilo, você não receberá mais cobranças até lá! 😊"
+```
+
+#### Exemplo 2: Tentativa de Segunda Promessa
+
+```
+Cliente: "Mudei de ideia, quero pagar só dia 25"
+IA: [tenta registrar nova promessa]
+
+Sistema retorna:
+{
+  success: false,
+  mensagem: "Você já tem um compromisso de pagamento registrado para o dia 20/02. 
+            Não é possível fazer uma nova promessa. Cumpra a promessa atual primeiro."
+}
+
+IA: "Você já tem um compromisso registrado para 20/02. 
+     Não posso fazer uma nova promessa agora. Vamos manter o dia 20?"
+```
+
+#### Exemplo 3: Lembrete Automático
+
+```
+[Dia 20/02/2025 às 10:00 - sistema envia WhatsApp]
+
+"Olá João! 👋
+
+Este é um lembrete amigável: hoje (20/02/2025) é o dia que você prometeu 
+regularizar sua situação conosco.
+
+Valor: R$ 179,80
+
+Se já pagou, desconsidere esta mensagem. Caso precise de ajuda, estamos à disposição! 💙"
+```
+
+---
+
+### ❓ FAQ / Troubleshooting
+
+#### P: O que acontece se o CRM estiver offline quando o worker tentar verificar?
+
+**R:** A promessa é **PULADA** (não marcada como quebrada). O worker tentará novamente na próxima execução. Isso previne falsos positivos.
+
+---
+
+#### P: Cliente pode ter mais de uma promessa ao mesmo tempo?
+
+**R:** **NÃO**. O sistema bloqueia criação de segunda promessa e retorna mensagem humanizada explicando que precisa cumprir a promessa atual primeiro.
+
+---
+
+#### P: Quando o cliente volta a receber cobranças após quebrar promessa?
+
+**R:** Imediatamente. Quando o status muda para `broken`, o WhatsApp Worker detecta e permite envios novamente.
+
+---
+
+#### P: Como funciona a proteção no dia prometido?
+
+**R:** A promessa expira às **23:59:59** do dia prometido, garantindo que o cliente tenha o dia inteiro para pagar sem ser cobrado.
+
+---
+
+#### P: O que acontece se houver um erro de documento/CPF inválido?
+
+**R:** A função `registrar_promessa_pagamento` valida formato antes de salvar. Se inválido, retorna erro para a IA que explica ao cliente.
 
 ---
 
