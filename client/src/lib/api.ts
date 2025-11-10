@@ -114,6 +114,6 @@ export const monitorAPI = {
       audioMimeType,
       forceAssistant
     });
-    return response.json();
+    return response;
   },
 };
