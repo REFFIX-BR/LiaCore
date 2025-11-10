@@ -15,13 +15,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Phone, Plus, Upload, TrendingUp, Users, CheckCircle2, XCircle, Calendar, FileUp, AlertCircle, MessageSquare } from 'lucide-react';
+import { Phone, Plus, Upload, TrendingUp, Users, CheckCircle2, XCircle, Calendar, FileUp, AlertCircle, MessageSquare, RotateCcw } from 'lucide-react';
 import { useState, useRef, useCallback } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { DEFAULT_VOICE_CAMPAIGN_SYSTEM_PROMPT } from '@shared/prompts';
 
 const campaignSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -116,7 +117,7 @@ export default function VoiceCampaigns() {
     resolver: zodResolver(campaignSchema),
     defaultValues: {
       name: '',
-      systemPrompt: '',
+      systemPrompt: DEFAULT_VOICE_CAMPAIGN_SYSTEM_PROMPT,
       startDate: '',
       endDate: '',
     },
@@ -140,7 +141,12 @@ export default function VoiceCampaigns() {
         description: 'A campanha foi criada com sucesso.',
       });
       setIsDialogOpen(false);
-      form.reset();
+      form.reset({
+        name: '',
+        systemPrompt: DEFAULT_VOICE_CAMPAIGN_SYSTEM_PROMPT,
+        startDate: '',
+        endDate: '',
+      });
     },
     onError: (error: any) => {
       toast({
@@ -634,15 +640,31 @@ export default function VoiceCampaigns() {
                   name="systemPrompt"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Prompt do Sistema (Instruções para a IA)</FormLabel>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Prompt do Sistema (Instruções para a IA)</FormLabel>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => form.setValue('systemPrompt', DEFAULT_VOICE_CAMPAIGN_SYSTEM_PROMPT)}
+                          data-testid="button-restore-default-prompt"
+                          className="h-8 text-xs"
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          Restaurar Padrão
+                        </Button>
+                      </div>
                       <FormControl>
                         <Textarea
                           {...field}
                           placeholder="Você é Lia, assistente de cobrança da TR Telecom..."
-                          className="min-h-[200px]"
+                          className="min-h-[200px] font-mono text-sm"
                           data-testid="input-system-prompt"
                         />
                       </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        O prompt padrão já está carregado. Você pode editar conforme necessário para esta campanha específica.
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
