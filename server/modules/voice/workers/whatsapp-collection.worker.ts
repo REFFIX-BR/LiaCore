@@ -312,6 +312,26 @@ Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar 
         threadId = await createThread();
         await storage.updateConversation(conversation.id, { threadId });
         console.log(`✅ [Voice WhatsApp] Thread criada: ${threadId}`);
+        
+        // Adicionar system message com contexto do cliente
+        try {
+          console.log(`📝 [Voice WhatsApp] Adicionando contexto do cliente à thread`);
+          const contextMessage = `CONTEXTO DO CLIENTE:
+- Nome: ${clientName}
+- Telefone: ${phoneNumber}
+${clientDocument ? `- CPF/CNPJ: ${clientDocument}` : ''}
+${debtAmount ? `- Débito: R$ ${debtAmount}` : ''}
+
+Use o nome "${clientName.split(' ')[0]}" para se dirigir ao cliente.`;
+          
+          await openai.beta.threads.messages.create(threadId, {
+            role: 'user',
+            content: contextMessage,
+          });
+          console.log(`✅ [Voice WhatsApp] Contexto do cliente adicionado`);
+        } catch (error: any) {
+          console.error(`❌ [Voice WhatsApp] Erro ao adicionar contexto:`, error);
+        }
       }
       
       // Adicionar mensagem à thread da OpenAI
