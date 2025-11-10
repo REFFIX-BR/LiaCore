@@ -201,6 +201,59 @@ export function validarCpfCnpj(documento: string): {
   };
 }
 
+/**
+ * Valida e classifica documento - aceita CPF, CNPJ ou Código de Cliente
+ * @param documento CPF, CNPJ ou código de cliente
+ * @returns Objeto com resultado da validação e tipo do documento
+ */
+export function validarDocumentoFlexivel(documento: string): {
+  valido: boolean;
+  tipo: 'CPF' | 'CNPJ' | 'CLIENT_CODE';
+  motivo?: string;
+  documentoNormalizado: string;
+} {
+  // Remove espaços em branco
+  const docTrimmed = documento.trim();
+  
+  // Documento vazio é inválido
+  if (!docTrimmed) {
+    return {
+      valido: false,
+      tipo: 'CLIENT_CODE',
+      motivo: 'Documento não pode estar vazio',
+      documentoNormalizado: ''
+    };
+  }
+  
+  // Remove formatação comum (pontos, traços, barras)
+  const docLimpo = docTrimmed.replace(/[^\dA-Za-z]/g, '');
+  
+  // Se for apenas números, tenta validar como CPF/CNPJ
+  if (/^\d+$/.test(docLimpo)) {
+    const validacaoCpfCnpj = validarCpfCnpj(docLimpo);
+    
+    // Se for CPF ou CNPJ válido, retorna
+    if (validacaoCpfCnpj.valido) {
+      return {
+        valido: true,
+        tipo: validacaoCpfCnpj.tipo as 'CPF' | 'CNPJ',
+        documentoNormalizado: docLimpo
+      };
+    }
+    
+    // Se tem tamanho de CPF/CNPJ mas é inválido, permite como CLIENT_CODE
+    // (ex: códigos numéricos do cliente que não são CPF válido)
+    console.log(`📝 [Validação] Documento numérico ${docLimpo.length} dígitos não é CPF/CNPJ válido - aceitando como CLIENT_CODE`);
+  }
+  
+  // Aceita como código de cliente (qualquer formato)
+  return {
+    valido: true,
+    tipo: 'CLIENT_CODE',
+    documentoNormalizado: docTrimmed // Mantém formatação original para códigos
+  };
+}
+
 interface ConsultaBoletoResult {
   NOME?: string;
   CIDADE?: string;

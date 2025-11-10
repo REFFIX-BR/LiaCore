@@ -59,7 +59,8 @@ export const conversations = pgTable("conversations", {
   chatId: text("chat_id").notNull().unique(),
   clientName: text("client_name").notNull(),
   clientId: text("client_id"),
-  clientDocument: text("client_document"), // CPF ou CNPJ do cliente (para validação de segurança)
+  clientDocument: text("client_document"), // CPF, CNPJ, ou Código de Cliente
+  clientDocumentType: text("client_document_type"), // 'CPF' | 'CNPJ' | 'CLIENT_CODE'
   threadId: text("thread_id"),
   assistantType: text("assistant_type").notNull(),
   department: text("department").default("general"), // Departamento responsável: 'commercial', 'support', 'financial', 'cancellation', 'general'
@@ -1242,7 +1243,8 @@ export const voiceCampaignTargets = pgTable("voice_campaign_targets", {
   alternativePhones: text("alternative_phones").array(), // Telefones alternativos
   contactMethod: text("contact_method").notNull().default("voice"), // 'whatsapp' | 'voice' - Método de contato preferencial
   debtorName: text("debtor_name").notNull(),
-  debtorDocument: text("debtor_document"), // CPF/CNPJ
+  debtorDocument: text("debtor_document"), // CPF, CNPJ, ou Código de Cliente
+  debtorDocumentType: text("debtor_document_type"), // 'CPF' | 'CNPJ' | 'CLIENT_CODE'
   debtAmount: integer("debt_amount"), // Valor da dívida em centavos
   dueDate: timestamp("due_date"), // Data de vencimento
   debtorMetadata: jsonb("debtor_metadata"), // Outros dados do CRM (endereço, contrato, etc.)
