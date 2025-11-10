@@ -343,4 +343,87 @@ router.post('/enrich-documents', async (req, res) => {
   }
 });
 
+// DELETE /api/admin/cobranca/clear-targets - Limpar targets para nova importação
+router.delete('/clear-targets', async (req, res) => {
+  try {
+    const { campaignId, confirmDelete = false } = req.body;
+    
+    if (!confirmDelete) {
+      return res.status(400).json({
+        success: false,
+        error: 'Confirmação necessária: envie { confirmDelete: true } no body',
+      });
+    }
+    
+    const { db } = await import('../../db');
+    
+    let deletedCount = 0;
+    
+    if (campaignId) {
+      // Deletar apenas targets de uma campanha específica
+      console.log(`🗑️ [Admin Cobrança] Deletando targets da campanha ${campaignId}`);
+      
+      const targetsToDelete = await db
+        .select()
+        .from(voiceCampaignTargets)
+        .where(eq(voiceCampaignTargets.campaignId, campaignId));
+      
+      deletedCount = targetsToDelete.length;
+      
+      if (deletedCount > 0) {
+        await db
+          .delete(voiceCampaignTargets)
+          .where(eq(voiceCampaignTargets.campaignId, campaignId));
+        
+        // Resetar estatísticas da campanha
+        await storage.updateVoiceCampaignStats(campaignId, {
+          totalTargets: 0,
+          contactedTargets: 0,
+          successfulContacts: 0,
+          promisesMade: 0,
+          promisesFulfilled: 0,
+        });
+        
+        console.log(`✅ [Admin Cobrança] ${deletedCount} target(s) deletado(s) da campanha ${campaignId}`);
+      }
+    } else {
+      // Deletar TODOS os targets de TODAS as campanhas
+      console.log(`🗑️ [Admin Cobrança] Deletando TODOS os targets de todas as campanhas`);
+      
+      const allTargets = await db.select().from(voiceCampaignTargets);
+      deletedCount = allTargets.length;
+      
+      if (deletedCount > 0) {
+        await db.delete(voiceCampaignTargets);
+        
+        // Resetar estatísticas de todas as campanhas
+        const { voiceCampaigns } = await import('@shared/schema');
+        await db.update(voiceCampaigns).set({
+          totalTargets: 0,
+          contactedTargets: 0,
+          successfulContacts: 0,
+          promisesMade: 0,
+          promisesFulfilled: 0,
+        });
+        
+        console.log(`✅ [Admin Cobrança] ${deletedCount} target(s) deletado(s) de todas as campanhas`);
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `${deletedCount} target(s) deletado(s) com sucesso`,
+      deleted: deletedCount,
+      campaignId: campaignId || 'all',
+    });
+  } catch (error) {
+    console.error('❌ [Admin Cobrança] Erro ao limpar targets:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao limpar targets',
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
 export default router;
