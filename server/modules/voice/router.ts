@@ -714,7 +714,9 @@ router.get('/stats', authenticate, requireAdminOrSupervisor, requireVoiceModule,
     const voiceSuccessful = voiceTargets.filter(t => (t.attemptCount || 0) > 0 && t.state === 'completed').length;
     
     const whatsappContacted = whatsappTargets.filter(t => t.state === 'contacted' || t.state === 'completed').length;
-    const whatsappSuccessful = whatsappTargets.filter(t => (t.attemptCount || 0) > 0 && t.state === 'completed').length;
+    // WhatsApp: Count as successful when message was sent (outcome='whatsapp_sent')
+    // Unlike voice calls, WhatsApp doesn't have a 'completed' state - it stops at 'contacted'
+    const whatsappSuccessful = whatsappTargets.filter(t => t.outcome === 'whatsapp_sent').length;
     
     res.json({
       // Overall metrics
