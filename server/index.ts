@@ -136,6 +136,7 @@ app.use((req, res, next) => {
                   title: `Assistente ${assistantType.charAt(0).toUpperCase() + assistantType.slice(1)}`,
                   content: instructions,
                   version: "1.0.0",
+                  status: "active",
                   createdBy: "system",
                 });
                 console.log(`✅ [Prompts Init] Created template for ${assistantType} (${instructions.length} chars)`);
