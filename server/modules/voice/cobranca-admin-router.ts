@@ -30,9 +30,9 @@ router.get('/failed-targets', async (req, res) => {
       targets: failedTargets.map(target => ({
         id: target.id,
         campaignId: target.campaignId,
-        clientName: target.clientName,
+        clientName: target.debtorName,
         phoneNumber: target.phoneNumber,
-        clientDocument: target.clientDocument,
+        clientDocument: target.debtorDocument,
         debtAmount: target.debtAmount,
         attemptCount: target.attemptCount,
         outcome: target.outcome,
@@ -101,60 +101,37 @@ router.post('/retry-failed', async (req, res) => {
     const results = await Promise.all(
       targetsToRetry.map(async (target) => {
         try {
-          // 1. Criar novo thread OpenAI com contexto do cliente
-          const newThreadId = await createThread();
-          
-          // 2. Injetar contexto do cliente no thread (igual ao worker original)
-          if (target.clientName && target.clientDocument) {
-            const contextMessage = `
-Cliente: ${target.clientName}
-CPF/CNPJ: ${target.clientDocument}
-Telefone: ${target.phoneNumber}
-Valor em aberto: R$ ${target.debtAmount?.toFixed(2) || '0.00'}
-
-Você está iniciando uma abordagem de cobrança empática. Siga o fluxo estruturado do seu prompt.
-            `.trim();
-            
-            await openai.beta.threads.messages.create(newThreadId, {
-              role: 'user',
-              content: contextMessage,
-            });
-            
-            console.log(`✅ [Admin Cobrança] Thread ${newThreadId} criado com contexto para ${target.clientName}`);
-          }
-          
-          // 3. Resetar estado do target
+          // 1. Resetar estado do target (sem criar thread - será criado pelo worker)
           await storage.updateVoiceCampaignTarget(target.id, {
             state: 'pending',
             attemptCount: 0,
             outcome: null,
             outcomeDetails: null,
-            threadId: newThreadId,
           });
           
-          // 4. Re-adicionar à fila
+          // 2. Re-adicionar à fila
           await addVoiceWhatsAppCollectionToQueue({
             targetId: target.id,
             campaignId: target.campaignId,
             phoneNumber: target.phoneNumber,
-            clientName: target.clientName || 'Cliente',
-            clientDocument: target.clientDocument || undefined,
+            clientName: target.debtorName || 'Cliente',
+            clientDocument: target.debtorDocument || '',
             debtAmount: target.debtAmount || 0,
             attemptNumber: 1,
           });
           
-          console.log(`✅ [Admin Cobrança] Target ${target.id} (${target.clientName}) resetado e reenviado`);
+          console.log(`✅ [Admin Cobrança] Target ${target.id} (${target.debtorName}) resetado e reenviado`);
           
           return {
             targetId: target.id,
-            clientName: target.clientName,
+            clientName: target.debtorName,
             success: true,
           };
         } catch (error) {
           console.error(`❌ [Admin Cobrança] Erro ao reenviar target ${target.id}:`, error);
           return {
             targetId: target.id,
-            clientName: target.clientName,
+            clientName: target.debtorName,
             success: false,
             error: error instanceof Error ? error.message : String(error),
           };
@@ -177,6 +154,190 @@ Você está iniciando uma abordagem de cobrança empática. Siga o fluxo estrutu
     res.status(500).json({
       success: false,
       error: 'Erro ao resetar e reenviar targets',
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+// POST /api/admin/cobranca/unlock-stuck-targets - Desbloquear targets presos em 'calling'
+router.post('/unlock-stuck-targets', async (req, res) => {
+  try {
+    const { db } = await import('../../db');
+    const { and } = await import('drizzle-orm');
+    
+    // Buscar targets presos: state='calling' AND attemptCount >= 3
+    const stuckTargets = await db
+      .select()
+      .from(voiceCampaignTargets)
+      .where(
+        and(
+          eq(voiceCampaignTargets.state, 'calling'),
+          // attemptCount >= 3
+        )
+      );
+    
+    // Filtrar apenas os que têm attemptCount >= 3
+    const targetsToUnlock = stuckTargets.filter(t => (t.attemptCount || 0) >= 3);
+    
+    console.log(`🔓 [Admin Cobrança] Encontrados ${targetsToUnlock.length} target(s) presos em 'calling' com attemptCount >= 3`);
+    
+    if (targetsToUnlock.length === 0) {
+      return res.json({
+        success: true,
+        message: 'Nenhum target preso encontrado',
+        unlocked: 0,
+      });
+    }
+    
+    // Marcar todos como 'failed' com outcome 'max_attempts'
+    const results = await Promise.all(
+      targetsToUnlock.map(async (target) => {
+        try {
+          await storage.updateVoiceCampaignTarget(target.id, {
+            state: 'failed',
+            outcome: 'max_attempts',
+            outcomeDetails: `Máximo de tentativas atingido (${target.attemptCount}). Target preso em estado 'calling' - desbloqueado administrativamente.`,
+          });
+          
+          console.log(`✅ [Admin Cobrança] Target ${target.id} (${target.debtorName}) desbloqueado e marcado como 'failed'`);
+          
+          return {
+            targetId: target.id,
+            clientName: target.debtorName,
+            attemptCount: target.attemptCount,
+            success: true,
+          };
+        } catch (error) {
+          console.error(`❌ [Admin Cobrança] Erro ao desbloquear target ${target.id}:`, error);
+          return {
+            targetId: target.id,
+            clientName: target.debtorName,
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+          };
+        }
+      })
+    );
+    
+    const successful = results.filter(r => r.success);
+    const failed = results.filter(r => !r.success);
+    
+    res.json({
+      success: true,
+      message: `${successful.length} target(s) desbloqueado(s) com sucesso`,
+      unlocked: successful.length,
+      failed: failed.length,
+      results,
+    });
+  } catch (error) {
+    console.error('❌ [Admin Cobrança] Erro ao desbloquear targets presos:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao desbloquear targets presos',
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+// POST /api/admin/cobranca/enrich-documents - Enriquecer targets com CPF/CNPJ do CRM
+router.post('/enrich-documents', async (req, res) => {
+  try {
+    const { db } = await import('../../db');
+    const { isNull } = await import('drizzle-orm');
+    
+    // Buscar todos os targets SEM CPF/CNPJ
+    const targetsWithoutDoc = await db
+      .select()
+      .from(voiceCampaignTargets)
+      .where(isNull(voiceCampaignTargets.debtorDocument));
+    
+    console.log(`📋 [Admin Cobrança] Encontrados ${targetsWithoutDoc.length} target(s) sem CPF/CNPJ`);
+    
+    if (targetsWithoutDoc.length === 0) {
+      return res.json({
+        success: true,
+        message: 'Todos os targets já possuem CPF/CNPJ',
+        enriched: 0,
+      });
+    }
+    
+    const results = await Promise.all(
+      targetsWithoutDoc.map(async (target) => {
+        try {
+          // Consultar CRM para buscar CPF/CNPJ usando telefone
+          const cleanPhone = target.phoneNumber.replace(/\D/g, '');
+          
+          // API do CRM que busca cliente por telefone
+          const crmUrl = `https://webhook.trtelecom.net/webhook/buscar_cliente_por_telefone`;
+          const response = await fetch(crmUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ telefone: cleanPhone }),
+          });
+          
+          if (!response.ok) {
+            throw new Error(`CRM API error: ${response.status}`);
+          }
+          
+          const crmData = await response.json();
+          
+          // CRM retorna { cpf: string, nome: string } ou null
+          if (crmData && crmData.cpf) {
+            await storage.updateVoiceCampaignTarget(target.id, {
+              debtorDocument: crmData.cpf,
+            });
+            
+            console.log(`✅ [Admin Cobrança] Target ${target.id} enriquecido com CPF: ${crmData.cpf}`);
+            
+            return {
+              targetId: target.id,
+              clientName: target.debtorName,
+              phoneNumber: target.phoneNumber,
+              documentFound: crmData.cpf,
+              success: true,
+            };
+          } else {
+            console.log(`⚠️ [Admin Cobrança] CPF não encontrado no CRM para ${target.phoneNumber}`);
+            
+            return {
+              targetId: target.id,
+              clientName: target.debtorName,
+              phoneNumber: target.phoneNumber,
+              documentFound: null,
+              success: false,
+              reason: 'not_found_in_crm',
+            };
+          }
+        } catch (error) {
+          console.error(`❌ [Admin Cobrança] Erro ao enriquecer target ${target.id}:`, error);
+          return {
+            targetId: target.id,
+            clientName: target.debtorName,
+            phoneNumber: target.phoneNumber,
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+          };
+        }
+      })
+    );
+    
+    const successful = results.filter(r => r.success);
+    const notFound = results.filter(r => !r.success && r.reason === 'not_found_in_crm');
+    const failed = results.filter(r => !r.success && r.reason !== 'not_found_in_crm');
+    
+    res.json({
+      success: true,
+      message: `${successful.length} target(s) enriquecido(s) com sucesso`,
+      enriched: successful.length,
+      notFoundInCrm: notFound.length,
+      failed: failed.length,
+      results,
+    });
+  } catch (error) {
+    console.error('❌ [Admin Cobrança] Erro ao enriquecer targets:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao enriquecer targets com CPF/CNPJ',
       details: error instanceof Error ? error.message : String(error),
     });
   }

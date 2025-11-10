@@ -41,10 +41,27 @@ const worker = new Worker<VoiceCampaignIngestJob>(
 
       console.log(`✅ [Voice Campaign Ingest] Received ${crmData.clients.length} clients from CRM`);
 
-      const targets = crmData.clients.map((client: any, index: number) => ({
+      // ============================================================================
+      // VALIDAÇÃO CRÍTICA: CPF/CNPJ OBRIGATÓRIO
+      // ============================================================================
+      // Filtrar clientes que NÃO têm CPF/CNPJ antes de criar targets
+      const clientsWithDocument = crmData.clients.filter((client: any) => {
+        const hasDocument = !!(client.document || client.cpf || client.cnpj);
+        if (!hasDocument) {
+          console.warn(`⚠️ [Voice Campaign Ingest] Cliente sem CPF/CNPJ será REJEITADO: ${client.name || 'sem nome'} (${client.phone || client.phoneNumber || 'sem telefone'})`);
+        }
+        return hasDocument;
+      });
+      
+      const rejectedCount = crmData.clients.length - clientsWithDocument.length;
+      if (rejectedCount > 0) {
+        console.log(`🚫 [Voice Campaign Ingest] ${rejectedCount} cliente(s) rejeitado(s) por falta de CPF/CNPJ`);
+      }
+      
+      const targets = clientsWithDocument.map((client: any, index: number) => ({
         campaignId,
         debtorName: client.name || 'Cliente sem nome',
-        debtorDocument: client.document || client.cpf || client.cnpj,
+        debtorDocument: client.document || client.cpf || client.cnpj, // Garantido não-null aqui
         phoneNumber: client.phone || client.phoneNumber,
         debtAmount: Math.round(parseFloat(client.debtAmount || client.valor || '0') * 100),
         dueDate: client.dueDate ? new Date(client.dueDate) : null,
