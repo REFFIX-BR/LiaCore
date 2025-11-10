@@ -9,9 +9,10 @@ import { useToast } from "@/hooks/use-toast";
 import { monitorAPI } from "@/lib/api";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User, Bot, Image as ImageIcon, Mic, X } from "lucide-react";
+import { User, Bot, Image as ImageIcon, Mic, X, Download, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -208,19 +209,80 @@ export default function TestChat() {
     "Quero fazer uma reclamação formal",
   ];
 
+  const exportConversation = () => {
+    if (conversation.length === 0) {
+      toast({
+        title: "Sem conversa para exportar",
+        description: "Inicie uma conversa antes de exportar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const exportData = {
+      chatId,
+      clientName,
+      assistant: selectedAssistant,
+      timestamp: new Date().toISOString(),
+      messages: conversation,
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `simulacao-${chatId}-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Conversa exportada",
+      description: "Arquivo JSON salvo com sucesso",
+    });
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold mb-1">Simulador de Chat TR</h1>
-        <p className="text-sm text-muted-foreground">
-          Simule conversas de clientes para testar o sistema LIA CORTEX
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-2xl font-semibold">Simulador de Chat TR</h1>
+            <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-500 border-yellow-500/20" data-testid="badge-simulation">
+              🧪 SIMULAÇÃO
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Simule conversas de clientes para testar o sistema LIA CORTEX
+          </p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={exportConversation}
+          disabled={conversation.length === 0}
+          data-testid="button-export-conversation"
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Exportar Conversa
+        </Button>
       </div>
+
+      <Alert className="bg-blue-500/10 border-blue-500/20">
+        <AlertTriangle className="h-4 w-4 text-blue-600 dark:text-blue-500" />
+        <AlertDescription className="text-sm text-blue-600 dark:text-blue-500">
+          Esta é uma simulação isolada. Nenhuma conversa real será criada no banco de dados.
+        </AlertDescription>
+      </Alert>
 
       <div className="grid grid-cols-3 gap-4">
         <Card className="col-span-2">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <CardTitle>Chat Ativo - {chatId}</CardTitle>
+            <Badge variant="secondary" className="bg-orange-500/10 text-orange-600 dark:text-orange-500 border-orange-500/20">
+              Modo Teste
+            </Badge>
           </CardHeader>
           <CardContent className="space-y-4">
             <ScrollArea className="h-96 border rounded-lg p-4">
@@ -373,12 +435,13 @@ export default function TestChat() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="apresentacao">🎭 Recepcionista (Auto-roteamento)</SelectItem>
+                    <SelectItem value="apresentacao">🎭 Cortex (Recepcionista - Auto-roteamento)</SelectItem>
                     <SelectItem value="comercial">💼 Comercial (Vendas)</SelectItem>
                     <SelectItem value="suporte">🔧 Suporte Técnico</SelectItem>
                     <SelectItem value="financeiro">💰 Financeiro</SelectItem>
                     <SelectItem value="cancelamento">❌ Cancelamento</SelectItem>
                     <SelectItem value="ouvidoria">📢 Ouvidoria</SelectItem>
+                    <SelectItem value="cobranca">💳 Cobrança (Negociação de Dívidas)</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
