@@ -10308,6 +10308,11 @@ A resposta deve:
   const voiceRouter = await import('./modules/voice/router');
   app.use('/api/voice', voiceRouter.default);
   console.log('📞 [COBRANÇAS] Rotas do módulo voice registradas em /api/voice');
+  
+  // Admin routes para gerenciar targets de cobrança com erro
+  const cobrancaAdminRouter = await import('./modules/voice/cobranca-admin-router');
+  app.use('/api/admin/cobranca', cobrancaAdminRouter.default);
+  console.log('⚙️  [COBRANÇAS ADMIN] Rotas administrativas registradas em /api/admin/cobranca');
 
   /**
    * GET /api/conversations/cobrancas
