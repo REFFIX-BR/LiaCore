@@ -1933,9 +1933,9 @@ Fonte: ${fonte}`;
           // Validar CPF/CNPJ
           const validacao = validarCpfCnpj(documentoNormalizado);
           if (!validacao.valido) {
-            console.warn(`⚠️ [AI Tool] Documento inválido: ${validacao.mensagem}`);
+            console.warn(`⚠️ [AI Tool] Documento inválido: ${validacao.motivo || 'Documento inválido'}`);
             return JSON.stringify({
-              error: validacao.mensagem
+              error: validacao.motivo || 'Documento inválido'
             });
           }
           
