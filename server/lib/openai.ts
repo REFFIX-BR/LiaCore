@@ -1866,6 +1866,60 @@ Fonte: ${fonte}`;
           });
         }
 
+      case "persistir_documento":
+        if (!conversationId) {
+          console.error(`❌ [AI Tool] persistir_documento chamada sem conversationId`);
+          return JSON.stringify({
+            error: "Contexto de conversa não disponível"
+          });
+        }
+        
+        try {
+          const { storage: storageDoc } = await import("../storage");
+          const { validarCpfCnpj } = await import("../ai-tools");
+          
+          const cpfCnpj = args.cpf_cnpj;
+          
+          if (!cpfCnpj) {
+            console.error("❌ [AI Tool] CPF/CNPJ não fornecido");
+            return JSON.stringify({
+              error: "CPF ou CNPJ é obrigatório"
+            });
+          }
+          
+          console.log(`📝 [AI Tool] Persistindo documento do cliente (conversação: ${conversationId})`);
+          
+          // Normalizar documento (remover formatação)
+          const documentoNormalizado = cpfCnpj.replace(/\D/g, '');
+          
+          // Validar CPF/CNPJ
+          const validacao = validarCpfCnpj(documentoNormalizado);
+          if (!validacao.valido) {
+            console.warn(`⚠️ [AI Tool] Documento inválido: ${validacao.mensagem}`);
+            return JSON.stringify({
+              error: validacao.mensagem
+            });
+          }
+          
+          // Salvar documento na conversa
+          await storageDoc.updateConversation(conversationId, {
+            clientDocument: documentoNormalizado
+          });
+          
+          console.log(`✅ [AI Tool] Documento salvo com sucesso (tipo: ${validacao.tipo})`);
+          
+          return JSON.stringify({
+            success: true,
+            tipo_documento: validacao.tipo,
+            mensagem: "CPF/CNPJ salvo com sucesso. Agora posso consultar seus boletos!"
+          });
+        } catch (error) {
+          console.error("❌ [AI Tool] Erro ao persistir documento:", error);
+          return JSON.stringify({
+            error: "Erro ao salvar documento. Tente novamente."
+          });
+        }
+
       case "consultar_faturas":
       case "consultar_boleto_cliente":
         console.log(`🚨 [DEBUG] ENTRANDO NO CASE ${functionName} - conversationId: ${conversationId || 'UNDEFINED'}`);
