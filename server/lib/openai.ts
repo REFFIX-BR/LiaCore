@@ -559,6 +559,34 @@ export async function sendMessageAndGetResponse(
       );
       
       for (const activeRun of activeRuns.data) {
+        // If run is already cancelling, just wait for it to finish (don't try to cancel again)
+        if (activeRun.status === 'cancelling') {
+          console.warn(`⏳ [OpenAI] Run ${activeRun.id} is already cancelling, waiting for completion...`);
+          
+          // Wait for the cancellation to complete (up to 5 seconds)
+          let finished = false;
+          for (let i = 0; i < 10; i++) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const runStatus = await openaiCircuitBreaker.execute(() =>
+              openai.beta.threads.runs.retrieve(activeRun.id, { thread_id: threadId })
+            );
+            
+            if (runStatus.status === 'cancelled' || runStatus.status === 'failed' || runStatus.status === 'completed') {
+              console.log(`✅ [OpenAI] Run ${activeRun.id} finished (final status: ${runStatus.status})`);
+              finished = true;
+              break;
+            }
+            
+            console.log(`⏳ [OpenAI] Waiting for run to finish... (attempt ${i + 1}/10, status: ${runStatus.status})`);
+          }
+          
+          if (!finished) {
+            console.warn(`⚠️  [OpenAI] Run ${activeRun.id} still not finished after 5 seconds, continuing anyway`);
+          }
+          continue;
+        }
+        
+        // Only cancel runs that need cancellation
         if (activeRun.status === 'queued' || activeRun.status === 'in_progress' || activeRun.status === 'requires_action') {
           console.warn(`⚠️  [OpenAI] Cancelling active run ${activeRun.id} (status: ${activeRun.status})`);
           
@@ -588,7 +616,12 @@ export async function sendMessageAndGetResponse(
               console.error(`❌ [OpenAI] Failed to cancel run ${activeRun.id} after 5 seconds`);
               throw new Error(`Could not cancel active run ${activeRun.id}`);
             }
-          } catch (cancelError) {
+          } catch (cancelError: any) {
+            // If error is "Cannot cancel run with status 'cancelling'", it's already being cancelled - not a real error
+            if (cancelError?.message?.includes("Cannot cancel run with status 'cancelling'")) {
+              console.warn(`⚠️  [OpenAI] Run ${activeRun.id} is already being cancelled, continuing...`);
+              continue;
+            }
             console.error(`❌ [OpenAI] Error cancelling run ${activeRun.id}:`, cancelError);
             throw cancelError;
           }
@@ -636,8 +669,13 @@ export async function sendMessageAndGetResponse(
                   openai.beta.threads.runs.cancel(activeRunId, { thread_id: threadId })
                 );
                 console.log(`✅ [OpenAI] Run ${activeRunId} cancellation requested`);
-              } catch (cancelErr) {
-                console.warn(`⚠️ [OpenAI] Could not cancel run ${activeRunId}:`, cancelErr);
+              } catch (cancelErr: any) {
+                // If error is "Cannot cancel run with status 'cancelling'", it's already being cancelled
+                if (cancelErr?.message?.includes("Cannot cancel run with status 'cancelling'")) {
+                  console.warn(`⚠️ [OpenAI] Run ${activeRunId} is already being cancelled`);
+                } else {
+                  console.warn(`⚠️ [OpenAI] Could not cancel run ${activeRunId}:`, cancelErr);
+                }
               }
             }
             
