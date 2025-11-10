@@ -365,9 +365,9 @@ Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar 
   },
   {
     connection: redisConnection,
-    concurrency: 5, // Permite múltiplas mensagens simultâneas
+    concurrency: 3, // Reduzido para modo conservador
     limiter: {
-      max: 10, // Máximo de 10 mensagens por minuto (compliance WhatsApp)
+      max: 5, // Máximo de 5 mensagens por minuto (modo conservador - compliance WhatsApp)
       duration: 60000,
     },
   }
