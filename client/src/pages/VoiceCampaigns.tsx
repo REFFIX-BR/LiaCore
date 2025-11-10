@@ -717,7 +717,7 @@ export default function VoiceCampaigns() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4 mb-6">
+      <div className="grid gap-4 md:grid-cols-2 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total de Campanhas</CardTitle>
@@ -729,21 +729,6 @@ export default function VoiceCampaigns() {
             </div>
             <p className="text-xs text-muted-foreground">
               {stats?.activeCampaigns || 0} ativas
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Ligações</CardTitle>
-            <Phone className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-total-calls">
-              {stats?.totalCalls || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.successRate || 0}% de sucesso
             </p>
           </CardContent>
         </Card>
@@ -762,21 +747,110 @@ export default function VoiceCampaigns() {
             </p>
           </CardContent>
         </Card>
+      </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Taxa de Conversão</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-success-rate">
-              {stats?.successRate || 0}%
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.successfulCalls || 0} de {stats?.totalCalls || 0} ligações
-            </p>
-          </CardContent>
-        </Card>
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
+          <Phone className="h-5 w-5" />
+          Ligações Voice
+        </h3>
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="text-voice-total">
+                {stats?.byMethod?.voice?.totalTargets || 0}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Contactados</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="text-voice-contacted">
+                {stats?.byMethod?.voice?.contacted || 0}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Bem-sucedidas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="text-voice-successful">
+                {stats?.byMethod?.voice?.successful || 0}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Taxa de Sucesso</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="text-voice-success-rate">
+                {stats?.byMethod?.voice?.successRate || 0}%
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
+          <MessageSquare className="h-5 w-5" />
+          Mensagens WhatsApp
+        </h3>
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="text-whatsapp-total">
+                {stats?.byMethod?.whatsapp?.totalTargets || 0}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Contactados</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="text-whatsapp-contacted">
+                {stats?.byMethod?.whatsapp?.contacted || 0}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Bem-sucedidas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="text-whatsapp-successful">
+                {stats?.byMethod?.whatsapp?.successful || 0}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Taxa de Sucesso</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="text-whatsapp-success-rate">
+                {stats?.byMethod?.whatsapp?.successRate || 0}%
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <div className="grid gap-4">
