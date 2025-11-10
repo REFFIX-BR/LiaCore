@@ -32,6 +32,20 @@ interface VoiceMetrics {
   pendingPromises: number;
   fulfilledPromises: number;
   conversionRate: number;
+  byMethod: {
+    voice: {
+      totalTargets: number;
+      contacted: number;
+      successful: number;
+      successRate: string;
+    };
+    whatsapp: {
+      totalTargets: number;
+      contacted: number;
+      successful: number;
+      successRate: string;
+    };
+  };
   channelBreakdown: {
     voice: {
       total: number;
@@ -142,58 +156,108 @@ export default function CobrancasMonitor() {
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid gap-4 md:grid-cols-4 mb-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Ligações</CardTitle>
-            <Phone className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics?.totalCalls || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {metrics?.successfulCalls || 0} com sucesso
-            </p>
-          </CardContent>
-        </Card>
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
+          <Phone className="h-5 w-5" />
+          Ligações Voice
+        </h3>
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="text-voice-total">
+                {metrics?.byMethod?.voice?.totalTargets || 0}
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Mensagens WhatsApp</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics?.totalWhatsAppMessages || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {metrics?.successfulMessages || 0} com sucesso
-            </p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Contactados</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="text-voice-contacted">
+                {metrics?.byMethod?.voice?.contacted || 0}
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Promessas Pendentes</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics?.pendingPromises || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {metrics?.fulfilledPromises || 0} cumpridas
-            </p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Bem-sucedidas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="text-voice-successful">
+                {metrics?.byMethod?.voice?.successful || 0}
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Taxa de Conversão</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics?.conversionRate || 0}%</div>
-            <p className="text-xs text-muted-foreground">
-              {metrics?.activeCampaigns || 0} campanhas ativas
-            </p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Taxa de Sucesso</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="text-voice-success-rate">
+                {metrics?.byMethod?.voice?.successRate || 0}%
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
+          <MessageSquare className="h-5 w-5" />
+          Mensagens WhatsApp
+        </h3>
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="text-whatsapp-total">
+                {metrics?.byMethod?.whatsapp?.totalTargets || 0}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Contactados</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="text-whatsapp-contacted">
+                {metrics?.byMethod?.whatsapp?.contacted || 0}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Bem-sucedidas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="text-whatsapp-successful">
+                {metrics?.byMethod?.whatsapp?.successful || 0}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Taxa de Sucesso</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="text-whatsapp-success-rate">
+                {metrics?.byMethod?.whatsapp?.successRate || 0}%
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Channel Breakdown */}
