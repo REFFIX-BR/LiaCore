@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { monitorAPI } from "@/lib/api";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User, Bot, Image as ImageIcon, Mic, X, Download, AlertTriangle } from "lucide-react";
+import { User, Bot, Image as ImageIcon, Mic, X, Download, AlertTriangle, FlaskConical, UserCircle, Briefcase, Wrench, DollarSign, XCircle, Megaphone, CreditCard } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -250,7 +250,8 @@ export default function TestChat() {
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-semibold">Simulador de Chat TR</h1>
             <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-500 border-yellow-500/20" data-testid="badge-simulation">
-              🧪 SIMULAÇÃO
+              <FlaskConical className="h-3 w-3 mr-1" />
+              SIMULAÇÃO
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -317,7 +318,8 @@ export default function TestChat() {
               {imagePreview && (
                 <div className="relative inline-block">
                   <Badge variant="outline" className="mb-2">
-                    📸 Imagem anexada
+                    <ImageIcon className="h-3 w-3 mr-1" />
+                    Imagem anexada
                   </Badge>
                   <Button
                     size="icon"
@@ -340,7 +342,8 @@ export default function TestChat() {
               {audioPreview && (
                 <div className="flex items-center gap-2 p-2 border rounded-md">
                   <Badge variant="outline">
-                    🎤 Áudio anexado
+                    <Mic className="h-3 w-3 mr-1" />
+                    Áudio anexado
                   </Badge>
                   <span className="text-sm text-muted-foreground flex-1" data-testid="audio-preview">
                     {audioPreview}
@@ -435,13 +438,48 @@ export default function TestChat() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="apresentacao">🎭 Cortex (Recepcionista - Auto-roteamento)</SelectItem>
-                    <SelectItem value="comercial">💼 Comercial (Vendas)</SelectItem>
-                    <SelectItem value="suporte">🔧 Suporte Técnico</SelectItem>
-                    <SelectItem value="financeiro">💰 Financeiro</SelectItem>
-                    <SelectItem value="cancelamento">❌ Cancelamento</SelectItem>
-                    <SelectItem value="ouvidoria">📢 Ouvidoria</SelectItem>
-                    <SelectItem value="cobranca">💳 Cobrança (Negociação de Dívidas)</SelectItem>
+                    <SelectItem value="apresentacao">
+                      <div className="flex items-center gap-2">
+                        <UserCircle className="h-4 w-4" />
+                        <span>Cortex (Recepcionista - Auto-roteamento)</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="comercial">
+                      <div className="flex items-center gap-2">
+                        <Briefcase className="h-4 w-4" />
+                        <span>Comercial (Vendas)</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="suporte">
+                      <div className="flex items-center gap-2">
+                        <Wrench className="h-4 w-4" />
+                        <span>Suporte Técnico</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="financeiro">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4" />
+                        <span>Financeiro</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="cancelamento">
+                      <div className="flex items-center gap-2">
+                        <XCircle className="h-4 w-4" />
+                        <span>Cancelamento</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="ouvidoria">
+                      <div className="flex items-center gap-2">
+                        <Megaphone className="h-4 w-4" />
+                        <span>Ouvidoria</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="cobranca">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        <span>Cobrança (Negociação de Dívidas)</span>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
