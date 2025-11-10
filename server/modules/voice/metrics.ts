@@ -10,6 +10,20 @@ export interface VoiceMetrics {
   pendingPromises: number;
   fulfilledPromises: number;
   conversionRate: number;
+  byMethod: {
+    voice: {
+      totalTargets: number;
+      contacted: number;
+      successful: number;
+      successRate: string;
+    };
+    whatsapp: {
+      totalTargets: number;
+      contacted: number;
+      successful: number;
+      successRate: string;
+    };
+  };
   channelBreakdown: {
     voice: {
       total: number;
@@ -63,6 +77,15 @@ export async function getVoiceMetrics(): Promise<VoiceMetrics> {
     pending: whatsappTargets.filter(t => t.state === 'pending' || t.state === 'scheduled' || t.state === 'in_progress').length,
   };
 
+  // 4.1. Calcular métricas detalhadas por método (para dashboard)
+  const voiceContacted = voiceTargets.filter(t => t.state === 'contacted' || t.state === 'completed').length;
+  const voiceSuccessful = voiceTargets.filter(t => (t.attemptCount || 0) > 0 && t.state === 'completed').length;
+
+  const whatsappContacted = whatsappTargets.filter(t => t.state === 'contacted' || t.state === 'completed').length;
+  // WhatsApp: Count as successful when message was sent (outcome='whatsapp_sent')
+  // Unlike voice calls, WhatsApp doesn't have a 'completed' state - it stops at 'contacted'
+  const whatsappSuccessful = whatsappTargets.filter(t => t.outcome === 'whatsapp_sent').length;
+
   // 5. Buscar promessas de pagamento
   const promises = await storage.getAllVoicePromises();
   const pendingPromises = promises.filter(p => p.status === 'pending');
@@ -85,6 +108,20 @@ export async function getVoiceMetrics(): Promise<VoiceMetrics> {
     pendingPromises: pendingPromises.length,
     fulfilledPromises: fulfilledPromises.length,
     conversionRate: Math.round(conversionRate * 10) / 10, // 1 decimal place
+    byMethod: {
+      voice: {
+        totalTargets: voiceTargets.length,
+        contacted: voiceContacted,
+        successful: voiceSuccessful,
+        successRate: voiceContacted > 0 ? ((voiceSuccessful / voiceContacted) * 100).toFixed(2) : '0',
+      },
+      whatsapp: {
+        totalTargets: whatsappTargets.length,
+        contacted: whatsappContacted,
+        successful: whatsappSuccessful,
+        successRate: whatsappContacted > 0 ? ((whatsappSuccessful / whatsappContacted) * 100).toFixed(2) : '0',
+      },
+    },
     channelBreakdown: {
       voice: voiceStats,
       whatsapp: whatsappStats,
@@ -95,6 +132,7 @@ export async function getVoiceMetrics(): Promise<VoiceMetrics> {
     totalCalls: metrics.totalCalls,
     totalMessages: metrics.totalWhatsAppMessages,
     conversionRate: `${metrics.conversionRate}%`,
+    byMethod: metrics.byMethod,
   });
 
   return metrics;
