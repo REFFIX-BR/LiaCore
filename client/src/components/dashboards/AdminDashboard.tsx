@@ -1,8 +1,28 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { 
   Activity, 
   DollarSign, 
@@ -95,9 +115,20 @@ interface AdminMetrics {
   };
 }
 
+interface VoiceCampaign {
+  id: string;
+  name: string;
+  status: string;
+  totalTargets: number;
+  createdAt: Date;
+}
+
 export function AdminDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [clearTargetsDialogOpen, setClearTargetsDialogOpen] = useState(false);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
   
   const { data: metrics, isLoading } = useQuery<AdminMetrics>({
     queryKey: ["/api/dashboard/admin"],
@@ -107,6 +138,12 @@ export function AdminDashboard() {
   const { data: aiMetrics, isLoading: isLoadingAI } = useQuery({
     queryKey: ["/api/dashboard/ai-performance"],
     refetchInterval: 30000, // 30 seconds
+  });
+
+  // Fetch voice campaigns for clear targets dialog
+  const { data: campaigns = [] } = useQuery<VoiceCampaign[]>({
+    queryKey: ["/api/voice/campaigns"],
+    enabled: clearTargetsDialogOpen,
   });
 
   const reprocessMutation = useMutation({
@@ -214,6 +251,40 @@ export function AdminDashboard() {
     onError: (error: Error) => {
       toast({
         title: "Erro ao Resolver Conversas Antigas",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const clearTargetsMutation = useMutation({
+    mutationFn: async (params: { campaignId?: string; confirmDelete: boolean }) => {
+      const response = await fetch('/api/admin/cobranca/clear-targets', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao limpar targets');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Targets Limpos com Sucesso",
+        description: `${data.deleted} target(s) deletado(s). Pronto para nova importação com CPF/CNPJ.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/voice/campaigns"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/voice/metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations/cobrancas"] });
+      setClearTargetsDialogOpen(false);
+      setSelectedCampaignId("");
+      setConfirmDelete(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao Limpar Targets",
         description: error.message,
         variant: "destructive",
       });
@@ -673,10 +744,20 @@ export function AdminDashboard() {
                   </>
                 )}
               </Button>
+              <Button
+                onClick={() => setClearTargetsDialogOpen(true)}
+                disabled={clearTargetsMutation.isPending}
+                variant="destructive"
+                className="flex items-center gap-2"
+                data-testid="button-clear-targets"
+              >
+                <Trash2 className="h-4 w-4" />
+                Limpar Targets de Cobranças
+              </Button>
             </div>
           </div>
           <p className="text-xs text-muted-foreground mt-3">
-            <strong>Reprocessar:</strong> Reenfileira mensagens sem resposta da IA. <strong>Fechar Abandonadas:</strong> Finaliza conversas inativas (&gt;30min) e envia NPS automaticamente. <strong>Resolver Antigas:</strong> Força encerramento de conversas travadas há mais de 7 dias (limite: 100 conversas/execução). <strong>Limpar Cache:</strong> Força recarregamento das instruções dos assistants do OpenAI Dashboard (use após atualizar prompts).
+            <strong>Reprocessar:</strong> Reenfileira mensagens sem resposta da IA. <strong>Fechar Abandonadas:</strong> Finaliza conversas inativas (&gt;30min) e envia NPS automaticamente. <strong>Resolver Antigas:</strong> Força encerramento de conversas travadas há mais de 7 dias (limite: 100 conversas/execução). <strong>Limpar Cache:</strong> Força recarregamento das instruções dos assistants do OpenAI Dashboard (use após atualizar prompts). <strong>Limpar Targets:</strong> Remove todos os targets de cobranças para permitir nova importação com CPF/CNPJ.
           </p>
         </CardContent>
       </Card>
@@ -941,6 +1022,89 @@ export function AdminDashboard() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Clear Targets Dialog */}
+      <AlertDialog open={clearTargetsDialogOpen} onOpenChange={setClearTargetsDialogOpen}>
+        <AlertDialogContent data-testid="dialog-clear-targets">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Limpar Targets de Cobranças</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação deletará permanentemente os targets de cobranças selecionados e resetará as estatísticas da campanha.
+              Use isso para preparar uma nova importação com dados completos (CPF/CNPJ).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="flex flex-col gap-4 py-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="campaign-select">Campanha</Label>
+              <Select 
+                value={selectedCampaignId} 
+                onValueChange={setSelectedCampaignId}
+                data-testid="select-campaign"
+              >
+                <SelectTrigger id="campaign-select">
+                  <SelectValue placeholder="Selecione uma campanha ou deixe vazio para todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as campanhas</SelectItem>
+                  {campaigns.map((campaign) => (
+                    <SelectItem key={campaign.id} value={campaign.id}>
+                      {campaign.name} ({campaign.totalTargets} targets)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {selectedCampaignId === "all" 
+                  ? "⚠️ Atenção: Isso deletará targets de TODAS as campanhas!" 
+                  : selectedCampaignId 
+                  ? `Deletará targets apenas da campanha selecionada.`
+                  : "Selecione uma campanha específica ou 'Todas as campanhas'."}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox 
+                id="confirm-delete" 
+                checked={confirmDelete}
+                onCheckedChange={(checked) => setConfirmDelete(checked === true)}
+                data-testid="checkbox-confirm-delete"
+              />
+              <Label 
+                htmlFor="confirm-delete" 
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Tenho certeza que quero deletar os targets
+              </Label>
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              data-testid="button-cancel-clear"
+              onClick={() => {
+                setSelectedCampaignId("");
+                setConfirmDelete(false);
+              }}
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                clearTargetsMutation.mutate({
+                  campaignId: selectedCampaignId === "all" ? undefined : selectedCampaignId || undefined,
+                  confirmDelete: true,
+                });
+              }}
+              disabled={!confirmDelete || clearTargetsMutation.isPending}
+              className="bg-destructive hover:bg-destructive/90"
+              data-testid="button-confirm-clear"
+            >
+              {clearTargetsMutation.isPending ? "Deletando..." : "Deletar Targets"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
