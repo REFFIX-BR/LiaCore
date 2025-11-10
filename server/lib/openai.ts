@@ -1914,24 +1914,22 @@ Fonte: ${fonte}`;
         
         try {
           const { storage: storageDoc } = await import("../storage");
-          const { validarCpfCnpj } = await import("../ai-tools");
+          const { validarDocumentoFlexivel } = await import("../ai-tools");
           
           const cpfCnpj = args.cpf_cnpj;
           
           if (!cpfCnpj) {
-            console.error("❌ [AI Tool] CPF/CNPJ não fornecido");
+            console.error("❌ [AI Tool] CPF/CNPJ/Código não fornecido");
             return JSON.stringify({
-              error: "CPF ou CNPJ é obrigatório"
+              error: "CPF, CNPJ ou Código de Cliente é obrigatório"
             });
           }
           
           console.log(`📝 [AI Tool] Persistindo documento do cliente (conversação: ${conversationId})`);
           
-          // Normalizar documento (remover formatação)
-          const documentoNormalizado = cpfCnpj.replace(/\D/g, '');
+          // Validar e classificar documento (aceita CPF, CNPJ ou código de cliente)
+          const validacao = validarDocumentoFlexivel(cpfCnpj);
           
-          // Validar CPF/CNPJ
-          const validacao = validarCpfCnpj(documentoNormalizado);
           if (!validacao.valido) {
             console.warn(`⚠️ [AI Tool] Documento inválido: ${validacao.motivo || 'Documento inválido'}`);
             return JSON.stringify({
@@ -1939,17 +1937,23 @@ Fonte: ${fonte}`;
             });
           }
           
-          // Salvar documento na conversa
+          // Salvar documento e tipo na conversa
           await storageDoc.updateConversation(conversationId, {
-            clientDocument: documentoNormalizado
+            clientDocument: validacao.documentoNormalizado,
+            clientDocumentType: validacao.tipo
           });
           
           console.log(`✅ [AI Tool] Documento salvo com sucesso (tipo: ${validacao.tipo})`);
           
+          // Mensagem personalizada por tipo
+          const mensagemSucesso = validacao.tipo === 'CLIENT_CODE'
+            ? "Código de cliente salvo com sucesso. Agora posso consultar seus boletos!"
+            : "CPF/CNPJ salvo com sucesso. Agora posso consultar seus boletos!";
+          
           return JSON.stringify({
             success: true,
             tipo_documento: validacao.tipo,
-            mensagem: "CPF/CNPJ salvo com sucesso. Agora posso consultar seus boletos!"
+            mensagem: mensagemSucesso
           });
         } catch (error) {
           console.error("❌ [AI Tool] Erro ao persistir documento:", error);

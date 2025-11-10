@@ -56,8 +56,9 @@ const worker = new Worker<VoiceCampaignIngestJob>(
           return hasIdentifier;
         })
         .map((client: any) => {
-          // Extrair documento do CRM (prioriza clientCode, depois document, cpf, cnpj)
-          const rawDocument = client.clientCode || client.document || client.cpf || client.cnpj;
+          // Extrair documento do CRM
+          // PRIORIDADE: CPF/CNPJ (validados) > Código de Cliente (fallback)
+          const rawDocument = client.document || client.cpf || client.cnpj || client.clientCode;
           
           // Classificar e validar documento
           const validacao = validarDocumentoFlexivel(rawDocument);
@@ -65,6 +66,9 @@ const worker = new Worker<VoiceCampaignIngestJob>(
           if (!validacao.valido) {
             console.warn(`⚠️ [Voice Campaign Ingest] Documento inválido para cliente ${client.name}: ${validacao.motivo}`);
           }
+          
+          console.log(`📝 [Voice Campaign Ingest] Cliente ${client.name} - Documento: ${validacao.tipo} (${validacao.documentoNormalizado.substring(0, 5)}***)`);
+        
           
           return {
             campaignId,
