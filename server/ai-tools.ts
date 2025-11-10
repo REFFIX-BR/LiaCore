@@ -882,6 +882,155 @@ function validarSetorMotivo(setor: string, motivo: string): { valido: boolean; e
 }
 
 /**
+ * Interface para resultado de verificação de status de pagamento
+ */
+interface VerificarStatusPagamentoResult {
+  pendingWithProof: boolean; // Se há comprovante enviado aguardando compensação
+  unlockInTrust: boolean; // Se houve desbloqueio em confiança
+  deadlineEta: string | null; // Prazo estimado para compensação (ISO string)
+  ticketProtocolo: string | null; // Protocolo do ticket de comprovante (se houver)
+  ticketCreatedAt: string | null; // Data de abertura do ticket (ISO string)
+}
+
+/**
+ * Verifica status de pagamento do cliente - se há comprovante pendente de compensação
+ * Esta função consulta o CRM para verificar se o cliente enviou comprovante de pagamento
+ * e está aguardando o prazo de 72h para compensação bancária.
+ * 
+ * @param documento CPF ou CNPJ do cliente
+ * @param conversationContext Contexto OBRIGATÓRIO da conversa para validação de segurança
+ * @param storage Interface de storage para validação da conversa
+ * @returns Objeto com status de comprovante pendente e prazo de compensação
+ */
+export async function verificarStatusPagamento(
+  documento: string,
+  conversationContext: { conversationId: string },
+  storage: IStorage
+): Promise<VerificarStatusPagamentoResult> {
+  try {
+    // Validação de segurança OBRIGATÓRIA
+    if (!conversationContext || !conversationContext.conversationId) {
+      console.error(`❌ [AI Tool Security] Tentativa de verificar status de pagamento sem contexto de conversa`);
+      throw new Error("Contexto de segurança é obrigatório para verificação de status de pagamento");
+    }
+
+    // Validação: conversa deve existir no banco
+    const conversation = await storage.getConversation(conversationContext.conversationId);
+    if (!conversation) {
+      console.error(`❌ [AI Tool Security] Tentativa de verificar status com conversationId inválido`);
+      throw new Error("Conversa não encontrada - contexto de segurança inválido");
+    }
+
+    // Validação de documento (normalizar antes de comparar)
+    const documentoNormalizado = documento.replace(/\D/g, '');
+    const clientDocumentNormalizado = conversation.clientDocument?.replace(/\D/g, '');
+    
+    if (clientDocumentNormalizado && clientDocumentNormalizado !== documentoNormalizado) {
+      console.error(`❌ [AI Tool Security] Tentativa de verificar status de pagamento de documento diferente do cliente`);
+      throw new Error("Não é permitido verificar status de pagamento de outros clientes");
+    }
+
+    console.log(`💰 [AI Tool] Verificando status de pagamento (conversação: ${conversationContext.conversationId})`);
+
+    // Consultar tickets do cliente no CRM
+    const resultado = await fetchWithRetry<any>(
+      "https://webhook.trtelecom.net/webhook/consulta_tickets",
+      { documento: documentoNormalizado },
+      { operationName: "consulta de tickets no CRM" }
+    );
+
+    // Procurar por ticket de comprovante de pagamento (setor FINANCEIRO, motivo INFORMAR PAGAMENTO)
+    // que está ABERTO e foi criado nas últimas 72 horas
+    const now = new Date();
+    const setenta2HorasAtras = new Date(now.getTime() - (72 * 60 * 60 * 1000));
+    
+    let pendingWithProof = false;
+    let unlockInTrust = false;
+    let deadlineEta: string | null = null;
+    let ticketProtocolo: string | null = null;
+    let ticketCreatedAt: string | null = null;
+
+    // A API retorna um array de tickets
+    if (resultado && Array.isArray(resultado) && resultado.length > 0) {
+      for (const ticket of resultado) {
+        const setor = ticket.setor?.toUpperCase();
+        const motivo = ticket.motivo?.toUpperCase();
+        const status = ticket.status?.toUpperCase();
+        const createdAt = ticket.data_abertura ? new Date(ticket.data_abertura) : null;
+
+        // Verifica se é um ticket de comprovante de pagamento aberto
+        if (
+          setor === 'FINANCEIRO' &&
+          (motivo === 'INFORMAR PAGAMENTO' || motivo === 'PAGAMENTO') &&
+          status !== 'FECHADO' &&
+          createdAt &&
+          createdAt >= setenta2HorasAtras
+        ) {
+          pendingWithProof = true;
+          ticketProtocolo = ticket.protocolo || null;
+          ticketCreatedAt = createdAt.toISOString();
+          
+          // Calcular deadline (72h após abertura do ticket)
+          const deadline = new Date(createdAt.getTime() + (72 * 60 * 60 * 1000));
+          deadlineEta = deadline.toISOString();
+          
+          console.log(`🎫 [AI Tool] Ticket de comprovante encontrado - Protocolo: ${ticketProtocolo}, Abertura: ${ticketCreatedAt}, Prazo: ${deadlineEta}`);
+          break; // Encontrou, não precisa verificar outros
+        }
+      }
+    }
+
+    // Verificar se houve desbloqueio em confiança
+    // FONTE 1: Metadata da conversa (preferencial - persistido após solicitarDesbloqueio)
+    const metadata = conversation.metadata as any;
+    if (metadata?.unlockInTrust || metadata?.desbloqueioEmConfianca) {
+      unlockInTrust = true;
+      console.log(`🔓 [AI Tool] Desbloqueio em confiança detectado na metadata da conversa`);
+    }
+    
+    // FONTE 2: Fallback - Tickets do CRM (caso metadata não esteja presente)
+    if (!unlockInTrust && resultado && Array.isArray(resultado) && resultado.length > 0) {
+      for (const ticket of resultado) {
+        const setor = ticket.setor?.toUpperCase();
+        const motivo = ticket.motivo?.toUpperCase();
+        const status = ticket.status?.toUpperCase();
+        const createdAt = ticket.data_abertura ? new Date(ticket.data_abertura) : null;
+
+        // Verificar se há ticket de desbloqueio recente (últimas 72h)
+        if (
+          setor === 'FINANCEIRO' &&
+          motivo === 'DESBLOQUEIO' &&
+          status !== 'FECHADO' &&
+          createdAt &&
+          createdAt >= setenta2HorasAtras
+        ) {
+          unlockInTrust = true;
+          console.log(`🔓 [AI Tool] Desbloqueio em confiança detectado via ticket CRM: ${ticket.protocolo}`);
+          break;
+        }
+      }
+    }
+
+    const result: VerificarStatusPagamentoResult = {
+      pendingWithProof,
+      unlockInTrust,
+      deadlineEta,
+      ticketProtocolo,
+      ticketCreatedAt
+    };
+
+    console.log(`📋 [AI Tool] Verificação de status de pagamento concluída:`, result);
+
+    return result;
+  } catch (error) {
+    console.error("❌ [AI Tool] Erro ao verificar status de pagamento:", error);
+    
+    // Em caso de erro na API, retornar erro explícito para a IA poder informar ao cliente
+    throw new Error("Não foi possível verificar o status de pagamento no momento. Por favor, tente novamente em alguns instantes.");
+  }
+}
+
+/**
  * Abre ticket no CRM externo ao finalizar atendimento
  * @param resumo Resumo breve do atendimento e resolução
  * @param setor Setor responsável pelo atendimento

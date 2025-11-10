@@ -2078,6 +2078,20 @@ Fonte: ${fonte}`;
           const obs = resultado.data?.[0]?.resposta?.[0]?.obs || "";
           const status = resultado.data?.[0]?.status?.[0]?.status || "";
           
+          // 🔓 PERSISTIR METADATA: Registrar desbloqueio em confiança na conversa
+          if (status === 'S' || status === 'Y' || obs.toLowerCase().includes('sucesso') || obs.toLowerCase().includes('liberado')) {
+            const currentMetadata = (conversationDesbloqueio.metadata || {}) as any;
+            await storageDesbloqueio.updateConversation(conversationId, {
+              metadata: {
+                ...currentMetadata,
+                unlockInTrust: true,
+                unlockTimestamp: new Date().toISOString(),
+                unlockObs: obs
+              }
+            });
+            console.log(`🔓 [AI Tool Handler] Metadata de desbloqueio em confiança persistida na conversa ${conversationId}`);
+          }
+          
           return JSON.stringify({
             success: true,
             mensagem: obs || "Desbloqueio solicitado com sucesso",
@@ -2582,9 +2596,57 @@ Fonte: ${fonte}`;
           });
         }
 
+      case "verificar_status_pagamento":
+        if (!conversationId) {
+          console.error("❌ [AI Tool] verificar_status_pagamento chamada sem conversationId");
+          return JSON.stringify({
+            error: "Contexto de conversa não disponível para verificação de status de pagamento"
+          });
+        }
+        
+        const { verificarStatusPagamento } = await import("../ai-tools");
+        const { storage: storageStatusPgto } = await import("../storage");
+        
+        try {
+          console.log(`💰 [AI Tool Handler] Verificando status de pagamento para conversação ${conversationId}`);
+          
+          // Buscar documento do cliente da conversa
+          const conversationStatusPgto = await storageStatusPgto.getConversation(conversationId);
+          
+          if (!conversationStatusPgto) {
+            console.error("❌ [AI Tool] Conversa não encontrada:", conversationId);
+            return JSON.stringify({
+              error: "Conversa não encontrada"
+            });
+          }
+          
+          if (!conversationStatusPgto.clientDocument) {
+            console.warn("⚠️ [AI Tool] Cliente ainda não forneceu CPF/CNPJ");
+            return JSON.stringify({
+              error: "Para verificar status de pagamento, preciso do seu CPF ou CNPJ."
+            });
+          }
+          
+          console.log(`🔍 [AI Tool Handler] Chamando verificarStatusPagamento...`);
+          
+          const resultado = await verificarStatusPagamento(
+            conversationStatusPgto.clientDocument,
+            { conversationId },
+            storageStatusPgto
+          );
+          
+          console.log(`✅ [AI Tool Handler] Verificação concluída:`, resultado);
+          return JSON.stringify(resultado);
+        } catch (error) {
+          console.error("❌ [AI Tool] Erro ao verificar status de pagamento:", error);
+          return JSON.stringify({
+            error: "Erro ao verificar status de pagamento. Por favor, tente novamente."
+          });
+        }
+
       default:
         console.error(`❌ [AI Tool] CAIU NO DEFAULT - Função não implementada: "${functionName}"`);
-        console.error(`❌ [AI Tool] Funções disponíveis: verificar_conexao, consultar_fatura, consultar_base_de_conhecimento, consultar_boleto_cliente, etc.`);
+        console.error(`❌ [AI Tool] Funções disponíveis: verificar_conexao, consultar_fatura, consultar_base_de_conhecimento, consultar_boleto_cliente, verificar_status_pagamento, etc.`);
         return JSON.stringify({
           error: `Função ${functionName} não implementada`,
         });
