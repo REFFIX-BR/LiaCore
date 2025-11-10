@@ -243,7 +243,8 @@ export function validarDocumentoFlexivel(documento: string): {
     
     // Se tem tamanho de CPF/CNPJ mas é inválido, permite como CLIENT_CODE
     // (ex: códigos numéricos do cliente que não são CPF válido)
-    console.log(`📝 [Validação] Documento numérico ${docLimpo.length} dígitos não é CPF/CNPJ válido - aceitando como CLIENT_CODE`);
+    const mascarado = docLimpo.substring(0, 3) + '***';
+    console.log(`📝 [Validação] Documento numérico ${docLimpo.length} dígitos (${mascarado}) não é CPF/CNPJ válido - aceitando como CLIENT_CODE`);
   }
   
   // Aceita como código de cliente (qualquer formato)

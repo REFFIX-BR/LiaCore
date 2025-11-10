@@ -3,6 +3,7 @@ import { redisConnection } from '../../../lib/redis-config';
 import { QUEUE_NAMES, VoiceCampaignIngestJob, addVoiceSchedulingToQueue } from '../../../lib/queue';
 import { storage } from '../../../storage';
 import axios from 'axios';
+import { validarDocumentoFlexivel } from '../../../ai-tools';
 
 console.log('🎯 [Voice Campaign Ingest] Worker starting...');
 
@@ -42,39 +43,48 @@ const worker = new Worker<VoiceCampaignIngestJob>(
       console.log(`✅ [Voice Campaign Ingest] Received ${crmData.clients.length} clients from CRM`);
 
       // ============================================================================
-      // VALIDAÇÃO CRÍTICA: CPF/CNPJ OBRIGATÓRIO
+      // VALIDAÇÃO E CLASSIFICAÇÃO DE DOCUMENTOS
       // ============================================================================
-      // Filtrar clientes que NÃO têm CPF/CNPJ antes de criar targets
-      const clientsWithDocument = crmData.clients.filter((client: any) => {
-        const hasDocument = !!(client.document || client.cpf || client.cnpj);
-        if (!hasDocument) {
-          console.warn(`⚠️ [Voice Campaign Ingest] Cliente sem CPF/CNPJ será REJEITADO: ${client.name || 'sem nome'} (${client.phone || client.phoneNumber || 'sem telefone'})`);
-        }
-        return hasDocument;
-      });
-      
-      const rejectedCount = crmData.clients.length - clientsWithDocument.length;
-      if (rejectedCount > 0) {
-        console.log(`🚫 [Voice Campaign Ingest] ${rejectedCount} cliente(s) rejeitado(s) por falta de CPF/CNPJ`);
-      }
-      
-      const targets = clientsWithDocument.map((client: any, index: number) => ({
-        campaignId,
-        debtorName: client.name || 'Cliente sem nome',
-        debtorDocument: client.document || client.cpf || client.cnpj, // Garantido não-null aqui
-        phoneNumber: client.phone || client.phoneNumber,
-        debtAmount: Math.round(parseFloat(client.debtAmount || client.valor || '0') * 100),
-        dueDate: client.dueDate ? new Date(client.dueDate) : null,
-        debtorMetadata: {
-          contractId: client.contractId,
-          invoiceNumber: client.invoiceNumber,
-          additionalInfo: client.additionalInfo,
-        },
-        priority: client.priority || 0,
-        state: 'pending' as const,
-        attemptCount: 0,
-        nextAttemptAt: new Date(Date.now() + 60000),
-      }));
+      // Aceita CPF, CNPJ ou Códigos de Cliente (ex: "1.8331")
+      // Rejeita apenas clientes SEM nenhum identificador
+      const targets = crmData.clients
+        .filter((client: any) => {
+          const hasIdentifier = !!(client.document || client.cpf || client.cnpj || client.clientCode);
+          if (!hasIdentifier) {
+            console.warn(`⚠️ [Voice Campaign Ingest] Cliente sem identificador será REJEITADO: ${client.name || 'sem nome'} (${client.phone || client.phoneNumber || 'sem telefone'})`);
+          }
+          return hasIdentifier;
+        })
+        .map((client: any) => {
+          // Extrair documento do CRM (prioriza clientCode, depois document, cpf, cnpj)
+          const rawDocument = client.clientCode || client.document || client.cpf || client.cnpj;
+          
+          // Classificar e validar documento
+          const validacao = validarDocumentoFlexivel(rawDocument);
+          
+          if (!validacao.valido) {
+            console.warn(`⚠️ [Voice Campaign Ingest] Documento inválido para cliente ${client.name}: ${validacao.motivo}`);
+          }
+          
+          return {
+            campaignId,
+            debtorName: client.name || 'Cliente sem nome',
+            debtorDocument: validacao.documentoNormalizado,
+            debtorDocumentType: validacao.tipo,
+            phoneNumber: client.phone || client.phoneNumber,
+            debtAmount: Math.round(parseFloat(client.debtAmount || client.valor || '0') * 100),
+            dueDate: client.dueDate ? new Date(client.dueDate) : null,
+            debtorMetadata: {
+              contractId: client.contractId,
+              invoiceNumber: client.invoiceNumber,
+              additionalInfo: client.additionalInfo,
+            },
+            priority: client.priority || 0,
+            state: 'pending' as const,
+            attemptCount: 0,
+            nextAttemptAt: new Date(Date.now() + 60000),
+          };
+        });
 
       if (targets.length === 0) {
         console.log(`⚠️ [Voice Campaign Ingest] Nenhum target válido para importar`);
