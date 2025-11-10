@@ -10358,5 +10358,60 @@ A resposta deve:
     }
   });
 
+  // ============================================================================
+  // TESTE DE TIMEZONE - Endpoint temporário para verificar configuração
+  // ============================================================================
+  app.get("/api/test/timezone", async (req, res) => {
+    try {
+      const now = new Date();
+      const hours = now.getHours();
+      const day = now.getDay();
+      
+      // Função de verificação de horário comercial
+      const isWithinBusinessHours = () => {
+        if (day === 0 || day === 6) return false;
+        return hours >= 8 && hours < 20;
+      };
+      
+      // Nomes dos dias da semana
+      const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+      
+      const response = {
+        success: true,
+        timezone: {
+          configured: process.env.TZ || 'Not set',
+          current: now.toString(),
+          utc: now.toUTCString(),
+          iso: now.toISOString(),
+          timestamp: now.getTime(),
+        },
+        brasilia: {
+          date: now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+          time: now.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+          hour: hours,
+          dayOfWeek: day,
+          dayName: dayNames[day],
+        },
+        businessHours: {
+          isBusinessDay: day !== 0 && day !== 6,
+          isBusinessHour: hours >= 8 && hours < 20,
+          isWithinBusinessHours: isWithinBusinessHours(),
+          schedule: 'Segunda a Sexta, 8h às 20h',
+        },
+        server: {
+          nodeVersion: process.version,
+          platform: process.platform,
+        }
+      };
+      
+      console.log('🕐 [Timezone Test] Response:', JSON.stringify(response, null, 2));
+      
+      return res.json(response);
+    } catch (error) {
+      console.error("❌ [Timezone Test] Error:", error);
+      return res.status(500).json({ error: "Erro ao verificar timezone" });
+    }
+  });
+
   return httpServer;
 }
