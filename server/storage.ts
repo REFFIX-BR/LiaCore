@@ -715,6 +715,17 @@ export class MemStorage implements IStorage {
     const conversation = this.conversations.get(id);
     if (!conversation) return undefined;
     
+    // 🛡️ CRITICAL PROTECTION: NEVER overwrite threadId with null/undefined
+    // Thread IDs link to OpenAI state - losing them forces thread recreation and context loss
+    if ((updates.threadId === null || updates.threadId === undefined) && conversation.threadId) {
+      console.warn(`⚠️ [Storage] Attempted to clear threadId for conversation ${id} (current: ${conversation.threadId}) - BLOCKED`);
+      console.warn(`   Caller stack trace:`, new Error().stack);
+      
+      // Remove threadId from updates to preserve existing value
+      const { threadId, ...safeUpdates } = updates;
+      updates = safeUpdates as Partial<Conversation>;
+    }
+    
     const updated = { ...conversation, ...updates };
     this.conversations.set(id, updated);
     return updated;
@@ -2139,6 +2150,22 @@ export class DbStorage implements IStorage {
   }
 
   async updateConversation(id: string, updates: Partial<Conversation>): Promise<Conversation | undefined> {
+    // 🛡️ CRITICAL PROTECTION: NEVER overwrite threadId with null/undefined
+    // Thread IDs link to OpenAI state - losing them forces thread recreation and context loss
+    if (updates.threadId === null || updates.threadId === undefined) {
+      // Fetch current conversation to check if threadId exists
+      const current = await this.getConversation(id);
+      
+      if (current?.threadId) {
+        console.warn(`⚠️ [Storage] Attempted to clear threadId for conversation ${id} (current: ${current.threadId}) - BLOCKED`);
+        console.warn(`   Caller stack trace:`, new Error().stack);
+        
+        // Remove threadId from updates to preserve existing value
+        const { threadId, ...safeUpdates } = updates;
+        updates = safeUpdates as Partial<Conversation>;
+      }
+    }
+    
     const [updated] = await db.update(schema.conversations)
       .set(updates)
       .where(eq(schema.conversations.id, id))
