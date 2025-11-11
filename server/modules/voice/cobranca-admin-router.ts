@@ -550,4 +550,50 @@ router.get('/crm-sync-history', async (req, res) => {
   }
 });
 
+// POST /api/admin/cobranca/clear-queue - Limpar fila de WhatsApp pendente
+router.post('/clear-queue', async (req, res) => {
+  try {
+    const { Queue } = await import('bullmq');
+    const { QUEUE_NAMES } = await import('../../lib/queue');
+    const { redisConnection } = await import('../../lib/redis-config');
+    
+    console.log('🧹 [Admin Cobrança] Limpando fila de WhatsApp pendente...');
+    
+    // Conectar à fila
+    const whatsappQueue = new Queue(QUEUE_NAMES.VOICE_WHATSAPP_COLLECTION, {
+      connection: redisConnection,
+    });
+    
+    // Obter estatísticas antes da limpeza
+    const beforeStats = await whatsappQueue.getJobCounts();
+    console.log('📊 [Admin Cobrança] Jobs antes da limpeza:', beforeStats);
+    
+    // Limpar todos os jobs pendentes (waiting, delayed, active)
+    await whatsappQueue.drain(true); // true = remover jobs delayed também
+    
+    // Obter estatísticas depois da limpeza
+    const afterStats = await whatsappQueue.getJobCounts();
+    console.log('📊 [Admin Cobrança] Jobs após limpeza:', afterStats);
+    
+    res.json({
+      success: true,
+      message: 'Fila de WhatsApp limpa com sucesso',
+      before: beforeStats,
+      after: afterStats,
+      cleared: {
+        waiting: beforeStats.waiting,
+        delayed: beforeStats.delayed,
+        active: beforeStats.active,
+      }
+    });
+  } catch (error) {
+    console.error('❌ [Admin Cobrança] Erro ao limpar fila:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao limpar fila de WhatsApp',
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
 export default router;
