@@ -2,7 +2,7 @@ import express from 'express';
 import { isFeatureEnabled, getAllFeatureFlags, setFeatureFlag } from '../../lib/featureFlags';
 import { authenticate, requireAdmin, requireAdminOrSupervisor } from '../../middleware/auth';
 import { storage } from '../../storage';
-import { insertVoiceCampaignSchema, insertVoiceCampaignTargetSchema } from '@shared/schema';
+import { insertVoiceCampaignSchema, insertVoiceCampaignTargetSchema, updateVoiceCampaignTargetSchema } from '@shared/schema';
 import { z } from 'zod';
 import twilio from 'twilio';
 import { addVoiceSchedulingToQueue, addVoiceWhatsAppCollectionToQueue } from '../../lib/queue';
@@ -424,6 +424,34 @@ router.get('/targets', authenticate, requireAdminOrSupervisor, requireVoiceModul
   }
 });
 
+// Create single target
+router.post('/targets', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+  try {
+    // Validate with Zod
+    const validation = insertVoiceCampaignTargetSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: 'Dados inválidos', 
+        details: validation.error.errors 
+      });
+    }
+    
+    const targetData = validation.data;
+    
+    // Create target
+    const [created] = await storage.createVoiceCampaignTargets([targetData]);
+    
+    // Recalculate campaign statistics
+    await storage.recalculateVoiceCampaignStats(targetData.campaignId);
+    
+    console.log(`✅ [Voice API] Target created for campaign ${targetData.campaignId}`);
+    res.status(201).json(created);
+  } catch (error: any) {
+    console.error('❌ [Voice API] Error creating target:', error);
+    res.status(500).json({ error: 'Erro ao criar alvo' });
+  }
+});
+
 router.get('/targets/:id', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
   try {
     const { id } = req.params;
@@ -443,14 +471,39 @@ router.get('/targets/:id', authenticate, requireAdminOrSupervisor, requireVoiceM
 router.patch('/targets/:id', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
     
+    // Validar dados com Zod
+    const validation = updateVoiceCampaignTargetSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: 'Dados inválidos', 
+        details: validation.error.errors 
+      });
+    }
+    
+    const updates = validation.data;
+    
+    // Buscar target atual para validações de negócio
+    const currentTarget = await storage.getVoiceCampaignTarget(id);
+    if (!currentTarget) {
+      return res.status(404).json({ error: 'Alvo não encontrado' });
+    }
+    
+    // Validar maxAttempts >= attemptCount
+    if (updates.maxAttempts !== undefined && updates.maxAttempts < (currentTarget.attemptCount || 0)) {
+      return res.status(400).json({ 
+        error: `Máximo de tentativas não pode ser menor que tentativas já realizadas (${currentTarget.attemptCount})` 
+      });
+    }
+    
+    // Atualizar target
     const target = await storage.updateVoiceCampaignTarget(id, updates);
     
     if (!target) {
       return res.status(404).json({ error: 'Alvo não encontrado' });
     }
     
+    console.log(`✅ [Voice API] Target updated: ${id}`);
     res.json(target);
   } catch (error: any) {
     console.error('❌ [Voice API] Error updating target:', error);

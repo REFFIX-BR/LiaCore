@@ -1473,6 +1473,14 @@ export const insertVoiceCampaignTargetSchema = createInsertSchema(voiceCampaignT
   state: z.enum(["pending", "scheduled", "calling", "completed", "failed", "skipped"]).default("pending"),
 });
 
+export const updateVoiceCampaignTargetSchema = z.object({
+  debtorName: z.string().min(1, "Nome é obrigatório"),
+  phoneNumber: z.string().regex(/^\d{10,11}$/, "Telefone deve ter 10 ou 11 dígitos"),
+  debtAmount: z.number().int().positive("Valor da dívida deve ser positivo").optional(),
+  maxAttempts: z.number().int().min(1, "Máximo de tentativas deve ser pelo menos 1").optional(),
+  nextScheduledAt: z.coerce.date().optional(),
+}).partial();
+
 export const insertVoiceCallAttemptSchema = createInsertSchema(voiceCallAttempts).omit({
   id: true,
   createdAt: true,
@@ -1525,6 +1533,7 @@ export type InsertCRMSyncConfig = z.infer<typeof insertCRMSyncConfigSchema>;
 
 export type VoiceCampaignTarget = typeof voiceCampaignTargets.$inferSelect;
 export type InsertVoiceCampaignTarget = z.infer<typeof insertVoiceCampaignTargetSchema>;
+export type UpdateVoiceCampaignTarget = z.infer<typeof updateVoiceCampaignTargetSchema>;
 
 export type VoiceCallAttempt = typeof voiceCallAttempts.$inferSelect;
 export type InsertVoiceCallAttempt = z.infer<typeof insertVoiceCallAttemptSchema>;

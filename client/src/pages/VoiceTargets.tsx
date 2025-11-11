@@ -5,24 +5,28 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Phone, Search, PhoneCall, PhoneOff, Clock, CheckCircle2, XCircle, Trash2, Upload, Calendar } from 'lucide-react';
-import { useState } from 'react';
-import { formatDistanceToNow } from 'date-fns';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Phone, Search, PhoneCall, PhoneOff, Clock, CheckCircle2, XCircle, Trash2, Upload, Calendar, Edit } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import CRMImportTab from '@/components/voice/CRMImportTab';
 
 interface Target {
   id: string;
   campaignId: string;
   debtorName: string;
-  debtorPhone: string;
+  phoneNumber: string; // Alinhado com backend
   debtAmount?: number;
   status: 'pending' | 'in_progress' | 'contacted' | 'promise_made' | 'failed';
-  attemptsMade?: number;
+  attemptCount?: number; // Alinhado com backend
   maxAttempts?: number;
   lastAttemptAt?: string;
   nextScheduledAt?: string;
@@ -30,12 +34,36 @@ interface Target {
   createdAt?: string;
 }
 
+// Schema de validação do formulário
+const updateTargetSchema = z.object({
+  debtorName: z.string().min(1, "Nome é obrigatório"),
+  phoneNumber: z.string().regex(/^\d{10,11}$/, "Telefone deve ter 10 ou 11 dígitos (apenas números)"),
+  debtAmount: z.string().optional().transform((val) => {
+    if (!val || val === '') return undefined;
+    const num = parseFloat(val);
+    return isNaN(num) ? undefined : Math.round(num * 100); // Converter reais para centavos
+  }),
+  maxAttempts: z.string().optional().transform((val) => {
+    if (!val || val === '') return undefined;
+    const num = parseInt(val);
+    return isNaN(num) ? undefined : num;
+  }),
+  nextScheduledAt: z.string().optional().transform((val) => {
+    // Normalize empty/placeholder strings to undefined
+    if (!val || val === '' || val.trim() === '' || val.includes('mm/dd/yyyy') || val.includes('--:--')) {
+      return undefined;
+    }
+    return val;
+  }),
+});
+
 export default function VoiceTargets() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [campaignFilter, setCampaignFilter] = useState<string>('all');
   const [targetToDelete, setTargetToDelete] = useState<Target | null>(null);
+  const [targetToEdit, setTargetToEdit] = useState<Target | null>(null);
 
   const { data: targets, isLoading } = useQuery<Target[]>({
     queryKey: ['/api/voice/targets'],
@@ -68,6 +96,29 @@ export default function VoiceTargets() {
     },
   });
 
+  const updateTargetMutation = useMutation({
+    mutationFn: async ({ targetId, data }: { targetId: string; data: any }) => {
+      return apiRequest(`/api/voice/targets/${targetId}`, 'PATCH', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/targets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/stats'] });
+      toast({
+        title: 'Alvo atualizado',
+        description: 'Os dados do alvo foram atualizados com sucesso.',
+      });
+      setTargetToEdit(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao atualizar alvo',
+        description: error.message || 'Ocorreu um erro ao atualizar o alvo.',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const getStatusBadge = (status: string) => {
     const config = {
       pending: { variant: 'outline' as const, icon: Clock, label: 'Pendente' },
@@ -87,10 +138,198 @@ export default function VoiceTargets() {
     );
   };
 
+  const EditTargetDialog = ({ 
+    target, 
+    open, 
+    onOpenChange, 
+    onSubmit, 
+    isPending 
+  }: { 
+    target: Target | null; 
+    open: boolean; 
+    onOpenChange: (open: boolean) => void; 
+    onSubmit: (data: any) => void; 
+    isPending: boolean; 
+  }) => {
+    const form = useForm({
+      resolver: zodResolver(updateTargetSchema),
+      defaultValues: {
+        debtorName: '',
+        phoneNumber: '',
+        debtAmount: '',
+        maxAttempts: '',
+        nextScheduledAt: '',
+      },
+    });
+
+    // Reset form when target changes
+    useEffect(() => {
+      if (target) {
+        form.reset({
+          debtorName: target.debtorName || '',
+          phoneNumber: target.phoneNumber || '',
+          debtAmount: target.debtAmount ? (target.debtAmount / 100).toFixed(2) : '',
+          maxAttempts: target.maxAttempts?.toString() || '',
+          nextScheduledAt: target.nextScheduledAt 
+            ? format(new Date(target.nextScheduledAt), "yyyy-MM-dd'T'HH:mm")
+            : '',
+        });
+      }
+    }, [target, form]);
+
+    const handleSubmit = form.handleSubmit((data) => {
+      // Schema já faz as conversões necessárias (debtAmount → centavos, maxAttempts → number)
+      // Apenas validar maxAttempts >= attemptCount
+      if (data.maxAttempts) {
+        const maxAttempts = typeof data.maxAttempts === 'number' ? data.maxAttempts : parseInt(data.maxAttempts);
+        if (target && target.attemptCount && maxAttempts < target.attemptCount) {
+          form.setError('maxAttempts', {
+            message: `Máximo de tentativas deve ser maior ou igual a ${target.attemptCount} (tentativas atuais)`,
+          });
+          return;
+        }
+      }
+
+      // Remove undefined fields from payload
+      const cleanedData = Object.fromEntries(
+        Object.entries(data).filter(([_, value]) => value !== undefined)
+      );
+
+      onSubmit(cleanedData);
+    });
+
+    if (!target) return null;
+
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Editar Alvo</DialogTitle>
+            <DialogDescription>
+              Atualize as informações do alvo de cobrança
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="debtorName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome do Devedor</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        placeholder="Nome completo"
+                        data-testid="input-edit-debtor-name"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phoneNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefone</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field}
+                        placeholder="DDD + Número (apenas dígitos)"
+                        onChange={(e) => field.onChange(e.target.value.replace(/\D/g, ''))}
+                        data-testid="input-edit-phone"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="debtAmount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor da Dívida (R$)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field}
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        data-testid="input-edit-debt-amount"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="maxAttempts"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Máximo de Tentativas</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field}
+                        type="number"
+                        min={target.attemptCount || 0}
+                        placeholder="3"
+                        data-testid="input-edit-max-attempts"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="nextScheduledAt"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Próxima Tentativa Agendada</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field}
+                        type="datetime-local"
+                        data-testid="input-edit-next-scheduled"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isPending}
+                  data-testid="button-cancel-edit"
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isPending}
+                  data-testid="button-submit-edit"
+                >
+                  {isPending ? 'Salvando...' : 'Salvar'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   const filteredTargets = targets?.filter((target) => {
     const matchesSearch =
       target.debtorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      target.debtorPhone.includes(searchTerm);
+      target.phoneNumber.includes(searchTerm);
     const matchesStatus = statusFilter === 'all' || target.status === statusFilter;
     const matchesCampaign = campaignFilter === 'all' || target.campaignId === campaignFilter;
 
@@ -217,7 +456,7 @@ export default function VoiceTargets() {
                         {target.debtorName}
                       </TableCell>
                       <TableCell data-testid={`cell-phone-${target.id}`}>
-                        {target.debtorPhone}
+                        {target.phoneNumber}
                       </TableCell>
                       <TableCell data-testid={`cell-amount-${target.id}`}>
                         {target.debtAmount
@@ -225,7 +464,7 @@ export default function VoiceTargets() {
                           : '-'}
                       </TableCell>
                       <TableCell data-testid={`cell-attempts-${target.id}`}>
-                        {target.attemptsMade || 0} / {target.maxAttempts || 3}
+                        {target.attemptCount || 0} / {target.maxAttempts || 3}
                       </TableCell>
                       <TableCell data-testid={`cell-status-${target.id}`}>
                         {getStatusBadge(target.status)}
@@ -246,6 +485,15 @@ export default function VoiceTargets() {
                             data-testid={`button-details-${target.id}`}
                           >
                             Ver Detalhes
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setTargetToEdit(target)}
+                            data-testid={`button-edit-${target.id}`}
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Editar
                           </Button>
                           <Button
                             variant="ghost"
@@ -307,6 +555,15 @@ export default function VoiceTargets() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Target Dialog */}
+      <EditTargetDialog
+        target={targetToEdit}
+        open={!!targetToEdit}
+        onOpenChange={(open) => !open && setTargetToEdit(null)}
+        onSubmit={(data) => targetToEdit && updateTargetMutation.mutate({ targetId: targetToEdit.id, data })}
+        isPending={updateTargetMutation.isPending}
+      />
     </div>
   );
 }
