@@ -6200,7 +6200,58 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
     }
   });
 
+  /**
+   * GET /api/conversations/cobrancas
+   * Retorna conversas relacionadas a cobranças
+   * Query params: source (opcional - 'all', 'inbound', 'voice_campaign', 'whatsapp_campaign')
+   * NOTA: Esta rota DEVE estar ANTES de /api/conversations/:id para evitar conflito de match
+   */
+  app.get("/api/conversations/cobrancas", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { source = 'all' } = req.query;
+      
+      console.log(`💬 [Cobranças Monitor] Fetching conversations with source filter: ${source}`);
+      
+      const allConversations = await storage.getAllConversations();
+      
+      // Filter conversations related to cobrancas
+      let filteredConversations = allConversations.filter(conv => {
+        // Include conversations from department=financial or assistant=cobranca
+        const isCobrancaRelated = 
+          conv.department === 'financial' || 
+          conv.assistantType === 'cobranca' ||
+          conv.conversationSource === 'voice_campaign' ||
+          conv.conversationSource === 'whatsapp_campaign';
+        
+        if (!isCobrancaRelated) return false;
+        
+        // Apply source filter
+        if (source === 'all') return true;
+        if (source === 'inbound') return conv.conversationSource === 'inbound';
+        if (source === 'voice_campaign') return conv.conversationSource === 'voice_campaign';
+        if (source === 'whatsapp_campaign') return conv.conversationSource === 'whatsapp_campaign';
+        
+        return false;
+      });
+      
+      // Sort by last message time (most recent first)
+      filteredConversations.sort((a, b) => {
+        const aTime = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
+        const bTime = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
+        return bTime - aTime;
+      });
+      
+      console.log(`✅ [Cobranças Monitor] Returning ${filteredConversations.length} conversations (filter: ${source})`);
+      
+      return res.json(filteredConversations);
+    } catch (error) {
+      console.error("❌ [Cobranças Monitor] Error fetching conversations:", error);
+      return res.status(500).json({ error: "Erro ao buscar conversas de cobrança" });
+    }
+  });
+
   // Get single conversation by ID
+  // NOTA: Esta rota genérica (:id) DEVE estar DEPOIS de rotas específicas como /cobrancas
   app.get("/api/conversations/:id", authenticate, async (req, res) => {
     try {
       const { id } = req.params;
@@ -10313,55 +10364,6 @@ A resposta deve:
   const cobrancaAdminRouter = await import('./modules/voice/cobranca-admin-router');
   app.use('/api/admin/cobranca', cobrancaAdminRouter.default);
   console.log('⚙️  [COBRANÇAS ADMIN] Rotas administrativas registradas em /api/admin/cobranca');
-
-  /**
-   * GET /api/conversations/cobrancas
-   * Retorna conversas relacionadas a cobranças
-   * Query params: source (opcional - 'all', 'inbound', 'voice_campaign', 'whatsapp_campaign')
-   */
-  app.get("/api/conversations/cobrancas", authenticate, requireAdminOrSupervisor, async (req, res) => {
-    try {
-      const { source = 'all' } = req.query;
-      
-      console.log(`💬 [Cobranças Monitor] Fetching conversations with source filter: ${source}`);
-      
-      const allConversations = await storage.getAllConversations();
-      
-      // Filter conversations related to cobrancas
-      let filteredConversations = allConversations.filter(conv => {
-        // Include conversations from department=financial or assistant=cobranca
-        const isCobrancaRelated = 
-          conv.department === 'financial' || 
-          conv.assistantType === 'cobranca' ||
-          conv.conversationSource === 'voice_campaign' ||
-          conv.conversationSource === 'whatsapp_campaign';
-        
-        if (!isCobrancaRelated) return false;
-        
-        // Apply source filter
-        if (source === 'all') return true;
-        if (source === 'inbound') return conv.conversationSource === 'inbound';
-        if (source === 'voice_campaign') return conv.conversationSource === 'voice_campaign';
-        if (source === 'whatsapp_campaign') return conv.conversationSource === 'whatsapp_campaign';
-        
-        return false;
-      });
-      
-      // Sort by last message time (most recent first)
-      filteredConversations.sort((a, b) => {
-        const aTime = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
-        const bTime = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
-        return bTime - aTime;
-      });
-      
-      console.log(`✅ [Cobranças Monitor] Returning ${filteredConversations.length} conversations (filter: ${source})`);
-      
-      return res.json(filteredConversations);
-    } catch (error) {
-      console.error("❌ [Cobranças Monitor] Error fetching conversations:", error);
-      return res.status(500).json({ error: "Erro ao buscar conversas de cobrança" });
-    }
-  });
 
   // ============================================================================
   // TESTE DE TIMEZONE - Endpoint temporário para verificar configuração
