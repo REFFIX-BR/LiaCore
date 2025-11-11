@@ -1441,6 +1441,13 @@ export async function executeAssistantTool(
       }
       return await consultaBoletoCliente(args.documento, context, storage);
 
+    case 'gerar_segunda_via':
+      if (!args.documento) {
+        throw new Error("Parâmetro 'documento' é obrigatório para gerar_segunda_via");
+      }
+      // gerar_segunda_via é um alias para consulta_boleto_cliente
+      return await consultaBoletoCliente(args.documento, context, storage);
+
     case 'registrar_reclamacao_ouvidoria':
       if (!args.tipo || !args.descricao) {
         throw new Error("Parâmetros 'tipo' e 'descricao' são obrigatórios para registrar_reclamacao_ouvidoria");
