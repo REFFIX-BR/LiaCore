@@ -12,6 +12,7 @@ export const QUEUE_NAMES = {
   AUTO_CLOSURE: 'auto-closure',
   // COBRANÇAS - Módulo de Cobrança Ativa
   VOICE_CAMPAIGN_INGEST: 'voice-campaign-ingest',
+  VOICE_CRM_SYNC: 'voice-crm-sync', // Sincronização automática com CRM
   VOICE_SCHEDULING: 'voice-scheduling',
   VOICE_DIALER: 'voice-dialer',
   VOICE_POST_CALL: 'voice-post-call',
@@ -217,6 +218,21 @@ export const QUEUE_CONFIGS = {
       },
     },
   },
+  [QUEUE_NAMES.VOICE_CRM_SYNC]: {
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: {
+        type: 'exponential' as const,
+        delay: 30000, // Wait 30s between retries for CRM API
+      },
+      removeOnComplete: {
+        count: 100,
+      },
+      removeOnFail: {
+        count: 50,
+      },
+    },
+  },
 };
 
 // Create queues
@@ -314,6 +330,14 @@ export const voicePromiseMonitorQueue = new Queue(
   {
     connection: redisConnection,
     ...QUEUE_CONFIGS[QUEUE_NAMES.VOICE_PROMISE_MONITOR],
+  }
+);
+
+export const voiceCRMSyncQueue = new Queue(
+  QUEUE_NAMES.VOICE_CRM_SYNC,
+  {
+    connection: redisConnection,
+    ...QUEUE_CONFIGS[QUEUE_NAMES.VOICE_CRM_SYNC],
   }
 );
 
@@ -455,6 +479,12 @@ export interface VoiceWhatsAppCollectionJob {
   attemptNumber: number;
 }
 
+export interface VoiceCRMSyncJob {
+  syncConfigId: string;
+  campaignId: string;
+  isManualTrigger?: boolean; // Se foi disparado manualmente ou por schedule
+}
+
 // Helper functions to add jobs
 export async function addMessageToQueue(data: MessageProcessingJob, priority?: number) {
   return await messageQueue.add('process-message', data, {
@@ -593,6 +623,13 @@ export async function addVoiceWhatsAppCollectionToQueue(data: VoiceWhatsAppColle
   });
 }
 
+export async function addVoiceCRMSyncToQueue(data: VoiceCRMSyncJob) {
+  return await voiceCRMSyncQueue.add('sync-crm-data', data, {
+    jobId: `crm-sync-${data.syncConfigId}`, // Unique ID to prevent duplicate syncs
+    priority: 4,
+  });
+}
+
 export async function cancelVoiceScheduledCall(targetId: string, attemptNumber: number) {
   try {
     const jobId = `schedule-${targetId}-${attemptNumber}`;
@@ -623,10 +660,12 @@ export async function closeQueues() {
   await autoClosureQueue.close();
   // COBRANÇAS queues
   await voiceCampaignIngestQueue.close();
+  await voiceCRMSyncQueue.close();
   await voiceSchedulingQueue.close();
   await voiceDialerQueue.close();
   await voicePostCallQueue.close();
   await voicePromiseMonitorQueue.close();
+  await voiceWhatsAppCollectionQueue.close();
   await redisConnection.quit();
   console.log('✅ Queues closed successfully');
 }
