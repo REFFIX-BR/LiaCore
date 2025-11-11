@@ -1232,6 +1232,50 @@ export const voiceCampaigns = pgTable("voice_campaigns", {
   createdByIdx: index("voice_campaigns_created_by_idx").on(table.createdBy),
 }));
 
+// CRM Sync Configurations - Configuração de sincronização automática com CRM
+export const crmSyncConfigs = pgTable("crm_sync_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").notNull().references(() => voiceCampaigns.id, { onDelete: "cascade" }).unique(), // Uma config por campanha
+  
+  // Configuração da API
+  enabled: boolean("enabled").notNull().default(false), // Sincronização ativa/inativa
+  apiUrl: text("api_url").notNull(), // URL da API de inadimplentes
+  apiKey: text("api_key"), // API key se necessária
+  
+  // Filtros de importação
+  dateRangeType: text("date_range_type").notNull().default("relative"), // 'relative' (últimos N dias) ou 'fixed' (data específica)
+  dateRangeDays: integer("date_range_days").default(30), // Para tipo 'relative': últimos 30 dias
+  dateRangeFrom: timestamp("date_range_from"), // Para tipo 'fixed': data inicial
+  dateRangeTo: timestamp("date_range_to"), // Para tipo 'fixed': data final
+  
+  minDebtAmount: integer("min_debt_amount").default(0), // Valor mínimo em centavos (ex: 5000 = R$50)
+  maxDebtAmount: integer("max_debt_amount"), // Valor máximo em centavos (null = sem limite)
+  
+  // Agendamento
+  syncSchedule: text("sync_schedule").notNull().default("daily"), // 'hourly', 'daily', 'weekly', 'manual'
+  syncTime: text("sync_time").default("08:00"), // Hora do dia para sincronização (formato HH:MM)
+  syncTimeZone: text("sync_time_zone").default("America/Sao_Paulo"),
+  
+  // Configuração de deduplicação
+  deduplicateBy: text("deduplicate_by").notNull().default("document"), // 'document', 'phone', 'both'
+  updateExisting: boolean("update_existing").default(false), // Atualizar targets existentes com novos dados do CRM
+  
+  // Status da última sincronização
+  lastSyncAt: timestamp("last_sync_at"),
+  lastSyncStatus: text("last_sync_status"), // 'success', 'partial', 'failed'
+  lastSyncError: text("last_sync_error"),
+  lastSyncImported: integer("last_sync_imported").default(0), // Quantos registros foram importados
+  lastSyncSkipped: integer("last_sync_skipped").default(0), // Quantos foram pulados (duplicados)
+  
+  // Auditoria
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  campaignIdIdx: index("crm_sync_campaign_id_idx").on(table.campaignId),
+  enabledIdx: index("crm_sync_enabled_idx").on(table.enabled),
+}));
+
 // Voice Campaign Targets - Alvos/clientes de cada campanha
 export const voiceCampaignTargets = pgTable("voice_campaign_targets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1250,11 +1294,17 @@ export const voiceCampaignTargets = pgTable("voice_campaign_targets", {
   debtorMetadata: jsonb("debtor_metadata"), // Outros dados do CRM (endereço, contrato, etc.)
   
   // Estado da campanha para este alvo
-  state: text("state").notNull().default("pending"), // 'pending', 'scheduled', 'calling', 'completed', 'failed', 'skipped'
+  state: text("state").notNull().default("pending"), // 'pending', 'scheduled', 'calling', 'completed', 'failed', 'skipped', 'paid'
   priority: integer("priority").default(0), // Prioridade (maior = mais urgente)
   attemptCount: integer("attempt_count").default(0), // Tentativas realizadas
   lastAttemptAt: timestamp("last_attempt_at"), // Última tentativa
   nextAttemptAt: timestamp("next_attempt_at"), // Próxima tentativa agendada
+  
+  // Verificação de pagamento (sincronização com CRM)
+  paymentStatus: text("payment_status"), // 'pending', 'paid', 'overdue', 'unknown'
+  paymentCheckedAt: timestamp("payment_checked_at"), // Última verificação de pagamento
+  crmSyncState: text("crm_sync_state").default("synced"), // 'synced', 'pending', 'failed'
+  crmLastSyncAt: timestamp("crm_last_sync_at"), // Última sincronização com CRM
   
   // Janela preferencial de contato
   preferredTimeWindow: jsonb("preferred_time_window"), // { start: "14:00", end: "18:00" }
@@ -1275,6 +1325,7 @@ export const voiceCampaignTargets = pgTable("voice_campaign_targets", {
   stateIdx: index("voice_targets_state_idx").on(table.state),
   nextAttemptIdx: index("voice_targets_next_attempt_idx").on(table.nextAttemptAt),
   contactIdIdx: index("voice_targets_contact_id_idx").on(table.contactId),
+  paymentStatusIdx: index("voice_targets_payment_status_idx").on(table.paymentStatus),
 }));
 
 // Voice Call Attempts - Tentativas de ligação
