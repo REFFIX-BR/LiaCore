@@ -44,6 +44,7 @@ The frontend, built with React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS,
 - **Comprehensive Auto-Closure System**: Redesigned inactivity management with scheduled follow-ups and auto-resolution after inactivity.
 - **Conversation Assignment Fix**: Ensures correct marking of assigned conversations for accurate tab display.
 - **Thread ID Protection System**: Implemented defensive persistence guards to prevent conversation threadId from being overwritten with null/undefined, preserving OpenAI context.
+- **Date/Time Awareness**: All new OpenAI threads automatically receive current date/time context in Brazilian Portuguese (pt-BR) format, ensuring AI assistants have accurate temporal awareness for scheduling, payment promises, and time-sensitive interactions.
 
 ### Scalability & Performance
 A comprehensive scaling plan details a roadmap to handle 160,000 messages at peak with 15,000 concurrent conversations, involving queue optimization, worker scaling, database optimization, OpenAI optimization, multi-tier infrastructure roadmap, and extensive observability with Prometheus + Grafana.

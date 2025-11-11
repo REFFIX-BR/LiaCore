@@ -265,6 +265,29 @@ export async function createThread(): Promise<string> {
   const thread = await openaiCircuitBreaker.execute(() =>
     openai.beta.threads.create()
   );
+  
+  // Adicionar mensagem de sistema com data/hora atual
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('pt-BR', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+  const timeStr = now.toLocaleTimeString('pt-BR', { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
+  
+  await openaiCircuitBreaker.execute(() =>
+    openai.beta.threads.messages.create(thread.id, {
+      role: 'user',
+      content: `[INFORMAÇÃO DO SISTEMA - NÃO RESPONDER]\nData e hora atual: ${dateStr} às ${timeStr}\nFuso horário: America/Sao_Paulo (UTC-3)`
+    })
+  );
+  
+  console.log(`📅 [OpenAI] Thread criado com contexto de data: ${dateStr} às ${timeStr}`);
+  
   return thread.id;
 }
 
