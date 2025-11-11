@@ -1515,6 +1515,14 @@ export type InsertVoiceFeatureFlag = z.infer<typeof insertVoiceFeatureFlagSchema
 export type VoiceCampaign = typeof voiceCampaigns.$inferSelect;
 export type InsertVoiceCampaign = z.infer<typeof insertVoiceCampaignSchema>;
 
+export type CRMSyncConfig = typeof crmSyncConfigs.$inferSelect;
+export const insertCRMSyncConfigSchema = createInsertSchema(crmSyncConfigs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertCRMSyncConfig = z.infer<typeof insertCRMSyncConfigSchema>;
+
 export type VoiceCampaignTarget = typeof voiceCampaignTargets.$inferSelect;
 export type InsertVoiceCampaignTarget = z.infer<typeof insertVoiceCampaignTargetSchema>;
 

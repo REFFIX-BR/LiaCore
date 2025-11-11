@@ -64,7 +64,9 @@ import {
   type VoiceConfig,
   type InsertVoiceConfig,
   type VoiceMessagingSettings,
-  type InsertVoiceMessagingSettings
+  type InsertVoiceMessagingSettings,
+  type CRMSyncConfig,
+  type InsertCRMSyncConfig
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { localCache } from "./lib/redis-cache";
@@ -458,6 +460,13 @@ export interface IStorage {
     promisesFulfilled?: number;
   }): Promise<void>;
   recalculateVoiceCampaignStats(campaignId: string): Promise<void>;
+
+  // CRM Sync Configs
+  getCRMSyncConfig(id: string): Promise<CRMSyncConfig | undefined>;
+  getCRMSyncConfigByCampaignId(campaignId: string): Promise<CRMSyncConfig | undefined>;
+  createCRMSyncConfig(config: InsertCRMSyncConfig): Promise<CRMSyncConfig>;
+  updateCRMSyncConfig(id: string, updates: Partial<CRMSyncConfig>): Promise<CRMSyncConfig | undefined>;
+  checkTargetExists(campaignId: string, document: string, phone: string, deduplicateBy: string): Promise<VoiceCampaignTarget | undefined>;
 
   // Voice Campaign Targets
   getAllVoiceCampaignTargets(): Promise<VoiceCampaignTarget[]>;
@@ -5299,6 +5308,54 @@ export class DbStorage implements IStorage {
       promisesMade: promisesResult?.count || 0,
       promisesFulfilled: fulfilledResult?.count || 0,
     });
+  }
+
+  // CRM Sync Configs
+  async getCRMSyncConfig(id: string): Promise<CRMSyncConfig | undefined> {
+    const configs = await db.select().from(schema.crmSyncConfigs).where(eq(schema.crmSyncConfigs.id, id)).limit(1);
+    return configs[0];
+  }
+
+  async getCRMSyncConfigByCampaignId(campaignId: string): Promise<CRMSyncConfig | undefined> {
+    const configs = await db.select().from(schema.crmSyncConfigs).where(eq(schema.crmSyncConfigs.campaignId, campaignId)).limit(1);
+    return configs[0];
+  }
+
+  async createCRMSyncConfig(config: InsertCRMSyncConfig): Promise<CRMSyncConfig> {
+    const [created] = await db.insert(schema.crmSyncConfigs).values(config).returning();
+    return created;
+  }
+
+  async updateCRMSyncConfig(id: string, updates: Partial<CRMSyncConfig>): Promise<CRMSyncConfig | undefined> {
+    const [updated] = await db.update(schema.crmSyncConfigs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(schema.crmSyncConfigs.id, id))
+      .returning();
+    return updated;
+  }
+
+  async checkTargetExists(campaignId: string, document: string, phone: string, deduplicateBy: string): Promise<VoiceCampaignTarget | undefined> {
+    let condition;
+    
+    if (deduplicateBy === 'document') {
+      condition = and(
+        eq(schema.voiceCampaignTargets.campaignId, campaignId),
+        eq(schema.voiceCampaignTargets.debtorDocument, document)
+      );
+    } else if (deduplicateBy === 'phone') {
+      condition = and(
+        eq(schema.voiceCampaignTargets.campaignId, campaignId),
+        eq(schema.voiceCampaignTargets.phoneNumber, phone)
+      );
+    } else {
+      condition = and(
+        eq(schema.voiceCampaignTargets.campaignId, campaignId),
+        sql`(${schema.voiceCampaignTargets.debtorDocument} = ${document} OR ${schema.voiceCampaignTargets.phoneNumber} = ${phone})`
+      );
+    }
+
+    const targets = await db.select().from(schema.voiceCampaignTargets).where(condition).limit(1);
+    return targets[0];
   }
 
   // Voice Campaign Targets
