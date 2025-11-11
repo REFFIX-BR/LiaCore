@@ -501,7 +501,8 @@ router.post('/crm-sync/:campaignId/trigger', async (req, res) => {
     const { addVoiceCRMSyncToQueue } = await import('../../lib/queue');
     await addVoiceCRMSyncToQueue({ 
       syncConfigId: config.id,
-      campaignId
+      campaignId,
+      isManualTrigger: true, // Bypass enabled check for manual triggers
     });
 
     console.log(`✅ [Admin Cobrança] Sincronização CRM iniciada para campanha ${campaignId}`);
