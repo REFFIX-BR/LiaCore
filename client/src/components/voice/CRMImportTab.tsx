@@ -11,7 +11,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Download, Calendar as CalendarIcon, Check, X, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -43,8 +43,9 @@ export default function CRMImportTab({ campaigns }: CRMImportTabProps) {
   const [maxDebt, setMaxDebt] = useState<string>('');
   const [deduplicateBy, setDeduplicateBy] = useState<string>('both');
   const [updateExisting, setUpdateExisting] = useState<boolean>(true);
+  const previousStatusRef = useRef<string | undefined>();
 
-  // Query para buscar configuração de sincronização existente
+  // Query para buscar configuração de sincronização existente com polling automático
   const { data: syncConfigResponse } = useQuery<{ success: boolean; config?: SyncHistory }>({
     queryKey: ['/api/admin/cobranca/crm-sync', selectedCampaign],
     queryFn: async () => {
@@ -57,8 +58,36 @@ export default function CRMImportTab({ campaigns }: CRMImportTabProps) {
       return response.json();
     },
     enabled: !!selectedCampaign,
+    refetchInterval: (data) => {
+      // Poll a cada 2s enquanto a importação estiver em andamento
+      const isRunning = data?.config?.lastSyncStatus === 'running';
+      return isRunning ? 2000 : false;
+    },
+    refetchIntervalInBackground: true,
   });
   const syncConfig = syncConfigResponse?.config;
+
+  // Detectar quando a importação termina e invalidar queries de targets/campaigns
+  useEffect(() => {
+    const currentStatus = syncConfig?.lastSyncStatus;
+    const previousStatus = previousStatusRef.current;
+    
+    // Se mudou de "running" para "success" ou "failed", importação terminou
+    if (previousStatus === 'running' && (currentStatus === 'success' || currentStatus === 'failed')) {
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/targets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/cobranca/crm-sync-history'] });
+      
+      if (currentStatus === 'success') {
+        toast({
+          title: 'Importação Concluída',
+          description: `${syncConfig.lastSyncImported || 0} alvo(s) importado(s) com sucesso!`,
+        });
+      }
+    }
+    
+    previousStatusRef.current = currentStatus;
+  }, [syncConfig?.lastSyncStatus, syncConfig?.lastSyncImported]);
 
   // Query para buscar histórico de sincronizações
   const { data: syncHistoryResponse } = useQuery<{ success: boolean; history: SyncHistory[] }>({
@@ -100,14 +129,31 @@ export default function CRMImportTab({ campaigns }: CRMImportTabProps) {
       return apiRequest(`/api/admin/cobranca/crm-sync/${selectedCampaign}/trigger`, 'POST', payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/cobranca/crm-sync', selectedCampaign] });
+      // Marcar status como "running" otimisticamente para ativar polling
+      queryClient.setQueryData(
+        ['/api/admin/cobranca/crm-sync', selectedCampaign],
+        (old: any) => ({
+          ...old,
+          config: {
+            ...old?.config,
+            lastSyncStatus: 'running',
+          },
+        })
+      );
+      
+      // Invalidar outras queries
       queryClient.invalidateQueries({ queryKey: ['/api/admin/cobranca/crm-sync-history'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/voice/targets'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/voice/campaigns'] });
+      
+      // Timeout de segurança: invalidar tudo após 30s caso o worker não atualize
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['/api/admin/cobranca/crm-sync', selectedCampaign] });
+        queryClient.invalidateQueries({ queryKey: ['/api/voice/targets'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/voice/campaigns'] });
+      }, 30000);
       
       toast({
         title: 'Sincronização Iniciada',
-        description: 'A importação de alvos do CRM foi iniciada. Os resultados aparecerão no histórico em breve.',
+        description: 'Aguarde... A importação está em andamento e os resultados aparecerão automaticamente.',
       });
     },
     onError: (error: any) => {
