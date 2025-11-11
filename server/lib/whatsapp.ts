@@ -72,6 +72,13 @@ export async function sendWhatsAppMessage(
       normalizedNumber = phoneNumber.split('@')[0];
     }
     
+    // Ensure country code +55 (Brazil) is present
+    // Remove any existing + or 55 prefix first to normalize
+    normalizedNumber = normalizedNumber.replace(/^\+?55/, '');
+    
+    // Add 55 prefix (Evolution API expects numbers without +)
+    normalizedNumber = `55${normalizedNumber}`;
+    
     // Ensure URL has protocol
     let baseUrl = EVOLUTION_CONFIG.apiUrl.trim();
     if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
