@@ -426,4 +426,126 @@ router.delete('/clear-targets', async (req, res) => {
   }
 });
 
+// GET /api/admin/cobranca/crm-sync/:campaignId - Buscar configuração de sincronização
+router.get('/crm-sync/:campaignId', async (req, res) => {
+  try {
+    const { campaignId } = req.params;
+    
+    const config = await storage.getCRMSyncConfigByCampaignId(campaignId);
+    
+    res.json({
+      success: true,
+      config,
+    });
+  } catch (error) {
+    console.error('❌ [Admin Cobrança] Erro ao buscar config de sync:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao buscar configuração de sincronização',
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+// POST /api/admin/cobranca/crm-sync/:campaignId/trigger - Executar sincronização manual
+router.post('/crm-sync/:campaignId/trigger', async (req, res) => {
+  try {
+    const { campaignId } = req.params;
+    const {
+      relativeDays,
+      startDate,
+      endDate,
+      minDebtAmount,
+      maxDebtAmount,
+      deduplicateBy = 'both',
+      updateExisting = true,
+    } = req.body;
+
+    // Validar campanha
+    const campaign = await storage.getVoiceCampaign(campaignId);
+    if (!campaign) {
+      return res.status(404).json({
+        success: false,
+        error: 'Campanha não encontrada',
+      });
+    }
+
+    // Criar ou atualizar configuração de sincronização
+    let config = await storage.getCRMSyncConfigByCampaignId(campaignId);
+    
+    const configData: any = {
+      campaignId,
+      createdBy: (req as any).user?.id || 'admin',
+      apiUrl: 'https://webhook.trtelecom.net/webhook/liacore-consulta-inadimplentes',
+      relativeDays: relativeDays || null,
+      startDate: startDate ? new Date(startDate) : null,
+      endDate: endDate ? new Date(endDate) : null,
+      minDebtAmount: minDebtAmount || null,
+      maxDebtAmount: maxDebtAmount || null,
+      deduplicateBy,
+      updateExisting,
+    };
+
+    if (config) {
+      await storage.updateCRMSyncConfig(config.id, configData);
+      config = await storage.getCRMSyncConfig(config.id);
+    } else {
+      config = await storage.createCRMSyncConfig(configData);
+    }
+
+    if (!config) {
+      throw new Error('Erro ao criar/atualizar configuração');
+    }
+
+    // Adicionar job à fila
+    const { addVoiceCRMSyncToQueue } = await import('../../lib/queue');
+    await addVoiceCRMSyncToQueue({ 
+      syncConfigId: config.id,
+      campaignId
+    });
+
+    console.log(`✅ [Admin Cobrança] Sincronização CRM iniciada para campanha ${campaignId}`);
+
+    res.json({
+      success: true,
+      message: 'Sincronização iniciada com sucesso',
+      configId: config.id,
+    });
+  } catch (error) {
+    console.error('❌ [Admin Cobrança] Erro ao iniciar sync:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao iniciar sincronização',
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+// GET /api/admin/cobranca/crm-sync-history - Histórico de sincronizações
+router.get('/crm-sync-history', async (req, res) => {
+  try {
+    const { db } = await import('../../db');
+    const { crmSyncConfigs } = await import('@shared/schema');
+    const { desc } = await import('drizzle-orm');
+
+    // Buscar todas as configurações com histórico de sync
+    const configs = await db
+      .select()
+      .from(crmSyncConfigs)
+      .orderBy(desc(crmSyncConfigs.lastSyncAt));
+
+    res.json({
+      success: true,
+      history: configs,
+    });
+  } catch (error) {
+    console.error('❌ [Admin Cobrança] Erro ao buscar histórico:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao buscar histórico de sincronizações',
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
 export default router;

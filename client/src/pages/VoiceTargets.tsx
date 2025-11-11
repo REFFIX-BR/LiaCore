@@ -6,12 +6,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Phone, Search, PhoneCall, PhoneOff, Clock, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Phone, Search, PhoneCall, PhoneOff, Clock, CheckCircle2, XCircle, Trash2, Upload, Calendar } from 'lucide-react';
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
+import CRMImportTab from '@/components/voice/CRMImportTab';
 
 interface Target {
   id: string;
@@ -126,7 +128,20 @@ export default function VoiceTargets() {
         </div>
       </div>
 
-      <Card className="mb-6">
+      <Tabs defaultValue="list" className="space-y-4" data-testid="tabs-voice-targets">
+        <TabsList data-testid="tablist-voice-targets">
+          <TabsTrigger value="list" data-testid="tab-list">
+            <Search className="h-4 w-4 mr-2" />
+            Lista de Alvos
+          </TabsTrigger>
+          <TabsTrigger value="import" data-testid="tab-import">
+            <Upload className="h-4 w-4 mr-2" />
+            Importação CRM
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="list" data-testid="tabcontent-list">
+          <Card className="mb-6">
         <CardHeader>
           <CardTitle>Filtros</CardTitle>
           <CardDescription>Busque e filtre os alvos das campanhas</CardDescription>
@@ -256,6 +271,12 @@ export default function VoiceTargets() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="import" data-testid="tabcontent-import">
+          <CRMImportTab campaigns={campaigns || []} />
+        </TabsContent>
+      </Tabs>
 
       {/* Confirm Delete Dialog */}
       <Dialog open={!!targetToDelete} onOpenChange={(open) => !open && setTargetToDelete(null)}>
