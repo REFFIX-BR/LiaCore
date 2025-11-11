@@ -19,6 +19,7 @@
  */
 
 import type { IStorage } from "./storage";
+import { searchKnowledge } from "./lib/upstash";
 
 /**
  * Normaliza nome de cidade/bairro para comparação consistente
@@ -1525,6 +1526,35 @@ export async function executeAssistantTool(
         throw new Error("Parâmetro 'documento' é obrigatório para validar_cpf_cnpj");
       }
       return validarCpfCnpj(args.documento);
+
+    case 'consultar_base_de_conhecimento':
+      if (!args.query) {
+        throw new Error("Parâmetro 'query' é obrigatório para consultar_base_de_conhecimento");
+      }
+      console.log(`📚 [AI Tool] Consultando base de conhecimento: "${args.query}"`);
+      const results = await searchKnowledge(args.query, args.topK || 5);
+      
+      if (results.length === 0) {
+        return {
+          encontrado: false,
+          mensagem: "Não encontrei informações sobre isso na base de conhecimento."
+        };
+      }
+      
+      // Formatar resultados para a IA
+      const conhecimento = results.map((r, idx) => ({
+        fonte: r.chunk.source,
+        conteudo: r.chunk.content,
+        relevancia: r.score,
+      }));
+      
+      console.log(`✅ [AI Tool] ${results.length} resultado(s) encontrado(s) na base de conhecimento`);
+      
+      return {
+        encontrado: true,
+        resultados: conhecimento,
+        mensagem: `Encontrei ${results.length} informação(ões) relevante(s).`
+      };
 
     default:
       throw new Error(`Tool não implementada: ${toolName}`);
