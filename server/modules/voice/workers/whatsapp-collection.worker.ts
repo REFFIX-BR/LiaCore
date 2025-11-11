@@ -384,10 +384,10 @@ Use o nome "${clientName.split(' ')[0]}" para se dirigir ao cliente.`;
   },
   {
     connection: redisConnection,
-    concurrency: 3, // Reduzido para modo conservador
+    concurrency: 1, // Uma mensagem por vez (sequencial)
     limiter: {
-      max: 5, // Máximo de 5 mensagens por minuto (modo conservador - compliance WhatsApp)
-      duration: 60000,
+      max: 1, // Máximo de 1 mensagem a cada 40 segundos
+      duration: 40000, // 40 segundos
     },
   }
 );
