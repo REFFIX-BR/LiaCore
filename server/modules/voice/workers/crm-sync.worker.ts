@@ -87,10 +87,28 @@ const worker = new Worker<VoiceCRMSyncJob>(
         const rawDocument = client.CPF || client.COD_CLIENTE;
         const validacao = validarDocumentoFlexivel(rawDocument);
 
-        // Processar telefones
-        const phone1 = client.TELEFONE_CELULAR1?.replace(/\D/g, '') || '';
-        const phone2 = client.TELEFONE_CELULAR2?.replace(/\D/g, '') || '';
-        const phones = [phone1, phone2].filter(p => p.length >= 10);
+        // Processar telefones e adicionar prefixo 55 automaticamente
+        const normalizePhone = (phone: string): string => {
+          if (!phone) return '';
+          
+          // Remover tudo que não é número
+          let cleaned = phone.replace(/\D/g, '');
+          
+          // Remover prefixo +55 ou 55 se já existir
+          cleaned = cleaned.replace(/^(55)/, '');
+          
+          // Validar tamanho (10 ou 11 dígitos no formato brasileiro)
+          if (cleaned.length < 10 || cleaned.length > 11) {
+            return '';
+          }
+          
+          // Adicionar prefixo 55
+          return `55${cleaned}`;
+        };
+        
+        const phone1 = normalizePhone(client.TELEFONE_CELULAR1 || '');
+        const phone2 = normalizePhone(client.TELEFONE_CELULAR2 || '');
+        const phones = [phone1, phone2].filter(p => p.length >= 12); // 55 + 10 ou 11 dígitos
 
         if (phones.length === 0) {
           console.warn(`⚠️ [CRM Sync] Cliente ${client.NOME} sem telefone válido`);
