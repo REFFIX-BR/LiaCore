@@ -625,7 +625,7 @@ export async function addVoiceWhatsAppCollectionToQueue(data: VoiceWhatsAppColle
 
 export async function addVoiceCRMSyncToQueue(data: VoiceCRMSyncJob) {
   return await voiceCRMSyncQueue.add('sync-crm-data', data, {
-    jobId: `crm-sync-${data.syncConfigId}`, // Unique ID to prevent duplicate syncs
+    // Remove fixed jobId to allow multiple sync runs
     priority: 4,
   });
 }
