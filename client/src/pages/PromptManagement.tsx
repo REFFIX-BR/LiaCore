@@ -33,7 +33,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useTokenCount } from "@/hooks/use-token-count";
 
-type AssistantType = "apresentacao" | "comercial" | "financeiro" | "suporte" | "ouvidoria" | "cancelamento";
+type AssistantType = "apresentacao" | "comercial" | "financeiro" | "suporte" | "ouvidoria" | "cancelamento" | "cobranca";
 
 interface PromptTemplate {
   id: string;
@@ -80,6 +80,7 @@ const assistantNames: Record<AssistantType, string> = {
   suporte: "Suporte Técnico",
   ouvidoria: "Ouvidoria",
   cancelamento: "Cancelamento",
+  cobranca: "Cobranças (IA Cobrança)",
 };
 
 const assistantColors: Record<AssistantType, string> = {
@@ -89,6 +90,7 @@ const assistantColors: Record<AssistantType, string> = {
   suporte: "bg-purple-500/10 text-purple-700 dark:text-purple-400",
   ouvidoria: "bg-orange-500/10 text-orange-700 dark:text-orange-400",
   cancelamento: "bg-red-500/10 text-red-700 dark:text-red-400",
+  cobranca: "bg-pink-500/10 text-pink-700 dark:text-pink-400",
 };
 
 export default function PromptManagement() {
