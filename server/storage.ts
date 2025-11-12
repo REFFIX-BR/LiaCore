@@ -5423,16 +5423,82 @@ export class DbStorage implements IStorage {
   }
 
   async createVoiceCampaignTarget(target: InsertVoiceCampaignTarget): Promise<VoiceCampaignTarget> {
-    const [created] = await db.insert(schema.voiceCampaignTargets).values(target).returning();
+    // CRITICAL: Normalize phone number before inserting
+    const { normalizePhone } = await import('./lib/phone-utils');
+    const normalizedPhone = normalizePhone(target.phoneNumber);
+    
+    if (!normalizedPhone) {
+      throw new Error(`Invalid phone number: ${target.phoneNumber}`);
+    }
+    
+    const normalizedAlternatives = target.alternativePhones
+      ?.map(p => normalizePhone(p))
+      .filter((p): p is string => p !== null) || [];
+    
+    const normalizedTarget = {
+      ...target,
+      phoneNumber: normalizedPhone,
+      alternativePhones: normalizedAlternatives.length > 0 ? normalizedAlternatives : null,
+    };
+    
+    const [created] = await db.insert(schema.voiceCampaignTargets).values(normalizedTarget).returning();
     return created;
   }
 
   async createVoiceCampaignTargets(targets: InsertVoiceCampaignTarget[]): Promise<VoiceCampaignTarget[]> {
     if (targets.length === 0) return [];
-    return await db.insert(schema.voiceCampaignTargets).values(targets).returning();
+    
+    // CRITICAL: Normalize all phone numbers before inserting
+    const { normalizePhone } = await import('./lib/phone-utils');
+    const normalizedTargets: InsertVoiceCampaignTarget[] = [];
+    
+    for (const target of targets) {
+      const normalizedPhone = normalizePhone(target.phoneNumber);
+      
+      if (!normalizedPhone) {
+        console.warn(`[Storage] Skipping target with invalid phone: ${target.phoneNumber}`);
+        continue;
+      }
+      
+      const normalizedAlternatives = target.alternativePhones?.map(p => normalizePhone(p)).filter((p): p is string => p !== null) || [];
+      
+      normalizedTargets.push({
+        ...target,
+        phoneNumber: normalizedPhone,
+        alternativePhones: normalizedAlternatives.length > 0 ? normalizedAlternatives : target.alternativePhones,
+      });
+    }
+    
+    if (normalizedTargets.length === 0) {
+      console.warn('[Storage] No valid targets after phone normalization');
+      return [];
+    }
+    
+    console.log(`✅ [Storage] Normalized ${normalizedTargets.length}/${targets.length} targets with valid phone numbers`);
+    return await db.insert(schema.voiceCampaignTargets).values(normalizedTargets).returning();
   }
 
   async updateVoiceCampaignTarget(id: string, updates: Partial<VoiceCampaignTarget>): Promise<VoiceCampaignTarget | undefined> {
+    // CRITICAL: Normalize phone if being updated
+    if (updates.phoneNumber || updates.alternativePhones) {
+      const { normalizePhone } = await import('./lib/phone-utils');
+      
+      if (updates.phoneNumber) {
+        const normalized = normalizePhone(updates.phoneNumber);
+        if (!normalized) {
+          throw new Error(`Invalid phone number: ${updates.phoneNumber}`);
+        }
+        updates.phoneNumber = normalized;
+      }
+      
+      if (updates.alternativePhones) {
+        const normalizedAlternatives = updates.alternativePhones
+          .map(p => normalizePhone(p))
+          .filter((p): p is string => p !== null);
+        updates.alternativePhones = normalizedAlternatives.length > 0 ? normalizedAlternatives : null;
+      }
+    }
+    
     const [updated] = await db.update(schema.voiceCampaignTargets)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(schema.voiceCampaignTargets.id, id))
