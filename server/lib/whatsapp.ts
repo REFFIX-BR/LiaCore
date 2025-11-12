@@ -121,3 +121,105 @@ export async function sendWhatsAppMessage(
     return { success: false };
   }
 }
+
+export interface WhatsAppTemplateOptions {
+  templateName: string;
+  languageCode?: string;
+  parameters: string[];
+}
+
+/**
+ * Sends a WhatsApp template message via Evolution API
+ * Uses Meta-approved templates to avoid number banning
+ */
+export async function sendWhatsAppTemplate(
+  phoneNumber: string,
+  options: WhatsAppTemplateOptions,
+  instanceName?: string
+): Promise<WhatsAppMessageResult> {
+  const rawInstance = instanceName || EVOLUTION_CONFIG.instance;
+  const instance = validateEvolutionInstance(rawInstance);
+  const apiKey = getEvolutionApiKey(instance);
+  
+  if (!EVOLUTION_CONFIG.apiUrl || !apiKey || !instance) {
+    console.error("❌ [WhatsApp Template] Credenciais não configuradas", { 
+      hasUrl: !!EVOLUTION_CONFIG.apiUrl, 
+      hasKey: !!apiKey, 
+      instance: instance || 'undefined' 
+    });
+    return { success: false };
+  }
+
+  try {
+    // Normalize WhatsApp number
+    let normalizedNumber = phoneNumber;
+    
+    if (phoneNumber.startsWith('whatsapp_')) {
+      normalizedNumber = phoneNumber.replace('whatsapp_', '');
+    } else if (phoneNumber.includes('@s.whatsapp.net')) {
+      normalizedNumber = phoneNumber.split('@')[0];
+    }
+    
+    // Ensure country code +55 (Brazil) is present
+    normalizedNumber = normalizedNumber.replace(/^\+?55/, '');
+    normalizedNumber = `55${normalizedNumber}`;
+    
+    // Ensure URL has protocol
+    let baseUrl = EVOLUTION_CONFIG.apiUrl.trim();
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = `https://${baseUrl}`;
+    }
+    
+    const url = `${baseUrl}/message/sendTemplate/${instance}`;
+    
+    console.log(`📋 [WhatsApp Template] Enviando template "${options.templateName}" para ${normalizedNumber} via ${instance}`);
+    console.log(`📋 [WhatsApp Template] Parâmetros: ${JSON.stringify(options.parameters)}`);
+    
+    // Build template components with parameters
+    const components = [];
+    
+    if (options.parameters && options.parameters.length > 0) {
+      components.push({
+        type: 'body',
+        parameters: options.parameters.map(param => ({
+          type: 'text',
+          text: param
+        }))
+      });
+    }
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': apiKey,
+      },
+      body: JSON.stringify({
+        number: normalizedNumber,
+        template: {
+          name: options.templateName,
+          language: options.languageCode || 'en', // Default to 'en' as per your template
+          components: components
+        }
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ [WhatsApp Template] Erro ao enviar template (${response.status}):`, errorText);
+      return { success: false };
+    }
+
+    const result = await response.json();
+    console.log(`✅ [WhatsApp Template] Template "${options.templateName}" enviado para ${normalizedNumber} via ${instance}`);
+
+    return {
+      success: true,
+      whatsappMessageId: result.key?.id,
+      remoteJid: result.key?.remoteJid,
+    };
+  } catch (error) {
+    console.error("❌ [WhatsApp Template] Erro ao enviar template:", error);
+    return { success: false };
+  }
+}
