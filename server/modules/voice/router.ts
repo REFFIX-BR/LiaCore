@@ -27,8 +27,11 @@ async function activateVoiceCampaign(campaignId: string): Promise<{ enqueued: nu
   // Accept both 'pending' and 'scheduled' states when attemptCount is 0 or NULL
   // This allows reactivating campaigns that were previously paused
   // CRITICAL FIX: Treat NULL attemptCount as 0 (fresh targets from import have NULL)
+  // CRITICAL FIX: Only enqueue explicitly enabled targets (enabled=true)
   const pendingTargets = targets.filter(t => 
-    (t.state === 'pending' || t.state === 'scheduled') && (t.attemptCount ?? 0) === 0
+    (t.state === 'pending' || t.state === 'scheduled') && 
+    (t.attemptCount ?? 0) === 0 &&
+    t.enabled === true // Only send explicitly enabled targets
   );
   
   console.log(`📊 [Voice Activation] Found ${pendingTargets.length} pending/scheduled targets (${targets.length} total)`);

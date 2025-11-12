@@ -1278,7 +1278,7 @@ export const voiceCampaignTargets = pgTable("voice_campaign_targets", {
   contactMethod: text("contact_method").notNull().default("voice"), // 'whatsapp' | 'voice' - Método de contato preferencial
   
   // Controle de envio
-  enabled: boolean("enabled").notNull().default(true), // Se este alvo deve receber envios de cobrança
+  enabled: boolean("enabled").notNull().default(false), // Se este alvo deve receber envios de cobrança (desabilitado por padrão)
   
   debtorName: text("debtor_name").notNull(),
   debtorDocument: text("debtor_document"), // CPF, CNPJ, ou Código de Cliente
