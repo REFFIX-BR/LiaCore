@@ -79,19 +79,9 @@ export default function VoiceCampaigns() {
   const [togglingCampaignId, setTogglingCampaignId] = useState<string | null>(null);
   const [uploadedTargets, setUploadedTargets] = useState<TargetData[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [contactMethod, setContactMethod] = useState<'voice' | 'whatsapp'>('whatsapp');
-  const [isMethodsDrawerOpen, setIsMethodsDrawerOpen] = useState(false);
-  const [selectedCampaignForMethods, setSelectedCampaignForMethods] = useState<Campaign | null>(null);
   const [isTargetsDrawerOpen, setIsTargetsDrawerOpen] = useState(false);
   const [selectedCampaignForTargets, setSelectedCampaignForTargets] = useState<Campaign | null>(null);
   const [targetToDelete, setTargetToDelete] = useState<Target | null>(null);
-  const [methodsConfig, setMethodsConfig] = useState<{
-    allowedMethods: ('voice' | 'whatsapp')[];
-    fallbackOrder: ('voice' | 'whatsapp')[];
-  }>({
-    allowedMethods: ['whatsapp'],
-    fallbackOrder: ['whatsapp'],
-  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: campaigns, isLoading } = useQuery<Campaign[]>({
@@ -201,7 +191,7 @@ export default function VoiceCampaigns() {
       if (variables.newStatus === 'active' && data.activationResult) {
         toast({
           title: 'Campanha Ativada',
-          description: `${data.activationResult.enqueued} ligações agendadas. As chamadas começarão em instantes.`,
+          description: `${data.activationResult.enqueued} mensagens WhatsApp agendadas. O envio começará em instantes.`,
         });
       } else if (variables.newStatus === 'paused') {
         toast({
@@ -225,27 +215,6 @@ export default function VoiceCampaigns() {
     },
   });
 
-  const updateMethodsMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedCampaignForMethods) throw new Error('Nenhuma campanha selecionada');
-      return apiRequest(`/api/voice/campaigns/${selectedCampaignForMethods.id}`, 'PATCH', methodsConfig);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/voice/campaigns'] });
-      toast({
-        title: 'Métodos atualizados',
-        description: 'As configurações de métodos de contato foram salvas com sucesso.',
-      });
-      setIsMethodsDrawerOpen(false);
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Erro ao atualizar métodos',
-        description: error.message || 'Ocorreu um erro ao salvar as configurações.',
-        variant: 'destructive',
-      });
-    },
-  });
 
   const deleteTargetMutation = useMutation({
     mutationFn: async (targetId: string) => {
@@ -376,7 +345,7 @@ export default function VoiceCampaigns() {
     uploadTargetsMutation.mutate({
       campaignId: selectedCampaignId,
       targets: uploadedTargets,
-      contactMethod,
+      contactMethod: 'whatsapp',
     });
   };
 
@@ -405,8 +374,11 @@ export default function VoiceCampaigns() {
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold">COBRANÇAS</h1>
-            <p className="text-muted-foreground">Campanhas de Cobrança por Voz</p>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <MessageSquare className="h-8 w-8" />
+              COBRANÇAS
+            </h1>
+            <p className="text-muted-foreground">Campanhas de Cobrança via WhatsApp</p>
           </div>
         </div>
         <div className="grid gap-4 md:grid-cols-4 mb-6">
@@ -428,10 +400,10 @@ export default function VoiceCampaigns() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Phone className="h-8 w-8" />
+            <MessageSquare className="h-8 w-8" />
             COBRANÇAS
           </h1>
-          <p className="text-muted-foreground">Campanhas de Cobrança por Voz</p>
+          <p className="text-muted-foreground">Campanhas de Cobrança via WhatsApp</p>
         </div>
         <div className="flex gap-2">
           <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
@@ -806,22 +778,6 @@ export default function VoiceCampaigns() {
                       <Users className="h-4 w-4 mr-2" />
                       Ver Alvos
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      data-testid={`button-methods-${campaign.id}`}
-                      onClick={() => {
-                        setSelectedCampaignForMethods(campaign);
-                        setMethodsConfig({
-                          allowedMethods: campaign.allowedMethods || ['voice', 'whatsapp'],
-                          fallbackOrder: campaign.fallbackOrder || ['voice', 'whatsapp'],
-                        });
-                        setIsMethodsDrawerOpen(true);
-                      }}
-                    >
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Métodos
-                    </Button>
                   </div>
                 </div>
               </CardHeader>
@@ -852,89 +808,12 @@ export default function VoiceCampaigns() {
             <CardHeader>
               <CardTitle>Nenhuma campanha criada</CardTitle>
               <CardDescription>
-                Crie sua primeira campanha de cobrança por voz clicando no botão "Nova Campanha"
+                Crie sua primeira campanha de cobrança via WhatsApp clicando no botão "Nova Campanha"
               </CardDescription>
             </CardHeader>
           </Card>
         )}
       </div>
-
-      <Sheet open={isMethodsDrawerOpen} onOpenChange={setIsMethodsDrawerOpen}>
-        <SheetContent className="w-[400px] sm:w-[540px]">
-          <SheetHeader>
-            <SheetTitle>Configurar Métodos de Contato</SheetTitle>
-            <SheetDescription>
-              {selectedCampaignForMethods?.name}
-            </SheetDescription>
-          </SheetHeader>
-          <div className="space-y-6 mt-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="whatsapp-enabled" className="text-base">
-                    WhatsApp
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Permite contato via Evolution API + IA Financeiro
-                  </p>
-                </div>
-                <Switch
-                  id="whatsapp-enabled"
-                  checked={methodsConfig.allowedMethods.includes('whatsapp')}
-                  onCheckedChange={(checked) => {
-                    setMethodsConfig((prev) => {
-                      const newAllowedMethods = (checked
-                        ? [...prev.allowedMethods, 'whatsapp']
-                        : prev.allowedMethods.filter((m) => m !== 'whatsapp')) as ('voice' | 'whatsapp')[];
-                      
-                      const newFallbackOrder = newAllowedMethods.filter((m) =>
-                        prev.fallbackOrder.includes(m)
-                      ) as ('voice' | 'whatsapp')[];
-                      
-                      if (newFallbackOrder.length === 0 && newAllowedMethods.length > 0) {
-                        newFallbackOrder.push(newAllowedMethods[0]);
-                      }
-                      
-                      return {
-                        allowedMethods: newAllowedMethods,
-                        fallbackOrder: newFallbackOrder,
-                      };
-                    });
-                  }}
-                  data-testid="switch-whatsapp-enabled"
-                />
-              </div>
-            </div>
-
-            <div className="pt-4 flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsMethodsDrawerOpen(false)}
-                data-testid="button-cancel-methods"
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={() => updateMethodsMutation.mutate()}
-                disabled={updateMethodsMutation.isPending || methodsConfig.allowedMethods.length === 0}
-                data-testid="button-save-methods"
-              >
-                {updateMethodsMutation.isPending ? 'Salvando...' : 'Salvar'}
-              </Button>
-            </div>
-
-            {methodsConfig.allowedMethods.length === 0 && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Atenção</AlertTitle>
-                <AlertDescription>
-                  É necessário ativar pelo menos um método de contato.
-                </AlertDescription>
-              </Alert>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
 
       {/* Targets Drawer */}
       <Sheet open={isTargetsDrawerOpen} onOpenChange={setIsTargetsDrawerOpen}>
@@ -983,7 +862,7 @@ export default function VoiceCampaigns() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {target.contactMethod === 'voice' ? '📞 Voz' : '💬 WhatsApp'}
+                        💬 WhatsApp
                       </TableCell>
                       <TableCell>
                         <Button

@@ -125,7 +125,7 @@ export default function CobrancasMonitor() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Phone className="h-8 w-8" />
+            <MessageSquare className="h-8 w-8" />
             Monitor de Cobranças
           </h1>
           <p className="text-muted-foreground">
@@ -243,13 +243,7 @@ export default function CobrancasMonitor() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {conv.conversationSource === 'voice_campaign' && (
-                        <Badge variant="outline" className="gap-1">
-                          <Phone className="h-3 w-3" />
-                          Voz
-                        </Badge>
-                      )}
-                      {conv.conversationSource === 'whatsapp_campaign' && (
+                      {(conv.conversationSource === 'voice_campaign' || conv.conversationSource === 'whatsapp_campaign') && (
                         <Badge variant="outline" className="gap-1">
                           <MessageSquare className="h-3 w-3" />
                           WhatsApp
