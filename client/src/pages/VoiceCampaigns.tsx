@@ -79,7 +79,7 @@ export default function VoiceCampaigns() {
   const [togglingCampaignId, setTogglingCampaignId] = useState<string | null>(null);
   const [uploadedTargets, setUploadedTargets] = useState<TargetData[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [contactMethod, setContactMethod] = useState<'voice' | 'whatsapp'>('voice');
+  const [contactMethod, setContactMethod] = useState<'voice' | 'whatsapp'>('whatsapp');
   const [isMethodsDrawerOpen, setIsMethodsDrawerOpen] = useState(false);
   const [selectedCampaignForMethods, setSelectedCampaignForMethods] = useState<Campaign | null>(null);
   const [isTargetsDrawerOpen, setIsTargetsDrawerOpen] = useState(false);
@@ -89,8 +89,8 @@ export default function VoiceCampaigns() {
     allowedMethods: ('voice' | 'whatsapp')[];
     fallbackOrder: ('voice' | 'whatsapp')[];
   }>({
-    allowedMethods: ['voice', 'whatsapp'],
-    fallbackOrder: ['voice', 'whatsapp'],
+    allowedMethods: ['whatsapp'],
+    fallbackOrder: ['whatsapp'],
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -468,30 +468,15 @@ export default function VoiceCampaigns() {
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Método de Contato</label>
-                  <RadioGroup value={contactMethod} onValueChange={(value) => setContactMethod(value as 'voice' | 'whatsapp')}>
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="voice" id="contact-voice" data-testid="radio-contact-voice" />
-                        <Label htmlFor="contact-voice" className="flex items-center gap-2 cursor-pointer">
-                          <Phone className="h-4 w-4" />
-                          Ligação (Voice)
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="whatsapp" id="contact-whatsapp" data-testid="radio-contact-whatsapp" />
-                        <Label htmlFor="contact-whatsapp" className="flex items-center gap-2 cursor-pointer">
-                          <MessageSquare className="h-4 w-4" />
-                          WhatsApp (IA Financeiro)
-                        </Label>
-                      </div>
+                  <div className="flex items-center space-x-2 p-3 border rounded-md bg-muted/50">
+                    <MessageSquare className="h-4 w-4" />
+                    <div className="flex-1">
+                      <p className="font-medium">WhatsApp (IA Financeiro)</p>
+                      <p className="text-xs text-muted-foreground">
+                        Mensagens via WhatsApp usando IA Financeiro da LIA CORTEX
+                      </p>
                     </div>
-                  </RadioGroup>
-                  <p className="text-xs text-muted-foreground">
-                    {contactMethod === 'voice' 
-                      ? 'Ligações automatizadas usando Twilio + OpenAI Realtime API'
-                      : 'Mensagens via WhatsApp usando IA Financeiro da LIA CORTEX'
-                    }
-                  </p>
+                  </div>
                 </div>
 
                 <Alert>
@@ -886,42 +871,6 @@ export default function VoiceCampaigns() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="voice-enabled" className="text-base">
-                    Ligações por Voz
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Permite contato via Twilio + OpenAI Realtime API
-                  </p>
-                </div>
-                <Switch
-                  id="voice-enabled"
-                  checked={methodsConfig.allowedMethods.includes('voice')}
-                  onCheckedChange={(checked) => {
-                    setMethodsConfig((prev) => {
-                      const newAllowedMethods = (checked
-                        ? [...prev.allowedMethods, 'voice']
-                        : prev.allowedMethods.filter((m) => m !== 'voice')) as ('voice' | 'whatsapp')[];
-                      
-                      const newFallbackOrder = newAllowedMethods.filter((m) =>
-                        prev.fallbackOrder.includes(m)
-                      ) as ('voice' | 'whatsapp')[];
-                      
-                      if (newFallbackOrder.length === 0 && newAllowedMethods.length > 0) {
-                        newFallbackOrder.push(newAllowedMethods[0]);
-                      }
-                      
-                      return {
-                        allowedMethods: newAllowedMethods,
-                        fallbackOrder: newFallbackOrder,
-                      };
-                    });
-                  }}
-                  data-testid="switch-voice-enabled"
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
                   <Label htmlFor="whatsapp-enabled" className="text-base">
                     WhatsApp
                   </Label>
@@ -956,40 +905,6 @@ export default function VoiceCampaigns() {
                 />
               </div>
             </div>
-
-            {methodsConfig.allowedMethods.length > 1 && (
-              <div className="space-y-3">
-                <Label className="text-base">Ordem de Fallback</Label>
-                <p className="text-sm text-muted-foreground">
-                  Se o método principal falhar, qual será o próximo?
-                </p>
-                <RadioGroup
-                  value={methodsConfig.fallbackOrder[0]}
-                  onValueChange={(value) => {
-                    const first = value as 'voice' | 'whatsapp';
-                    const second = first === 'voice' ? 'whatsapp' : 'voice';
-                    setMethodsConfig((prev) => ({
-                      ...prev,
-                      fallbackOrder: [first, second],
-                    }));
-                  }}
-                  data-testid="radiogroup-fallback-order"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="voice" id="fallback-voice" />
-                    <Label htmlFor="fallback-voice" className="font-normal cursor-pointer">
-                      Voice → WhatsApp
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="whatsapp" id="fallback-whatsapp" />
-                    <Label htmlFor="fallback-whatsapp" className="font-normal cursor-pointer">
-                      WhatsApp → Voice
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            )}
 
             <div className="pt-4 flex justify-end gap-2">
               <Button
