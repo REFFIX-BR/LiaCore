@@ -194,20 +194,20 @@ export async function sendWhatsAppTemplate(
       });
     }
     
+    const payload = {
+      number: normalizedNumber,
+      name: options.templateName,
+      language: options.languageCode || 'en',
+      components: components
+    };
+    
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': apiKey,
       },
-      body: JSON.stringify({
-        number: normalizedNumber,
-        template: {
-          name: options.templateName,
-          language: options.languageCode || 'en', // Default to 'en' as per your template
-          components: components
-        }
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
