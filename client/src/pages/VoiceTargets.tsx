@@ -429,6 +429,11 @@ export default function VoiceTargets() {
           <TabsTrigger value="list" data-testid="tab-list">
             <Search className="h-4 w-4 mr-2" />
             Lista de Alvos
+            {selectedTargetIds.size > 0 && (
+              <Badge variant="secondary" className="ml-2">
+                {selectedTargetIds.size}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="import" data-testid="tab-import">
             <Upload className="h-4 w-4 mr-2" />
@@ -436,7 +441,7 @@ export default function VoiceTargets() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="list" data-testid="tabcontent-list">
+        <TabsContent value="list" data-testid="tabcontent-list" forceMount className="data-[state=inactive]:hidden">
           <Card className="mb-6">
         <CardHeader>
           <CardTitle>Filtros</CardTitle>
