@@ -279,8 +279,10 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
       // Mensagem humanizada seguindo o estilo da IA Cobrança
       // A IA vai assumir a conversa quando o cliente responder
       const firstName = clientName.split(' ')[0]; // Apenas primeiro nome
+      
+      // NOTA: Para usar templates aprovados pela Meta com placeholders {{1}}, {{2}}, etc.,
+      // seria necessário criar um template no WhatsApp Manager e usar sendTemplate do Evolution API
       const message = `Olá ${firstName}!
-
 Aqui é a Lia, assistente virtual da TR Telecom.
 
 Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta.
