@@ -1,40 +1,30 @@
-import { messageQueue } from '../server/lib/queue';
+import { Queue } from 'bullmq';
+import { redisConnection } from '../server/lib/redis-config';
+import { QUEUE_NAMES } from '../server/lib/queue';
 
-async function checkStatus() {
-  console.log('🔍 Verificando status da fila...\n');
-  
-  const waiting = await messageQueue.getWaiting();
-  const active = await messageQueue.getActive();
-  const completed = await messageQueue.getCompleted();
-  const failed = await messageQueue.getFailed();
-  
-  console.log(`⏳ Jobs aguardando: ${waiting.length}`);
-  console.log(`⚡ Jobs ativos: ${active.length}`);
-  console.log(`✅ Jobs completos (últimos): ${completed.length}`);
-  console.log(`❌ Jobs falhados: ${failed.length}\n`);
-  
-  if (waiting.length > 0) {
-    console.log('📋 Jobs aguardando:');
-    for (const job of waiting.slice(0, 3)) {
-      console.log(`  - Job ${job.id}: ${job.data.conversationId} (${job.data.chatId})`);
+(async () => {
+  try {
+    const queue = new Queue(QUEUE_NAMES.VOICE_WHATSAPP_COLLECTION, { connection: redisConnection });
+    
+    const waiting = await queue.getWaiting(0, 5);
+    const active = await queue.getActive(0, 5);
+    const delayed = await queue.getDelayed(0, 5);
+    
+    console.log(`\n📊 Queue Status:`);
+    console.log(`  Waiting: ${waiting.length}`);
+    console.log(`  Active: ${active.length}`);
+    console.log(`  Delayed: ${delayed.length}`);
+    
+    if (waiting.length > 0) {
+      console.log(`\n✅ First 3 waiting jobs:`);
+      waiting.slice(0, 3).forEach(job => {
+        console.log(`  - Job ${job.id}: ${job.data.clientName}`);
+      });
     }
+    
+    process.exit(0);
+  } catch (error: any) {
+    console.error('❌ Error:', error.message);
+    process.exit(1);
   }
-  
-  if (active.length > 0) {
-    console.log('\n⚡ Jobs ativos:');
-    for (const job of active) {
-      console.log(`  - Job ${job.id}: ${job.data.conversationId} (processando...)`);
-    }
-  }
-  
-  if (failed.length > 0) {
-    console.log('\n❌ Jobs falhados recentes:');
-    for (const job of failed.slice(0, 3)) {
-      console.log(`  - Job ${job.id}: ${job.failedReason}`);
-    }
-  }
-  
-  await messageQueue.close();
-}
-
-checkStatus().catch(console.error);
+})();
