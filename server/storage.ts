@@ -5462,10 +5462,11 @@ export class DbStorage implements IStorage {
       
       const normalizedAlternatives = target.alternativePhones?.map(p => normalizePhone(p)).filter((p): p is string => p !== null) || [];
       
+      // CRITICAL: Always set alternativePhones to null if no valid alternatives (don't persist malformed numbers)
       normalizedTargets.push({
         ...target,
         phoneNumber: normalizedPhone,
-        alternativePhones: normalizedAlternatives.length > 0 ? normalizedAlternatives : target.alternativePhones,
+        alternativePhones: normalizedAlternatives.length > 0 ? normalizedAlternatives : null,
       });
     }
     

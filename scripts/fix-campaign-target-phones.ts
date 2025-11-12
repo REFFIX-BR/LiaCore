@@ -27,46 +27,58 @@ async function fixCampaignTargetPhones() {
 
     for (const target of allTargets) {
       const currentPhone = target.phoneNumber;
-      
-      // Verificar se já está normalizado
-      if (isPhoneNormalized(currentPhone)) {
-        alreadyNormalized++;
-        continue;
+      let needsUpdate = false;
+      const updates: any = {};
+
+      // Check and normalize main phone number
+      if (!isPhoneNormalized(currentPhone)) {
+        const normalizedPhone = normalizePhone(currentPhone);
+
+        if (!normalizedPhone) {
+          // Número inválido - deletar target
+          console.warn(`❌ [Fix Phones] Deletando target com número inválido: ID ${target.id}, Phone: "${currentPhone}"`);
+          await db.delete(voiceCampaignTargets).where(eq(voiceCampaignTargets.id, target.id));
+          deleted++;
+          invalid++;
+          continue;
+        }
+
+        console.log(`✅ [Fix Phones] Corrigindo número principal: "${currentPhone}" -> "${normalizedPhone}"`);
+        updates.phoneNumber = normalizedPhone;
+        needsUpdate = true;
       }
 
-      // Tentar normalizar
-      const normalizedPhone = normalizePhone(currentPhone);
-
-      if (!normalizedPhone) {
-        // Número inválido - deletar target
-        console.warn(`❌ [Fix Phones] Deletando target com número inválido: ID ${target.id}, Phone: "${currentPhone}"`);
-        await db.delete(voiceCampaignTargets).where(eq(voiceCampaignTargets.id, target.id));
-        deleted++;
-        invalid++;
-        continue;
-      }
-
-      // Atualizar número normalizado
-      console.log(`✅ [Fix Phones] Corrigindo: "${currentPhone}" -> "${normalizedPhone}"`);
-      
-      const updates: any = { phoneNumber: normalizedPhone };
-
-      // Normalizar alternativePhones se existir
+      // CRITICAL: Always check and normalize alternativePhones (even if main phone is already normalized)
       if (target.alternativePhones && target.alternativePhones.length > 0) {
-        const normalizedAlternatives = target.alternativePhones
-          .map(p => normalizePhone(p))
-          .filter((p): p is string => p !== null);
+        const allAlternativesNormalized = target.alternativePhones.every(p => isPhoneNormalized(p));
         
-        if (normalizedAlternatives.length > 0) {
-          updates.alternativePhones = normalizedAlternatives;
+        if (!allAlternativesNormalized) {
+          const normalizedAlternatives = target.alternativePhones
+            .map(p => normalizePhone(p))
+            .filter((p): p is string => p !== null);
+          
+          // Always update alternativePhones - set to null if all invalid
+          updates.alternativePhones = normalizedAlternatives.length > 0 ? normalizedAlternatives : null;
+          needsUpdate = true;
+          
+          if (normalizedAlternatives.length < target.alternativePhones.length) {
+            console.warn(`⚠️  [Fix Phones] Target ${target.id}: Removed ${target.alternativePhones.length - normalizedAlternatives.length} invalid alternative phones`);
+          }
+          
+          if (normalizedAlternatives.length > 0) {
+            console.log(`✅ [Fix Phones] Target ${target.id}: Normalized ${normalizedAlternatives.length} alternative phones`);
+          }
         }
       }
 
-      await db.update(voiceCampaignTargets)
-        .set(updates)
-        .where(eq(voiceCampaignTargets.id, target.id));
-
-      fixed++;
+      if (needsUpdate) {
+        await db.update(voiceCampaignTargets)
+          .set(updates)
+          .where(eq(voiceCampaignTargets.id, target.id));
+        fixed++;
+      } else {
+        alreadyNormalized++;
+      }
     }
 
     console.log('\n═══════════════════════════════════════════════════');
