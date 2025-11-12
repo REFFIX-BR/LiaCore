@@ -16,10 +16,12 @@ const EVOLUTION_CONFIG = {
 };
 
 function validateEvolutionInstance(rawInstance: string): 'Principal' | 'Leads' | 'Cobranca' {
-  const normalized = rawInstance.trim();
+  // Remove accents and normalize (accepts both "Cobrança" and "Cobranca")
+  const removeAccents = (str: string) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const normalized = removeAccents(rawInstance.trim());
   
   if (normalized === 'Leads' || normalized === 'Cobranca' || normalized === 'Principal') {
-    return normalized;
+    return normalized as 'Principal' | 'Leads' | 'Cobranca';
   }
   
   return 'Principal';

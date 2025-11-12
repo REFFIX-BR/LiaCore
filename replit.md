@@ -31,6 +31,8 @@ The frontend, built with React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS,
 **Messaging Control Center**: Professional control panel for flexible contact method management with global and per-campaign configuration, backend validation, and method-specific statistics API.
 **Campaign Conversation Tracking**: Complete integration between voice campaigns and cobranças monitoring, linking conversations to campaign targets.
 **Automated CRM Synchronization**: Production-ready infrastructure for proactive debt collection, importing overdue clients from CRM API. Features include configurable sync schedules, data transformation, smart deduplication, accurate campaign statistics tracking, and comprehensive error handling. Includes a CRM Import UI for managing sync configurations and manual triggers.
+**Meta-Approved WhatsApp Templates**: Collections module migrated to Meta-approved WhatsApp templates for regulatory compliance and prevention of number banning. Template "financeiro_em_atraso" (English language) used for initial contact with dynamic client first name parameter. Centralized sendWhatsAppTemplate() function in server/lib/whatsapp.ts handles template delivery via Evolution API.
+**evolutionInstance Normalization**: Accent-insensitive validation ensures "Cobrança" and "Cobranca" are treated identically throughout the system. getEffectiveEvolutionInstance() helper preserves existing conversation instances when webhooks lack instance data, preventing incorrect routing overrides.
 
 ### System Design Choices
 - **Chat Simulator (Test Chat)**: Professional testing tool at `/test-chat` for validating assistant behaviors, isolated from the production database.

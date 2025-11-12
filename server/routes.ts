@@ -31,6 +31,7 @@ function normalizeEvolutionUrl(url?: string): string {
 
 // Helper function to validate and normalize Evolution API instance
 // Supported instances: "Leads", "Cobranca", "Principal"
+// NOTE: Accepts both "Cobranca" and "Cobrança" (accent-insensitive)
 function validateEvolutionInstance(instance?: string | null): string {
   const allowedInstances = ['Leads', 'Cobranca', 'Principal'];
   
@@ -38,8 +39,9 @@ function validateEvolutionInstance(instance?: string | null): string {
     return 'Leads'; // Default
   }
   
-  // Normalize case
-  const normalized = instance.charAt(0).toUpperCase() + instance.slice(1).toLowerCase();
+  // Normalize case and remove accents (ç -> c, ã -> a, etc.)
+  const removeAccents = (str: string) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const normalized = instance.charAt(0).toUpperCase() + removeAccents(instance.slice(1)).toLowerCase();
   
   if (allowedInstances.includes(normalized)) {
     return normalized;
@@ -47,6 +49,32 @@ function validateEvolutionInstance(instance?: string | null): string {
   
   // If invalid instance, force to Leads
   console.warn(`⚠️ [Evolution] Invalid instance "${instance}" - forcing to "Leads" (allowed: ${allowedInstances.join(', ')})`);
+  return 'Leads';
+}
+
+// Helper function to get effective Evolution instance, preserving existing conversation instance
+// Priority: existingInstance > payloadInstance > default 'Leads'
+// This prevents webhook handlers from overwriting conversation evolutionInstance
+function getEffectiveEvolutionInstance(
+  existingInstance?: string | null,
+  payloadInstance?: string | null
+): string {
+  // PRIORITY 1: Preserve existing conversation evolutionInstance
+  if (existingInstance) {
+    const validated = validateEvolutionInstance(existingInstance);
+    console.log(`✅ [Instance] Preserving existing instance: ${validated}`);
+    return validated;
+  }
+  
+  // PRIORITY 2: Use payload instance if no existing instance
+  if (payloadInstance) {
+    const validated = validateEvolutionInstance(payloadInstance);
+    console.log(`✅ [Instance] Using payload instance: ${validated}`);
+    return validated;
+  }
+  
+  // PRIORITY 3: Fallback to default
+  console.log(`⚠️ [Instance] No instance found - using default: Leads`);
   return 'Leads';
 }
 
@@ -2260,11 +2288,16 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
         if (conversation.status === 'resolved') {
           console.log(`🔄 [Conversation Reopen] Reabrindo conversa resolvida para ${clientName}`);
           
-          // CRITICAL: Update evolutionInstance when reopening conversation
-          // This ensures responses go out through the SAME instance the message came in
-          const shouldUpdateInstance = conversation.evolutionInstance !== instance;
+          // CRITICAL FIX: Preserve existing evolutionInstance when webhook lacks instance field
+          // This prevents worker-set instances (e.g., 'Cobrança') from being overwritten to 'Leads'
+          const effectiveInstance = getEffectiveEvolutionInstance(
+            conversation.evolutionInstance, // Preserve existing instance
+            rawInstance // Use webhook instance only if provided
+          );
+          
+          const shouldUpdateInstance = conversation.evolutionInstance !== effectiveInstance;
           if (shouldUpdateInstance) {
-            console.log(`📱 [Instance Update] Atualizando instância na reabertura: "${conversation.evolutionInstance}" → "${instance}"`);
+            console.log(`📱 [Instance Update] Atualizando instância na reabertura: "${conversation.evolutionInstance}" → "${effectiveInstance}"`);
           }
           
           await storage.updateConversation(conversation.id, {
@@ -2275,12 +2308,12 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
             autoClosed: false,
             autoClosedReason: null,
             autoClosedAt: null,
-            evolutionInstance: instance, // ALWAYS update to current webhook instance
+            evolutionInstance: effectiveInstance, // PRESERVE existing instance if webhook lacks it
           });
           
           // Update local conversation object
           conversation.status = 'active';
-          conversation.evolutionInstance = instance; // Update local copy too
+          conversation.evolutionInstance = effectiveInstance; // Update local copy too
           
           prodLogger.info('conversation', 'Conversa reaberta', {
             conversationId: conversation.id,

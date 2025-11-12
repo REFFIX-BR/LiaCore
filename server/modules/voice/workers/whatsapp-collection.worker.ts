@@ -3,7 +3,7 @@ import { redisConnection } from '../../../lib/redis-config';
 import { QUEUE_NAMES, VoiceWhatsAppCollectionJob, addVoiceWhatsAppCollectionToQueue } from '../../../lib/queue';
 import { storage } from '../../../storage';
 import { isFeatureEnabled } from '../../../lib/featureFlags';
-import { sendWhatsAppMessage } from '../../../lib/whatsapp';
+import { sendWhatsAppMessage, sendWhatsAppTemplate } from '../../../lib/whatsapp';
 import { createThread } from '../../../lib/openai';
 import OpenAI from 'openai';
 
@@ -272,27 +272,42 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
       }
 
       // ============================================================================
-      // MENSAGEM INICIAL HUMANIZADA (Tom da IA Cobrança)
+      // MENSAGEM INICIAL COM TEMPLATE META (Compliance WhatsApp)
       // ============================================================================
-      console.log(`💬 [Voice WhatsApp] Preparando mensagem humanizada de cobrança...`);
+      console.log(`📋 [Voice WhatsApp] Enviando template Meta aprovado "financeiro_em_atraso"...`);
       
-      // Mensagem humanizada seguindo o estilo da IA Cobrança
-      // A IA vai assumir a conversa quando o cliente responder
+      // Usar template aprovado pela Meta para evitar banimento do número
+      // Template: "financeiro_em_atraso" com parâmetro {{texto}} = nome do cliente
       const firstName = clientName.split(' ')[0]; // Apenas primeiro nome
       
-      // NOTA: Para usar templates aprovados pela Meta com placeholders {{1}}, {{2}}, etc.,
-      // seria necessário criar um template no WhatsApp Manager e usar sendTemplate do Evolution API
-      const message = `Olá ${firstName}!
+      // Mensagem que será enviada (via template Meta):
+      // Olá {firstName}!
+      // Aqui é a Lia, assistente virtual da TR Telecom.
+      // 
+      // Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta.
+      // 
+      // Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível.
+      
+      console.log(`📋 [Voice WhatsApp] Template parameters: nome="${firstName}"`)
+
+      // Enviar template via WhatsApp (Meta-approved)
+      const result = await sendWhatsAppTemplate(
+        phoneNumber,
+        {
+          templateName: 'financeiro_em_atraso',
+          languageCode: 'en', // Template está registrado como 'English' na Meta
+          parameters: [firstName], // {{texto}} será substituído pelo nome
+        },
+        'Cobrança'
+      );
+      
+      // Para referência: texto completo que o cliente receberá
+      const messagePreview = `Olá ${firstName}!
 Aqui é a Lia, assistente virtual da TR Telecom.
 
 Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta.
 
 Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível.`;
-
-      console.log(`✅ [Voice WhatsApp] Mensagem preparada: "${message.substring(0, 60)}..."`)
-
-      // Enviar mensagem via WhatsApp
-      const result = await sendWhatsAppMessage(phoneNumber, message, 'Cobrança');
 
       // CRITICAL: Verify WhatsApp send success before marking as completed
       if (!result.success) {
@@ -341,7 +356,7 @@ Use o nome "${clientName.split(' ')[0]}" para se dirigir ao cliente.`;
         console.log(`💾 [Voice WhatsApp] Adicionando mensagem inicial à thread ${threadId}`);
         await openai.beta.threads.messages.create(threadId, {
           role: 'assistant',
-          content: message,
+          content: messagePreview,
         });
         console.log(`✅ [Voice WhatsApp] Mensagem adicionada à thread da OpenAI`);
       } catch (error: any) {
@@ -353,14 +368,14 @@ Use o nome "${clientName.split(' ')[0]}" para se dirigir ao cliente.`;
       await storage.createMessage({
         conversationId: conversation.id,
         role: 'assistant',
-        content: message,
+        content: messagePreview,
         assistant: 'cobranca', // IA Cobrança especializada
         sendBy: 'ai',
       });
 
       // Atualizar conversa com última mensagem
       await storage.updateConversation(conversation.id, {
-        lastMessage: message,
+        lastMessage: messagePreview,
         lastMessageTime: new Date(),
       });
 
