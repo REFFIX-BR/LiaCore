@@ -72,9 +72,12 @@ function getNextBusinessHourSlot(): Date {
   return next;
 }
 
+console.log(`🔍 [Voice WhatsApp] Creating worker for queue: ${QUEUE_NAMES.VOICE_WHATSAPP_COLLECTION}`);
+
 const worker = new Worker<VoiceWhatsAppCollectionJob>(
   QUEUE_NAMES.VOICE_WHATSAPP_COLLECTION,
   async (job: Job<VoiceWhatsAppCollectionJob>) => {
+    console.log(`💬 [Voice WhatsApp] ==== JOB RECEIVED ==== Job ID: ${job.id}, Name: ${job.name}`);
     const { targetId, campaignId, phoneNumber, clientName, clientDocument, debtAmount, attemptNumber } = job.data;
 
     console.log(`💬 [Voice WhatsApp] Processing target ${targetId} (attempt ${attemptNumber})`);
@@ -456,17 +459,27 @@ Use o nome "${clientName.split(' ')[0]}" para se dirigir ao cliente.`;
 );
 
 worker.on('completed', (job: Job) => {
-  console.log(`✅ [Voice WhatsApp] Job ${job.id} completed`);
+  console.log(`✅ [Voice WhatsApp] Job ${job.id} (${job.name}) completed successfully`);
 });
 
 worker.on('failed', (job: Job | undefined, error: Error) => {
-  console.error(`❌ [Voice WhatsApp] Job ${job?.id} failed:`, error.message);
+  console.error(`❌ [Voice WhatsApp] Job ${job?.id} (${job?.name}) failed:`, error.message);
+  console.error(`   Stack:`, error.stack);
 });
 
 worker.on('error', (error: Error) => {
   console.error('❌ [Voice WhatsApp] Worker error:', error);
+  console.error('   Stack:', error.stack);
 });
 
-console.log('✅ [Voice WhatsApp] Worker ready');
+worker.on('active', (job: Job) => {
+  console.log(`🎯 [Voice WhatsApp] Job ${job.id} (${job.name}) is now active`);
+});
+
+worker.on('stalled', (jobId: string) => {
+  console.warn(`⚠️ [Voice WhatsApp] Job ${jobId} stalled`);
+});
+
+console.log('✅ [Voice WhatsApp] Worker ready - listening for jobs on queue:', QUEUE_NAMES.VOICE_WHATSAPP_COLLECTION);
 
 export default worker;
