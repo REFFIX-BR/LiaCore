@@ -342,6 +342,8 @@ export default function Monitor() {
       let passesDepartmentFilter = true;
       let passesViewModeFilter = true;
       let passesResolvedSubFilter = true;
+      let passesSearchFilter = true;
+      let passesSourceFilter = true;
 
       // ViewMode filter (consistente com lógica principal)
       if (viewMode === "ia_atendendo") {
@@ -382,7 +384,21 @@ export default function Monitor() {
         passesDepartmentFilter = c.assistantType === deptValue;
       }
 
-      return passesViewModeFilter && passesDepartmentFilter && passesResolvedSubFilter;
+      // Search filter (mesma lógica de filteredConversations)
+      if (searchQuery.trim()) {
+        const searchLower = searchQuery.toLowerCase();
+        passesSearchFilter = 
+          c.chatId.toLowerCase().includes(searchLower) ||
+          c.clientName.toLowerCase().includes(searchLower);
+      }
+
+      // Source filter (mesma lógica de filteredConversations)
+      if (conversationSourceFilter !== "all") {
+        const convSource = (c as any).conversationSource || "inbound";
+        passesSourceFilter = convSource === conversationSourceFilter;
+      }
+
+      return passesViewModeFilter && passesDepartmentFilter && passesResolvedSubFilter && passesSearchFilter && passesSourceFilter;
     }).length;
   };
 
