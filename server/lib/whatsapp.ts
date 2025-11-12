@@ -42,6 +42,9 @@ export interface WhatsAppMessageResult {
   success: boolean;
   whatsappMessageId?: string;
   remoteJid?: string;
+  errorStatus?: number;
+  errorMessage?: string;
+  isPermanentFailure?: boolean; // true for 401/403/404 that shouldn't retry
 }
 
 /**
@@ -209,8 +212,35 @@ export async function sendWhatsAppTemplate(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`❌ [WhatsApp Template] Erro ao enviar template (${response.status}):`, errorText);
-      return { success: false };
+      const statusCode = response.status;
+      
+      // Structured error logging
+      console.error(`❌ [WhatsApp Template] HTTP ${statusCode} error sending template:`, {
+        instance,
+        templateName: options.templateName,
+        phoneNumber: normalizedNumber,
+        statusCode,
+        error: errorText.substring(0, 500), // Limit log size
+      });
+      
+      // Determine if error is permanent (shouldn't retry)
+      const isPermanent = [401, 403, 404].includes(statusCode);
+      
+      if (isPermanent) {
+        console.error(`🚫 [WhatsApp Template] PERMANENT FAILURE (${statusCode}) - Credentials or instance configuration issue`);
+        if (statusCode === 401) {
+          console.error(`   💡 Check: EVOLUTION_API_KEY_${instance.toUpperCase()} may be incorrect or expired`);
+        } else if (statusCode === 404) {
+          console.error(`   💡 Check: Instance "${instance}" may not exist in Evolution API`);
+        }
+      }
+      
+      return {
+        success: false,
+        errorStatus: statusCode,
+        errorMessage: errorText,
+        isPermanentFailure: isPermanent,
+      };
     }
 
     const result = await response.json();

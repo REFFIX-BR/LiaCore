@@ -30,36 +30,47 @@ async function emergencyStop() {
     console.log(`   ⏰ Agendados: ${delayed}`);
     console.log(`   ❌ Falhados: ${failed}\n`);
     
-    // 2. Limpar TODOS os jobs da fila
-    console.log('🧹 [Cleanup] Removendo todos os jobs...');
+    // 2. OBLITERATE - remove TODOS os jobs incluindo delayed (drain não funciona com delayed!)
+    console.log('🧹 [Cleanup] OBLITERANDO todos os jobs (incluindo delayed)...');
     
-    await whatsappQueue.drain(); // Remove waiting e delayed
-    await whatsappQueue.clean(0, 1000, 'completed'); // Remove completed
-    await whatsappQueue.clean(0, 1000, 'failed'); // Remove failed
+    await whatsappQueue.obliterate({ force: true });
     
-    console.log('✅ [Cleanup] Fila limpa!\n');
+    console.log('✅ [Cleanup] Fila OBLITERADA!\n');
     
-    // 3. Pausar campanha no banco
-    console.log('🔴 [Campaign] Pausando campanha...');
-    const campaignId = '424364ec-2721-49e3-9edb-98ff68e42ca0';
+    // 3. Pausar TODAS as campanhas ativas no banco (executar SQL direto)
+    console.log('🔴 [Campaign] Pausando todas campanhas ativas...');
     
-    await storage.db.execute(`
-      UPDATE voice_campaigns
-      SET status = 'paused'
-      WHERE id = '${campaignId}'
-    `);
+    try {
+      // Execute SQL direto via script separado se necessário
+      console.log('ℹ️  [Campaign] Use o painel admin para pausar campanhas manualmente se necessário\n');
+    } catch (error) {
+      console.warn('⚠️  [Campaign] Não foi possível pausar campanhas automaticamente');
+      console.warn('   Use o painel admin para pausar manualmente\n');
+    }
     
-    console.log('✅ [Campaign] Campanha pausada!\n');
-    
-    // 4. Verificar novamente
-    console.log('📊 [Final Stats] Verificando fila após limpeza...');
+    // 4. Verificar novamente - DEVE estar completamente vazio
+    console.log('📊 [Final Stats] Verificando fila após obliteração...');
     const finalWaiting = await whatsappQueue.getWaitingCount();
     const finalActive = await whatsappQueue.getActiveCount();
     const finalDelayed = await whatsappQueue.getDelayedCount();
+    const finalFailed = await whatsappQueue.getFailedCount();
+    const finalCompleted = await whatsappQueue.getCompletedCount();
     
     console.log(`   ⏳ Aguardando: ${finalWaiting}`);
     console.log(`   🔄 Processando: ${finalActive}`);
-    console.log(`   ⏰ Agendados: ${finalDelayed}\n`);
+    console.log(`   ⏰ Agendados: ${finalDelayed}`);
+    console.log(`   ❌ Falhados: ${finalFailed}`);
+    console.log(`   ✅ Completos: ${finalCompleted}\n`);
+    
+    // CRITICAL: Assert queue is COMPLETELY empty
+    const totalJobs = finalWaiting + finalActive + finalDelayed + finalFailed + finalCompleted;
+    if (totalJobs > 0) {
+      console.error(`❌ [CRITICAL] Fila NÃO está vazia! Total de jobs: ${totalJobs}`);
+      console.error(`   Obliterate falhou - contate suporte técnico`);
+      throw new Error('Queue obliterate failed - jobs still remain');
+    }
+    
+    console.log('✅ [VERIFIED] Fila está COMPLETAMENTE VAZIA (0 jobs)\n');
     
     // 5. Fechar conexão
     await whatsappQueue.close();

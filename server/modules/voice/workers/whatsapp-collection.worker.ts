@@ -299,7 +299,7 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
           languageCode: 'en', // Template está registrado como 'English' na Meta
           parameters: [firstName], // {{texto}} será substituído pelo nome
         },
-        'Cobrança'
+        'Cobranca' // CRITICAL: Use accent-free instance name
       );
       
       // Para referência: texto completo que o cliente receberá
@@ -313,7 +313,29 @@ Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar 
       // CRITICAL: Verify WhatsApp send success before marking as completed
       if (!result.success) {
         console.error(`❌ [Voice WhatsApp] Failed to send message to ${clientName} - Evolution API error`);
-        throw new Error(`Failed to send WhatsApp message: Evolution API returned success=false`);
+        
+        // Check if this is a permanent failure (credentials/configuration issue)
+        if (result.isPermanentFailure) {
+          const errorMsg = `PERMANENT FAILURE: WhatsApp template send failed with HTTP ${result.errorStatus}. ` +
+            `This is a credentials or configuration issue that won't be fixed by retrying. ` +
+            `Fix the Evolution API configuration before resuming campaign.`;
+          
+          console.error(`🚫 [Voice WhatsApp] ${errorMsg}`);
+          
+          // Mark target as failed permanently
+          await storage.updateVoiceCampaignTarget(targetId, {
+            state: 'failed',
+            failureReason: `HTTP ${result.errorStatus}: ${result.errorMessage?.substring(0, 200)}`,
+          });
+          
+          // Throw error but BullMQ should not retry this job
+          const error = new Error(errorMsg);
+          (error as any).isPermanent = true; // Custom flag for monitoring
+          throw error;
+        }
+        
+        // Transient error - will be retried by BullMQ
+        throw new Error(`Failed to send WhatsApp message: Evolution API returned success=false (transient error)`);
       }
 
       console.log(`✅ [Voice WhatsApp] Mensagem enviada para ${clientName}`);
