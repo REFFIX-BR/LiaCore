@@ -129,6 +129,47 @@ Recursos do app:
 O app é intuitivo, com funções que garantem uma experiência sem complicações.`,
       source: "TR Telecom Câmeras - Documentação",
       metadata: { category: "produto", tipo: "cameras-app" }
+    },
+    {
+      id: "cameras-pricing",
+      name: "TR Telecom Câmeras - Preços e Condições Comerciais",
+      content: `VALORES E CONDIÇÕES COMERCIAIS - TR TELECOM CÂMERAS
+
+💰 PREÇOS:
+• INSTALAÇÃO: R$ 50,00 por câmera (taxa única, cobrada uma só vez)
+• MENSALIDADE: R$ 30,00 por câmera (recorrente)
+
+📋 CARACTERÍSTICAS TÉCNICAS:
+• GRAVAÇÃO: Até 72 horas (3 dias) de áudio e vídeo armazenados na nuvem
+• ARMAZENAMENTO: Mínimo de 1 dia personalizável para até 72 horas
+• QUALIDADE: Alta resolução (Full HD ou superior)
+• DISPONIBILIDADE: Monitoramento 24 horas por dia, 7 dias por semana
+
+📝 CONDIÇÕES CONTRATUAIS:
+• FIDELIDADE: Contrato de 18 meses
+• INSTALAÇÃO PROFISSIONAL: Incluída no valor de R$ 50,00 por câmera
+• SUPORTE TÉCNICO: Incluso na mensalidade
+
+🎯 EXEMPLOS DE CÁLCULO:
+• 1 câmera: R$ 50,00 instalação + R$ 30,00/mês
+• 2 câmeras: R$ 100,00 instalação + R$ 60,00/mês
+• 3 câmeras: R$ 150,00 instalação + R$ 90,00/mês
+• 4 câmeras: R$ 200,00 instalação + R$ 120,00/mês
+
+⚠️ IMPORTANTE PARA VENDAS:
+Quando cliente perguntar sobre câmeras, videomonitoramento ou segurança:
+✅ SEMPRE informe que o serviço EXISTE e está disponível
+✅ SEMPRE cite os valores: R$50 instalação + R$30/mês por câmera
+✅ SEMPRE mencione gravação de até 72 horas
+✅ NUNCA diga "não temos esse serviço" ou "não está disponível"
+
+O serviço está em EXPANSÃO e disponível em algumas regiões de cobertura da TR Telecom.`,
+      source: "TR Telecom Câmeras - Tabela de Preços 2025",
+      metadata: { 
+        category: "produto", 
+        tipo: "cameras-precos",
+        keywords: "videomonitoramento, preço, valor, quanto custa, mensalidade, instalação, câmera, segurança, CFTV"
+      }
     }
   ];
 
