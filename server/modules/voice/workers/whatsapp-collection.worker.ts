@@ -328,7 +328,8 @@ Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar 
           // Mark target as failed permanently
           await storage.updateVoiceCampaignTarget(targetId, {
             state: 'failed',
-            failureReason: `HTTP ${result.errorStatus}: ${result.errorMessage?.substring(0, 200)}`,
+            outcome: 'send_failed',
+            outcomeDetails: `PERMANENT API FAILURE - HTTP ${result.errorStatus}: ${result.errorMessage?.substring(0, 200)}. Fix Evolution API credentials/configuration before resuming.`,
           });
           
           // Throw error but BullMQ should not retry this job

@@ -1304,7 +1304,7 @@ export const voiceCampaignTargets = pgTable("voice_campaign_targets", {
   preferredTimeWindow: jsonb("preferred_time_window"), // { start: "14:00", end: "18:00" }
   
   // Resultado
-  outcome: text("outcome"), // 'promise_made', 'paid', 'refused', 'no_answer', 'invalid_number', 'do_not_call'
+  outcome: text("outcome"), // 'promise_made', 'paid', 'refused', 'no_answer', 'invalid_number', 'do_not_call', 'send_failed', 'max_attempts'
   outcomeDetails: text("outcome_details"), // Detalhes adicionais do resultado
   completedAt: timestamp("completed_at"),
   
