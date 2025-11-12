@@ -61,7 +61,7 @@ Obrigada pela sua confiança! 💙`;
           await sendWhatsAppMessage(
             promise.phoneNumber.replace(/\D/g, ''),
             message,
-            'Cobranca'
+            'Cobrança'
           );
 
           await db.update(voicePromises)

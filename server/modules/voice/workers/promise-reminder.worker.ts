@@ -65,11 +65,11 @@ Você pode pagar agora mesmo via PIX ou Boleto. É só me chamar que eu te envio
 
 Obrigada pela sua confiança! 💙`;
 
-          // Enviar via WhatsApp (instância Cobranca)
+          // Enviar via WhatsApp (instância Cobrança)
           await sendWhatsAppMessage(
             promise.phoneNumber.replace(/\D/g, ''), // Remove formatação
             message,
-            'Cobranca'
+            'Cobrança'
           );
 
           // Marcar lembrete como enviado

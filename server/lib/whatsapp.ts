@@ -11,23 +11,24 @@ const EVOLUTION_CONFIG = {
   apiKeys: {
     Principal: process.env.EVOLUTION_API_KEY_PRINCIPAL || process.env.EVOLUTION_API_KEY || '',
     Leads: process.env.EVOLUTION_API_KEY_LEADS || '',
-    Cobranca: process.env.EVOLUTION_API_KEY_COBRANCA || '',
+    'Cobrança': process.env.EVOLUTION_API_KEY_COBRANCA || '',
   },
 };
 
-function validateEvolutionInstance(rawInstance: string): 'Principal' | 'Leads' | 'Cobranca' {
-  // Remove accents and normalize (accepts both "Cobrança" and "Cobranca")
+function validateEvolutionInstance(rawInstance: string): 'Principal' | 'Leads' | 'Cobrança' {
+  // Remove accents for comparison only
   const removeAccents = (str: string) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const normalized = removeAccents(rawInstance.trim());
   
-  if (normalized === 'Leads' || normalized === 'Cobranca' || normalized === 'Principal') {
-    return normalized as 'Principal' | 'Leads' | 'Cobranca';
-  }
+  // Return the CORRECT instance name with proper accent for Evolution API
+  if (normalized === 'Leads') return 'Leads';
+  if (normalized === 'Cobranca') return 'Cobrança'; // Return WITH accent for API
+  if (normalized === 'Principal') return 'Principal';
   
   return 'Principal';
 }
 
-function getEvolutionApiKey(instance: 'Principal' | 'Leads' | 'Cobranca'): string {
+function getEvolutionApiKey(instance: 'Principal' | 'Leads' | 'Cobrança'): string {
   return EVOLUTION_CONFIG.apiKeys[instance] || '';
 }
 
