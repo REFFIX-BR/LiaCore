@@ -16,8 +16,12 @@ function isWithinBusinessHours(date: Date = new Date()): boolean {
   const hours = date.getHours();
   const day = date.getDay();
   
-  if (day === 0 || day === 6) {
+  if (day === 0) {
     return false;
+  }
+  
+  if (day === 6) {
+    return hours >= 8 && hours < 18;
   }
   
   return hours >= 8 && hours < 20;
@@ -28,14 +32,20 @@ function getNextBusinessHourSlot(): Date {
   const next = new Date(now);
   
   if (!isWithinBusinessHours(now)) {
-    if (now.getHours() >= 20) {
+    const currentHour = now.getHours();
+    const currentDay = now.getDay();
+    
+    if (currentDay === 6 && currentHour >= 18) {
+      next.setDate(next.getDate() + 2);
+      next.setHours(8, 0, 0, 0);
+    } else if (currentDay >= 1 && currentDay <= 5 && currentHour >= 20) {
       next.setDate(next.getDate() + 1);
       next.setHours(8, 0, 0, 0);
     } else {
       next.setHours(8, 0, 0, 0);
     }
     
-    while (next.getDay() === 0 || next.getDay() === 6) {
+    while (next.getDay() === 0) {
       next.setDate(next.getDate() + 1);
     }
   }
