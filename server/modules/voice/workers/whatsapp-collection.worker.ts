@@ -12,40 +12,59 @@ const openai = new OpenAI({
 
 console.log('💬 [Voice WhatsApp] Worker starting...');
 
+// Função auxiliar para obter horário de Brasília (UTC-3)
+function getBrasiliaDate(utcDate: Date = new Date()): Date {
+  // Converte UTC para horário de Brasília usando Intl API
+  const brasiliaTime = new Date(utcDate.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  return brasiliaTime;
+}
+
 function isWithinBusinessHours(date: Date = new Date()): boolean {
-  const hours = date.getHours();
-  const day = date.getDay();
+  // CRITICAL: Sempre usar horário de Brasília para verificação
+  const brasiliaDate = getBrasiliaDate(date);
+  const hours = brasiliaDate.getHours();
+  const day = brasiliaDate.getDay();
   
+  // Domingo: fechado
   if (day === 0) {
     return false;
   }
   
+  // Sábado: 08h-18h
   if (day === 6) {
     return hours >= 8 && hours < 18;
   }
   
+  // Segunda a Sexta: 08h-20h
   return hours >= 8 && hours < 20;
 }
 
 function getNextBusinessHourSlot(): Date {
   const now = new Date();
+  const brasiliaDate = getBrasiliaDate(now);
   const next = new Date(now);
   
   if (!isWithinBusinessHours(now)) {
-    const currentHour = now.getHours();
-    const currentDay = now.getDay();
+    const currentHour = brasiliaDate.getHours();
+    const currentDay = brasiliaDate.getDay();
     
+    // Sábado após 18h -> segunda 8h
     if (currentDay === 6 && currentHour >= 18) {
       next.setDate(next.getDate() + 2);
-      next.setHours(8, 0, 0, 0);
-    } else if (currentDay >= 1 && currentDay <= 5 && currentHour >= 20) {
+      next.setHours(8 + 3, 0, 0, 0); // 8h Brasília = 11h UTC
+    } 
+    // Dias de semana após 20h -> próximo dia 8h
+    else if (currentDay >= 1 && currentDay <= 5 && currentHour >= 20) {
       next.setDate(next.getDate() + 1);
-      next.setHours(8, 0, 0, 0);
-    } else {
-      next.setHours(8, 0, 0, 0);
+      next.setHours(8 + 3, 0, 0, 0); // 8h Brasília = 11h UTC
+    } 
+    // Antes das 8h -> mesmo dia 8h
+    else {
+      next.setHours(8 + 3, 0, 0, 0); // 8h Brasília = 11h UTC
     }
     
-    while (next.getDay() === 0) {
+    // Pula domingo
+    while (getBrasiliaDate(next).getDay() === 0) {
       next.setDate(next.getDate() + 1);
     }
   }
