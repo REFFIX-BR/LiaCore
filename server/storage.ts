@@ -57,12 +57,8 @@ import {
   type InsertVoiceCampaign,
   type VoiceCampaignTarget,
   type InsertVoiceCampaignTarget,
-  type VoiceCallAttempt,
-  type InsertVoiceCallAttempt,
   type VoicePromise,
   type InsertVoicePromise,
-  type VoiceConfig,
-  type InsertVoiceConfig,
   type VoiceMessagingSettings,
   type InsertVoiceMessagingSettings,
   type CRMSyncConfig,
@@ -480,14 +476,6 @@ export interface IStorage {
   bulkToggleVoiceCampaignTargets(targetIds: string[], enabled: boolean): Promise<{ updated: number; updatedIds: string[] }>;
   incrementTargetAttempt(id: string, nextAttemptAt?: Date): Promise<void>;
 
-  // Voice Call Attempts
-  getVoiceCallAttempts(targetId: string): Promise<VoiceCallAttempt[]>;
-  getVoiceCallAttemptsByCampaign(campaignId: string): Promise<VoiceCallAttempt[]>;
-  getVoiceCallAttempt(id: string): Promise<VoiceCallAttempt | undefined>;
-  getVoiceCallAttemptByCallSid(callSid: string): Promise<VoiceCallAttempt | undefined>;
-  createVoiceCallAttempt(attempt: InsertVoiceCallAttempt): Promise<VoiceCallAttempt>;
-  updateVoiceCallAttempt(id: string, updates: Partial<VoiceCallAttempt>): Promise<VoiceCallAttempt | undefined>;
-
   // Voice Promises
   getAllVoicePromises(): Promise<VoicePromise[]>;
   getVoicePromise(id: string): Promise<VoicePromise | undefined>;
@@ -497,12 +485,6 @@ export interface IStorage {
   createVoicePromise(promise: InsertVoicePromise): Promise<VoicePromise>;
   updateVoicePromise(id: string, updates: Partial<VoicePromise>): Promise<VoicePromise | undefined>;
   markVoicePromiseAsFulfilled(id: string): Promise<void>;
-
-  // Voice Configs
-  getVoiceConfig(key: string): Promise<VoiceConfig | undefined>;
-  getAllVoiceConfigs(): Promise<VoiceConfig[]>;
-  setVoiceConfig(config: InsertVoiceConfig): Promise<VoiceConfig>;
-  deleteVoiceConfig(key: string): Promise<void>;
 
   // Voice Messaging Settings
   getVoiceMessagingSettings(): Promise<VoiceMessagingSettings | undefined>;
@@ -5321,18 +5303,11 @@ export class DbStorage implements IStorage {
         eq(schema.voicePromises.status, 'fulfilled')
       ));
 
-    const [successfulResult] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(schema.voiceCallAttempts)
-      .where(and(
-        eq(schema.voiceCallAttempts.campaignId, campaignId),
-        eq(schema.voiceCallAttempts.status, 'completed')
-      ));
-
+    // Note: successfulContacts based on completed targets (WhatsApp-only now)
     await this.updateVoiceCampaignStats(campaignId, {
       totalTargets: totalTargetsResult?.count || 0,
       contactedTargets: contactedResult?.count || 0,
-      successfulContacts: successfulResult?.count || 0,
+      successfulContacts: contactedResult?.count || 0, // Same as contacted for WhatsApp
       promisesMade: promisesResult?.count || 0,
       promisesFulfilled: fulfilledResult?.count || 0,
     });
@@ -5548,46 +5523,6 @@ export class DbStorage implements IStorage {
       .where(eq(schema.voiceCampaignTargets.id, id));
   }
 
-  // Voice Call Attempts
-  async getVoiceCallAttempts(targetId: string): Promise<VoiceCallAttempt[]> {
-    return await db.select().from(schema.voiceCallAttempts)
-      .where(eq(schema.voiceCallAttempts.targetId, targetId))
-      .orderBy(desc(schema.voiceCallAttempts.attemptNumber));
-  }
-
-  async getVoiceCallAttemptsByCampaign(campaignId: string): Promise<VoiceCallAttempt[]> {
-    return await db.select().from(schema.voiceCallAttempts)
-      .where(eq(schema.voiceCallAttempts.campaignId, campaignId))
-      .orderBy(desc(schema.voiceCallAttempts.dialedAt));
-  }
-
-  async getVoiceCallAttempt(id: string): Promise<VoiceCallAttempt | undefined> {
-    const attempts = await db.select().from(schema.voiceCallAttempts)
-      .where(eq(schema.voiceCallAttempts.id, id))
-      .limit(1);
-    return attempts[0];
-  }
-
-  async getVoiceCallAttemptByCallSid(callSid: string): Promise<VoiceCallAttempt | undefined> {
-    const attempts = await db.select().from(schema.voiceCallAttempts)
-      .where(eq(schema.voiceCallAttempts.callSid, callSid))
-      .limit(1);
-    return attempts[0];
-  }
-
-  async createVoiceCallAttempt(attempt: InsertVoiceCallAttempt): Promise<VoiceCallAttempt> {
-    const [created] = await db.insert(schema.voiceCallAttempts).values(attempt).returning();
-    return created;
-  }
-
-  async updateVoiceCallAttempt(id: string, updates: Partial<VoiceCallAttempt>): Promise<VoiceCallAttempt | undefined> {
-    const [updated] = await db.update(schema.voiceCallAttempts)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(schema.voiceCallAttempts.id, id))
-      .returning();
-    return updated;
-  }
-
   // Voice Promises
   async getAllVoicePromises(): Promise<VoicePromise[]> {
     return await db.select().from(schema.voicePromises)
@@ -5643,38 +5578,6 @@ export class DbStorage implements IStorage {
         updatedAt: new Date(),
       })
       .where(eq(schema.voicePromises.id, id));
-  }
-
-  // Voice Configs
-  async getVoiceConfig(key: string): Promise<VoiceConfig | undefined> {
-    const configs = await db.select().from(schema.voiceConfigs)
-      .where(eq(schema.voiceConfigs.key, key))
-      .limit(1);
-    return configs[0];
-  }
-
-  async getAllVoiceConfigs(): Promise<VoiceConfig[]> {
-    return await db.select().from(schema.voiceConfigs);
-  }
-
-  async setVoiceConfig(config: InsertVoiceConfig): Promise<VoiceConfig> {
-    const [created] = await db.insert(schema.voiceConfigs)
-      .values(config)
-      .onConflictDoUpdate({
-        target: schema.voiceConfigs.key,
-        set: {
-          value: config.value,
-          description: config.description,
-          updatedBy: config.updatedBy,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return created;
-  }
-
-  async deleteVoiceConfig(key: string): Promise<void> {
-    await db.delete(schema.voiceConfigs).where(eq(schema.voiceConfigs.key, key));
   }
 
   // Voice Messaging Settings

@@ -1,6 +1,6 @@
 import { Worker, Job } from 'bullmq';
 import { redisConnection } from '../../../lib/redis-config';
-import { QUEUE_NAMES, VoiceCampaignIngestJob, addVoiceSchedulingToQueue } from '../../../lib/queue';
+import { QUEUE_NAMES, VoiceCampaignIngestJob, addVoiceWhatsAppCollectionToQueue } from '../../../lib/queue';
 import { storage } from '../../../storage';
 import axios from 'axios';
 import { validarDocumentoFlexivel } from '../../../ai-tools';
@@ -108,29 +108,33 @@ const worker = new Worker<VoiceCampaignIngestJob>(
 
       await storage.updateVoiceCampaign(campaignId, { status: 'active' });
 
-      console.log(`📅 [Voice Campaign Ingest] Scheduling initial calls for ${createdTargets.length} targets`);
+      console.log(`📅 [Voice Campaign Ingest] Enqueueing WhatsApp collection for ${createdTargets.length} targets`);
       
-      let scheduledCount = 0;
+      let enqueuedCount = 0;
       for (const target of createdTargets) {
         try {
-          await addVoiceSchedulingToQueue({
+          // Enqueue WhatsApp collection directly
+          await addVoiceWhatsAppCollectionToQueue({
             targetId: target.id,
             campaignId,
-            scheduledFor: target.nextAttemptAt || new Date(Date.now() + 60000),
+            phoneNumber: target.phoneNumber,
+            clientName: target.debtorName,
+            clientDocument: target.debtorDocument || 'N/A',
+            debtAmount: target.debtAmount || 0,
             attemptNumber: 1,
-          });
-          scheduledCount++;
+          }, 0); // No delay - send immediately
+          enqueuedCount++;
         } catch (error) {
-          console.error(`❌ [Voice Campaign Ingest] Erro ao agendar target ${target.id}:`, error);
+          console.error(`❌ [Voice Campaign Ingest] Erro ao enfileirar target ${target.id}:`, error);
         }
       }
 
-      console.log(`✅ [Voice Campaign Ingest] Campaign ${campaignId} ingested: ${createdTargets.length} targets, ${scheduledCount} scheduled`);
+      console.log(`✅ [Voice Campaign Ingest] Campaign ${campaignId} ingested: ${createdTargets.length} targets, ${enqueuedCount} enqueued`);
 
       return {
         success: true,
         imported: createdTargets.length,
-        scheduled: scheduledCount,
+        enqueued: enqueuedCount,
       };
 
     } catch (error: any) {

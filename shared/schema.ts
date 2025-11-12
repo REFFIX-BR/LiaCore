@@ -1173,18 +1173,8 @@ export type GamificationSettings = typeof gamificationSettings.$inferSelect;
 export type UpdateGamificationSettings = z.infer<typeof updateGamificationSettingsSchema>;
 
 // ============================================================================
-// COBRANÇAS - Módulo de Cobrança Ativa por Telefone
+// COBRANÇAS - Módulo de Cobrança Ativa via WhatsApp
 // ============================================================================
-
-// Feature Flags - Sistema de controle de features
-export const voiceFeatureFlags = pgTable("voice_feature_flags", {
-  key: text("key").primaryKey(), // 'voice_outbound_enabled', 'voice_scheduler_enabled', etc.
-  isEnabled: boolean("is_enabled").notNull().default(false),
-  metadata: jsonb("metadata"), // Configurações adicionais da feature
-  updatedBy: varchar("updated_by"),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
 
 // Voice Campaigns - Campanhas de cobrança ativa
 export const voiceCampaigns = pgTable("voice_campaigns", {
@@ -1334,56 +1324,11 @@ export const voiceCampaignTargets = pgTable("voice_campaign_targets", {
   campaignEnabledStateIdx: index("voice_targets_campaign_enabled_state_idx").on(table.campaignId, table.enabled, table.state),
 }));
 
-// Voice Call Attempts - Tentativas de ligação
-export const voiceCallAttempts = pgTable("voice_call_attempts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  targetId: varchar("target_id").notNull().references(() => voiceCampaignTargets.id, { onDelete: "cascade" }),
-  campaignId: varchar("campaign_id").notNull().references(() => voiceCampaigns.id),
-  
-  // Detalhes da tentativa
-  attemptNumber: integer("attempt_number").notNull(), // 1, 2, 3
-  phoneNumber: text("phone_number").notNull(), // Telefone utilizado
-  scheduledFor: timestamp("scheduled_for"), // Quando foi agendada
-  dialedAt: timestamp("dialed_at"), // Quando a ligação foi iniciada
-  
-  // Integração Twilio
-  callSid: text("call_sid"), // Twilio Call SID
-  status: text("status").notNull().default("scheduled"), // 'scheduled', 'queued', 'ringing', 'in-progress', 'completed', 'failed', 'busy', 'no-answer', 'cancelled'
-  
-  // Detecção de secretária eletrônica (AMD - Answering Machine Detection)
-  amdResult: text("amd_result"), // 'human', 'machine', 'unknown'
-  
-  // Duração e gravação
-  durationSeconds: integer("duration_seconds"), // Duração em segundos
-  recordingUrl: text("recording_url"), // URL da gravação no Twilio
-  transcriptUrl: text("transcript_url"), // URL da transcrição
-  transcript: text("transcript"), // Transcrição completa da conversa
-  
-  // Análise da IA
-  aiSummary: text("ai_summary"), // Resumo gerado pela IA
-  sentiment: text("sentiment"), // 'positive', 'neutral', 'negative'
-  detectedIntent: text("detected_intent"), // 'will_pay', 'negotiating', 'refusing', 'callback_requested'
-  
-  // Erro
-  errorCode: text("error_code"), // Código de erro Twilio
-  errorMessage: text("error_message"), // Mensagem de erro
-  
-  // Auditoria
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => ({
-  targetIdIdx: index("voice_attempts_target_id_idx").on(table.targetId),
-  campaignIdIdx: index("voice_attempts_campaign_id_idx").on(table.campaignId),
-  statusIdx: index("voice_attempts_status_idx").on(table.status),
-  scheduledForIdx: index("voice_attempts_scheduled_for_idx").on(table.scheduledFor),
-}));
-
 // Voice Promises - Promessas de pagamento
 export const voicePromises = pgTable("voice_promises", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: varchar("campaign_id").notNull().references(() => voiceCampaigns.id),
   targetId: varchar("target_id").references(() => voiceCampaignTargets.id),
-  callAttemptId: varchar("call_attempt_id").references(() => voiceCallAttempts.id),
   contactId: varchar("contact_id").references(() => contacts.id),
   
   // Dados da promessa
@@ -1422,17 +1367,6 @@ export const voicePromises = pgTable("voice_promises", {
   contactIdIdx: index("voice_promises_contact_id_idx").on(table.contactId),
 }));
 
-// Voice Configs - Configurações do módulo
-export const voiceConfigs = pgTable("voice_configs", {
-  id: serial("id").primaryKey(),
-  key: text("key").notNull().unique(),
-  value: jsonb("value").notNull(),
-  description: text("description"),
-  updatedBy: varchar("updated_by"),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
 // Voice Messaging Settings - Configuração global de métodos de envio de mensagens
 export const voiceMessagingSettings = pgTable("voice_messaging_settings", {
   id: serial("id").primaryKey(),
@@ -1447,11 +1381,6 @@ export const voiceMessagingSettings = pgTable("voice_messaging_settings", {
 });
 
 // Insert Schemas - COBRANÇAS
-export const insertVoiceFeatureFlagSchema = createInsertSchema(voiceFeatureFlags).omit({
-  createdAt: true,
-  updatedAt: true,
-});
-
 export const insertVoiceCampaignSchema = createInsertSchema(voiceCampaigns).omit({
   id: true,
   createdAt: true,
@@ -1487,14 +1416,6 @@ export const updateVoiceCampaignTargetSchema = z.object({
   nextScheduledAt: z.coerce.date().optional(),
 }).partial();
 
-export const insertVoiceCallAttemptSchema = createInsertSchema(voiceCallAttempts).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  status: z.enum(["scheduled", "queued", "ringing", "in-progress", "completed", "failed", "busy", "no-answer", "cancelled"]).default("scheduled"),
-});
-
 export const insertVoicePromiseSchema = createInsertSchema(voicePromises).omit({
   id: true,
   createdAt: true,
@@ -1504,12 +1425,6 @@ export const insertVoicePromiseSchema = createInsertSchema(voicePromises).omit({
 }).extend({
   status: z.enum(["pending", "fulfilled", "broken", "renegotiated"]).default("pending"),
   paymentMethod: z.enum(["boleto", "pix", "cartao", "outro"]).optional(),
-});
-
-export const insertVoiceConfigSchema = createInsertSchema(voiceConfigs).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
 });
 
 export const insertVoiceMessagingSettingsSchema = createInsertSchema(voiceMessagingSettings).omit({
@@ -1523,9 +1438,6 @@ export const insertVoiceMessagingSettingsSchema = createInsertSchema(voiceMessag
 export const updateVoiceMessagingSettingsSchema = insertVoiceMessagingSettingsSchema.partial();
 
 // Types - COBRANÇAS
-export type VoiceFeatureFlag = typeof voiceFeatureFlags.$inferSelect;
-export type InsertVoiceFeatureFlag = z.infer<typeof insertVoiceFeatureFlagSchema>;
-
 export type VoiceCampaign = typeof voiceCampaigns.$inferSelect;
 export type InsertVoiceCampaign = z.infer<typeof insertVoiceCampaignSchema>;
 
@@ -1541,14 +1453,8 @@ export type VoiceCampaignTarget = typeof voiceCampaignTargets.$inferSelect;
 export type InsertVoiceCampaignTarget = z.infer<typeof insertVoiceCampaignTargetSchema>;
 export type UpdateVoiceCampaignTarget = z.infer<typeof updateVoiceCampaignTargetSchema>;
 
-export type VoiceCallAttempt = typeof voiceCallAttempts.$inferSelect;
-export type InsertVoiceCallAttempt = z.infer<typeof insertVoiceCallAttemptSchema>;
-
 export type VoicePromise = typeof voicePromises.$inferSelect;
 export type InsertVoicePromise = z.infer<typeof insertVoicePromiseSchema>;
-
-export type VoiceConfig = typeof voiceConfigs.$inferSelect;
-export type InsertVoiceConfig = z.infer<typeof insertVoiceConfigSchema>;
 
 export type VoiceMessagingSettings = typeof voiceMessagingSettings.$inferSelect;
 export type InsertVoiceMessagingSettings = z.infer<typeof insertVoiceMessagingSettingsSchema>;

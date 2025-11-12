@@ -1,11 +1,9 @@
 import express from 'express';
-import { isFeatureEnabled, getAllFeatureFlags, setFeatureFlag } from '../../lib/featureFlags';
 import { authenticate, requireAdmin, requireAdminOrSupervisor } from '../../middleware/auth';
 import { storage } from '../../storage';
 import { insertVoiceCampaignSchema, insertVoiceCampaignTargetSchema, updateVoiceCampaignTargetSchema } from '@shared/schema';
 import { z } from 'zod';
-import twilio from 'twilio';
-import { addVoiceSchedulingToQueue, addVoiceWhatsAppCollectionToQueue } from '../../lib/queue';
+import { addVoiceWhatsAppCollectionToQueue } from '../../lib/queue';
 import { getVoiceMetrics } from './metrics';
 
 const router = express.Router();
@@ -40,35 +38,19 @@ async function activateVoiceCampaign(campaignId: string): Promise<{ enqueued: nu
   
   for (const target of pendingTargets) {
     try {
-      // Route based on contactMethod: 'whatsapp' or 'voice'
-      if (target.contactMethod === 'whatsapp') {
-        // WhatsApp collection - enqueue directly to WhatsApp worker
-        await addVoiceWhatsAppCollectionToQueue({
-          targetId: target.id,
-          campaignId,
-          phoneNumber: target.phoneNumber,
-          clientName: target.debtorName,
-          clientDocument: target.debtorDocument || 'N/A',
-          debtAmount: target.debtAmount || 0,
-          attemptNumber: 1,
-        }, 0); // No delay - send immediately
-        
-        enqueued++;
-        console.log(`✅ [Voice Activation] Enqueued WhatsApp target: ${target.debtorName} (${target.phoneNumber})`);
-      } else {
-        // Voice call - use scheduling queue (default behavior)
-        const scheduledFor = new Date(Date.now());
-        
-        await addVoiceSchedulingToQueue({
-          targetId: target.id,
-          campaignId,
-          scheduledFor,
-          attemptNumber: 1,
-        });
-        
-        enqueued++;
-        console.log(`✅ [Voice Activation] Enqueued Voice target: ${target.debtorName} (${target.phoneNumber})`);
-      }
+      // WhatsApp collection - enqueue directly to WhatsApp worker
+      await addVoiceWhatsAppCollectionToQueue({
+        targetId: target.id,
+        campaignId,
+        phoneNumber: target.phoneNumber,
+        clientName: target.debtorName,
+        clientDocument: target.debtorDocument || 'N/A',
+        debtAmount: target.debtAmount || 0,
+        attemptNumber: 1,
+      }, 0); // No delay - send immediately
+      
+      enqueued++;
+      console.log(`✅ [Voice Activation] Enqueued WhatsApp target: ${target.debtorName} (${target.phoneNumber})`);
     } catch (error: any) {
       console.error(`❌ [Voice Activation] Failed to enqueue target ${target.id}:`, error.message);
       skipped++;
@@ -80,124 +62,8 @@ async function activateVoiceCampaign(campaignId: string): Promise<{ enqueued: nu
   return { enqueued, skipped };
 }
 
-// Middleware para verificar assinatura Twilio
-async function validateTwilioSignature(req: express.Request, res: express.Response, next: express.NextFunction) {
-  try {
-    const { getTwilioAuthToken } = await import('../../lib/twilioIntegration');
-    const authToken = await getTwilioAuthToken();
-    const baseUrl = process.env.WEBHOOK_BASE_URL;
-
-    if (!baseUrl) {
-      console.error('❌ [Twilio Webhook] Missing WEBHOOK_BASE_URL');
-      return res.status(500).json({ error: 'Server configuration error' });
-    }
-
-    const twilioSignature = req.headers['x-twilio-signature'] as string;
-    if (!twilioSignature) {
-      console.error('❌ [Twilio Webhook] Missing X-Twilio-Signature header');
-      return res.status(403).json({ error: 'Forbidden: Missing signature' });
-    }
-
-    const url = `${baseUrl}${req.originalUrl}`;
-    const params = req.method === 'POST' ? req.body : req.query;
-
-    const isValid = twilio.validateRequest(authToken, twilioSignature, url, params);
-
-    if (!isValid) {
-      console.error('❌ [Twilio Webhook] Invalid signature');
-      return res.status(403).json({ error: 'Forbidden: Invalid signature' });
-    }
-
-    console.log('✅ [Twilio Webhook] Signature validated');
-    next();
-  } catch (error: any) {
-    console.error('❌ [Twilio Webhook] Error validating signature:', error.message);
-    return res.status(500).json({ error: 'Server configuration error' });
-  }
-}
-
-// Middleware para verificar se o módulo está habilitado
-async function requireVoiceModule(req: express.Request, res: express.Response, next: express.NextFunction) {
-  const isEnabled = await isFeatureEnabled('voice_outbound_enabled');
-  if (!isEnabled) {
-    return res.status(503).json({ 
-      error: 'Módulo COBRANÇAS não está habilitado',
-      code: 'VOICE_MODULE_DISABLED'
-    });
-  }
-  next();
-}
-
-// ===== FEATURE FLAGS =====
-router.get('/feature-flags', authenticate, async (req, res) => {
-  try {
-    const flags = await getAllFeatureFlags();
-    res.json(flags);
-  } catch (error: any) {
-    console.error('❌ [Voice API] Error fetching feature flags:', error);
-    res.status(500).json({ error: 'Erro ao buscar feature flags' });
-  }
-});
-
-router.put('/feature-flags/:key', authenticate, requireAdmin, async (req, res) => {
-  try {
-    const { key } = req.params;
-    const { isEnabled, metadata } = req.body;
-    const userId = req.user?.userId;
-
-    await setFeatureFlag(
-      key as any,
-      isEnabled,
-      userId,
-      metadata
-    );
-
-    res.json({ success: true, message: `Feature flag ${key} atualizada` });
-  } catch (error: any) {
-    console.error('❌ [Voice API] Error updating feature flag:', error);
-    res.status(500).json({ error: 'Erro ao atualizar feature flag' });
-  }
-});
-
-// ===== TWILIO CONNECTION TEST =====
-router.get('/test-twilio', authenticate, requireAdminOrSupervisor, async (req, res) => {
-  try {
-    const { getTwilioClient, getTwilioFromPhoneNumber } = await import('../../lib/twilioIntegration');
-    
-    const twilioClient = await getTwilioClient();
-    const fromPhoneNumber = await getTwilioFromPhoneNumber();
-    const webhookBaseUrl = process.env.WEBHOOK_BASE_URL;
-    
-    const account = await twilioClient.api.accounts(twilioClient.accountSid).fetch();
-    
-    const maskString = (str: string, visibleChars: number = 4) => {
-      if (!str || str.length <= visibleChars) return str;
-      return str.slice(0, visibleChars) + '***' + str.slice(-visibleChars);
-    };
-    
-    res.json({
-      success: true,
-      connection: {
-        accountSid: maskString(account.sid),
-        accountStatus: account.status,
-        accountFriendlyName: account.friendlyName,
-        fromPhoneNumber: fromPhoneNumber,
-        webhookBaseUrl: webhookBaseUrl || 'NOT_CONFIGURED',
-      },
-      message: 'Conexão Twilio validada com sucesso',
-    });
-  } catch (error: any) {
-    console.error('❌ [Voice API] Error testing Twilio connection:', error);
-    res.status(500).json({ 
-      success: false,
-      error: 'Erro ao testar conexão Twilio',
-      details: error.message,
-    });
-  }
-});
-
 // ===== CAMPAIGNS =====
-router.get('/campaigns', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.get('/campaigns', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const { status } = req.query;
     
@@ -215,7 +81,7 @@ router.get('/campaigns', authenticate, requireAdminOrSupervisor, requireVoiceMod
   }
 });
 
-router.post('/campaigns', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.post('/campaigns', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const validatedData = insertVoiceCampaignSchema.parse({
       ...req.body,
@@ -235,7 +101,7 @@ router.post('/campaigns', authenticate, requireAdminOrSupervisor, requireVoiceMo
   }
 });
 
-router.get('/campaigns/:id', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.get('/campaigns/:id', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const { id } = req.params;
     const campaign = await storage.getVoiceCampaign(id);
@@ -251,7 +117,7 @@ router.get('/campaigns/:id', authenticate, requireAdminOrSupervisor, requireVoic
   }
 });
 
-router.patch('/campaigns/:id', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.patch('/campaigns/:id', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -331,7 +197,7 @@ router.patch('/campaigns/:id', authenticate, requireAdminOrSupervisor, requireVo
   }
 });
 
-router.delete('/campaigns/:id', authenticate, requireAdmin, requireVoiceModule, async (req, res) => {
+router.delete('/campaigns/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     await storage.deleteVoiceCampaign(id);
@@ -345,7 +211,7 @@ router.delete('/campaigns/:id', authenticate, requireAdmin, requireVoiceModule, 
 });
 
 // ===== TARGETS =====
-router.get('/campaigns/:campaignId/targets', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.get('/campaigns/:campaignId/targets', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const { campaignId } = req.params;
     const { state } = req.query;
@@ -364,7 +230,7 @@ router.get('/campaigns/:campaignId/targets', authenticate, requireAdminOrSupervi
   }
 });
 
-router.post('/campaigns/:campaignId/targets', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.post('/campaigns/:campaignId/targets', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const { campaignId } = req.params;
     const { targets, contactMethod = 'voice' } = req.body; // Default to 'voice' for backward compatibility
@@ -392,7 +258,7 @@ router.post('/campaigns/:campaignId/targets', authenticate, requireAdminOrSuperv
   }
 });
 
-router.get('/targets', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.get('/targets', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const { campaignId, state, search } = req.query;
     
@@ -425,7 +291,7 @@ router.get('/targets', authenticate, requireAdminOrSupervisor, requireVoiceModul
 });
 
 // Create single target
-router.post('/targets', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.post('/targets', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     // Validate with Zod
     const validation = insertVoiceCampaignTargetSchema.safeParse(req.body);
@@ -452,7 +318,7 @@ router.post('/targets', authenticate, requireAdminOrSupervisor, requireVoiceModu
   }
 });
 
-router.get('/targets/:id', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.get('/targets/:id', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const { id } = req.params;
     const target = await storage.getVoiceCampaignTarget(id);
@@ -468,7 +334,7 @@ router.get('/targets/:id', authenticate, requireAdminOrSupervisor, requireVoiceM
   }
 });
 
-router.patch('/targets/:id', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.patch('/targets/:id', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -511,7 +377,7 @@ router.patch('/targets/:id', authenticate, requireAdminOrSupervisor, requireVoic
   }
 });
 
-router.delete('/targets/:id', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.delete('/targets/:id', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -535,7 +401,7 @@ router.delete('/targets/:id', authenticate, requireAdminOrSupervisor, requireVoi
 });
 
 // Bulk toggle enabled/disabled for multiple targets
-router.post('/targets/bulk-toggle', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.post('/targets/bulk-toggle', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const bulkToggleSchema = z.object({
       targetIds: z.array(z.string()).min(1, 'Pelo menos um alvo deve ser selecionado'),
@@ -569,7 +435,7 @@ router.post('/targets/bulk-toggle', authenticate, requireAdminOrSupervisor, requ
 });
 
 // ===== CALL ATTEMPTS =====
-router.get('/targets/:targetId/attempts', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.get('/targets/:targetId/attempts', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const { targetId } = req.params;
     const attempts = await storage.getVoiceCallAttempts(targetId);
@@ -580,7 +446,7 @@ router.get('/targets/:targetId/attempts', authenticate, requireAdminOrSupervisor
   }
 });
 
-router.get('/campaigns/:campaignId/attempts', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.get('/campaigns/:campaignId/attempts', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const { campaignId } = req.params;
     const attempts = await storage.getVoiceCallAttemptsByCampaign(campaignId);
@@ -592,7 +458,7 @@ router.get('/campaigns/:campaignId/attempts', authenticate, requireAdminOrSuperv
 });
 
 // ===== PROMISES =====
-router.get('/promises', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.get('/promises', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const { status, campaignId } = req.query;
     
@@ -612,7 +478,7 @@ router.get('/promises', authenticate, requireAdminOrSupervisor, requireVoiceModu
   }
 });
 
-router.get('/promises/:id', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.get('/promises/:id', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const { id } = req.params;
     const promise = await storage.getVoicePromise(id);
@@ -628,7 +494,7 @@ router.get('/promises/:id', authenticate, requireAdminOrSupervisor, requireVoice
   }
 });
 
-router.patch('/promises/:id', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.patch('/promises/:id', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -646,7 +512,7 @@ router.patch('/promises/:id', authenticate, requireAdminOrSupervisor, requireVoi
   }
 });
 
-router.post('/promises/:id/fulfill', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.post('/promises/:id/fulfill', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const { id } = req.params;
     await storage.markVoicePromiseAsFulfilled(id);
@@ -660,7 +526,7 @@ router.post('/promises/:id/fulfill', authenticate, requireAdminOrSupervisor, req
 });
 
 // ===== CONFIGS =====
-router.get('/configs', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.get('/configs', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const configs = await storage.getAllVoiceConfigs();
     res.json(configs);
@@ -670,7 +536,7 @@ router.get('/configs', authenticate, requireAdminOrSupervisor, requireVoiceModul
   }
 });
 
-router.get('/configs/:key', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.get('/configs/:key', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const { key } = req.params;
     const config = await storage.getVoiceConfig(key);
@@ -686,7 +552,7 @@ router.get('/configs/:key', authenticate, requireAdminOrSupervisor, requireVoice
   }
 });
 
-router.put('/configs/:key', authenticate, requireAdmin, requireVoiceModule, async (req, res) => {
+router.put('/configs/:key', authenticate, requireAdmin, async (req, res) => {
   try {
     const { key } = req.params;
     const { value, description } = req.body;
@@ -706,7 +572,7 @@ router.put('/configs/:key', authenticate, requireAdmin, requireVoiceModule, asyn
   }
 });
 
-router.delete('/configs/:key', authenticate, requireAdmin, requireVoiceModule, async (req, res) => {
+router.delete('/configs/:key', authenticate, requireAdmin, async (req, res) => {
   try {
     const { key } = req.params;
     await storage.deleteVoiceConfig(key);
@@ -720,7 +586,7 @@ router.delete('/configs/:key', authenticate, requireAdmin, requireVoiceModule, a
 });
 
 // ===== MESSAGING CONFIG =====
-router.get('/messaging-config', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.get('/messaging-config', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const config = await storage.getVoiceMessagingSettings();
     
@@ -735,7 +601,7 @@ router.get('/messaging-config', authenticate, requireAdminOrSupervisor, requireV
   }
 });
 
-router.put('/messaging-config', authenticate, requireAdmin, requireVoiceModule, async (req, res) => {
+router.put('/messaging-config', authenticate, requireAdmin, async (req, res) => {
   try {
     const { voiceEnabled, whatsappEnabled, defaultMethod, fallbackOrder, description } = req.body;
     
@@ -780,7 +646,7 @@ router.put('/messaging-config', authenticate, requireAdmin, requireVoiceModule, 
 });
 
 // ===== STATS =====
-router.get('/stats', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.get('/stats', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const allCampaigns = await storage.getAllVoiceCampaigns();
     const activeCampaigns = await storage.getActiveVoiceCampaigns();
@@ -839,7 +705,7 @@ router.get('/stats', authenticate, requireAdminOrSupervisor, requireVoiceModule,
 });
 
 // ===== RECENT ACTIVITY =====
-router.get('/activity', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.get('/activity', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit as string) || 10;
     const allTargets = await storage.getAllVoiceCampaignTargets();
@@ -872,114 +738,8 @@ router.get('/activity', authenticate, requireAdminOrSupervisor, requireVoiceModu
   }
 });
 
-// ===== TWILIO WEBHOOKS (Twilio signature verification) =====
-router.post('/webhook/twiml', express.text({ type: '*/*' }), validateTwilioSignature, async (req, res) => {
-  try {
-    const { targetId, campaignId, attemptNumber } = req.query;
-    
-    console.log(`📞 [Voice Webhook] TwiML requested for target ${targetId}`);
-
-    const target = await storage.getVoiceCampaignTarget(targetId as string);
-    if (!target) {
-      console.error(`❌ [Voice Webhook] Target ${targetId} not found`);
-      return res.status(404).send('<?xml version="1.0" encoding="UTF-8"?><Response><Say>Erro no sistema.</Say><Hangup/></Response>');
-    }
-
-    const campaign = await storage.getVoiceCampaign(campaignId as string);
-    if (!campaign) {
-      console.error(`❌ [Voice Webhook] Campaign ${campaignId} not found`);
-      return res.status(404).send('<?xml version="1.0" encoding="UTF-8"?><Response><Say>Erro no sistema.</Say><Hangup/></Response>');
-    }
-
-    const { createOpenAIRealtimeSession } = await import('../../lib/voiceCall');
-    
-    const openAISession = await createOpenAIRealtimeSession({
-      clientName: target.debtorName,
-      debtAmount: target.debtAmount || 0,
-      debtDetails: target.debtorMetadata ? JSON.stringify(target.debtorMetadata) : undefined,
-    });
-
-    const baseUrl = process.env.VOICE_WEBHOOK_BASE_URL || '';
-    const streamUrl = `wss://${baseUrl.replace('https://', '')}/api/voice/webhook/stream?sessionId=${openAISession.sessionId}&targetId=${targetId}`;
-
-    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Connect>
-    <Stream url="${streamUrl}" />
-  </Connect>
-</Response>`;
-
-    console.log(`✅ [Voice Webhook] TwiML generated for target ${targetId}`);
-    res.type('text/xml').send(twiml);
-  } catch (error: any) {
-    console.error('❌ [Voice Webhook] Error generating TwiML:', error);
-    res.type('text/xml').send('<?xml version="1.0" encoding="UTF-8"?><Response><Say>Desculpe, ocorreu um erro.</Say><Hangup/></Response>');
-  }
-});
-
-router.post('/webhook/status', express.urlencoded({ extended: false }), validateTwilioSignature, async (req, res) => {
-  try {
-    const { CallSid, CallStatus, CallDuration, RecordingUrl } = req.body;
-    
-    console.log(`📊 [Voice Webhook] Status update: ${CallSid} - ${CallStatus}`);
-
-    if (CallStatus === 'completed') {
-      const attempt = await storage.getVoiceCallAttemptByCallSid(CallSid);
-      
-      if (attempt) {
-        await storage.updateVoiceCallAttempt(attempt.id, {
-          status: 'completed',
-          durationSeconds: parseInt(CallDuration || '0', 10),
-          recordingUrl: RecordingUrl,
-        });
-
-        const { addVoicePostCallToQueue } = await import('../../lib/queue');
-        await addVoicePostCallToQueue({
-          attemptId: attempt.id,
-          targetId: attempt.targetId,
-          campaignId: attempt.campaignId,
-          callSid: CallSid,
-          callDuration: parseInt(CallDuration || '0', 10),
-          callStatus: CallStatus,
-          recordingUrl: RecordingUrl,
-          conversationData: {},
-        });
-
-        console.log(`✅ [Voice Webhook] Post-call processing queued for attempt ${attempt.id}`);
-      }
-    }
-
-    res.sendStatus(200);
-  } catch (error: any) {
-    console.error('❌ [Voice Webhook] Error processing status:', error);
-    res.sendStatus(500);
-  }
-});
-
-router.post('/webhook/recording', express.urlencoded({ extended: false }), validateTwilioSignature, async (req, res) => {
-  try {
-    const { CallSid, RecordingUrl, RecordingSid } = req.body;
-    
-    console.log(`🎙️ [Voice Webhook] Recording received: ${RecordingSid}`);
-
-    const attempt = await storage.getVoiceCallAttemptByCallSid(CallSid);
-    
-    if (attempt) {
-      await storage.updateVoiceCallAttempt(attempt.id, {
-        recordingUrl: RecordingUrl,
-      });
-      console.log(`✅ [Voice Webhook] Recording URL saved for attempt ${attempt.id}`);
-    }
-
-    res.sendStatus(200);
-  } catch (error: any) {
-    console.error('❌ [Voice Webhook] Error processing recording:', error);
-    res.sendStatus(500);
-  }
-});
-
 // ===== UNIFIED METRICS =====
-router.get('/metrics', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+router.get('/metrics', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     console.log('📊 [Voice Metrics API] Fetching unified metrics...');
     

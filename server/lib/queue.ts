@@ -10,12 +10,9 @@ export const QUEUE_NAMES = {
   LEARNING_TASKS: 'learning-tasks',
   INACTIVITY_FOLLOWUP: 'inactivity-followup',
   AUTO_CLOSURE: 'auto-closure',
-  // COBRANÇAS - Módulo de Cobrança Ativa
+  // COBRANÇAS - Módulo de Cobrança via WhatsApp
   VOICE_CAMPAIGN_INGEST: 'voice-campaign-ingest',
   VOICE_CRM_SYNC: 'voice-crm-sync', // Sincronização automática com CRM
-  VOICE_SCHEDULING: 'voice-scheduling',
-  VOICE_DIALER: 'voice-dialer',
-  VOICE_POST_CALL: 'voice-post-call',
   VOICE_PROMISE_MONITOR: 'voice-promise-monitor',
   VOICE_WHATSAPP_COLLECTION: 'voice-whatsapp-collection', // Cobrança via WhatsApp IA
 } as const;
@@ -143,51 +140,6 @@ export const QUEUE_CONFIGS = {
       },
     },
   },
-  [QUEUE_NAMES.VOICE_SCHEDULING]: {
-    defaultJobOptions: {
-      attempts: 2,
-      backoff: {
-        type: 'exponential' as const,
-        delay: 5000,
-      },
-      removeOnComplete: {
-        count: 200,
-      },
-      removeOnFail: {
-        count: 100,
-      },
-    },
-  },
-  [QUEUE_NAMES.VOICE_DIALER]: {
-    defaultJobOptions: {
-      attempts: 2,
-      backoff: {
-        type: 'fixed' as const,
-        delay: 10000, // Wait 10s between call retries (compliance)
-      },
-      removeOnComplete: {
-        count: 500, // Keep more for audit
-      },
-      removeOnFail: {
-        count: 200,
-      },
-    },
-  },
-  [QUEUE_NAMES.VOICE_POST_CALL]: {
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: {
-        type: 'exponential' as const,
-        delay: 3000,
-      },
-      removeOnComplete: {
-        count: 300,
-      },
-      removeOnFail: {
-        count: 100,
-      },
-    },
-  },
   [QUEUE_NAMES.VOICE_PROMISE_MONITOR]: {
     defaultJobOptions: {
       attempts: 2,
@@ -292,36 +244,12 @@ export const autoClosureQueue = new Queue(
   }
 );
 
-// COBRANÇAS - Queue instances
+// COBRANÇAS - Queue instances (WhatsApp Collection only)
 export const voiceCampaignIngestQueue = new Queue(
   QUEUE_NAMES.VOICE_CAMPAIGN_INGEST,
   {
     connection: redisConnection,
     ...QUEUE_CONFIGS[QUEUE_NAMES.VOICE_CAMPAIGN_INGEST],
-  }
-);
-
-export const voiceSchedulingQueue = new Queue(
-  QUEUE_NAMES.VOICE_SCHEDULING,
-  {
-    connection: redisConnection,
-    ...QUEUE_CONFIGS[QUEUE_NAMES.VOICE_SCHEDULING],
-  }
-);
-
-export const voiceDialerQueue = new Queue(
-  QUEUE_NAMES.VOICE_DIALER,
-  {
-    connection: redisConnection,
-    ...QUEUE_CONFIGS[QUEUE_NAMES.VOICE_DIALER],
-  }
-);
-
-export const voicePostCallQueue = new Queue(
-  QUEUE_NAMES.VOICE_POST_CALL,
-  {
-    connection: redisConnection,
-    ...QUEUE_CONFIGS[QUEUE_NAMES.VOICE_POST_CALL],
   }
 );
 
@@ -579,32 +507,6 @@ export async function addVoiceCampaignIngestToQueue(data: VoiceCampaignIngestJob
   });
 }
 
-export async function addVoiceSchedulingToQueue(data: VoiceSchedulingJob) {
-  const delay = Math.max(0, new Date(data.scheduledFor).getTime() - Date.now());
-  
-  return await voiceSchedulingQueue.add('schedule-call', data, {
-    delay,
-    // Remove fixed jobId to allow retries - BullMQ will auto-generate unique IDs
-    // jobId: `schedule-${data.targetId}-${data.attemptNumber}`,
-    priority: 3,
-  });
-}
-
-export async function addVoiceDialerToQueue(data: VoiceDialerJob, delay?: number) {
-  return await voiceDialerQueue.add('make-call', data, {
-    delay: delay || 0,
-    // Remove fixed jobId to allow retries - BullMQ will auto-generate unique IDs
-    // jobId: `dial-${data.targetId}-${data.attemptNumber}`,
-    priority: 2,
-  });
-}
-
-export async function addVoicePostCallToQueue(data: VoicePostCallJob) {
-  return await voicePostCallQueue.add('process-call-result', data, {
-    priority: 3,
-  });
-}
-
 export async function addVoicePromiseMonitorToQueue(data: VoicePromiseMonitorJob) {
   const delay = Math.max(0, new Date(data.dueDate).getTime() - Date.now());
   
@@ -630,23 +532,6 @@ export async function addVoiceCRMSyncToQueue(data: VoiceCRMSyncJob) {
   });
 }
 
-export async function cancelVoiceScheduledCall(targetId: string, attemptNumber: number) {
-  try {
-    const jobId = `schedule-${targetId}-${attemptNumber}`;
-    const job = await voiceSchedulingQueue.getJob(jobId);
-    
-    if (job) {
-      await job.remove();
-      console.log(`✅ [Voice] Chamada agendada cancelada: ${jobId}`);
-      return true;
-    }
-    
-    return false;
-  } catch (error) {
-    console.error(`❌ [Voice] Erro ao cancelar chamada agendada:`, error);
-    return false;
-  }
-}
 
 // Graceful shutdown
 export async function closeQueues() {
@@ -661,9 +546,6 @@ export async function closeQueues() {
   // COBRANÇAS queues
   await voiceCampaignIngestQueue.close();
   await voiceCRMSyncQueue.close();
-  await voiceSchedulingQueue.close();
-  await voiceDialerQueue.close();
-  await voicePostCallQueue.close();
   await voicePromiseMonitorQueue.close();
   await voiceWhatsAppCollectionQueue.close();
   await redisConnection.quit();

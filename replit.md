@@ -25,11 +25,12 @@ The frontend, built with React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS,
 **Role-Based Access Control (RBAC)**: A 3-tier system (ADMIN, SUPERVISOR, AGENT) with granular permissions.
 **Contact Management System**: Centralized client database with automatic WhatsApp contact sync.
 **Announcements/Communications System**: Centralized system for company-wide announcements with priority-based rotation.
-**COBRANÇAS - Autonomous Debt Collection Module**: Production-ready module with a dedicated IA Cobrança assistant specialized in empathetic debt negotiation, payment promise registration, and compliance. Supports proactive voice calls (Twilio + OpenAI Realtime API) and automated WhatsApp messaging (Evolution API).
+**COBRANÇAS - Autonomous Debt Collection Module**: Production-ready WhatsApp-based collection module with dedicated IA Cobrança assistant specialized in empathetic debt negotiation, payment promise registration, and compliance. Fully automated WhatsApp messaging via Evolution API with Meta-approved templates.
 **Payment Promise System**: Manages the complete lifecycle of payment promises, enforcing a single active promise per client, automated registration, multi-layer protection during collection attempts, and automatic breach detection.
 **Dedicated Cobranças Monitoring**: Conversations from collection campaigns are monitored via a dedicated `/voice/monitor` interface, providing unified metrics and transfer capabilities.
 **Messaging Control Center**: Professional control panel for flexible contact method management with global and per-campaign configuration, backend validation, and method-specific statistics API.
-**Campaign Conversation Tracking**: Complete integration between voice campaigns and cobranças monitoring, linking conversations to campaign targets.
+**Campaign Conversation Tracking**: Complete integration between WhatsApp collection campaigns and cobranças monitoring, linking conversations to campaign targets.
+**WhatsApp-Only Architecture (November 2025)**: System simplified to WhatsApp-only collection flow. Removed Twilio voice infrastructure including voice_call_attempts, voice_configs, and voice_feature_flags tables. Campaign ingestion now directly enqueues targets to WhatsApp collection worker. Metrics and monitoring focus exclusively on WhatsApp performance.
 **Automated CRM Synchronization**: Production-ready infrastructure for proactive debt collection, importing overdue clients from CRM API. Features include configurable sync schedules, data transformation, smart deduplication, accurate campaign statistics tracking, and comprehensive error handling. Includes a CRM Import UI for managing sync configurations and manual triggers.
 **Meta-Approved WhatsApp Templates**: Collections module migrated to Meta-approved WhatsApp templates for regulatory compliance and prevention of number banning. Template "financeiro_em_atraso" (English language) used for initial contact with dynamic client first name parameter. Centralized sendWhatsAppTemplate() function in server/lib/whatsapp.ts handles template delivery via Evolution API.
 **evolutionInstance Normalization**: Accent-insensitive validation ensures "Cobrança" and "Cobranca" are treated identically throughout the system. getEffectiveEvolutionInstance() helper preserves existing conversation instances when webhooks lack instance data, preventing incorrect routing overrides.
@@ -60,4 +61,3 @@ A comprehensive scaling plan details a roadmap to handle 160,000 messages at pea
 - **Upstash Redis**: Serverless Redis.
 - **Neon Database**: Serverless PostgreSQL.
 - **Evolution API**: WhatsApp integration.
-- **Twilio**: Voice calls (for Cobrança module).

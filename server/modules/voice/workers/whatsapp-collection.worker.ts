@@ -2,7 +2,6 @@ import { Worker, Job } from 'bullmq';
 import { redisConnection } from '../../../lib/redis-config';
 import { QUEUE_NAMES, VoiceWhatsAppCollectionJob, addVoiceWhatsAppCollectionToQueue } from '../../../lib/queue';
 import { storage } from '../../../storage';
-import { isFeatureEnabled } from '../../../lib/featureFlags';
 import { sendWhatsAppMessage, sendWhatsAppTemplate } from '../../../lib/whatsapp';
 import { createThread } from '../../../lib/openai';
 import OpenAI from 'openai';
@@ -52,12 +51,6 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
     console.log(`💬 [Voice WhatsApp] Processing target ${targetId} (attempt ${attemptNumber})`);
 
     try {
-      const isEnabled = await isFeatureEnabled('voice_outbound_enabled');
-      if (!isEnabled) {
-        console.log(`⚠️ [Voice WhatsApp] Feature flag disabled, skipping`);
-        return { success: false, reason: 'feature_disabled' };
-      }
-
       const target = await storage.getVoiceCampaignTarget(targetId);
       if (!target) {
         throw new Error(`Target ${targetId} não encontrado`);
