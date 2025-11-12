@@ -95,6 +95,7 @@ export async function validateEvolutionCredentials(): Promise<boolean> {
         const data = await response.json();
         const instances = Array.isArray(data) ? data : [];
         const instanceExists = instances.some((i: any) => 
+          i.name === instance.name || 
           i.instanceName === instance.name || 
           i.instance?.instanceName === instance.name
         );
@@ -102,7 +103,7 @@ export async function validateEvolutionCredentials(): Promise<boolean> {
         if (!instanceExists) {
           console.error(`❌ [Evolution] ${instance.name}: Instance NOT FOUND in Evolution API`);
           console.error(`   API key is valid, but instance "${instance.name}" doesn't exist`);
-          console.error(`   Available instances: ${instances.map((i: any) => i.instanceName || i.instance?.instanceName).filter(Boolean).join(', ') || 'none'}`);
+          console.error(`   Available instances: ${instances.map((i: any) => i.name || i.instanceName || i.instance?.instanceName).filter(Boolean).join(', ') || 'none'}`);
           hasErrors = true;
         } else {
           console.log(`✅ [Evolution] ${instance.name}: Connectivity OK and instance exists`);
@@ -187,13 +188,13 @@ export async function testEvolutionConnectivity(): Promise<void> {
         console.log(`   ✅ SUCCESS: Connected to Evolution API`);
         
         // Check if this specific instance exists
-        const instanceData = Array.isArray(data) ? data.find((i: any) => i.instanceName === instance.name) : null;
+        const instanceData = Array.isArray(data) ? data.find((i: any) => i.name === instance.name || i.instanceName === instance.name) : null;
         if (instanceData) {
           console.log(`   ✅ Instance "${instance.name}" exists and is active`);
-          console.log(`      Status: ${instanceData.status || 'unknown'}`);
+          console.log(`      Status: ${instanceData.connectionStatus || instanceData.status || 'unknown'}`);
         } else {
           console.warn(`   ⚠️  Instance "${instance.name}" not found in response`);
-          console.warn(`      Available instances: ${Array.isArray(data) ? data.map((i: any) => i.instanceName).join(', ') : 'none'}`);
+          console.warn(`      Available instances: ${Array.isArray(data) ? data.map((i: any) => i.name || i.instanceName).join(', ') : 'none'}`);
         }
       }
     } catch (error: any) {
