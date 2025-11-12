@@ -249,7 +249,7 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
           assistantType: 'cobranca', // IMPORTANTE: IA Cobrança especializada
           department: 'financial',
           status: 'active',
-          evolutionInstance: 'Leads',
+          evolutionInstance: 'Cobrança',
           conversationSource: 'whatsapp_campaign',
           voiceCampaignTargetId: targetId,
         });
@@ -262,7 +262,7 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
           voiceCampaignTargetId: targetId,
           assistantType: 'cobranca', // IA Cobrança
           department: 'financial',
-          evolutionInstance: 'Leads',
+          evolutionInstance: 'Cobrança',
           status: 'active', // Reativar se estiver resolvida
         });
         console.log(`✅ [Voice WhatsApp] Conversa atualizada com IA Cobrança atribuída`);
@@ -290,7 +290,7 @@ Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar 
       console.log(`✅ [Voice WhatsApp] Mensagem preparada: "${message.substring(0, 60)}..."`)
 
       // Enviar mensagem via WhatsApp
-      const result = await sendWhatsAppMessage(phoneNumber, message, 'Leads');
+      const result = await sendWhatsAppMessage(phoneNumber, message, 'Cobrança');
 
       // CRITICAL: Verify WhatsApp send success before marking as completed
       if (!result.success) {
