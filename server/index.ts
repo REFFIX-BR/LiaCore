@@ -168,19 +168,8 @@ app.use((req, res, next) => {
         console.log('   Webhook will use fallback async processing');
         console.log('   See QUEUE_SETUP.md for Redis configuration');
       } else {
-        // Validate Evolution API credentials and start workers
+        // Start workers (async - don't block startup)
         (async () => {
-          // Validate Evolution API credentials BEFORE starting voice workers
-          let evolutionCredentialsValid = false;
-          try {
-            const { validateEvolutionCredentials } = await import('./lib/evolution-diagnostics');
-            evolutionCredentialsValid = await validateEvolutionCredentials();
-          } catch (error) {
-            console.error('⚠️  [Evolution] Credential validation failed:', error);
-            console.error('   WhatsApp collections module will be DISABLED');
-            evolutionCredentialsValid = false;
-          }
-          
           // Start standard message workers (always needed)
           import('./workers').then(() => {
             console.log('✅ [Workers] Queue workers initialized with Redis');
@@ -189,19 +178,14 @@ app.use((req, res, next) => {
             console.log('   Falling back to async processing');
           });
           
-          // Start voice workers ONLY if Evolution credentials are valid
-          if (evolutionCredentialsValid) {
-            import('./modules/voice/workers').then(() => {
-              console.log('✅ [Voice Workers] Voice module workers initialized with Redis');
-            }).catch((error) => {
-              console.error('❌ [Voice Workers] Failed to start voice workers:', error);
-              console.log('   Voice module will be disabled');
-            });
-          } else {
-            console.warn('⚠️  [Voice Workers] SKIPPED - Evolution API credentials validation failed');
-            console.warn('   WhatsApp collections module is DISABLED');
-            console.warn('   Fix Evolution API credentials and restart to enable voice workers');
-          }
+          // Start voice workers (always start - they log their own initialization)
+          import('./modules/voice/workers').then(() => {
+            console.log('✅ [Voice Workers] Voice module workers initialized with Redis');
+          }).catch((error) => {
+            console.error('❌ [Voice Workers] Failed to start voice workers:', error);
+            console.error('   Error details:', error);
+            console.log('   Voice module will be disabled');
+          });
         })();
       }
     });
