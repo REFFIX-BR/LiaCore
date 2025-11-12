@@ -25,40 +25,19 @@ import { ptBR } from "date-fns/locale";
 interface VoiceMetrics {
   totalCampaigns: number;
   activeCampaigns: number;
-  totalCalls: number;
-  totalWhatsAppMessages: number;
-  successfulCalls: number;
-  successfulMessages: number;
+  totalTargets: number;
+  contactedTargets: number;
+  successfulContacts: number;
   pendingPromises: number;
   fulfilledPromises: number;
   conversionRate: number;
-  byMethod: {
-    voice: {
-      totalTargets: number;
-      contacted: number;
-      successful: number;
-      successRate: string;
-    };
-    whatsapp: {
-      totalTargets: number;
-      contacted: number;
-      successful: number;
-      successRate: string;
-    };
-  };
-  channelBreakdown: {
-    voice: {
-      total: number;
-      successful: number;
-      failed: number;
-      pending: number;
-    };
-    whatsapp: {
-      total: number;
-      successful: number;
-      failed: number;
-      pending: number;
-    };
+  whatsapp: {
+    total: number;
+    contacted: number;
+    successful: number;
+    failed: number;
+    pending: number;
+    successRate: string;
   };
 }
 
@@ -78,7 +57,7 @@ interface Conversation {
   assignedTo: string | null;
 }
 
-type ConversationFilter = 'all' | 'inbound' | 'whatsapp_campaign' | 'voice_campaign';
+type ConversationFilter = 'all' | 'inbound' | 'whatsapp_campaign';
 
 export default function CobrancasMonitor() {
   const [conversationFilter, setConversationFilter] = useState<ConversationFilter>('all');
@@ -150,64 +129,12 @@ export default function CobrancasMonitor() {
             Monitor de Cobranças
           </h1>
           <p className="text-muted-foreground">
-            Acompanhamento unificado de campanhas de voz e WhatsApp
+            Acompanhamento de campanhas de cobrança via WhatsApp
           </p>
         </div>
       </div>
 
       {/* Metrics Cards */}
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
-          <Phone className="h-5 w-5" />
-          Ligações Voice
-        </h3>
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="text-voice-total">
-                {metrics?.byMethod?.voice?.totalTargets || 0}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Contactados</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="text-voice-contacted">
-                {metrics?.byMethod?.voice?.contacted || 0}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Bem-sucedidas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="text-voice-successful">
-                {metrics?.byMethod?.voice?.successful || 0}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Taxa de Sucesso</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="text-voice-success-rate">
-                {metrics?.byMethod?.voice?.successRate || 0}%
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
       <div className="mb-6">
         <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
           <MessageSquare className="h-5 w-5" />
@@ -220,7 +147,7 @@ export default function CobrancasMonitor() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold" data-testid="text-whatsapp-total">
-                {metrics?.byMethod?.whatsapp?.totalTargets || 0}
+                {metrics?.whatsapp?.total || 0}
               </div>
             </CardContent>
           </Card>
@@ -231,7 +158,7 @@ export default function CobrancasMonitor() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold" data-testid="text-whatsapp-contacted">
-                {metrics?.byMethod?.whatsapp?.contacted || 0}
+                {metrics?.whatsapp?.contacted || 0}
               </div>
             </CardContent>
           </Card>
@@ -242,7 +169,7 @@ export default function CobrancasMonitor() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold" data-testid="text-whatsapp-successful">
-                {metrics?.byMethod?.whatsapp?.successful || 0}
+                {metrics?.whatsapp?.successful || 0}
               </div>
             </CardContent>
           </Card>
@@ -253,74 +180,11 @@ export default function CobrancasMonitor() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold" data-testid="text-whatsapp-success-rate">
-                {metrics?.byMethod?.whatsapp?.successRate || 0}%
+                {metrics?.whatsapp?.successRate || 0}%
               </div>
             </CardContent>
           </Card>
         </div>
-      </div>
-
-      {/* Channel Breakdown */}
-      <div className="grid gap-4 md:grid-cols-2 mb-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Phone className="h-5 w-5" />
-              Canal: Voz
-            </CardTitle>
-            <CardDescription>Estatísticas de ligações telefônicas</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Total de ligações:</span>
-                <span className="font-medium">{metrics?.channelBreakdown.voice.total || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Bem-sucedidas:</span>
-                <span className="font-medium text-green-600">{metrics?.channelBreakdown.voice.successful || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Falhadas:</span>
-                <span className="font-medium text-red-600">{metrics?.channelBreakdown.voice.failed || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Pendentes:</span>
-                <span className="font-medium text-yellow-600">{metrics?.channelBreakdown.voice.pending || 0}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Canal: WhatsApp
-            </CardTitle>
-            <CardDescription>Estatísticas de mensagens automáticas</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Total de mensagens:</span>
-                <span className="font-medium">{metrics?.channelBreakdown.whatsapp.total || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Bem-sucedidas:</span>
-                <span className="font-medium text-green-600">{metrics?.channelBreakdown.whatsapp.successful || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Falhadas:</span>
-                <span className="font-medium text-red-600">{metrics?.channelBreakdown.whatsapp.failed || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Pendentes:</span>
-                <span className="font-medium text-yellow-600">{metrics?.channelBreakdown.whatsapp.pending || 0}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Conversations Table */}
@@ -347,7 +211,6 @@ export default function CobrancasMonitor() {
                 <SelectItem value="all">📱 Todas</SelectItem>
                 <SelectItem value="inbound">📥 Entrada</SelectItem>
                 <SelectItem value="whatsapp_campaign">💬 Campanha WhatsApp</SelectItem>
-                <SelectItem value="voice_campaign">📞 Campanha Voz</SelectItem>
               </SelectContent>
             </Select>
           </div>
