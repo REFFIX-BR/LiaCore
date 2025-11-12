@@ -1286,6 +1286,10 @@ export const voiceCampaignTargets = pgTable("voice_campaign_targets", {
   phoneNumber: text("phone_number").notNull(), // Telefone principal
   alternativePhones: text("alternative_phones").array(), // Telefones alternativos
   contactMethod: text("contact_method").notNull().default("voice"), // 'whatsapp' | 'voice' - Método de contato preferencial
+  
+  // Controle de envio
+  enabled: boolean("enabled").notNull().default(true), // Se este alvo deve receber envios de cobrança
+  
   debtorName: text("debtor_name").notNull(),
   debtorDocument: text("debtor_document"), // CPF, CNPJ, ou Código de Cliente
   debtorDocumentType: text("debtor_document_type"), // 'CPF' | 'CNPJ' | 'CLIENT_CODE'
@@ -1326,6 +1330,8 @@ export const voiceCampaignTargets = pgTable("voice_campaign_targets", {
   nextAttemptIdx: index("voice_targets_next_attempt_idx").on(table.nextAttemptAt),
   contactIdIdx: index("voice_targets_contact_id_idx").on(table.contactId),
   paymentStatusIdx: index("voice_targets_payment_status_idx").on(table.paymentStatus),
+  // Índice composto para queries de workers (campaign + enabled + state)
+  campaignEnabledStateIdx: index("voice_targets_campaign_enabled_state_idx").on(table.campaignId, table.enabled, table.state),
 }));
 
 // Voice Call Attempts - Tentativas de ligação

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Phone, Search, PhoneCall, PhoneOff, Clock, CheckCircle2, XCircle, Trash2, Upload, Calendar, Edit } from 'lucide-react';
+import { Phone, Search, PhoneCall, PhoneOff, Clock, CheckCircle2, XCircle, Trash2, Upload, Calendar, Edit, Check, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -18,6 +18,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import CRMImportTab from '@/components/voice/CRMImportTab';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface Target {
   id: string;
@@ -31,6 +32,7 @@ interface Target {
   lastAttemptAt?: string;
   nextScheduledAt?: string;
   promiseMade?: boolean;
+  enabled?: boolean; // Controle de envio
   createdAt?: string;
 }
 
@@ -64,6 +66,7 @@ export default function VoiceTargets() {
   const [campaignFilter, setCampaignFilter] = useState<string>('all');
   const [targetToDelete, setTargetToDelete] = useState<Target | null>(null);
   const [targetToEdit, setTargetToEdit] = useState<Target | null>(null);
+  const [selectedTargetIds, setSelectedTargetIds] = useState<Set<string>>(new Set());
 
   const { data: targets, isLoading } = useQuery<Target[]>({
     queryKey: ['/api/voice/targets'],
@@ -118,6 +121,60 @@ export default function VoiceTargets() {
       });
     },
   });
+
+  const bulkToggleMutation = useMutation({
+    mutationFn: async ({ targetIds, enabled }: { targetIds: string[]; enabled: boolean }) => {
+      return apiRequest('/api/voice/targets/bulk-toggle', 'POST', { targetIds, enabled });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/targets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/voice/stats'] });
+      toast({
+        title: data.message || 'Alvos atualizados',
+        description: `${data.updated} alvos foram atualizados com sucesso.`,
+      });
+      setSelectedTargetIds(new Set());
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao atualizar alvos',
+        description: error.message || 'Ocorreu um erro ao atualizar os alvos em massa.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Funções auxiliares de seleção
+  const toggleTargetSelection = (targetId: string) => {
+    const newSelection = new Set(selectedTargetIds);
+    if (newSelection.has(targetId)) {
+      newSelection.delete(targetId);
+    } else {
+      newSelection.add(targetId);
+    }
+    setSelectedTargetIds(newSelection);
+  };
+
+  const toggleAllTargetsSelection = () => {
+    if (!filteredTargets) return;
+    
+    if (selectedTargetIds.size === filteredTargets.length) {
+      setSelectedTargetIds(new Set());
+    } else {
+      setSelectedTargetIds(new Set(filteredTargets.map(t => t.id)));
+    }
+  };
+
+  const handleBulkEnable = () => {
+    if (selectedTargetIds.size === 0) return;
+    bulkToggleMutation.mutate({ targetIds: Array.from(selectedTargetIds), enabled: true });
+  };
+
+  const handleBulkDisable = () => {
+    if (selectedTargetIds.size === 0) return;
+    bulkToggleMutation.mutate({ targetIds: Array.from(selectedTargetIds), enabled: false });
+  };
 
   const getStatusBadge = (status: string) => {
     const config = {
@@ -428,22 +485,57 @@ export default function VoiceTargets() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Lista de Alvos</CardTitle>
-          <CardDescription>
-            {filteredTargets?.length || 0} alvos encontrados
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+          <div>
+            <CardTitle>Lista de Alvos</CardTitle>
+            <CardDescription>
+              {filteredTargets?.length || 0} alvos encontrados
+              {selectedTargetIds.size > 0 && ` | ${selectedTargetIds.size} selecionados`}
+            </CardDescription>
+          </div>
+          {selectedTargetIds.size > 0 && (
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleBulkEnable}
+                disabled={bulkToggleMutation.isPending}
+                data-testid="button-enable-selected"
+              >
+                <Check className="h-4 w-4 mr-1" />
+                Habilitar Selecionados
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleBulkDisable}
+                disabled={bulkToggleMutation.isPending}
+                data-testid="button-disable-selected"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Desabilitar Selecionados
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={filteredTargets && filteredTargets.length > 0 && selectedTargetIds.size === filteredTargets.length}
+                      onCheckedChange={toggleAllTargetsSelection}
+                      data-testid="checkbox-select-all"
+                    />
+                  </TableHead>
                   <TableHead>Nome</TableHead>
                   <TableHead>Telefone</TableHead>
                   <TableHead>Valor da Dívida</TableHead>
                   <TableHead>Tentativas</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Habilitado</TableHead>
                   <TableHead>Última Tentativa</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
@@ -452,6 +544,13 @@ export default function VoiceTargets() {
                 {filteredTargets && filteredTargets.length > 0 ? (
                   filteredTargets.map((target) => (
                     <TableRow key={target.id} data-testid={`row-target-${target.id}`}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedTargetIds.has(target.id)}
+                          onCheckedChange={() => toggleTargetSelection(target.id)}
+                          data-testid={`checkbox-select-${target.id}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium" data-testid={`cell-name-${target.id}`}>
                         {target.debtorName}
                       </TableCell>
@@ -468,6 +567,11 @@ export default function VoiceTargets() {
                       </TableCell>
                       <TableCell data-testid={`cell-status-${target.id}`}>
                         {getStatusBadge(target.status)}
+                      </TableCell>
+                      <TableCell data-testid={`cell-enabled-${target.id}`}>
+                        <Badge variant={target.enabled !== false ? "default" : "outline"}>
+                          {target.enabled !== false ? "Sim" : "Não"}
+                        </Badge>
                       </TableCell>
                       <TableCell data-testid={`cell-last-attempt-${target.id}`}>
                         {target.lastAttemptAt
@@ -509,7 +613,7 @@ export default function VoiceTargets() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                       Nenhum alvo encontrado
                     </TableCell>
                   </TableRow>

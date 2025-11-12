@@ -534,6 +534,40 @@ router.delete('/targets/:id', authenticate, requireAdminOrSupervisor, requireVoi
   }
 });
 
+// Bulk toggle enabled/disabled for multiple targets
+router.post('/targets/bulk-toggle', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
+  try {
+    const bulkToggleSchema = z.object({
+      targetIds: z.array(z.string()).min(1, 'Pelo menos um alvo deve ser selecionado'),
+      enabled: z.boolean(),
+    });
+
+    const validation = bulkToggleSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: 'Dados inválidos',
+        details: validation.error.errors
+      });
+    }
+
+    const { targetIds, enabled } = validation.data;
+
+    console.log(`🔄 [Voice API] Bulk toggle: ${enabled ? 'enabling' : 'disabling'} ${targetIds.length} targets`);
+
+    const result = await storage.bulkToggleVoiceCampaignTargets(targetIds, enabled);
+
+    console.log(`✅ [Voice API] Bulk toggle complete: ${result.updated} updated`);
+    res.json({
+      success: true,
+      updated: result.updated,
+      message: `${result.updated} alvos ${enabled ? 'habilitados' : 'desabilitados'} com sucesso`
+    });
+  } catch (error: any) {
+    console.error('❌ [Voice API] Error in bulk toggle:', error);
+    res.status(500).json({ error: 'Erro ao atualizar alvos em massa' });
+  }
+});
+
 // ===== CALL ATTEMPTS =====
 router.get('/targets/:targetId/attempts', authenticate, requireAdminOrSupervisor, requireVoiceModule, async (req, res) => {
   try {

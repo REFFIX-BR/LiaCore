@@ -477,6 +477,7 @@ export interface IStorage {
   createVoiceCampaignTarget(target: InsertVoiceCampaignTarget): Promise<VoiceCampaignTarget>;
   createVoiceCampaignTargets(targets: InsertVoiceCampaignTarget[]): Promise<VoiceCampaignTarget[]>;
   updateVoiceCampaignTarget(id: string, updates: Partial<VoiceCampaignTarget>): Promise<VoiceCampaignTarget | undefined>;
+  bulkToggleVoiceCampaignTargets(targetIds: string[], enabled: boolean): Promise<{ updated: number; updatedIds: string[] }>;
   incrementTargetAttempt(id: string, nextAttemptAt?: Date): Promise<void>;
 
   // Voice Call Attempts
@@ -5505,6 +5506,30 @@ export class DbStorage implements IStorage {
       .where(eq(schema.voiceCampaignTargets.id, id))
       .returning();
     return updated;
+  }
+
+  async bulkToggleVoiceCampaignTargets(targetIds: string[], enabled: boolean): Promise<{ updated: number; updatedIds: string[] }> {
+    return await db.transaction(async (tx) => {
+      const updatedTargets = await tx.update(schema.voiceCampaignTargets)
+        .set({ enabled, updatedAt: new Date() })
+        .where(inArray(schema.voiceCampaignTargets.id, targetIds))
+        .returning({ id: schema.voiceCampaignTargets.id, campaignId: schema.voiceCampaignTargets.campaignId });
+
+      const updatedIds = updatedTargets.map(t => t.id);
+      
+      // Recalculate stats for all affected campaigns
+      const affectedCampaignIds = Array.from(new Set(updatedTargets.map(t => t.campaignId)));
+      for (const campaignId of affectedCampaignIds) {
+        await this.recalculateVoiceCampaignStats(campaignId);
+      }
+
+      console.log(`✅ [Storage] Bulk toggle: ${updatedIds.length} targets ${enabled ? 'enabled' : 'disabled'}`);
+      
+      return {
+        updated: updatedIds.length,
+        updatedIds,
+      };
+    });
   }
 
   async incrementTargetAttempt(id: string, nextAttemptAt?: Date): Promise<void> {
