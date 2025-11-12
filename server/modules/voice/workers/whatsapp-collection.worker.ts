@@ -231,9 +231,10 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
       // Formatar número WhatsApp (remover caracteres especiais)
       const cleanPhone = phoneNumber.replace(/\D/g, '');
       
-      // IMPORTANTE: Usar formato normalizado consistente com webhook (whatsapp_NUMERO)
+      // IMPORTANTE: Usar formato normalizado consistente com webhook (whatsapp_55NUMERO)
+      // O webhook do Evolution API sempre envia com 55, então precisamos adicionar aqui também
       // para garantir que as respostas do cliente sejam processadas na mesma conversa
-      const chatId = `whatsapp_${cleanPhone}`;
+      const chatId = `whatsapp_55${cleanPhone}`;
 
       // Verificar se já existe conversa para este chatId
       let conversation = await storage.getConversationByChatId(chatId);
@@ -244,7 +245,7 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
         conversation = await storage.createConversation({
           chatId,
           clientName,
-          clientId: cleanPhone,
+          clientId: `55${cleanPhone}`, // Adicionar 55 para consistência
           clientDocument: clientDocument || null,
           assistantType: 'cobranca', // IMPORTANTE: IA Cobrança especializada
           department: 'financial',
