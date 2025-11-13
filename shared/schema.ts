@@ -1324,12 +1324,43 @@ export const voiceCampaignTargets = pgTable("voice_campaign_targets", {
   campaignEnabledStateIdx: index("voice_targets_campaign_enabled_state_idx").on(table.campaignId, table.enabled, table.state),
 }));
 
+// Voice Call Attempts - Tentativas de ligação (legacy - não usado no fluxo WhatsApp-only)
+export const voiceCallAttempts = pgTable("voice_call_attempts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  targetId: varchar("target_id").notNull().references(() => voiceCampaignTargets.id, { onDelete: "cascade" }),
+  campaignId: varchar("campaign_id").notNull().references(() => voiceCampaigns.id),
+  attemptNumber: integer("attempt_number").notNull(),
+  phoneNumber: text("phone_number").notNull(),
+  scheduledFor: timestamp("scheduled_for"),
+  dialedAt: timestamp("dialed_at"),
+  callSid: text("call_sid"),
+  status: text("status").notNull().default("scheduled"),
+  amdResult: text("amd_result"),
+  durationSeconds: integer("duration_seconds"),
+  recordingUrl: text("recording_url"),
+  transcriptUrl: text("transcript_url"),
+  transcript: text("transcript"),
+  aiSummary: text("ai_summary"),
+  sentiment: text("sentiment"),
+  detectedIntent: text("detected_intent"),
+  errorCode: text("error_code"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  campaignIdIdx: index("voice_attempts_campaign_id_idx").on(table.campaignId),
+  scheduledForIdx: index("voice_attempts_scheduled_for_idx").on(table.scheduledFor),
+  statusIdx: index("voice_attempts_status_idx").on(table.status),
+  targetIdIdx: index("voice_attempts_target_id_idx").on(table.targetId),
+}));
+
 // Voice Promises - Promessas de pagamento
 export const voicePromises = pgTable("voice_promises", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: varchar("campaign_id").notNull().references(() => voiceCampaigns.id),
   targetId: varchar("target_id").references(() => voiceCampaignTargets.id),
   contactId: varchar("contact_id").references(() => contacts.id),
+  callAttemptId: varchar("call_attempt_id").references(() => voiceCallAttempts.id), // Link para tentativa de ligação (legacy)
   
   // Dados da promessa
   contactName: text("contact_name").notNull(),
@@ -1366,6 +1397,27 @@ export const voicePromises = pgTable("voice_promises", {
   dueDateIdx: index("voice_promises_due_date_idx").on(table.dueDate),
   contactIdIdx: index("voice_promises_contact_id_idx").on(table.contactId),
 }));
+
+// Voice Feature Flags - Feature flags de voz (legacy - não usado no fluxo WhatsApp-only)
+export const voiceFeatureFlags = pgTable("voice_feature_flags", {
+  key: text("key").primaryKey(),
+  isEnabled: boolean("is_enabled").notNull().default(false),
+  metadata: jsonb("metadata"),
+  updatedBy: varchar("updated_by"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Voice Configs - Configurações de voz (legacy - não usado no fluxo WhatsApp-only)
+export const voiceConfigs = pgTable("voice_configs", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  value: jsonb("value").notNull(),
+  description: text("description"),
+  updatedBy: varchar("updated_by"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
 
 // Voice Messaging Settings - Configuração global de métodos de envio de mensagens
 export const voiceMessagingSettings = pgTable("voice_messaging_settings", {
