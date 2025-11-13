@@ -563,12 +563,7 @@ router.put('/configs/:key', authenticate, requireAdmin, async (req, res) => {
     const { key } = req.params;
     const { value, description } = req.body;
     
-    const config = await storage.setVoiceConfig({
-      key,
-      value,
-      description,
-      updatedBy: req.user?.userId || null,
-    });
+    const config = await storage.setVoiceConfig(key, value, description);
     
     console.log('✅ [Voice API] Config updated:', key);
     res.json(config);
