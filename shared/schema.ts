@@ -1457,7 +1457,7 @@ export const insertVoiceCampaignTargetSchema = createInsertSchema(voiceCampaignT
 
 export const updateVoiceCampaignTargetSchema = z.object({
   debtorName: z.string().min(1, "Nome é obrigatório"),
-  phoneNumber: z.string().regex(/^\d{10,11}$/, "Telefone deve ter 10 ou 11 dígitos"),
+  phoneNumber: z.string().regex(/^\d{10,13}$/, "Telefone deve ter 10 a 13 dígitos (com ou sem código do país 55)"),
   debtAmount: z.number().int().positive("Valor da dívida deve ser positivo").optional(),
   maxAttempts: z.number().int().min(1, "Máximo de tentativas deve ser pelo menos 1").optional(),
   nextScheduledAt: z.coerce.date().optional(),

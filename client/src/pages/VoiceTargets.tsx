@@ -39,7 +39,7 @@ interface Target {
 // Schema de validação do formulário
 const updateTargetSchema = z.object({
   debtorName: z.string().min(1, "Nome é obrigatório"),
-  phoneNumber: z.string().regex(/^\d{10,11}$/, "Telefone deve ter 10 ou 11 dígitos (apenas números)"),
+  phoneNumber: z.string().regex(/^\d{10,13}$/, "Telefone deve ter 10 a 13 dígitos (com ou sem código do país 55)"),
   debtAmount: z.string().optional().transform((val) => {
     if (!val || val === '') return undefined;
     const num = parseFloat(val);
