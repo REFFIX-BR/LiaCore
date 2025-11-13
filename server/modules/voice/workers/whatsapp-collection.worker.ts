@@ -134,6 +134,12 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
         console.log(`🔍 [Voice WhatsApp] Verificando status de pagamento via CRM para CPF/CNPJ: ${clientDocument}`);
         
         try {
+          // CRITICAL: Validate clientDocument before calling replace()
+          if (!clientDocument) {
+            console.warn(`⚠️ [Voice WhatsApp] Target ${targetId} has no document - skipping boleto consultation`);
+            throw new Error('Cliente sem documento cadastrado - impossível consultar boleto');
+          }
+          
           // Normalizar documento (remover formatação)
           const documentoNormalizado = clientDocument.replace(/\D/g, '');
           
