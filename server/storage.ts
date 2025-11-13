@@ -475,6 +475,17 @@ export interface IStorage {
   updateVoiceCampaignTarget(id: string, updates: Partial<VoiceCampaignTarget>): Promise<VoiceCampaignTarget | undefined>;
   bulkToggleVoiceCampaignTargets(targetIds: string[], enabled: boolean): Promise<{ updated: number; updatedIds: string[] }>;
   incrementTargetAttempt(id: string, nextAttemptAt?: Date): Promise<void>;
+  deleteVoiceCampaignTarget(id: string): Promise<void>;
+
+  // Voice Call Attempts (legacy - not used in WhatsApp-only flow)
+  getVoiceCallAttempts(targetId: string): Promise<any[]>;
+  getVoiceCallAttemptsByCampaign(campaignId: string): Promise<any[]>;
+
+  // Voice Configs (legacy - not used in WhatsApp-only flow)
+  getAllVoiceConfigs(): Promise<any[]>;
+  getVoiceConfig(key: string): Promise<any | undefined>;
+  setVoiceConfig(key: string, value: any, description?: string): Promise<any>;
+  deleteVoiceConfig(key: string): Promise<void>;
 
   // Voice Promises
   getAllVoicePromises(): Promise<VoicePromise[]>;
@@ -5483,7 +5494,13 @@ export class DbStorage implements IStorage {
     return updated;
   }
 
+  // DEPRECATED: Method disabled - 'enabled' column removed from production schema
   async bulkToggleVoiceCampaignTargets(targetIds: string[], enabled: boolean): Promise<{ updated: number; updatedIds: string[] }> {
+    // Stub implementation - returns empty result
+    console.warn('⚠️ [Storage] bulkToggleVoiceCampaignTargets called but is deprecated (enabled column does not exist in production)');
+    return { updated: 0, updatedIds: [] };
+    
+    /* Original implementation - disabled due to missing 'enabled' column
     return await db.transaction(async (tx) => {
       const updatedTargets = await tx.update(schema.voiceCampaignTargets)
         .set({ enabled, updatedAt: new Date() })
@@ -5505,6 +5522,7 @@ export class DbStorage implements IStorage {
         updatedIds,
       };
     });
+    */
   }
 
   async incrementTargetAttempt(id: string, nextAttemptAt?: Date): Promise<void> {
@@ -5521,6 +5539,51 @@ export class DbStorage implements IStorage {
   async deleteVoiceCampaignTarget(id: string): Promise<void> {
     await db.delete(schema.voiceCampaignTargets)
       .where(eq(schema.voiceCampaignTargets.id, id));
+  }
+
+  // Voice Call Attempts - STUB methods (tables exist but not used in WhatsApp-only flow)
+  async getVoiceCallAttempts(targetId: string): Promise<any[]> {
+    return await db.select().from(schema.voiceCallAttempts)
+      .where(eq(schema.voiceCallAttempts.targetId, targetId));
+  }
+
+  async getVoiceCallAttemptsByCampaign(campaignId: string): Promise<any[]> {
+    return await db.select().from(schema.voiceCallAttempts)
+      .where(eq(schema.voiceCallAttempts.campaignId, campaignId));
+  }
+
+  // Voice Configs - STUB methods (tables exist but not used in WhatsApp-only flow)
+  async getAllVoiceConfigs(): Promise<any[]> {
+    return await db.select().from(schema.voiceConfigs)
+      .orderBy(schema.voiceConfigs.key);
+  }
+
+  async getVoiceConfig(key: string): Promise<any | undefined> {
+    const configs = await db.select().from(schema.voiceConfigs)
+      .where(eq(schema.voiceConfigs.key, key))
+      .limit(1);
+    return configs[0];
+  }
+
+  async setVoiceConfig(key: string, value: any, description?: string): Promise<any> {
+    const existing = await this.getVoiceConfig(key);
+    if (existing) {
+      const [updated] = await db.update(schema.voiceConfigs)
+        .set({ value, description, updatedAt: new Date() })
+        .where(eq(schema.voiceConfigs.key, key))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(schema.voiceConfigs)
+        .values({ key, value, description })
+        .returning();
+      return created;
+    }
+  }
+
+  async deleteVoiceConfig(key: string): Promise<void> {
+    await db.delete(schema.voiceConfigs)
+      .where(eq(schema.voiceConfigs.key, key));
   }
 
   // Voice Promises

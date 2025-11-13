@@ -27,11 +27,11 @@ async function activateVoiceCampaign(campaignId: string): Promise<{ enqueued: nu
   // Accept both 'pending' and 'scheduled' states when attemptCount is 0 or NULL
   // This allows reactivating campaigns that were previously paused
   // CRITICAL FIX: Treat NULL attemptCount as 0 (fresh targets from import have NULL)
-  // CRITICAL FIX: Only enqueue explicitly enabled targets (enabled=true)
+  // NOTE: Removed 'enabled' column check - production uses state-based gating only
   const pendingTargets = targets.filter(t => 
     (t.state === 'pending' || t.state === 'scheduled') && 
-    (t.attemptCount ?? 0) === 0 &&
-    t.enabled === true // Only send explicitly enabled targets
+    (t.attemptCount ?? 0) === 0
+    // Removed: t.enabled === true (column doesn't exist in production)
   );
   
   console.log(`📊 [Voice Activation] Found ${pendingTargets.length} pending/scheduled targets (${targets.length} total)`);
@@ -403,7 +403,9 @@ router.delete('/targets/:id', authenticate, requireAdminOrSupervisor, async (req
   }
 });
 
-// Bulk toggle enabled/disabled for multiple targets
+// DEPRECATED: Bulk toggle disabled - 'enabled' column removed from production schema
+// TODO: Implement state-based gating using 'state' transitions (e.g., pending/suppressed)
+/*
 router.post('/targets/bulk-toggle', authenticate, requireAdminOrSupervisor, async (req, res) => {
   try {
     const bulkToggleSchema = z.object({
@@ -436,6 +438,7 @@ router.post('/targets/bulk-toggle', authenticate, requireAdminOrSupervisor, asyn
     res.status(500).json({ error: 'Erro ao atualizar alvos em massa' });
   }
 });
+*/
 
 // ===== CALL ATTEMPTS =====
 router.get('/targets/:targetId/attempts', authenticate, requireAdminOrSupervisor, async (req, res) => {
