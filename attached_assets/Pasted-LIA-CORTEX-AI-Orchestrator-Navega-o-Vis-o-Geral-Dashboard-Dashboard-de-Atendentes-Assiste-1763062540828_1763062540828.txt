@@ -1,0 +1,303 @@
+LIA CORTEX
+AI Orchestrator
+
+Navegação
+
+Visão Geral
+Dashboard
+Dashboard de Atendentes
+Assistentes
+
+Conversas
+Conversas
+Monitor Supervisor
+Grupos WhatsApp
+Contatos
+
+Qualidade
+Qualidade de Contexto
+Ouvidoria
+Feedbacks NPS
+Análises
+Métricas
+
+Vendas
+Gestão de Vendas
+
+Operações
+Falhas Massivas
+Regiões
+
+Conhecimento & IA
+Base de Conhecimento
+Gerenciamento de Prompts
+Evolução dos Agentes
+Gamificação
+Configurações
+
+Ferramentas
+Anúncios
+Relatórios de Atendentes
+Logs de Atividade
+Logs em Tempo Real
+Logs dos Agentes IA
+Monitor Webhook
+Test Chat
+
+COBRANÇAS
+Monitor de Cobranças
+Campanhas
+Alvos
+Promessas
+Configurações
+Gestão de Mensagens
+
+Administração
+Usuários
+Solicitações de Registro
+Configurações
+Sistema Online
+Toggle Sidebar
+
+MZ
+Monitor de Atendimento
+Sistema Online
+Buscar por Chat ID, cliente...
+
+Modo de Visualização:
+🌐 Todas
+🤖 IA Atendendo
+⏳ Aguardando
+👤 Em Atendimento
+📋 Finalizadas
+📜 Histórico Completo
+Cobranças:
+💬 Campanha WhatsApp
+Todos
+16
+Apresentação
+0
+Financeiro
+0
+Suporte Técnico
+0
+Comercial
+0
+Ouvidoria
+0
+Cancelamento
+0
+Todos
+16 conversas
+
+Chat #whatsapp_555524992630536
+00:00
+LIA Cobranca
+Cliente: ANA CRISTINA DA SILVA (C.I) (C.I)
+
+IA:
+
+"Olá ANA! Aqui é a Lia, assistente virtual da TR Telecom. Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta. Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível."
+😐 Neutro
+Urgência: Normal
+Última mensagem há menos de um minuto
+
+
+Chat #whatsapp_555524988229936
+00:00
+LIA Cobranca
+Cliente: GABRIEL TAVARES DOS SANTOS (C.I) (C.I)
+
+IA:
+
+"Olá GABRIEL! Aqui é a Lia, assistente virtual da TR Telecom. Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta. Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível."
+😐 Neutro
+Urgência: Normal
+Última mensagem há 4 minutos
+
+
+Chat #whatsapp_555532999443684
+00:00
+LIA Cobranca
+Cliente: ULISSES CARVALHO DA SILVA (C.I) (C.I)
+
+IA:
+
+"Olá ULISSES! Aqui é a Lia, assistente virtual da TR Telecom. Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta. Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível."
+😐 Neutro
+Urgência: Normal
+Última mensagem há 5 minutos
+
+
+Chat #whatsapp_555524999824813
+00:00
+LIA Cobranca
+Cliente: JUDITE MOREIRA DE ASSUNÇÃO
+
+IA:
+
+"Olá JUDITE! Aqui é a Lia, assistente virtual da TR Telecom. Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta. Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível."
+😐 Neutro
+Urgência: Normal
+Última mensagem há cerca de 1 hora
+
+
+Chat #whatsapp_555524992455093
+00:00
+LIA Cobranca
+Cliente: MARIA DE LOURDES FERRAZ SANTANA (C.I) (C.I)
+
+IA:
+
+"Olá MARIA! Aqui é a Lia, assistente virtual da TR Telecom. Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta. Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível."
+😐 Neutro
+Urgência: Normal
+Última mensagem há cerca de 1 hora
+
+
+Chat #whatsapp_555549999210165
+00:00
+LIA Cobranca
+Cliente: ROBSON CANEDO DE SOUZA OLIVEIRA (C.I) (C.I)
+
+IA:
+
+"Olá ROBSON! Aqui é a Lia, assistente virtual da TR Telecom. Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta. Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível."
+😐 Neutro
+Urgência: Normal
+Última mensagem há cerca de 1 hora
+
+
+Chat #whatsapp_555524992811056
+00:00
+LIA Cobranca
+Cliente: DOMINIQUE DOS SANTOS CORREIA
+
+IA:
+
+"Olá DOMINIQUE! Aqui é a Lia, assistente virtual da TR Telecom. Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta. Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível."
+😐 Neutro
+Urgência: Normal
+Última mensagem há cerca de 1 hora
+
+
+Chat #whatsapp_555524999403566
+00:00
+LIA Cobranca
+Cliente: ANA JÚLIA SOARES DOS SANTOS (C.I) (C.I)
+
+IA:
+
+"Olá ANA! Aqui é a Lia, assistente virtual da TR Telecom. Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta. Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível."
+😐 Neutro
+Urgência: Normal
+Última mensagem há cerca de 1 hora
+
+
+Chat #whatsapp_555524998918494
+00:00
+LIA Cobranca
+Cliente: RENAN GOMES BRAGA (C.I) (C.I)
+
+IA:
+
+"Olá RENAN! Aqui é a Lia, assistente virtual da TR Telecom. Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta. Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível."
+😐 Neutro
+Urgência: Normal
+Última mensagem há cerca de 1 hora
+
+
+Chat #whatsapp_555532999322862
+00:00
+LIA Cobranca
+Cliente: INDAIARA CRISTINA DE CARVALHO CORREA (C.I) (C.I)
+
+IA:
+
+"Olá INDAIARA! Aqui é a Lia, assistente virtual da TR Telecom. Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta. Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível."
+😐 Neutro
+Urgência: Normal
+Última mensagem há cerca de 1 hora
+
+
+Chat #whatsapp_555524998658784
+00:00
+LIA Cobranca
+Cliente: CARLA BEATRIZ DE SOUZA AFFONSO
+
+IA:
+
+"Olá CARLA! Aqui é a Lia, assistente virtual da TR Telecom. Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta. Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível."
+😐 Neutro
+Urgência: Normal
+Última mensagem há cerca de 1 hora
+
+
+Chat #whatsapp_555524992529067
+00:00
+LIA Cobranca
+Cliente: HENRIQUE DE MELLO CANDIDO (C.I) (C.I)
+
+IA:
+
+"Olá HENRIQUE! Aqui é a Lia, assistente virtual da TR Telecom. Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta. Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível."
+😐 Neutro
+Urgência: Normal
+Última mensagem há cerca de 1 hora
+
+
+Chat #whatsapp_555524992097384
+00:00
+LIA Cobranca
+Cliente: TAIS DA SILVA SANTOS (C.I) (C.I)
+
+IA:
+
+"Olá TAIS! Aqui é a Lia, assistente virtual da TR Telecom. Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta. Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível."
+😐 Neutro
+Urgência: Normal
+Última mensagem há cerca de 1 hora
+
+
+Chat #whatsapp_555524998292910
+00:00
+LIA Cobranca
+Cliente: JULIO CEZAR MANOEL ESTEVES (C.I) (C.I)
+
+IA:
+
+"Olá JULIO! Aqui é a Lia, assistente virtual da TR Telecom. Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta. Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível."
+😐 Neutro
+Urgência: Normal
+Última mensagem há cerca de 1 hora
+
+
+Chat #whatsapp_555524988462198
+00:00
+LIA Cobranca
+Cliente: JULIANO DE CAMPOS SANTOS
+
+IA:
+
+"Olá JULIANO! Aqui é a Lia, assistente virtual da TR Telecom. Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta. Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível."
+😐 Neutro
+Urgência: Normal
+Última mensagem há cerca de 1 hora
+
+
+Chat #whatsapp_5524998642492
+00:00
+LIA Cobranca
+Cliente: ANA PAULA TOGNIN CORTACIO
+
+Cliente:
+
+"Boa tarde"
+IA:
+
+"Olá, tudo bem? 😊 Falo com quem?"
+😐 Neutro
+Urgência: Normal
+Última mensagem há cerca de 2 horas
+
+Chat whatsapp_555524992630536 - ANA CRISTINA DA SILVA (C.I) (C.I)

@@ -3409,9 +3409,8 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
           const statusUpdates = Array.isArray(data) ? data : [data];
           
           for (const update of statusUpdates) {
-            const { key, update: statusUpdate } = update;
+            const { key, status } = update;
             const { remoteJid, id: whatsappMessageId, fromMe } = key;
-            const { status } = statusUpdate || {};
             
             if (!status || !whatsappMessageId) {
               console.log(`⚠️ [Evolution Status] Update sem status ou messageId - ignorando`);
