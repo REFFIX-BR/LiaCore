@@ -1,0 +1,51 @@
+CREATE TABLE "voice_feature_flags" (
+	"key" text PRIMARY KEY NOT NULL,
+	"is_enabled" boolean DEFAULT false NOT NULL,
+	"metadata" jsonb,
+	"updated_by" varchar,
+	"updated_at" timestamp DEFAULT now(),
+	"created_at" timestamp DEFAULT now()
+);
+CREATE TABLE "voice_configs" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"key" text NOT NULL,
+	"value" jsonb NOT NULL,
+	"description" text,
+	"updated_by" varchar,
+	"updated_at" timestamp DEFAULT now(),
+	"created_at" timestamp DEFAULT now(),
+	CONSTRAINT "voice_configs_key_unique" UNIQUE("key")
+);
+CREATE TABLE "voice_call_attempts" (
+	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"target_id" varchar NOT NULL,
+	"campaign_id" varchar NOT NULL,
+	"attempt_number" integer NOT NULL,
+	"phone_number" text NOT NULL,
+	"scheduled_for" timestamp,
+	"dialed_at" timestamp,
+	"call_sid" text,
+	"status" text DEFAULT 'scheduled' NOT NULL,
+	"amd_result" text,
+	"duration_seconds" integer,
+	"recording_url" text,
+	"transcript_url" text,
+	"transcript" text,
+	"ai_summary" text,
+	"sentiment" text,
+	"detected_intent" text,
+	"error_code" text,
+	"error_message" text,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
+);
+DROP INDEX "voice_targets_campaign_enabled_state_idx";
+ALTER TABLE "voice_promises" ADD COLUMN "call_attempt_id" varchar;
+ALTER TABLE "voice_call_attempts" ADD CONSTRAINT "voice_call_attempts_target_id_voice_campaign_targets_id_fk" FOREIGN KEY ("target_id") REFERENCES "public"."voice_campaign_targets"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "voice_call_attempts" ADD CONSTRAINT "voice_call_attempts_campaign_id_voice_campaigns_id_fk" FOREIGN KEY ("campaign_id") REFERENCES "public"."voice_campaigns"("id") ON DELETE no action ON UPDATE no action;
+CREATE INDEX "voice_attempts_campaign_id_idx" ON "voice_call_attempts" USING btree ("campaign_id");
+CREATE INDEX "voice_attempts_scheduled_for_idx" ON "voice_call_attempts" USING btree ("scheduled_for");
+CREATE INDEX "voice_attempts_status_idx" ON "voice_call_attempts" USING btree ("status");
+CREATE INDEX "voice_attempts_target_id_idx" ON "voice_call_attempts" USING btree ("target_id");
+ALTER TABLE "voice_promises" ADD CONSTRAINT "voice_promises_call_attempt_id_voice_call_attempts_id_fk" FOREIGN KEY ("call_attempt_id") REFERENCES "public"."voice_call_attempts"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "voice_campaign_targets" DROP COLUMN "enabled";
