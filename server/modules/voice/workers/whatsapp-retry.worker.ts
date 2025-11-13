@@ -115,32 +115,21 @@ const worker = new Worker<WhatsAppRetryJob>(
           return { success: false, reason: 'invalid_phone_number' };
         }
         
-        // Se tiver whatsappMessageId, é um template (campanha de cobrança)
-        // Caso contrário, é mensagem de texto simples
-        if (originalTargetId) {
-          // Buscar target para obter dados do template
-          const target = await storage.getVoiceCampaignTarget(originalTargetId);
+        // Usar template metadata persistido ao invés de hardcoded
+        if (message.whatsappTemplateMetadata) {
+          const metadata = message.whatsappTemplateMetadata as any;
           
-          if (!target) {
-            console.error(`❌ [WhatsApp Retry] Target ${originalTargetId} not found`);
-            return { success: false, reason: 'target_not_found' };
-          }
-          
-          // Reenviar template
-          console.log(`📤 [WhatsApp Retry] Resending template to ${target.phoneNumber} via ${evolutionInstance}`);
+          console.log(`📤 [WhatsApp Retry] Resending template "${metadata.templateName}" to ${phoneNumber} via ${evolutionInstance}`);
           
           sendResult = await sendWhatsAppTemplate(
-            target.phoneNumber,
+            phoneNumber,
             {
-              templateName: 'financeiro_em_atraso',
-              languageCode: 'en',
-              headerParameters: [{ 
-                value: target.debtorName.split(' ')[0],
-                parameterName: 'texto'
-              }],
-              bodyParameters: [],
+              templateName: metadata.templateName,
+              languageCode: metadata.languageCode || 'en',
+              headerParameters: metadata.headerParameters || [],
+              bodyParameters: metadata.bodyParameters || [],
             },
-            evolutionInstance
+            metadata.evolutionInstance || evolutionInstance
           );
         } else {
           // Reenviar mensagem de texto

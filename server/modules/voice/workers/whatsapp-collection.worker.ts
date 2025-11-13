@@ -3,6 +3,7 @@ import { redisConnection } from '../../../lib/redis-config';
 import { QUEUE_NAMES, VoiceWhatsAppCollectionJob, addVoiceWhatsAppCollectionToQueue } from '../../../lib/queue';
 import { storage } from '../../../storage';
 import { sendWhatsAppMessage, sendWhatsAppTemplate } from '../../../lib/whatsapp';
+import { whatsappRateLimiter } from '../../../lib/whatsapp-rate-limiter';
 import { createThread } from '../../../lib/openai';
 import OpenAI from 'openai';
 
@@ -316,6 +317,17 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
       
       console.log(`📋 [Voice WhatsApp] Template parameters: nome="${firstName}"`)
 
+      // Adquirir token do rate limiter antes de enviar
+      console.log('🔑 [Voice WhatsApp] Acquiring rate limiter token...');
+      const tokenAcquired = await whatsappRateLimiter.waitForToken(60000); // 60s timeout
+      
+      if (!tokenAcquired) {
+        console.warn('⚠️  [Voice WhatsApp] Failed to acquire rate limiter token - requeueing');
+        throw new Error('Rate limit token timeout - will retry');
+      }
+      
+      console.log('✅ [Voice WhatsApp] Rate limiter token acquired');
+
       // Enviar template via WhatsApp (Meta-approved)
       // O template "financeiro_em_atraso" tem:
       // - Header: "Olá {{texto}}!" (variável nomeada 'texto')
@@ -426,6 +438,17 @@ Use o nome "${clientName.split(' ')[0]}" para se dirigir ao cliente.`;
         content: messagePreview,
         assistant: 'cobranca', // IA Cobrança especializada
         sendBy: 'ai',
+        whatsappMessageId: result.whatsappMessageId || undefined,
+        whatsappStatus: result.success ? 'PENDING' : 'ERROR',
+        whatsappStatusUpdatedAt: new Date(),
+        whatsappTemplateMetadata: {
+          templateName: 'financeiro_em_atraso',
+          languageCode: 'en',
+          headerParameters: [{ value: firstName, parameterName: 'texto' }],
+          bodyParameters: [],
+          phoneNumber,
+          evolutionInstance: 'Cobranca',
+        },
       });
 
       // Atualizar conversa com última mensagem
