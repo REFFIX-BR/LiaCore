@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Phone, Search, PhoneCall, PhoneOff, Clock, CheckCircle2, XCircle, Trash2, Upload, Calendar, Edit, Check, X } from 'lucide-react';
+import { Phone, Search, PhoneCall, PhoneOff, Clock, CheckCircle2, XCircle, Trash2, Upload, Calendar, Edit } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -122,29 +122,6 @@ export default function VoiceTargets() {
     },
   });
 
-  const bulkToggleMutation = useMutation({
-    mutationFn: async ({ targetIds, enabled }: { targetIds: string[]; enabled: boolean }) => {
-      return apiRequest('/api/voice/targets/bulk-toggle', 'POST', { targetIds, enabled });
-    },
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/voice/targets'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/voice/campaigns'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/voice/stats'] });
-      toast({
-        title: data.message || 'Alvos atualizados',
-        description: `${data.updated} alvos foram atualizados com sucesso.`,
-      });
-      setSelectedTargetIds(new Set());
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Erro ao atualizar alvos',
-        description: error.message || 'Ocorreu um erro ao atualizar os alvos em massa.',
-        variant: 'destructive',
-      });
-    },
-  });
-
   // Funções auxiliares de seleção
   const toggleTargetSelection = (targetId: string) => {
     const newSelection = new Set(selectedTargetIds);
@@ -164,16 +141,6 @@ export default function VoiceTargets() {
     } else {
       setSelectedTargetIds(new Set(filteredTargets.map(t => t.id)));
     }
-  };
-
-  const handleBulkEnable = () => {
-    if (selectedTargetIds.size === 0) return;
-    bulkToggleMutation.mutate({ targetIds: Array.from(selectedTargetIds), enabled: true });
-  };
-
-  const handleBulkDisable = () => {
-    if (selectedTargetIds.size === 0) return;
-    bulkToggleMutation.mutate({ targetIds: Array.from(selectedTargetIds), enabled: false });
   };
 
   const getStatusBadge = (status: string) => {
@@ -498,30 +465,6 @@ export default function VoiceTargets() {
               {selectedTargetIds.size > 0 && ` | ${selectedTargetIds.size} selecionados`}
             </CardDescription>
           </div>
-          {selectedTargetIds.size > 0 && (
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleBulkEnable}
-                disabled={bulkToggleMutation.isPending}
-                data-testid="button-enable-selected"
-              >
-                <Check className="h-4 w-4 mr-1" />
-                Habilitar Selecionados
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleBulkDisable}
-                disabled={bulkToggleMutation.isPending}
-                data-testid="button-disable-selected"
-              >
-                <X className="h-4 w-4 mr-1" />
-                Desabilitar Selecionados
-              </Button>
-            </div>
-          )}
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -540,7 +483,6 @@ export default function VoiceTargets() {
                   <TableHead>Valor da Dívida</TableHead>
                   <TableHead>Tentativas</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Habilitado</TableHead>
                   <TableHead>Última Tentativa</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
@@ -572,11 +514,6 @@ export default function VoiceTargets() {
                       </TableCell>
                       <TableCell data-testid={`cell-status-${target.id}`}>
                         {getStatusBadge(target.status)}
-                      </TableCell>
-                      <TableCell data-testid={`cell-enabled-${target.id}`}>
-                        <Badge variant={target.enabled !== false ? "default" : "outline"}>
-                          {target.enabled !== false ? "Sim" : "Não"}
-                        </Badge>
                       </TableCell>
                       <TableCell data-testid={`cell-last-attempt-${target.id}`}>
                         {target.lastAttemptAt
@@ -618,7 +555,7 @@ export default function VoiceTargets() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       Nenhum alvo encontrado
                     </TableCell>
                   </TableRow>
