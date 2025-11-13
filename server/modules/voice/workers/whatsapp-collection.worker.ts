@@ -5,6 +5,7 @@ import { storage } from '../../../storage';
 import { sendWhatsAppMessage, sendWhatsAppTemplate } from '../../../lib/whatsapp';
 import { whatsappRateLimiter } from '../../../lib/whatsapp-rate-limiter';
 import { createThread } from '../../../lib/openai';
+import { buildWhatsAppChatId } from '../../../lib/phone-utils';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
@@ -254,13 +255,9 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
         lastAttemptAt: new Date(),
       });
 
-      // Formatar número WhatsApp (remover caracteres especiais)
-      const cleanPhone = phoneNumber.replace(/\D/g, '');
-      
-      // IMPORTANTE: Usar formato normalizado consistente com webhook (whatsapp_55NUMERO)
-      // O webhook do Evolution API sempre envia com 55, então precisamos adicionar aqui também
-      // para garantir que as respostas do cliente sejam processadas na mesma conversa
-      const chatId = `whatsapp_55${cleanPhone}`;
+      // CRITICAL: phoneNumber already comes normalized from database (55XXXXXXXXXXX)
+      // Use helper to build chatId without adding extra "55"
+      const chatId = buildWhatsAppChatId(phoneNumber);
 
       // Verificar se já existe conversa para este chatId
       let conversation = await storage.getConversationByChatId(chatId);
@@ -271,7 +268,7 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
         conversation = await storage.createConversation({
           chatId,
           clientName,
-          clientId: `55${cleanPhone}`, // Adicionar 55 para consistência
+          clientId: phoneNumber, // Already normalized (55XXXXXXXXXXX)
           clientDocument: clientDocument || null,
           assistantType: 'cobranca', // IMPORTANTE: IA Cobrança especializada
           department: 'financial',

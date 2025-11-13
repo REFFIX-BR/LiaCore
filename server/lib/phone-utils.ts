@@ -29,22 +29,36 @@ export function normalizePhone(phone: string | null | undefined): string | null 
     return null;
   }
 
-  // Remove leading +55 or 55 if present (will re-add later)
+  // Remove ALL repeated leading "55" prefixes until we reach the correct format
+  // CRM sometimes sends duplicated country codes: "555524992630536" (15 digits) -> "5524992630536" (13 digits)
   let normalized = digitsOnly;
-  if (normalized.startsWith('55')) {
-    normalized = normalized.substring(2);
+  
+  // Keep removing "55" while number is too long (> 13 digits)
+  while (normalized.startsWith('55') && normalized.length > 13) {
+    const withoutPrefix = normalized.substring(2);
+    console.log(`[Phone Normalization] Removed duplicate "55": "${normalized}" -> "${withoutPrefix}"`);
+    normalized = withoutPrefix;
   }
-
-  // Validate length (should be 10 or 11 digits after removing country code)
-  // 10 digits: landline (e.g., 2499207033)
-  // 11 digits: mobile (e.g., 24999207033)
-  if (normalized.length < 10 || normalized.length > 11) {
-    console.warn(`[Phone Normalization] Invalid length (${normalized.length} digits): "${phone}" -> "${normalized}"`);
+  
+  // If number doesn't start with "55" but has correct length, add it
+  if (!normalized.startsWith('55')) {
+    // Validate length (should be 10 or 11 digits for Brazilian numbers)
+    // 10 digits: landline (e.g., 2499207033)
+    // 11 digits: mobile (e.g., 24999207033)
+    if (normalized.length < 10 || normalized.length > 11) {
+      console.warn(`[Phone Normalization] Invalid length (${normalized.length} digits): "${phone}" -> "${normalized}"`);
+      return null;
+    }
+    normalized = `55${normalized}`;
+  }
+  
+  // Final validation: must be exactly 12 or 13 digits (55 + 10/11 digits)
+  if (normalized.length !== 12 && normalized.length !== 13) {
+    console.warn(`[Phone Normalization] Invalid final length (${normalized.length} digits): "${phone}" -> "${normalized}"`);
     return null;
   }
-
-  // Always add 55 prefix (Brazil country code)
-  const final = `55${normalized}`;
+  
+  const final = normalized;
 
   // Log normalization for debugging
   if (phone !== final) {
@@ -110,4 +124,27 @@ export function isPhoneNormalized(phone: string | null | undefined): boolean {
 
   // Must be 12 or 13 digits total (55 + 10/11 digits)
   return phone.length === 12 || phone.length === 13;
+}
+
+/**
+ * Builds a WhatsApp chat ID from a normalized phone number
+ * 
+ * CRITICAL: The input phone must already be normalized (55XXXXXXXXXXX format)
+ * This function does NOT add an extra "55" prefix
+ * 
+ * @param normalizedPhone - Phone number in normalized format (55XXXXXXXXXXX)
+ * @returns WhatsApp chat ID in format "whatsapp_55XXXXXXXXXXX"
+ * 
+ * @example
+ * buildWhatsAppChatId('5524992504803') // Returns: "whatsapp_5524992504803"
+ * buildWhatsAppChatId('555524992504803') // Throws error (duplicate 55)
+ */
+export function buildWhatsAppChatId(normalizedPhone: string): string {
+  // Validate input is normalized
+  if (!isPhoneNormalized(normalizedPhone)) {
+    throw new Error(`buildWhatsAppChatId requires normalized phone (55XXXXXXXXXXX), got: "${normalizedPhone}"`);
+  }
+  
+  // Simply prefix with "whatsapp_" - do NOT add extra "55"
+  return `whatsapp_${normalizedPhone}`;
 }
