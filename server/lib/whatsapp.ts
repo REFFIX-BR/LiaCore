@@ -128,10 +128,18 @@ export async function sendWhatsAppMessage(
   }
 }
 
+export interface WhatsAppTemplateParameter {
+  value: string;
+  parameterName?: string; // For named variables like {{texto}}
+}
+
 export interface WhatsAppTemplateOptions {
   templateName: string;
   languageCode?: string;
-  parameters: string[];
+  headerParameters?: WhatsAppTemplateParameter[];
+  bodyParameters?: WhatsAppTemplateParameter[];
+  // Legacy support: string array maps to bodyParameters
+  parameters?: string[];
 }
 
 /**
@@ -179,19 +187,59 @@ export async function sendWhatsAppTemplate(
     const url = `${baseUrl}/message/sendTemplate/${instance}`;
     
     console.log(`📋 [WhatsApp Template] Enviando template "${options.templateName}" para ${normalizedNumber} via ${instance}`);
-    console.log(`📋 [WhatsApp Template] Parâmetros: ${JSON.stringify(options.parameters)}`);
     
     // Build template components with parameters
     const components = [];
     
-    if (options.parameters && options.parameters.length > 0) {
+    // Header parameters (supports named variables)
+    if (options.headerParameters && options.headerParameters.length > 0) {
+      const headerParams = options.headerParameters.map(param => {
+        const paramObj: any = {
+          type: 'text',
+          text: param.value
+        };
+        
+        // Add parameter_name if it's a named variable
+        if (param.parameterName) {
+          paramObj.parameter_name = param.parameterName;
+        }
+        
+        return paramObj;
+      });
+      
+      components.push({
+        type: 'header',
+        parameters: headerParams
+      });
+      
+      console.log(`📋 [WhatsApp Template] Header params: ${JSON.stringify(options.headerParameters)}`);
+    }
+    
+    // Body parameters (legacy + new format)
+    const bodyParams: WhatsAppTemplateParameter[] = options.bodyParameters || 
+      (options.parameters?.map(p => ({ value: p, parameterName: undefined })) || []);
+    
+    if (bodyParams.length > 0) {
+      const bodyParamsFormatted = bodyParams.map(param => {
+        const paramObj: any = {
+          type: 'text',
+          text: param.value
+        };
+        
+        // Add parameter_name if it's a named variable
+        if (param.parameterName) {
+          paramObj.parameter_name = param.parameterName;
+        }
+        
+        return paramObj;
+      });
+      
       components.push({
         type: 'body',
-        parameters: options.parameters.map(param => ({
-          type: 'text',
-          text: param
-        }))
+        parameters: bodyParamsFormatted
       });
+      
+      console.log(`📋 [WhatsApp Template] Body params: ${JSON.stringify(bodyParams)}`);
     }
     
     const payload = {

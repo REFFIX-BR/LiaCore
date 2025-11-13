@@ -317,12 +317,18 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
       console.log(`📋 [Voice WhatsApp] Template parameters: nome="${firstName}"`)
 
       // Enviar template via WhatsApp (Meta-approved)
+      // O template "financeiro_em_atraso" tem:
+      // - Header: "Olá {{texto}}!" (variável nomeada 'texto')
+      // - Body: texto fixo (sem variáveis)
       const result = await sendWhatsAppTemplate(
         phoneNumber,
         {
           templateName: 'financeiro_em_atraso',
           languageCode: 'en', // Template está registrado como 'English' na Meta
-          parameters: [firstName], // {{texto}} será substituído pelo nome
+          headerParameters: [{ 
+            value: firstName, 
+            parameterName: 'texto' // Variável nomeada no template
+          }],
         },
         'Cobranca' // CRITICAL: Use accent-free instance name
       );
