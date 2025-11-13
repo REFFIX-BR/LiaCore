@@ -250,6 +250,8 @@ export async function sendWhatsAppTemplate(
       components: components
     };
     
+    console.log(`📦 [WhatsApp Template DEBUG] PAYLOAD COMPLETO:`, JSON.stringify(payload, null, 2));
+    
     const response = await fetch(url, {
       method: 'POST',
       headers: {
