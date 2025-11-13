@@ -292,12 +292,16 @@ export async function sendWhatsAppTemplate(
     }
 
     const result = await response.json();
+    
+    // DEBUG: Log complete Evolution API response
+    console.log(`📊 [WhatsApp Template DEBUG] Evolution API Response:`, JSON.stringify(result, null, 2));
     console.log(`✅ [WhatsApp Template] Template "${options.templateName}" enviado para ${normalizedNumber} via ${instance}`);
 
     return {
       success: true,
       whatsappMessageId: result.key?.id,
       remoteJid: result.key?.remoteJid,
+      rawResponse: result, // Include full response for debugging
     };
   } catch (error) {
     console.error("❌ [WhatsApp Template] Erro ao enviar template:", error);
