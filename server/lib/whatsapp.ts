@@ -45,6 +45,7 @@ export interface WhatsAppMessageResult {
   errorStatus?: number;
   errorMessage?: string;
   isPermanentFailure?: boolean; // true for 401/403/404 that shouldn't retry
+  rawResponse?: any; // Complete Evolution API response for debugging
 }
 
 /**

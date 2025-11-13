@@ -111,6 +111,8 @@ export interface IStorage {
   getMessagesPaginated(conversationId: string, options: { limit?: number; before?: string }): Promise<{ messages: Message[]; hasMore: boolean }>;
   createMessage(message: InsertMessage): Promise<Message>;
   getMessage(id: string): Promise<Message | undefined>;
+  getMessageByWhatsAppId(whatsappMessageId: string): Promise<Message | undefined>;
+  getPendingWhatsAppMessages(olderThanMinutes: number): Promise<Message[]>;
   updateMessage(id: string, updates: Partial<Message>): Promise<void>;
   deleteMessage(id: string): Promise<void>;
   
@@ -887,6 +889,13 @@ export class MemStorage implements IStorage {
       timestamp: new Date(),
       functionCall: insertMsg.functionCall || null,
       assistant: insertMsg.assistant || null,
+      // New WhatsApp tracking fields
+      whatsappStatus: insertMsg.whatsappStatus || null,
+      whatsappStatusUpdatedAt: insertMsg.whatsappStatusUpdatedAt || null,
+      audioBase64: insertMsg.audioBase64 || null,
+      // WhatsApp retry fields
+      whatsappRetryCount: insertMsg.whatsappRetryCount || 0,
+      whatsappLastRetryAt: insertMsg.whatsappLastRetryAt || null,
     };
     this.messages.set(id, message);
     return message;
@@ -894,6 +903,23 @@ export class MemStorage implements IStorage {
 
   async getMessage(id: string): Promise<Message | undefined> {
     return this.messages.get(id);
+  }
+
+  async getMessageByWhatsAppId(whatsappMessageId: string): Promise<Message | undefined> {
+    return Array.from(this.messages.values()).find(
+      m => m.whatsappMessageId === whatsappMessageId
+    );
+  }
+
+  async getPendingWhatsAppMessages(olderThanMinutes: number): Promise<Message[]> {
+    const now = new Date();
+    const cutoffTime = new Date(now.getTime() - olderThanMinutes * 60 * 1000);
+    
+    return Array.from(this.messages.values()).filter(m => 
+      m.whatsappStatus === 'PENDING' &&
+      m.whatsappStatusUpdatedAt &&
+      m.whatsappStatusUpdatedAt < cutoffTime
+    );
   }
 
   async updateMessage(id: string, updates: Partial<Message>): Promise<void> {
@@ -2346,6 +2372,27 @@ export class DbStorage implements IStorage {
     const [message] = await db.select().from(schema.messages)
       .where(eq(schema.messages.id, id));
     return message;
+  }
+
+  async getMessageByWhatsAppId(whatsappMessageId: string): Promise<Message | undefined> {
+    const [message] = await db.select().from(schema.messages)
+      .where(eq(schema.messages.whatsappMessageId, whatsappMessageId));
+    return message;
+  }
+
+  async getPendingWhatsAppMessages(olderThanMinutes: number): Promise<Message[]> {
+    const cutoffTime = new Date(Date.now() - olderThanMinutes * 60 * 1000);
+    
+    const messages = await db.select().from(schema.messages)
+      .where(
+        and(
+          eq(schema.messages.whatsappStatus, 'PENDING'),
+          lt(schema.messages.whatsappStatusUpdatedAt, cutoffTime)
+        )
+      )
+      .orderBy(asc(schema.messages.whatsappStatusUpdatedAt));
+    
+    return messages;
   }
 
   async updateMessage(id: string, updates: Partial<Message>): Promise<void> {

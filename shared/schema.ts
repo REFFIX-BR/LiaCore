@@ -125,6 +125,11 @@ export const messages = pgTable("messages", {
   whatsappStatus: text("whatsapp_status"), // 'PENDING' | 'SERVER_ACK' | 'DELIVERY_ACK' | 'READ' | 'ERROR'
   whatsappStatusUpdatedAt: timestamp("whatsapp_status_updated_at"), // Última atualização de status
   
+  // WhatsApp Retry Management (for stuck PENDING messages)
+  whatsappRetryCount: integer("whatsapp_retry_count").default(0), // Número de tentativas de retry (máx 3)
+  whatsappLastRetryAt: timestamp("whatsapp_last_retry_at"), // Timestamp da última tentativa de retry
+  whatsappTemplateMetadata: jsonb("whatsapp_template_metadata"), // Template data for retry (templateName, languageCode, parameters)
+  
   isPrivate: boolean("is_private").default(false), // Mensagens privadas (notas internas, não enviadas ao cliente)
   sendBy: text("send_by"), // Identificador de quem enviou (supervisor, agent, ai, client)
   deletedAt: timestamp("deleted_at"), // Quando a mensagem foi deletada (soft delete)
@@ -135,6 +140,8 @@ export const messages = pgTable("messages", {
   conversationTimestampIdx: index("messages_conversation_timestamp_idx").on(table.conversationId, table.timestamp),
   // Índice para retry de mensagens travadas em PENDING
   whatsappStatusIdx: index("messages_whatsapp_status_idx").on(table.whatsappStatus, table.whatsappStatusUpdatedAt),
+  // Índice para lookup por WhatsApp message ID (usado pelo webhook messages.update)
+  whatsappMessageIdIdx: index("messages_whatsapp_message_id_idx").on(table.whatsappMessageId),
 }));
 
 export const alerts = pgTable("alerts", {

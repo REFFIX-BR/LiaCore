@@ -3402,6 +3402,73 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
       }
     }
 
+      // Process MESSAGES_UPDATE event (WhatsApp status tracking)
+      // Status progression: PENDING → SERVER_ACK → DELIVERY_ACK → READ → ERROR
+      if (event === "messages.update") {
+        try {
+          const statusUpdates = Array.isArray(data) ? data : [data];
+          
+          for (const update of statusUpdates) {
+            const { key, update: statusUpdate } = update;
+            const { remoteJid, id: whatsappMessageId, fromMe } = key;
+            const { status } = statusUpdate || {};
+            
+            if (!status || !whatsappMessageId) {
+              console.log(`⚠️ [Evolution Status] Update sem status ou messageId - ignorando`);
+              continue;
+            }
+            
+            // Only track status of messages sent by us
+            if (!fromMe) {
+              continue;
+            }
+            
+            console.log(`📊 [Evolution Status] Atualização de status recebida:`, {
+              whatsappMessageId,
+              remoteJid,
+              status,
+              timestamp: new Date().toISOString()
+            });
+            
+            // Update message status in database
+            const message = await storage.getMessageByWhatsAppId(whatsappMessageId);
+            
+            if (message) {
+              await storage.updateMessage(message.id, {
+                whatsappStatus: status,
+                whatsappStatusUpdatedAt: new Date(),
+              });
+              
+              console.log(`✅ [Evolution Status] Status atualizado na mensagem ${message.id}: ${status}`);
+              
+              // If this message is from a campaign target, update denormalized status
+              const conversation = await storage.getConversation(message.conversationId);
+              
+              if (conversation?.voiceCampaignTargetId) {
+                await storage.updateVoiceCampaignTarget(conversation.voiceCampaignTargetId, {
+                  lastWhatsappStatus: status,
+                  lastWhatsappStatusAt: new Date(),
+                });
+                
+                console.log(`✅ [Evolution Status] Status denormalizado atualizado no target ${conversation.voiceCampaignTargetId}`);
+              }
+            } else {
+              console.log(`⚠️ [Evolution Status] Mensagem não encontrada no banco: ${whatsappMessageId}`);
+            }
+          }
+          
+          return res.json({ 
+            success: true, 
+            processed: true,
+            eventType: 'messages.update',
+            updatedCount: statusUpdates.length
+          });
+        } catch (error) {
+          console.error(`❌ [Evolution Status] Erro ao processar atualização de status:`, error);
+          return res.json({ success: true, processed: false, error: 'status_update_failed' });
+        }
+      }
+
       // Process CHATS_* events (metadata synchronization)
       if (event.startsWith("chats.")) {
         const { id, conversationTimestamp, name } = data || {};

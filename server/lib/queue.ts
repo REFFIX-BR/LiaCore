@@ -15,6 +15,7 @@ export const QUEUE_NAMES = {
   VOICE_CRM_SYNC: 'voice-crm-sync', // Sincronização automática com CRM
   VOICE_PROMISE_MONITOR: 'voice-promise-monitor',
   VOICE_WHATSAPP_COLLECTION: 'voice-whatsapp-collection', // Cobrança via WhatsApp IA
+  WHATSAPP_RETRY: 'whatsapp-retry', // Retry de mensagens WhatsApp travadas em PENDING
 } as const;
 
 // Queue configurations with different priorities and retry strategies
@@ -164,6 +165,17 @@ export const QUEUE_CONFIGS = {
       },
       removeOnComplete: {
         count: 300, // Keep for audit
+      },
+      removeOnFail: {
+        count: 100,
+      },
+    },
+  },
+  [QUEUE_NAMES.WHATSAPP_RETRY]: {
+    defaultJobOptions: {
+      attempts: 1, // Não fazer retry automático - worker controla isso
+      removeOnComplete: {
+        count: 200, // Keep for monitoring
       },
       removeOnFail: {
         count: 100,
@@ -411,6 +423,12 @@ export interface VoiceCRMSyncJob {
   syncConfigId: string;
   campaignId: string;
   isManualTrigger?: boolean; // Se foi disparado manualmente ou por schedule
+}
+
+export interface WhatsAppRetryJob {
+  messageId: string; // ID da mensagem a ser retriada
+  attemptNumber: number; // Número da tentativa de retry (1-3)
+  originalTargetId?: string; // ID do target de campanha (se aplicável)
 }
 
 // Helper functions to add jobs
