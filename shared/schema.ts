@@ -119,6 +119,12 @@ export const messages = pgTable("messages", {
   videoMimetype: text("video_mimetype"), // Tipo MIME do vídeo (video/mp4, etc.)
   whatsappMessageId: text("whatsapp_message_id"), // ID da mensagem no WhatsApp (para deletar)
   remoteJid: text("remote_jid"), // JID do chat WhatsApp (necessário para deletar)
+  
+  // WhatsApp Status Tracking (Evolution API MESSAGES_UPDATE webhook)
+  // Status progression: PENDING → SERVER_ACK → DELIVERY_ACK → READ
+  whatsappStatus: text("whatsapp_status"), // 'PENDING' | 'SERVER_ACK' | 'DELIVERY_ACK' | 'READ' | 'ERROR'
+  whatsappStatusUpdatedAt: timestamp("whatsapp_status_updated_at"), // Última atualização de status
+  
   isPrivate: boolean("is_private").default(false), // Mensagens privadas (notas internas, não enviadas ao cliente)
   sendBy: text("send_by"), // Identificador de quem enviou (supervisor, agent, ai, client)
   deletedAt: timestamp("deleted_at"), // Quando a mensagem foi deletada (soft delete)
@@ -127,6 +133,8 @@ export const messages = pgTable("messages", {
   // Índices para queries rápidas de mensagens e paginação
   conversationIdIdx: index("messages_conversation_id_idx").on(table.conversationId),
   conversationTimestampIdx: index("messages_conversation_timestamp_idx").on(table.conversationId, table.timestamp),
+  // Índice para retry de mensagens travadas em PENDING
+  whatsappStatusIdx: index("messages_whatsapp_status_idx").on(table.whatsappStatus, table.whatsappStatusUpdatedAt),
 }));
 
 export const alerts = pgTable("alerts", {
@@ -1307,6 +1315,11 @@ export const voiceCampaignTargets = pgTable("voice_campaign_targets", {
   
   // Vínculo com conversa (se enviada via WhatsApp)
   conversationId: varchar("conversation_id"), // ID da conversa criada (para mensagens via WhatsApp)
+  
+  // WhatsApp Status Tracking (denormalizado para dashboards/analytics)
+  // Sincronizado via webhook MESSAGES_UPDATE quando status de mensagem muda
+  lastWhatsappStatus: text("last_whatsapp_status"), // Último status conhecido da mensagem WhatsApp
+  lastWhatsappStatusAt: timestamp("last_whatsapp_status_at"), // Quando foi atualizado
   
   // Auditoria
   createdAt: timestamp("created_at").defaultNow(),

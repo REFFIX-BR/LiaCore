@@ -458,8 +458,11 @@ Use o nome "${clientName.split(' ')[0]}" para se dirigir ao cliente.`;
     connection: redisConnection,
     concurrency: 1, // Uma mensagem por vez (sequencial)
     limiter: {
-      max: 1, // Máximo de 1 mensagem a cada 40 segundos
-      duration: 40000, // 40 segundos
+      max: 1, // Máximo de 1 mensagem por intervalo (WhatsApp rate limiting)
+      // WhatsApp Business API aplica rate limiting severo para templates
+      // Contas novas: 250 conversas/24h. Delay alto previne mensagens travadas em PENDING
+      // Configurável via env: WHATSAPP_COLLECTION_DELAY_MS (padrão: 5 minutos)
+      duration: parseInt(process.env.WHATSAPP_COLLECTION_DELAY_MS || '300000'), // 5 minutos (300000ms)
     },
   }
 );
