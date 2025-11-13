@@ -1842,7 +1842,7 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
       console.log(`🔍 [Evolution DEBUG] Payload completo:`, JSON.stringify(req.body, null, 2));
 
       // Normalize event to string (handle malformed payloads)
-      const event = typeof rawEvent === 'string' ? rawEvent : '';
+      let event = typeof rawEvent === 'string' ? rawEvent : '';
 
       if (!event) {
         prodLogger.warn('webhook', 'Webhook recebido sem tipo de evento válido', {
@@ -1858,6 +1858,27 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
         });
         console.log(`⚠️  [Evolution] Webhook recebido com evento inválido:`, { rawEvent, instance });
         return res.json({ success: true, processed: false, reason: "invalid_event_type" });
+      }
+      
+      // 🔧 CRITICAL FIX: Normalize event format
+      // Evolution API sends "MESSAGES_UPDATE" (uppercase with underscore)
+      // But code checks for "messages.update" (lowercase with dot)
+      // Convert: MESSAGES_UPDATE → messages.update
+      const normalizedEvent = event.toLowerCase().replace(/_/g, '.');
+      const originalEvent = event;
+      event = normalizedEvent;
+      
+      // Debug log for unknown events
+      if (!['messages.upsert', 'messages.update', 'messages.delete', 'messages.set', 
+            'chats.update', 'chats.upsert', 'contacts.update', 'contacts.upsert',
+            'connection.update', 'qrcode.updated', 'send.message',
+            'group.participants.update', 'group.update', 'groups.upsert'].includes(event)) {
+        console.log(`⚠️  [Evolution] Evento desconhecido recebido:`, { 
+          original: originalEvent, 
+          normalized: event,
+          instance,
+          availableHandlers: ['messages.upsert', 'messages.update', 'chats.*', 'contacts.*']
+        });
       }
       
       // Log evento recebido
