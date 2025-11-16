@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { startLearningScheduler } from "./lib/learning-scheduler";
+import { startMessageRecoveryScheduler } from "./lib/message-recovery-scheduler";
 
 // PDF Extraction Fix: Force rebuild with pdf-parse@1.1.1 (2025-10-31)
 // Configurar timezone para horário de Brasília (UTC-3)
@@ -158,6 +159,14 @@ app.use((req, res, next) => {
         console.log('✅ [Startup] Learning scheduler started');
       } catch (error) {
         console.error('❌ [Startup] Failed to start learning scheduler:', error);
+      }
+      
+      // Start message recovery scheduler for automatic stuck message recovery
+      try {
+        startMessageRecoveryScheduler();
+        console.log('✅ [Startup] Message recovery scheduler started');
+      } catch (error) {
+        console.error('❌ [Startup] Failed to start message recovery scheduler:', error);
       }
       
       // Start queue workers only if Redis TCP available
