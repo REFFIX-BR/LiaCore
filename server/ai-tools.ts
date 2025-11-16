@@ -480,7 +480,7 @@ export async function consultaBoletoCliente(
       // Criar ou recuperar informações do ponto
       if (!pontosMap.has(pontoNumero)) {
         // Extrair valor da mensalidade do primeiro boleto (todos boletos do mesmo ponto têm o mesmo valor)
-        const valorMensalidade = parseFloat(boleto.VALOR_TOTAL.replace(',', '.')) || 0;
+        const valorMensalidade = parseFloat((boleto.VALOR_TOTAL || '0').replace(',', '.')) || 0;
         
         pontosMap.set(pontoNumero, {
           numero: pontoNumero,
@@ -563,7 +563,7 @@ export async function consultaBoletoCliente(
       // DEBUG: Ver valor BRUTO da API
       console.log(`🔍 [DEBUG VALOR] Ponto ${pontoNumero} - Valor bruto da API: "${boleto.VALOR_TOTAL}"`);
       
-      const valor = parseFloat(boleto.VALOR_TOTAL.replace(',', '.')) || 0;
+      const valor = parseFloat((boleto.VALOR_TOTAL || '0').replace(',', '.')) || 0;
       console.log(`🔍 [DEBUG VALOR] Ponto ${pontoNumero} - Após conversão: ${valor}, Vencido: ${estaVencido}`);
       
       // Sempre somar no total geral
