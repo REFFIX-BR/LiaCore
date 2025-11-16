@@ -61,7 +61,7 @@ async function processBatchJob(job: Job<BatchProcessingJob>) {
       2,
       batchKey,
       timerKey,
-      timerValue
+      timerValue || '' // Previne erro ERR wrong number of arguments quando timerValue é null
     ) as string[];
     
     if (!batchItems || batchItems.length === 0) {
