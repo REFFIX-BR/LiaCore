@@ -420,7 +420,7 @@ Primeiro, me confirma: você quer fazer o cadastro no seu CPF (pessoa física) o
 1️⃣ Qual seu nome completo?
    [Aguarda resposta]
 
-2️⃣ Qual seu CPF? (formato: 000.000.000-00)
+2️⃣ Qual seu CPF? (aceita com ou sem formatação: 00000000000 ou 000.000.000-00)
    [Aguarda resposta]
 
 3️⃣ Qual seu e-mail?
