@@ -12,7 +12,7 @@ import type { Message } from "@shared/schema";
 
 export interface ContextQualityAlert {
   conversationId: string;
-  alertType: 'duplicate_data_request' | 'ignored_history' | 'duplicate_routing' | 'context_reset';
+  alertType: 'duplicate_data_request' | 'ignored_history' | 'duplicate_routing' | 'context_reset' | 'client_repetition' | 'misrouting_frustration';
   severity: 'low' | 'medium' | 'high';
   description: string;
   detectedAt: Date;
@@ -211,6 +211,173 @@ export class ContextMonitor {
   }
   
   /**
+   * Detecta quando cliente repete a mesma mensagem/problema 2+ vezes
+   * (indica que IA não está processando ou respondendo adequadamente)
+   */
+  static async detectClientRepetition(
+    conversationId: string,
+    recentMessages: Message[],
+    assistantType?: string
+  ): Promise<ContextQualityAlert | null> {
+    // Pegar últimas mensagens do cliente (últimas 10)
+    const userMessages = recentMessages
+      .filter(m => m.role === 'user')
+      .slice(-10);
+    
+    if (userMessages.length < 2) {
+      return null; // Precisa de pelo menos 2 mensagens do cliente
+    }
+    
+    // Padrões comuns de repetição que indicam problema não resolvido
+    const problemPatterns = [
+      /sem (?:internet|conexão|rede|sinal)/i,
+      /não (?:consigo|estou conseguindo) (?:acessar|conectar|usar)/i,
+      /(?:boleto|fatura|conta)/i,
+      /(?:não )?recebo (?:boleto|fatura)/i,
+      /(?:segunda via|2.? via)/i,
+      /(?:pagamento|pagar)/i,
+      /(?:suporte|ajuda|resolver)/i,
+      /(?:técnico|atendente|humano)/i,
+    ];
+    
+    // Verificar se últimas 2-3 mensagens do cliente são similares
+    const lastUserMessage = userMessages[userMessages.length - 1];
+    const previousUserMessages = userMessages.slice(-4, -1); // 3 mensagens anteriores
+    
+    // Detectar repetição de keywords/problemas
+    const lastMessageProblems = problemPatterns.filter(pattern => 
+      pattern.test(lastUserMessage.content)
+    );
+    
+    if (lastMessageProblems.length === 0) {
+      return null; // Mensagem atual não menciona problema específico
+    }
+    
+    // Contar quantas mensagens anteriores mencionam o mesmo problema
+    let repetitionCount = 0;
+    for (const prevMsg of previousUserMessages) {
+      const matchesAnyProblem = lastMessageProblems.some(pattern => 
+        pattern.test(prevMsg.content)
+      );
+      if (matchesAnyProblem) {
+        repetitionCount++;
+      }
+    }
+    
+    // Se cliente repetiu 2+ vezes o mesmo problema, alertar
+    if (repetitionCount >= 2) {
+      return {
+        conversationId,
+        alertType: 'client_repetition',
+        severity: 'high',
+        description: `Cliente repetiu o mesmo problema ${repetitionCount + 1}x (indica IA não está respondendo adequadamente)`,
+        detectedAt: new Date(),
+        assistantType,
+        metadata: {
+          repetitionCount: repetitionCount + 1,
+          lastMessage: lastUserMessage.content.substring(0, 150),
+          previousMessages: previousUserMessages.map(m => m.content.substring(0, 100)),
+        }
+      };
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Detecta roteamento incorreto quando cliente expressa frustração com problema
+   * (ex: "vou cancelar pois não recebo boleto" → cancelamento [ERRADO], deveria ser financeiro)
+   * 
+   * MELHORIA: Analisa últimas mensagens do assistente para detectar roteamento incorreto
+   * mesmo quando assistente atual está correto (problema pode ter sido causado anteriormente)
+   */
+  static async detectMisroutingFrustration(
+    conversationId: string,
+    assistantType: string,
+    recentMessages: Message[]
+  ): Promise<ContextQualityAlert | null> {
+    // Pegar últimas 3 mensagens do cliente
+    const lastUserMessages = recentMessages
+      .filter(m => m.role === 'user')
+      .slice(-3);
+    
+    if (lastUserMessages.length === 0) {
+      return null;
+    }
+    
+    const lastUserMessage = lastUserMessages[lastUserMessages.length - 1].content;
+    
+    // Pegar últimas 3 mensagens do assistente para detectar roteamentos recentes
+    const lastAssistantMessages = recentMessages
+      .filter(m => m.role === 'assistant')
+      .slice(-3);
+    
+    // Padrão de mensagem de roteamento: "encaminhando para [departamento]"
+    const routingPattern = /(?:encaminhando|transferindo|roteando).*(?:para|ao)\s*(?:setor\s+)?(?:de\s+)?(\w+)/i;
+    
+    // Detectar último roteamento explícito
+    let lastRoutedDepartment = assistantType;
+    for (let i = lastAssistantMessages.length - 1; i >= 0; i--) {
+      const match = lastAssistantMessages[i].content.match(routingPattern);
+      if (match) {
+        lastRoutedDepartment = match[1].toLowerCase();
+        break;
+      }
+    }
+    
+    // Detectar frustração + problema real
+    const frustrationWithProblem = [
+      // Frustração com boleto → deveria ser FINANCEIRO, não CANCELAMENTO
+      {
+        pattern: /(?:vou (?:ter que )?cancelar|vou desistir).{0,50}(?:boleto|fatura|não recebo|bloqueio|pagar)/i,
+        correctDepartment: 'financeiro',
+        wrongDepartments: ['cancelamento'],
+        problem: 'boleto/pagamento'
+      },
+      // Frustração com internet → deveria ser SUPORTE, não CANCELAMENTO
+      {
+        pattern: /(?:vou (?:ter que )?cancelar|vou desistir).{0,50}(?:internet|conexão|sinal|lenta|péssima)/i,
+        correctDepartment: 'suporte',
+        wrongDepartments: ['cancelamento'],
+        problem: 'internet/conexão'
+      },
+      // Frustração com atendimento → deveria ser OUVIDORIA, não CANCELAMENTO
+      {
+        pattern: /(?:vou (?:ter que )?cancelar|vou desistir).{0,50}(?:atendimento|não resolvem|ninguém resolve)/i,
+        correctDepartment: 'ouvidoria',
+        wrongDepartments: ['cancelamento'],
+        problem: 'atendimento ruim'
+      },
+    ];
+    
+    // Verificar se mensagem contém frustração + problema
+    for (const { pattern, correctDepartment, wrongDepartments, problem } of frustrationWithProblem) {
+      if (pattern.test(lastUserMessage)) {
+        // Verificar se foi roteado para departamento errado (atual OU anterior)
+        if (wrongDepartments.includes(lastRoutedDepartment)) {
+          return {
+            conversationId,
+            alertType: 'misrouting_frustration',
+            severity: 'high',
+            description: `Cliente frustrado com ${problem} foi roteado para ${lastRoutedDepartment.toUpperCase()} (correto seria ${correctDepartment.toUpperCase()})`,
+            detectedAt: new Date(),
+            assistantType: lastRoutedDepartment, // Reportar quem causou o misroute
+            metadata: {
+              lastUserMessage: lastUserMessage.substring(0, 200),
+              wrongDepartment: lastRoutedDepartment,
+              currentAssistant: assistantType,
+              correctDepartment,
+              detectedProblem: problem,
+            }
+          };
+        }
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
    * Monitora uma interação completa do assistente
    */
   static async monitorInteraction(
@@ -235,6 +402,8 @@ export class ContextMonitor {
         ignoredHistoryAlert,
         duplicateRoutingAlert,
         contextResetAlert,
+        clientRepetitionAlert,
+        misroutingFrustrationAlert,
       ] = await Promise.all([
         this.detectDuplicateDataRequest(conversationId, assistantMessage, recentMessages, assistantType),
         this.detectIgnoredHistory(conversationId, assistantMessage, recentMessages, assistantType),
@@ -242,43 +411,49 @@ export class ContextMonitor {
           ? this.detectDuplicateRouting(conversationId, assistantType, recentMessages)
           : null,
         this.detectContextReset(conversationId, assistantMessage, recentMessages, assistantType),
+        this.detectClientRepetition(conversationId, recentMessages, assistantType),
+        assistantType 
+          ? this.detectMisroutingFrustration(conversationId, assistantType, recentMessages)
+          : null,
       ]);
       
-      // Coletar alertas não-nulos
-      [
+      // Coletar alertas não-nulos e persistir (usando for...of para aguardar await)
+      const allAlerts = [
         duplicateDataAlert,
         ignoredHistoryAlert,
         duplicateRoutingAlert,
         contextResetAlert,
-      ].forEach(async (alert) => {
-        if (alert) {
-          alerts.push(alert);
-          
-          // Salvar no banco de dados para persistência
-          try {
-            const { storage } = await import("../storage");
-            await storage.createContextQualityAlert({
-              conversationId: alert.conversationId,
-              alertType: alert.alertType as any,
-              severity: alert.severity as any,
-              description: alert.description,
-              assistantType: alert.assistantType,
-              metadata: alert.metadata,
-            });
-            console.log(`💾 [Context Monitor] Alert saved to database: ${alert.alertType}`);
-          } catch (saveError) {
-            console.error(`❌ [Context Monitor] Failed to save alert to database:`, saveError);
-            // Fallback to in-memory storage
-            this.alerts.push(alert);
-          }
-          
-          // Log no console para visibilidade imediata
-          console.warn(`⚠️  [CONTEXT MONITOR] ${alert.severity.toUpperCase()}: ${alert.description}`);
-          console.warn(`   Conversation: ${conversationId}`);
-          console.warn(`   Alert Type: ${alert.alertType}`);
-          console.warn(`   Assistant: ${alert.assistantType || 'unknown'}`);
+        clientRepetitionAlert,
+        misroutingFrustrationAlert,
+      ].filter(alert => alert !== null) as ContextQualityAlert[];
+      
+      for (const alert of allAlerts) {
+        alerts.push(alert);
+        
+        // Salvar no banco de dados para persistência
+        try {
+          const { storage } = await import("../storage");
+          await storage.createContextQualityAlert({
+            conversationId: alert.conversationId,
+            alertType: alert.alertType as any,
+            severity: alert.severity as any,
+            description: alert.description,
+            assistantType: alert.assistantType,
+            metadata: alert.metadata,
+          });
+          console.log(`💾 [Context Monitor] Alert saved to database: ${alert.alertType}`);
+        } catch (saveError) {
+          console.error(`❌ [Context Monitor] Failed to save alert to database:`, saveError);
+          // Fallback to in-memory storage
+          this.alerts.push(alert);
         }
-      });
+        
+        // Log no console para visibilidade imediata
+        console.warn(`⚠️  [CONTEXT MONITOR] ${alert.severity.toUpperCase()}: ${alert.description}`);
+        console.warn(`   Conversation: ${conversationId}`);
+        console.warn(`   Alert Type: ${alert.alertType}`);
+        console.warn(`   Assistant: ${alert.assistantType || 'unknown'}`);
+      }
       
       if (alerts.length === 0) {
         console.log(`✅ [Context Monitor] No issues detected - conversation quality is good`);

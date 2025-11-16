@@ -1026,7 +1026,7 @@ export const insertContextQualityAlertSchema = createInsertSchema(contextQuality
   id: true,
   detectedAt: true,
 }).extend({
-  alertType: z.enum(["duplicate_data_request", "ignored_history", "duplicate_routing", "context_reset"]),
+  alertType: z.enum(["duplicate_data_request", "ignored_history", "duplicate_routing", "context_reset", "client_repetition", "misrouting_frustration"]),
   severity: z.enum(["low", "medium", "high"]),
 });
 
