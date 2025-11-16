@@ -46,7 +46,7 @@ The frontend, built with React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS,
 - **Chat Simulator (Test Chat)**: A professional testing tool for validating assistant behaviors, isolated from the production database.
 - **Admin Tools**: Features for mass-closing abandoned conversations, reprocessing stuck messages, and configuration management.
 - **Media Handling**: Supervisors can download WhatsApp images and PDFs, with inline PDF viewing.
-- **Security & Compliance**: LGPD/GDPR-compliant logging, protected debug endpoints, and structured error handling.
+- **Security & Compliance**: LGPD/GDPR-compliant logging, protected debug endpoints, and structured error handling. **IMPORTANT (Nov 2024)**: Cross-CPF query restrictions removed to allow family members to check each other's accounts (boletos, connection status, OS, payment status, desbloqueio). All cross-CPF operations are audit-logged with conversation ID and masked CPF digits for compliance tracking.
 - **Failure Detection**: Enhanced massive failure detection supporting city-wide outages and automatic client notification via WhatsApp.
 - **Conversation Reopening**: Automatically reopens resolved conversations upon new client messages.
 - **Intelligent Farewell Detection & Auto-Resolution**: An inactivity follow-up worker detects farewells, auto-resolves conversations, and sends NPS surveys.

@@ -371,9 +371,9 @@ export async function consultaBoletoCliente(
     const documentoNormalizado = documento.replace(/\D/g, '');
     const clientDocumentNormalizado = conversation.clientDocument?.replace(/\D/g, '');
     
+    // AUDITORIA: Logar quando cliente consulta CPF diferente do seu (ex: familiar)
     if (clientDocumentNormalizado && clientDocumentNormalizado !== documentoNormalizado) {
-      console.error(`❌ [AI Tool Security] Tentativa de consulta de documento diferente do cliente da conversa`);
-      throw new Error("Não é permitido consultar documentos de outros clientes");
+      console.warn(`⚠️  [AUDIT] Cliente consultando CPF diferente - Conversa: ${conversationContext.conversationId}, CPF próprio: ***${clientDocumentNormalizado.slice(-4)}, CPF consultado: ***${documentoNormalizado.slice(-4)}`);
     }
 
     // Log sem dados sensíveis - apenas operação
@@ -669,9 +669,9 @@ export async function consultaStatusConexao(
     const documentoNormalizado = documento.replace(/\D/g, '');
     const clientDocumentNormalizado = conversation.clientDocument?.replace(/\D/g, '');
     
+    // AUDITORIA: Logar quando cliente consulta CPF diferente do seu (ex: familiar)
     if (clientDocumentNormalizado && clientDocumentNormalizado !== documentoNormalizado) {
-      console.error(`❌ [AI Tool Security] Tentativa de consulta de documento diferente do cliente`);
-      throw new Error("Não é permitido consultar documentos de outros clientes");
+      console.warn(`⚠️  [AUDIT] Cliente consultando CPF diferente - Conversa: ${conversationContext.conversationId}, CPF próprio: ***${clientDocumentNormalizado.slice(-4)}, CPF consultado: ***${documentoNormalizado.slice(-4)}`);
     }
 
     console.log(`🔌 [AI Tool] Consultando status de conexão (conversação: ${conversationContext.conversationId})`);
@@ -782,12 +782,13 @@ export async function solicitarDesbloqueio(
     const documentoNormalizado = documento.replace(/\D/g, '');
     const clientDocumentNormalizado = conversation.clientDocument.replace(/\D/g, '');
     
+    // AUDITORIA: Logar quando cliente consulta CPF diferente do seu (ex: familiar)
     if (clientDocumentNormalizado !== documentoNormalizado) {
-      console.error(`❌ [AI Tool Security] Tentativa de desbloqueio de documento diferente do cliente da conversa`);
-      throw new Error("Não é permitido desbloquear conexão de outros clientes");
+      console.warn(`⚠️  [AUDIT] Cliente solicitando desbloqueio de CPF diferente - Conversa: ${conversationContext.conversationId}, CPF próprio: ***${clientDocumentNormalizado.slice(-4)}, CPF consultado: ***${documentoNormalizado.slice(-4)}`);
     }
 
     console.log(`🔓 [AI Tool] Solicitando desbloqueio (conversação: ${conversationContext.conversationId})`);
+
 
     const resultado = await fetchWithRetry<DesbloqueioResult[]>(
       "https://webhook.trtelecom.net/webhook/consulta_desbloqueio",
@@ -847,9 +848,9 @@ export async function consultarOrdemServicoAberta(
     const documentoNormalizado = documento.replace(/\D/g, '');
     const clientDocumentNormalizado = conversation.clientDocument?.replace(/\D/g, '');
     
+    // AUDITORIA: Logar quando cliente consulta CPF diferente do seu (ex: familiar)
     if (clientDocumentNormalizado && clientDocumentNormalizado !== documentoNormalizado) {
-      console.error(`❌ [AI Tool Security] Tentativa de consulta de OS de documento diferente do cliente`);
-      throw new Error("Não é permitido consultar OS de outros clientes");
+      console.warn(`⚠️  [AUDIT] Cliente consultando OS de CPF diferente - Conversa: ${conversationContext.conversationId}, CPF próprio: ***${clientDocumentNormalizado.slice(-4)}, CPF consultado: ***${documentoNormalizado.slice(-4)}`);
     }
 
     console.log(`🔧 [AI Tool] Consultando OS em aberto (conversação: ${conversationContext.conversationId})`);
@@ -980,9 +981,9 @@ export async function verificarStatusPagamento(
     const documentoNormalizado = documento.replace(/\D/g, '');
     const clientDocumentNormalizado = conversation.clientDocument?.replace(/\D/g, '');
     
+    // AUDITORIA: Logar quando cliente consulta CPF diferente do seu (ex: familiar)
     if (clientDocumentNormalizado && clientDocumentNormalizado !== documentoNormalizado) {
-      console.error(`❌ [AI Tool Security] Tentativa de verificar status de pagamento de documento diferente do cliente`);
-      throw new Error("Não é permitido verificar status de pagamento de outros clientes");
+      console.warn(`⚠️  [AUDIT] Cliente verificando pagamento de CPF diferente - Conversa: ${conversationContext.conversationId}, CPF próprio: ***${clientDocumentNormalizado.slice(-4)}, CPF consultado: ***${documentoNormalizado.slice(-4)}`);
     }
 
     console.log(`💰 [AI Tool] Verificando status de pagamento (conversação: ${conversationContext.conversationId})`);
