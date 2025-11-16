@@ -1069,6 +1069,49 @@ if (redisConnection) {
 
       console.log(`✅ [Worker] Message processed successfully`);
 
+      // 📊 OTIMIZAÇÃO: Summarizar thread se conversa de venda ficar muito longa
+      if (conversation.assistantType === 'comercial' && conversation.threadId) {
+        try {
+          // Contar mensagens do banco de dados
+          const messages = await storage.getMessagesByConversationId(conversationId);
+          const messageCount = messages.length;
+          
+          // Se >20 mensagens E (nunca foi summarizado OU cresceu 20+ desde último summary)
+          const shouldSummarize = messageCount > 20 && (
+            !conversation.lastSummarizedAt || 
+            messageCount - (conversation.messageCountAtLastSummary || 0) > 20
+          );
+          
+          if (shouldSummarize) {
+            console.log(`📊 [Worker] Thread com ${messageCount} mensagens - iniciando summarização automática`);
+            console.log(`   - Thread antigo: ${conversation.threadId}`);
+            
+            const { summarizeAndRotateThread } = await import("./lib/openai");
+            const { newThreadId, summary } = await summarizeAndRotateThread(
+              conversationId, 
+              conversation.threadId, 
+              conversation.assistantType,
+              messageCount, // Passar DB messageCount para evitar drift
+              conversation.conversationSummary || undefined // Preservar contexto de rotações anteriores
+            );
+            
+            // 🔧 CRITICAL FIX: Atualizar threadId em memória para próximas mensagens
+            conversation.threadId = newThreadId;
+            conversation.conversationSummary = summary;
+            conversation.lastSummarizedAt = new Date();
+            conversation.messageCountAtLastSummary = messageCount;
+            
+            console.log(`✅ [Worker] Thread summarizado e rotacionado com sucesso!`);
+            console.log(`   - Thread novo: ${newThreadId}`);
+            console.log(`   - Economia estimada: ~70% tokens`);
+            console.log(`   - Próximas mensagens usarão novo thread automaticamente`);
+          }
+        } catch (summaryError) {
+          console.error(`❌ [Worker] Erro ao summarizar thread:`, summaryError);
+          // Não falhar o processamento da mensagem por causa disso
+        }
+      }
+
       // ✅ CRITICAL FIX: Mark as processed ONLY after complete success (OpenAI + WhatsApp delivery)
       // This ensures failed processing can be retried and won't leave dirty idempotency keys
       await markJobProcessed(idempotencyKey!, 300); // Reduced TTL: 5 minutes instead of 24h

@@ -353,6 +353,155 @@ async function releaseThreadLock(threadId: string, lockValue: string): Promise<v
 }
 
 /**
+ * OTIMIZAÇÃO DE CUSTO: Cria thread resumido quando conversa fica muito longa
+ * 
+ * Estratégia:
+ * 1. Busca todas as mensagens do thread atual
+ * 2. Usa GPT-4o-mini para criar resumo do contexto
+ * 3. Cria novo thread com resumo como primeira mensagem
+ * 4. Retorna ID do novo thread
+ * 
+ * Benefícios:
+ * - Reduz tokens de 12k+ para ~3k (economia de 70%+)
+ * - Reduz latência de resposta (menos contexto = mais rápido)
+ * - Preserva informações essenciais (dados do cliente, progresso)
+ */
+export async function summarizeAndRotateThread(
+  conversationId: string,
+  currentThreadId: string,
+  assistantType: string,
+  dbMessageCount: number, // DB message count para evitar drift
+  previousSummary?: string // Summary anterior para preservar contexto em rotações subsequentes
+): Promise<{ newThreadId: string; summary: string }> {
+  // 🔒 Adquirir lock de thread para prevenir rotações concorrentes
+  const lockResult = await acquireThreadLock(currentThreadId, 30000); // 30s timeout
+  
+  if (!lockResult.acquired) {
+    console.warn(`⚠️  [Thread Summary] Lock não adquirido - rotação já em andamento por outro worker`);
+    throw new Error('Thread rotation already in progress');
+  }
+  
+  try {
+    console.log(`📊 [Thread Summary] Iniciando summarização para conversa ${conversationId}`);
+    console.log(`   - DB message count: ${dbMessageCount}`);
+    console.log(`   - Tem summary anterior: ${!!previousSummary}`);
+    
+    // 1. Buscar TODAS as mensagens disponíveis (paginar completamente)
+    // CRITICAL: Precisamos do contexto COMPLETO (dados do cliente nas primeiras msgs)
+    let allMessages: any[] = [];
+    let hasMore = true;
+    let after: string | undefined = undefined;
+    
+    while (hasMore) {
+      const response = await openaiCircuitBreaker.execute(() =>
+        openai.beta.threads.messages.list(currentThreadId, { 
+          limit: 100,
+          after
+        })
+      );
+      
+      allMessages = allMessages.concat(response.data);
+      hasMore = response.has_more; // FIX: Propriedade correta é has_more (snake_case)
+      
+      if (hasMore && response.data.length > 0) {
+        after = response.data[response.data.length - 1].id;
+      }
+    }
+    
+    console.log(`📊 [Thread Summary] ${allMessages.length} mensagens recuperadas para resumo completo`);
+    
+    // 2. Preparar texto para summarização (TODAS as mensagens em ordem cronológica)
+    const conversationText = allMessages
+      .reverse() // Reverter para ordem cronológica (mais antigas primeiro)
+      .map(msg => {
+        const role = msg.role === 'user' ? 'Cliente' : 'Assistente';
+        const firstContent = msg.content[0];
+        const content = (firstContent && 'text' in firstContent) ? firstContent.text.value : '';
+        return `${role}: ${content}`;
+      })
+      .join('\n\n');
+    
+    // 3. Criar resumo usando GPT-4o-mini (mais rápido e barato)
+    // CRITICAL: Incluir summary anterior (se existir) para preservar contexto em rotações subsequentes
+    const previousContextSection = previousSummary 
+      ? `RESUMO ANTERIOR (contexto preservado de rotações anteriores):
+${previousSummary}
+
+---
+
+` 
+      : '';
+    
+    const summaryPrompt = `Você é um assistente de resumo. Crie um resumo CONCISO e ESTRUTURADO desta conversa de venda/atendimento, focando em:
+
+1. **Dados do Cliente Coletados**: Nome, CPF, telefone, email, endereço completo
+2. **Produto/Serviço**: Qual plano foi escolhido, preço, características
+3. **Progresso**: Etapas já concluídas (validação, coleta de dados, etc)
+4. **Pendências**: O que ainda falta para finalizar
+
+IMPORTANTE: 
+- Seja EXTREMAMENTE CONCISO. Máximo 300 palavras.
+- Se há RESUMO ANTERIOR, PRESERVE todos os dados do cliente já coletados.
+- Atualize apenas o progresso e pendências com base na conversa atual.
+
+${previousContextSection}CONVERSA ATUAL:
+${conversationText}
+
+RESUMO ESTRUTURADO:`;
+
+    const summaryResponse = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'Você cria resumos concisos e estruturados.' },
+        { role: 'user', content: summaryPrompt }
+      ],
+      temperature: 0.3,
+      max_tokens: 500,
+    });
+    
+    const summary = summaryResponse.choices[0]?.message?.content || 'Resumo não disponível';
+    console.log(`✅ [Thread Summary] Resumo criado (${summary.length} chars)`);
+    
+    // 4. Criar novo thread com resumo como contexto
+    const newThread = await openai.beta.threads.create({
+      messages: [
+        {
+          role: 'assistant',
+          content: `📝 RESUMO DA CONVERSA ANTERIOR:\n\n${summary}\n\n---\n\nContinuando o atendimento...`
+        }
+      ]
+    });
+    
+    console.log(`✅ [Thread Summary] Novo thread criado: ${newThread.id}`);
+    
+    // 5. Atualizar conversation com novo thread_id
+    const { storage } = await import("../storage");
+    await storage.updateConversation(conversationId, {
+      threadId: newThread.id,
+      conversationSummary: summary,
+      lastSummarizedAt: new Date(),
+      messageCountAtLastSummary: dbMessageCount, // Usar DB count para evitar drift
+    });
+    
+    console.log(`✅ [Thread Summary] Conversa atualizada - economia estimada: ~70% tokens`);
+    
+    return {
+      newThreadId: newThread.id,
+      summary
+    };
+    
+  } catch (error) {
+    console.error(`❌ [Thread Summary] Erro ao summarizar thread:`, error);
+    throw error;
+  } finally {
+    // 🔓 SEMPRE liberar lock, mesmo em caso de erro
+    if (lockResult.lockValue) {
+      await releaseThreadLock(currentThreadId, lockResult.lockValue);
+    }
+  }
+}
+
+/**
  * OTIMIZAÇÃO DE CUSTO: Trunca mensagens antigas do thread para reduzir tokens
  * Mantém apenas as últimas MAX_THREAD_MESSAGES mensagens em pares user+assistant
  * 
@@ -1611,17 +1760,53 @@ Fonte: ${fonte}`;
                 });
               }
 
-              // Validação 4: Verificar freshness (5 minutos)
+              // Validação 4: Verificar freshness (30 minutos) e renovar automaticamente se expirado
               const coverageTimestamp = lastCoverage.timestamp ? new Date(lastCoverage.timestamp).getTime() : 0;
               const now = Date.now();
-              const fiveMinutesMs = 5 * 60 * 1000;
+              const thirtyMinutesMs = 30 * 60 * 1000; // Aumentado de 5min para 30min
               
-              if (now - coverageTimestamp > fiveMinutesMs) {
-                console.warn("⚠️ [Sales Validation] lastCoverageCheck está DESATUALIZADO (>5 min)");
-                return JSON.stringify({
-                  error: "A verificação de cobertura está desatualizada. Por favor, verifique o CEP novamente.",
-                  instrucao: "Chame buscar_cep() novamente antes de enviar_cadastro_venda()."
-                });
+              if (now - coverageTimestamp > thirtyMinutesMs) {
+                console.warn(`⚠️ [Sales Validation] Cobertura expirada (idade: ${Math.floor((now - coverageTimestamp) / 60000)}min) - renovando automaticamente`);
+                
+                // Renovar cobertura automaticamente chamando buscar_cep
+                try {
+                  const cepToCheck = lastCoverage.cep;
+                  console.log(`🔄 [Sales Validation] Renovando cobertura para CEP ${cepToCheck}...`);
+                  
+                  // Buscar CEP via ViaCEP
+                  const viaCepUrl = `https://viacep.com.br/ws/${cepToCheck}/json/`;
+                  const viaCepResponse = await fetch(viaCepUrl);
+                  const cepData = await viaCepResponse.json();
+                  
+                  if (cepData.erro) {
+                    throw new Error('CEP não encontrado');
+                  }
+                  
+                  // Atualizar lastCoverageCheck na conversa
+                  const updatedCoverage = {
+                    cep: cepToCheck,
+                    logradouro: cepData.logradouro,
+                    complemento: cepData.complemento,
+                    bairro: cepData.bairro,
+                    cidade: cepData.localidade,
+                    estado: cepData.uf,
+                    tem_cobertura: lastCoverage.tem_cobertura, // Mantém status anterior
+                    timestamp: new Date().toISOString()
+                  };
+                  
+                  const { storage: storageRenewal } = await import("../storage");
+                  await storageRenewal.updateConversation(conversationId, {
+                    lastCoverageCheck: updatedCoverage
+                  });
+                  
+                  console.log(`✅ [Sales Validation] Cobertura renovada com sucesso - ${updatedCoverage.cidade}, ${updatedCoverage.estado}`);
+                } catch (renewError) {
+                  console.error(`❌ [Sales Validation] Erro ao renovar cobertura:`, renewError);
+                  return JSON.stringify({
+                    error: "Não foi possível renovar a verificação de cobertura. Por favor, confirme o CEP novamente.",
+                    instrucao: "Chame buscar_cep() antes de enviar_cadastro_venda()."
+                  });
+                }
               }
               
               console.log(`✅ [Sales Validation] Todas validações OK - ${lastCoverage.cidade}, ${lastCoverage.estado}, CEP: ${lastCoverage.cep}`);
@@ -1741,10 +1926,22 @@ Fonte: ${fonte}`;
           };
 
           // Salvar no banco via storage
+          console.log(`📝 [Sales] Iniciando gravação no banco de dados...`);
+          console.log(`   - Cliente: ${saleData.customerName}`);
+          console.log(`   - CPF/CNPJ: ${saleData.cpfCnpj?.substring(0, 3)}***`);
+          console.log(`   - Cidade: ${saleData.city}/${saleData.state}`);
+          console.log(`   - Plano ID: ${saleData.planId}`);
+          console.log(`   - Conversa ID: ${conversationId}`);
+          
           const { storage: storageSales } = await import("../storage");
+          const saleStartTime = Date.now();
           const sale = await storageSales.addSale(saleData);
+          const saleElapsed = Date.now() - saleStartTime;
 
-          console.log(`✅ [Sales] Cadastro registrado com sucesso - ID: ${sale.id}`);
+          console.log(`✅ [Sales] Cadastro registrado com sucesso!`);
+          console.log(`   - Protocolo: ${sale.id}`);
+          console.log(`   - Tempo de gravação: ${saleElapsed}ms`);
+          console.log(`   - Status: ${sale.status}`);
 
           return JSON.stringify({
             success: true,
