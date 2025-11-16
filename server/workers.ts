@@ -256,7 +256,8 @@ async function isJobProcessed(jobId: string): Promise<boolean> {
   return exists === 1;
 }
 
-async function markJobProcessed(jobId: string, ttlSeconds = 86400): Promise<void> {
+// ✅ CRITICAL FIX: Reduced default TTL from 24h to 5 minutes to prevent dirty keys from blocking retries
+async function markJobProcessed(jobId: string, ttlSeconds = 300): Promise<void> {
   if (!redisConnection) return;
   const key = `idempotency:${jobId}`;
   await redisConnection.setex(key, ttlSeconds, 'processed');
@@ -705,6 +706,9 @@ if (redisConnection) {
                 evolutionInstance
               );
               
+              // ✅ CRITICAL FIX: Mark as processed before return
+              await markJobProcessed(idempotencyKey!, 300);
+              
               return { processed: true, selectedPoint: false };
             }
             
@@ -769,6 +773,9 @@ if (redisConnection) {
             // Limpar menu do Redis
             await installationPointManager.deleteMenu(conversationId);
             console.log(`🗑️ [Worker] Menu removido do Redis - seleção processada com sucesso`);
+            
+            // ✅ CRITICAL FIX: Mark as processed before return
+            await markJobProcessed(idempotencyKey!, 300);
             
             // RETORNAR sem chamar IA
             return { processed: true, selectedPoint: true, pointNumber: selectedPointNumber };
@@ -1061,8 +1068,9 @@ if (redisConnection) {
 
       console.log(`✅ [Worker] Message processed successfully`);
 
-      // Mark job as processed (idempotency)
-      await markJobProcessed(idempotencyKey!);
+      // ✅ CRITICAL FIX: Mark as processed ONLY after complete success (OpenAI + WhatsApp delivery)
+      // This ensures failed processing can be retried and won't leave dirty idempotency keys
+      await markJobProcessed(idempotencyKey!, 300); // Reduced TTL: 5 minutes instead of 24h
 
       return {
         success: true,
@@ -1070,6 +1078,16 @@ if (redisConnection) {
       };
     } catch (error) {
       console.error(`❌ [Worker] Error processing message:`, error);
+      
+      // ✅ CRITICAL FIX: Delete idempotency key on failure so recovery can retry
+      try {
+        const key = `idempotency:${idempotencyKey}`;
+        await redisConnection?.del(key);
+        console.log(`🧹 [Worker] Cleared dirty idempotency key: ${key} (failed processing can be retried)`);
+      } catch (cleanupError) {
+        console.error(`❌ [Worker] Failed to cleanup idempotency key:`, cleanupError);
+      }
+      
       throw error;
     } finally {
       // Always release chat lock, even on error
@@ -1118,8 +1136,8 @@ if (redisConnection) {
 
       console.log(`✅ [Vision Worker] Image analyzed successfully`);
 
-      // Mark job as processed (idempotency)
-      await markJobProcessed(job.id!);
+      // ✅ CRITICAL FIX: Mark as processed ONLY after complete success
+      await markJobProcessed(job.id!, 300); // 5 minutes TTL
 
       return {
         success: true,
@@ -1127,6 +1145,15 @@ if (redisConnection) {
       };
     } catch (error) {
       console.error(`❌ [Vision Worker] Error:`, error);
+      
+      // ✅ CRITICAL FIX: Delete idempotency key on failure
+      try {
+        await redisConnection?.del(`idempotency:${job.id}`);
+        console.log(`🧹 [Vision Worker] Cleared dirty idempotency key for retry`);
+      } catch {
+        // Silent fail - not critical
+      }
+      
       throw error;
     }
   },
@@ -1187,14 +1214,23 @@ Por favor, responda apenas com um número de 0 a 10.
 
       console.log(`✅ [NPS Worker] Survey sent successfully`);
 
-      // Mark job as processed (idempotency)
-      await markJobProcessed(job.id!);
+      // ✅ CRITICAL FIX: Mark as processed ONLY after complete success
+      await markJobProcessed(job.id!, 300); // 5 minutes TTL
 
       return {
         success: true,
       };
     } catch (error) {
       console.error(`❌ [NPS Worker] Error:`, error);
+      
+      // ✅ CRITICAL FIX: Delete idempotency key on failure
+      try {
+        await redisConnection?.del(`idempotency:${job.id}`);
+        console.log(`🧹 [NPS Worker] Cleared dirty idempotency key for retry`);
+      } catch {
+        // Silent fail - not critical
+      }
+      
       throw error;
     }
   },
@@ -1514,8 +1550,8 @@ Por favor, responda apenas com um número de 0 a 10.
         
         console.log(`⏰ [Inactivity Worker] Encerramento automático agendado para ${new Date(followupSentAt + (20 * 60 * 1000)).toLocaleString('pt-BR')}`);
 
-        // Mark job as processed
-        await markJobProcessed(job.id!);
+        // ✅ CRITICAL FIX: Mark as processed ONLY after complete success
+        await markJobProcessed(job.id!, 300); // 5 minutes TTL
 
         return {
           success: true,
@@ -1524,6 +1560,15 @@ Por favor, responda apenas com um número de 0 a 10.
         };
       } catch (error) {
         console.error(`❌ [Inactivity Worker] Error:`, error);
+        
+        // ✅ CRITICAL FIX: Delete idempotency key on failure
+        try {
+          await redisConnection?.del(`idempotency:${job.id}`);
+          console.log(`🧹 [Inactivity Worker] Cleared dirty idempotency key for retry`);
+        } catch {
+          // Silent fail - not critical
+        }
+        
         throw error;
       }
     },
@@ -1672,8 +1717,8 @@ Por favor, responda apenas com um número de 0 a 10.
           }
         }
 
-        // Mark job as processed
-        await markJobProcessed(job.id!);
+        // ✅ CRITICAL FIX: Mark as processed ONLY after complete success
+        await markJobProcessed(job.id!, 300); // 5 minutes TTL
 
         return {
           success: true,
@@ -1682,6 +1727,15 @@ Por favor, responda apenas com um número de 0 a 10.
         };
       } catch (error) {
         console.error(`❌ [Auto-Closure Worker] Error:`, error);
+        
+        // ✅ CRITICAL FIX: Delete idempotency key on failure
+        try {
+          await redisConnection?.del(`idempotency:${job.id}`);
+          console.log(`🧹 [Auto-Closure Worker] Cleared dirty idempotency key for retry`);
+        } catch {
+          // Silent fail - not critical
+        }
+        
         throw error;
       }
     },
