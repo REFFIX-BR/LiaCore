@@ -264,7 +264,8 @@ async function markJobProcessed(jobId: string, ttlSeconds = 300): Promise<void> 
 }
 
 // Chat-level concurrency lock (prevents parallel processing of same chat messages)
-async function acquireChatLock(chatId: string, timeoutMs: number = 30000): Promise<{ acquired: boolean; lockValue?: string }> {
+// ⚡ OPTIMIZED: Reduced timeout from 30s to 10s for faster message recovery
+async function acquireChatLock(chatId: string, timeoutMs: number = 10000): Promise<{ acquired: boolean; lockValue?: string }> {
   if (!redisConnection) return { acquired: true }; // No Redis = no lock needed
   
   const lockKey = `chat-processing-lock:${chatId}`;
