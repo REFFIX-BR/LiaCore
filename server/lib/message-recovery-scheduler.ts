@@ -83,12 +83,14 @@ async function recoverStuckMessages() {
         console.log(`   Mensagem: "${lastMessage.content.substring(0, 60)}..."`);
         
         // Adicionar à fila de processamento com prioridade normal
+        // IMPORTANT: Generate unique messageId per retry attempt to avoid idempotency blocking
+        // Using lastMessage.id would reuse the same key on every retry attempt
         await addMessageToQueue({
           chatId: conv.chatId,
           conversationId: conv.id,
           message: lastMessage.content,
           fromNumber: conv.chatId.replace('whatsapp_', '').replace('@s.whatsapp.net', '').replace('@lid', ''),
-          messageId: lastMessage.id || `recovery_${Date.now()}`,
+          messageId: `recovery_${conv.id}_${Date.now()}`, // Unique per attempt - prevents idempotency blocking
           timestamp: Date.now(),
           evolutionInstance: conv.evolutionInstance || 'Principal',
           clientName: conv.clientName,
