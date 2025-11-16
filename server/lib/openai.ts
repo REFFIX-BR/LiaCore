@@ -2120,14 +2120,15 @@ Fonte: ${fonte}`;
           }
           
           // Mapear boletos para incluir link na descrição formatada
+          // Defensive: Ensure all fields are strings to prevent downstream formatting errors
           const boletosFormatados = boletos.map(boleto => ({
-            vencimento: boleto.DATA_VENCIMENTO,
-            valor: boleto.VALOR_TOTAL,
-            codigo_barras: boleto.CODIGO_BARRA_TRANSACAO,
-            codigo_barras_sem_espacos: boleto.CODIGO_BARRA_TRANSACAO.replace(/\D/g, ''),
-            link_pagamento: boleto.link_carne_completo,
-            pix: boleto.PIX_TXT,
-            status: boleto.STATUS
+            vencimento: boleto.DATA_VENCIMENTO || 'Não disponível',
+            valor: boleto.VALOR_TOTAL || '0.00',
+            codigo_barras: boleto.CODIGO_BARRA_TRANSACAO || '',
+            codigo_barras_sem_espacos: boleto.CODIGO_BARRA_TRANSACAO?.replace(/\D/g, '') || '',
+            link_pagamento: boleto.link_carne_completo || '',
+            pix: boleto.PIX_TXT || '',
+            status: boleto.STATUS || 'DESCONHECIDO'
           }));
           
           return JSON.stringify({
