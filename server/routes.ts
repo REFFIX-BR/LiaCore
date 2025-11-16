@@ -2770,6 +2770,12 @@ Qualquer coisa, estamos à disposição! 😊
 
         // 🔄 BATCHING SYSTEM: Grupo mensagens sequenciais em janela de 3 segundos
         try {
+          console.log(`\n📥 [Webhook] Iniciando processamento de mensagem:`);
+          console.log(`   Cliente: ${clientName}`);
+          console.log(`   ChatId: ${chatId}`);
+          console.log(`   Mensagem: "${messageText.substring(0, 60)}..."`);
+          console.log(`   Instância: ${instance}`);
+          
           const { addToBatch } = await import("./lib/message-batching");
           const { addMessageToQueue } = await import("./lib/queue");
           
@@ -2806,8 +2812,12 @@ Qualquer coisa, estamos à disposição! 😊
             receivedAt: Date.now(),
           };
           
+          console.log(`🔄 [Webhook] Chamando addToBatch()...`);
+          
           // Adiciona ao batch - retorna se deve processar imediatamente (fallback)
           const result = await addToBatch(chatId, messageData);
+          
+          console.log(`📊 [Webhook] Resultado do batching:`, { shouldProcess: result.shouldProcess, messageCount: result.messages.length });
 
           if (result.shouldProcess) {
             // Fallback: processar imediatamente se batching falhou

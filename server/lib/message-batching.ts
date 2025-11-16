@@ -75,8 +75,14 @@ export async function addToBatch(
     
     // SEMPRE agenda verificação após debounce window
     // A verificação vai checar se passaram 3s desde o último update
+    console.log(`⏰ [Batch] Agendando processamento para ${chatId} em ${DEBOUNCE_WINDOW_MS}ms`);
     setTimeout(async () => {
-      await processWhenReady(chatId);
+      console.log(`⏰ [Batch] Timer disparado para ${chatId} - executando processWhenReady()`);
+      try {
+        await processWhenReady(chatId);
+      } catch (error) {
+        console.error(`❌ [Batch] Erro no timer de processamento para ${chatId}:`, error);
+      }
     }, DEBOUNCE_WINDOW_MS);
     
     return { 
@@ -122,9 +128,12 @@ async function processWhenReady(chatId: string): Promise<void> {
   const batchKey = `${BATCH_KEY_PREFIX}${chatId}`;
   const timerKey = `${TIMER_KEY_PREFIX}${chatId}`;
   
+  console.log(`🔍 [Batch] processWhenReady() chamado para ${chatId}`);
+  
   try {
     // Pega timestamp do timer
     const timerValue = await redisConnection.get(timerKey);
+    console.log(`🔍 [Batch] Timer value: ${timerValue}`);
     
     if (timerValue) {
       const lastUpdateTime = parseInt(timerValue);
