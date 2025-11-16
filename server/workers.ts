@@ -1735,10 +1735,14 @@ Por favor, responda apenas com um número de 0 a 10.
     });
   });
 
+  // Importar batch processor worker
+  await import('./workers/batch-processor.worker');
+  
   console.log('✅ [Workers] Sistema de workers inicializado');
-  console.log('👷 [Workers] Workers ativos: 5');
+  console.log('👷 [Workers] Workers ativos: 6');
   console.log('⚡ [Workers] Concurrency (MODERADO - BALANCEADO):');
   console.log('  - Message Processing: 20 workers (50 jobs/s)');
+  console.log('  - Batch Processing: 10 workers (persistente)');
   console.log('  - Image Analysis: 8 workers');
   console.log('  - NPS Survey: 8 workers');
   console.log('  - Inactivity Follow-up: 2 workers');

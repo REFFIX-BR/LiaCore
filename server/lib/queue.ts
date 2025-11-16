@@ -10,6 +10,7 @@ export const QUEUE_NAMES = {
   LEARNING_TASKS: 'learning-tasks',
   INACTIVITY_FOLLOWUP: 'inactivity-followup',
   AUTO_CLOSURE: 'auto-closure',
+  BATCH_PROCESSING: 'batch-processing', // Processamento persistente de batches (substitui setTimeout volátil)
   // COBRANÇAS - Módulo de Cobrança via WhatsApp
   VOICE_CAMPAIGN_INGEST: 'voice-campaign-ingest',
   VOICE_CRM_SYNC: 'voice-crm-sync', // Sincronização automática com CRM
@@ -122,6 +123,21 @@ export const QUEUE_CONFIGS = {
       },
       removeOnFail: {
         count: 50,
+      },
+    },
+  },
+  [QUEUE_NAMES.BATCH_PROCESSING]: {
+    defaultJobOptions: {
+      attempts: 2, // Se falhar, tentar uma vez mais
+      backoff: {
+        type: 'fixed' as const,
+        delay: 1000,
+      },
+      removeOnComplete: {
+        count: 200, // Keep for monitoring
+      },
+      removeOnFail: {
+        count: 100,
       },
     },
   },
@@ -256,6 +272,14 @@ export const autoClosureQueue = new Queue(
   }
 );
 
+export const batchProcessingQueue = new Queue(
+  QUEUE_NAMES.BATCH_PROCESSING,
+  {
+    connection: redisConnection,
+    ...QUEUE_CONFIGS[QUEUE_NAMES.BATCH_PROCESSING],
+  }
+);
+
 // COBRANÇAS - Queue instances (WhatsApp Collection only)
 export const voiceCampaignIngestQueue = new Queue(
   QUEUE_NAMES.VOICE_CAMPAIGN_INGEST,
@@ -363,6 +387,12 @@ export interface AutoClosureJob {
   evolutionInstance?: string;
   scheduledAt: number;
   followupSentAt: number;
+}
+
+export interface BatchProcessingJob {
+  chatId: string;
+  timerValue: string; // Timestamp esperado do timer para validação
+  scheduledAt: number; // Quando o job foi criado
 }
 
 // COBRANÇAS - Job data types
@@ -516,6 +546,14 @@ export async function cancelAutoClosure(conversationId: string) {
     console.error(`❌ [Auto-Closure] Erro ao cancelar encerramento automático:`, error);
     return false;
   }
+}
+
+export async function addBatchProcessingToQueue(data: BatchProcessingJob, delay: number) {
+  return await batchProcessingQueue.add('process-batch', data, {
+    delay, // Delay em milissegundos (normalmente 3000ms = 3 segundos)
+    jobId: `batch-${data.chatId}-${data.timerValue}`, // ID único baseado em chatId e timestamp
+    priority: 1, // Alta prioridade
+  });
 }
 
 // COBRANÇAS - Helper functions

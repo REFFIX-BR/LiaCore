@@ -73,16 +73,16 @@ export async function addToBatch(
     const batchLength = await redisConnection.llen(batchKey);
     console.log(`📦 [Batch] Mensagem de texto adicionada ao batch para ${chatId} (${batchLength} no total)`);
     
-    // SEMPRE agenda verificação após debounce window
-    // A verificação vai checar se passaram 3s desde o último update
-    console.log(`⏰ [Batch] Agendando processamento para ${chatId} em ${DEBOUNCE_WINDOW_MS}ms`);
-    setTimeout(async () => {
-      console.log(`⏰ [Batch] Timer disparado para ${chatId} - executando processWhenReady()`);
-      try {
-        await processWhenReady(chatId);
-      } catch (error) {
-        console.error(`❌ [Batch] Erro no timer de processamento para ${chatId}:`, error);
-      }
+    // 🚀 PERSISTENTE: Agenda job no Redis (substitui setTimeout volátil)
+    // Job sobrevive a reinicializações e é garantido pelo BullMQ
+    console.log(`⏰ [Batch] Agendando job persistente no Redis para ${chatId} em ${DEBOUNCE_WINDOW_MS}ms`);
+    
+    const { addBatchProcessingToQueue } = await import("./queue");
+    
+    await addBatchProcessingToQueue({
+      chatId,
+      timerValue: now.toString(),
+      scheduledAt: now,
     }, DEBOUNCE_WINDOW_MS);
     
     return { 
