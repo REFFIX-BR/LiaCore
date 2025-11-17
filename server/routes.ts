@@ -3503,18 +3503,24 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
         
         // Update conversation metadata if chat exists in our system
         if (id && event === "chats.upsert") {
-          const phoneNumber = id.replace('@s.whatsapp.net', '');
-          const chatId = `whatsapp_${phoneNumber}`;
-          const conversation = await storage.getConversationByChatId(chatId);
-          
-          if (conversation && name) {
-            // Update client name if provided and different
-            if (conversation.clientName !== name) {
-              await storage.updateConversation(conversation.id, {
-                clientName: name,
-              });
-              console.log(`✏️  [Evolution] Nome do cliente atualizado: ${name}`);
+          // CRITICAL: Use parseRemoteJid to properly handle LID (@lid) and regular phones
+          // This prevents chatId malformation for WhatsApp Business accounts
+          try {
+            const parsed = parseRemoteJid(id, name);
+            const chatId = parsed.chatId;
+            const conversation = await storage.getConversationByChatId(chatId);
+            
+            if (conversation && name) {
+              // Update client name if provided and different
+              if (conversation.clientName !== name) {
+                await storage.updateConversation(conversation.id, {
+                  clientName: name,
+                });
+                console.log(`✏️  [Evolution] Nome do cliente atualizado: ${name} (chatId: ${chatId})`);
+              }
             }
+          } catch (error) {
+            console.error(`❌ [Evolution] Erro ao processar chats.upsert:`, error);
           }
         }
         
@@ -3533,57 +3539,75 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
             
             if (!remoteJid) continue;
 
-            // Extract phone number from remoteJid
-            const phoneNumber = remoteJid.replace('@s.whatsapp.net', '');
-            
-            // Get WhatsApp profile name (Evolution API may provide in pushName)
-            const contactName = contactData.pushName || contactData.name || null;
-
-            console.log(`📇 [Contacts Import] Processando contato do WhatsApp:`, {
-              phoneNumber,
-              name: contactName,
-              hasProfilePic: !!profilePicUrl
-            });
-
-            // Check if contact exists
-            const existingContact = await storage.getContactByPhoneNumber(phoneNumber);
-
-            if (!existingContact) {
-              // Create new contact from WhatsApp sync
-              await storage.createContact({
-                phoneNumber,
-                name: contactName,
-                document: null,
-                lastConversationId: null,
-                lastConversationDate: null,
-                totalConversations: 0,
-                hasRecurringIssues: false,
-                status: 'active',
-              });
-              imported++;
-              console.log(`✅ [Contacts Import] Novo contato importado: ${phoneNumber} (${contactName || 'sem nome'})`);
+            // CRITICAL: Parse remoteJid to properly handle both regular phones and LID (@lid) Business accounts
+            // WhatsApp Business uses @lid suffix, which cannot be processed like regular phones
+            try {
+              const contactName = contactData.pushName || contactData.name || null;
+              const parsed = parseRemoteJid(remoteJid, contactName);
               
-              webhookLogger.success('CONTACT_IMPORTED', `Contato importado do WhatsApp`, {
+              // Skip groups and LID accounts from automatic contact sync
+              // LIDs don't have traditional phone numbers and shouldn't be auto-imported as contacts
+              if (parsed.type === 'group' || parsed.type === 'lid') {
+                console.log(`⏭️  [Contacts Import] Skipping ${parsed.type}: ${remoteJid}`);
+                continue;
+              }
+              
+              // For regular phones, ensure we have a normalized phone number
+              const phoneNumber = parsed.normalizedPhone;
+              if (!phoneNumber) {
+                console.warn(`⚠️ [Contacts Import] Could not normalize phone from remoteJid: ${remoteJid}`);
+                continue;
+              }
+
+              console.log(`📇 [Contacts Import] Processando contato do WhatsApp:`, {
                 phoneNumber,
                 name: contactName,
-                source: 'whatsapp_sync'
+                hasProfilePic: !!profilePicUrl
               });
-            } else {
-              // Update existing contact name if provided and different
-              if (contactName && existingContact.name !== contactName) {
-                await storage.updateContact(existingContact.id, {
-                  name: contactName,
-                });
-                updated++;
-                console.log(`✏️ [Contacts Import] Contato atualizado: ${phoneNumber} → ${contactName}`);
-                
-                webhookLogger.info('CONTACT_UPDATED', `Nome do contato atualizado`, {
+
+              // Check if contact exists
+              const existingContact = await storage.getContactByPhoneNumber(phoneNumber);
+
+              if (!existingContact) {
+                // Create new contact from WhatsApp sync
+                await storage.createContact({
                   phoneNumber,
-                  oldName: existingContact.name,
-                  newName: contactName,
+                  name: contactName,
+                  document: null,
+                  lastConversationId: null,
+                  lastConversationDate: null,
+                  totalConversations: 0,
+                  hasRecurringIssues: false,
+                  status: 'active',
+                });
+                imported++;
+                console.log(`✅ [Contacts Import] Novo contato importado: ${phoneNumber} (${contactName || 'sem nome'})`);
+                
+                webhookLogger.success('CONTACT_IMPORTED', `Contato importado do WhatsApp`, {
+                  phoneNumber,
+                  name: contactName,
                   source: 'whatsapp_sync'
                 });
+              } else {
+                // Update existing contact name if provided and different
+                if (contactName && existingContact.name !== contactName) {
+                  await storage.updateContact(existingContact.id, {
+                    name: contactName,
+                  });
+                  updated++;
+                  console.log(`✏️ [Contacts Import] Contato atualizado: ${phoneNumber} → ${contactName}`);
+                  
+                  webhookLogger.info('CONTACT_UPDATED', `Nome do contato atualizado`, {
+                    phoneNumber,
+                    oldName: existingContact.name,
+                    newName: contactName,
+                    source: 'whatsapp_sync'
+                  });
+                }
               }
+            } catch (parseError) {
+              console.error(`❌ [Contacts Import] Erro ao processar contato ${remoteJid}:`, parseError);
+              // Continue processing other contacts
             }
           }
 
@@ -8336,23 +8360,24 @@ A resposta deve:
 
       const { phoneNumber, name, document, message, assignedTo, department, evolutionInstance } = validation.data;
 
-      // Validate and format phone number (remove special characters)
-      const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+      // CRITICAL: Normalize phone number to canonical format (55XXXXXXXXXXX)
+      // This ensures consistent chatId creation for both regular and Business WhatsApp accounts
+      const normalizedPhone = normalizePhone(phoneNumber);
       
-      if (cleanPhoneNumber.length < 10) {
-        return res.status(400).json({ error: "Invalid phone number" });
+      if (!normalizedPhone) {
+        return res.status(400).json({ error: "Invalid phone number - unable to normalize" });
       }
 
-      // Check if contact already exists
-      const existingContact = await storage.getContactByPhoneNumber(cleanPhoneNumber);
+      // Check if contact already exists (using normalized phone)
+      const existingContact = await storage.getContactByPhoneNumber(normalizedPhone);
       
       if (existingContact) {
         return res.status(400).json({ error: "Contact with this phone number already exists" });
       }
 
-      // Create contact
+      // Create contact with normalized phone
       const contact = await storage.createContact({
-        phoneNumber: cleanPhoneNumber,
+        phoneNumber: normalizedPhone,
         name: name || null,
         document: document || null,
         status: 'active',
@@ -8360,7 +8385,7 @@ A resposta deve:
         hasRecurringIssues: false,
       });
 
-      console.log(`✅ [Contacts] Created new contact ${cleanPhoneNumber}`);
+      console.log(`✅ [Contacts] Created new contact ${normalizedPhone}`);
 
       // Create conversation (not assigned - goes to "Transferidas" for manual follow-up)
       // Map department to assistantType
@@ -8372,11 +8397,13 @@ A resposta deve:
         'general': 'apresentacao',
       };
       
-      const chatId = `${cleanPhoneNumber}@s.whatsapp.net`;
+      // CRITICAL: Use buildWhatsAppChatId to create properly formatted chatId
+      // This prevents chatId malformation and ensures compatibility with WhatsApp Business (@lid)
+      const chatId = buildWhatsAppChatId(normalizedPhone);
       const conversation = await storage.createConversation({
         chatId,
-        clientName: name || cleanPhoneNumber,
-        clientId: cleanPhoneNumber,
+        clientName: name || normalizedPhone,
+        clientId: normalizedPhone,
         clientDocument: document || undefined,
         assistantType: department ? (departmentToAssistant[department] || 'cortex') : 'cortex',
         department: department || 'general',
@@ -8442,8 +8469,10 @@ A resposta deve:
         return res.status(404).json({ error: "Contact not found" });
       }
 
-      // Create chat ID
-      const chatId = `${contact.phoneNumber}@s.whatsapp.net`;
+      // CRITICAL: Use buildWhatsAppChatId to create properly formatted chatId
+      // contact.phoneNumber is already normalized (55XXXXXXXXXXX) from contact creation
+      // This ensures compatibility with WhatsApp Business (@lid) and prevents malformation
+      const chatId = buildWhatsAppChatId(contact.phoneNumber);
       
       console.log(`📞 [Contacts] Reopening conversation for ${contact.name} (${contact.phoneNumber})`);
 
