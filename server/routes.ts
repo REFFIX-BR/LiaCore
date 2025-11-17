@@ -4458,6 +4458,19 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     }
   });
 
+  // Get latency metrics (P50, P95, P99) - PUBLIC ROUTE
+  app.get("/api/monitor/latency", async (req, res) => {
+    try {
+      const { getLatencyMetrics } = await import("./lib/latency-tracker");
+      const metrics = await getLatencyMetrics(1000);
+      
+      return res.json(metrics);
+    } catch (error) {
+      console.error("❌ [Latency API] Error:", error);
+      return res.status(500).json({ error: "Failed to fetch latency metrics" });
+    }
+  });
+
   // Get all active conversations for monitoring (includes resolved from last 24h)
   app.get("/api/monitor/conversations", authenticateWithTracking, async (req, res) => {
     try {

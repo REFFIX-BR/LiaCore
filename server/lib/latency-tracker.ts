@@ -279,3 +279,124 @@ export async function loadTrackerSnapshot(messageId: string): Promise<LatencyTra
     return null;
   }
 }
+
+/**
+ * Calcula métricas agregadas de latência (P50, P95, P99)
+ */
+export async function getLatencyMetrics(limit = 1000): Promise<{
+  total: { p50: number; p95: number; p99: number };
+  breakdown: {
+    queueWait: { p50: number; p95: number; p99: number };
+    batching: { p50: number; p95: number; p99: number };
+    workerStart: { p50: number; p95: number; p99: number };
+    openai: { p50: number; p95: number; p99: number };
+    whatsapp: { p50: number; p95: number; p99: number };
+  };
+  sampleSize: number;
+  lastMeasurement: number | null;
+}> {
+  try {
+    // Buscar últimas medições do Redis (LIST)
+    let measurements;
+    try {
+      measurements = await redis.lrange('latency:measurements', 0, limit - 1);
+    } catch (error: any) {
+      // Se der erro WRONGTYPE, significa que a chave está em formato antigo (ZSET)
+      // Deletar e retornar dados vazios
+      if (error.message?.includes('WRONGTYPE')) {
+        console.log('🧹 [Latency] Detectado formato antigo - limpando chaves...');
+        await redis.del('latency:measurements');
+        await redis.del('latency:timestamps');
+        console.log('✅ [Latency] Chaves antigas deletadas - aguarde novas medições');
+        measurements = [];
+      } else {
+        throw error;
+      }
+    }
+    
+    if (!measurements || measurements.length === 0) {
+      return {
+        total: { p50: 0, p95: 0, p99: 0 },
+        breakdown: {
+          queueWait: { p50: 0, p95: 0, p99: 0 },
+          batching: { p50: 0, p95: 0, p99: 0 },
+          workerStart: { p50: 0, p95: 0, p99: 0 },
+          openai: { p50: 0, p95: 0, p99: 0 },
+          whatsapp: { p50: 0, p95: 0, p99: 0 },
+        },
+        sampleSize: 0,
+        lastMeasurement: null,
+      };
+    }
+    
+    // Parser medições
+    const data = measurements.map(m => JSON.parse(m as string));
+    
+    // Calcular latência total (webhook → whatsapp)
+    const totalLatencies: number[] = [];
+    const breakdowns = {
+      queueWait: [] as number[],
+      batching: [] as number[],
+      workerStart: [] as number[],
+      openai: [] as number[],
+      whatsapp: [] as number[],
+    };
+    
+    data.forEach((m: any) => {
+      const checkpoints = m.checkpoints || [];
+      const webhook = checkpoints.find((c: any) => c.name === 'webhook');
+      const queued = checkpoints.find((c: any) => c.name === 'queued');
+      const batchReady = checkpoints.find((c: any) => c.name === 'batch_ready');
+      const workerStart = checkpoints.find((c: any) => c.name === 'worker_start');
+      const openaiComplete = checkpoints.find((c: any) => c.name === 'openai_complete');
+      const whatsappSent = checkpoints.find((c: any) => c.name === 'whatsapp_sent');
+      
+      // Latência total
+      if (webhook && whatsappSent) {
+        totalLatencies.push((whatsappSent.timestamp - webhook.timestamp) / 1000);
+      }
+      
+      // Breakdown
+      if (webhook && queued) breakdowns.queueWait.push((queued.timestamp - webhook.timestamp) / 1000);
+      if (queued && batchReady) breakdowns.batching.push((batchReady.timestamp - queued.timestamp) / 1000);
+      if (batchReady && workerStart) breakdowns.workerStart.push((workerStart.timestamp - batchReady.timestamp) / 1000);
+      if (workerStart && openaiComplete) breakdowns.openai.push((openaiComplete.timestamp - workerStart.timestamp) / 1000);
+      if (openaiComplete && whatsappSent) breakdowns.whatsapp.push((whatsappSent.timestamp - openaiComplete.timestamp) / 1000);
+    });
+    
+    // Função para calcular percentis
+    const calculatePercentiles = (arr: number[]) => {
+      if (arr.length === 0) return { p50: 0, p95: 0, p99: 0 };
+      
+      const sorted = [...arr].sort((a, b) => a - b);
+      const p50 = sorted[Math.floor(sorted.length * 0.5)] || 0;
+      const p95 = sorted[Math.floor(sorted.length * 0.95)] || 0;
+      const p99 = sorted[Math.floor(sorted.length * 0.99)] || 0;
+      
+      return { 
+        p50: Number(p50.toFixed(2)), 
+        p95: Number(p95.toFixed(2)), 
+        p99: Number(p99.toFixed(2)) 
+      };
+    };
+    
+    // Última medição
+    const lastMeasurement = data.length > 0 ? data[0]?.timestamp || null : null;
+    
+    return {
+      total: calculatePercentiles(totalLatencies),
+      breakdown: {
+        queueWait: calculatePercentiles(breakdowns.queueWait),
+        batching: calculatePercentiles(breakdowns.batching),
+        workerStart: calculatePercentiles(breakdowns.workerStart),
+        openai: calculatePercentiles(breakdowns.openai),
+        whatsapp: calculatePercentiles(breakdowns.whatsapp),
+      },
+      sampleSize: data.length,
+      lastMeasurement,
+    };
+  } catch (error) {
+    console.error('❌ [Latency] Erro ao calcular métricas:', error);
+    throw error;
+  }
+}
