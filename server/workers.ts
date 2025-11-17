@@ -365,14 +365,23 @@ if (redisConnection) {
         evolutionInstance,
       });
       
-      // 📊 LATENCY TRACKING: Worker started
+      // 📊 LATENCY TRACKING: Tentar recuperar tracker do Redis (múltiplas tentativas)
       const { loadTrackerSnapshot, addCheckpoint, saveTrackerSnapshot } = await import('./lib/latency-tracker');
-      let latencyTracker = await loadTrackerSnapshot(messageId || job.id!);
+      
+      // Tentativa 1: Buscar por messageId (mensagens normais via webhook)
+      let latencyTracker = messageId ? await loadTrackerSnapshot(messageId) : null;
+      
+      // Tentativa 2: Buscar por job.id (mensagens recuperadas pelo Message Recovery)
+      // Recovery jobs usam formato: "recovery_${conversationId}_${timestamp}"
+      if (!latencyTracker && job.id) {
+        latencyTracker = await loadTrackerSnapshot(job.id);
+      }
+      
       if (!latencyTracker) {
-        // Fallback: criar novo tracker se não encontrado
+        // Criar novo tracker se não encontrado em nenhuma das tentativas
         const { createLatencyTracker } = await import('./lib/latency-tracker');
         latencyTracker = createLatencyTracker(messageId || job.id!);
-        console.warn(`⚠️  [Latency] Tracker não encontrado, criando novo`);
+        console.warn(`⚠️  [Latency] Tracker não encontrado (tentou: messageId=${messageId}, jobId=${job.id}) - criando novo`);
       }
       addCheckpoint(latencyTracker, 'worker_started');
       latencyTracker.conversationId = conversationId.toString();
