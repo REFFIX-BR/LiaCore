@@ -131,7 +131,7 @@ export function generateLatencyReport(tracker: LatencyTracker): LatencyReport {
  * Persiste métricas de latência no Redis (para análise posterior)
  * Mantém últimos 1000 reports em uma lista circular
  */
-export async function persistLatencyReport(report: LatencyReport): Promise<void> {
+export async function persistLatencyReport(report: LatencyReport, tracker: LatencyTracker): Promise<void> {
   try {
     // Adicionar ao histórico de latência
     await redis.lpush('latency:reports', JSON.stringify(report));
@@ -139,8 +139,8 @@ export async function persistLatencyReport(report: LatencyReport): Promise<void>
     // Manter apenas últimos 1000 reports
     await redis.ltrim('latency:reports', 0, 999);
     
-    // Atualizar métricas agregadas (P50, P95, P99)
-    await updateLatencyMetrics(report.totalLatencyMs);
+    // Atualizar métricas agregadas (P50, P95, P99) com tracker completo
+    await updateLatencyMetrics(tracker);
     
     // Log estruturado
     const totalSeconds = (report.totalLatencyMs / 1000).toFixed(2);
@@ -168,16 +168,25 @@ export async function persistLatencyReport(report: LatencyReport): Promise<void>
 /**
  * Atualiza métricas agregadas de latência (usa lista circular para percentis)
  * 
- * CRITICAL FIX v3: Usa lista circular simples (LPUSH + LTRIM)
- * - Evita desincronização de dual-ZSET
- * - Operação atômica O(1)
+ * CRITICAL FIX v4: Salva tracker completo com checkpoints para análise detalhada
+ * - Permite calcular breakdowns por etapa
  * - Mantém últimas 1000 medições cronologicamente
  * - Sem bias (remove sempre as mais antigas)
  */
-async function updateLatencyMetrics(latencyMs: number): Promise<void> {
-  // CRITICAL: Usar lista circular ao invés de ZSET para evitar bugs de cleanup
-  // LPUSH + LTRIM é atômico e garante FIFO perfeito (sem bias)
-  await redis.lpush('latency:measurements', latencyMs.toString());
+async function updateLatencyMetrics(tracker: LatencyTracker): Promise<void> {
+  // Preparar objeto de medição com checkpoints
+  const measurement = {
+    messageId: tracker.messageId,
+    conversationId: tracker.conversationId,
+    timestamp: Date.now(),
+    checkpoints: tracker.checkpoints.map(cp => ({
+      name: cp.step,
+      timestamp: cp.timestamp,
+    })),
+  };
+  
+  // Salvar medição completa como JSON
+  await redis.lpush('latency:measurements', JSON.stringify(measurement));
   await redis.ltrim('latency:measurements', 0, 999); // Mantém últimas 1000
 }
 
@@ -297,9 +306,10 @@ export async function getLatencyMetrics(limit = 1000): Promise<{
 }> {
   try {
     // Buscar últimas medições do Redis (LIST)
-    let measurements;
+    let measurements: string[] = [];
     try {
-      measurements = await redis.lrange('latency:measurements', 0, limit - 1);
+      const result = await redis.lrange('latency:measurements', 0, limit - 1);
+      measurements = (result || []) as string[];
     } catch (error: any) {
       // Se der erro WRONGTYPE, significa que a chave está em formato antigo (ZSET)
       // Deletar e retornar dados vazios
@@ -344,11 +354,11 @@ export async function getLatencyMetrics(limit = 1000): Promise<{
     
     data.forEach((m: any) => {
       const checkpoints = m.checkpoints || [];
-      const webhook = checkpoints.find((c: any) => c.name === 'webhook');
-      const queued = checkpoints.find((c: any) => c.name === 'queued');
-      const batchReady = checkpoints.find((c: any) => c.name === 'batch_ready');
-      const workerStart = checkpoints.find((c: any) => c.name === 'worker_start');
-      const openaiComplete = checkpoints.find((c: any) => c.name === 'openai_complete');
+      const webhook = checkpoints.find((c: any) => c.name === 'webhook_received');
+      const queued = checkpoints.find((c: any) => c.name === 'queue_enqueued');
+      const workerStart = checkpoints.find((c: any) => c.name === 'worker_started');
+      const openaiRequest = checkpoints.find((c: any) => c.name === 'openai_request');
+      const openaiResponse = checkpoints.find((c: any) => c.name === 'openai_response');
       const whatsappSent = checkpoints.find((c: any) => c.name === 'whatsapp_sent');
       
       // Latência total
@@ -358,10 +368,10 @@ export async function getLatencyMetrics(limit = 1000): Promise<{
       
       // Breakdown
       if (webhook && queued) breakdowns.queueWait.push((queued.timestamp - webhook.timestamp) / 1000);
-      if (queued && batchReady) breakdowns.batching.push((batchReady.timestamp - queued.timestamp) / 1000);
-      if (batchReady && workerStart) breakdowns.workerStart.push((workerStart.timestamp - batchReady.timestamp) / 1000);
-      if (workerStart && openaiComplete) breakdowns.openai.push((openaiComplete.timestamp - workerStart.timestamp) / 1000);
-      if (openaiComplete && whatsappSent) breakdowns.whatsapp.push((whatsappSent.timestamp - openaiComplete.timestamp) / 1000);
+      if (queued && workerStart) breakdowns.batching.push((workerStart.timestamp - queued.timestamp) / 1000);
+      if (workerStart && openaiRequest) breakdowns.workerStart.push((openaiRequest.timestamp - workerStart.timestamp) / 1000);
+      if (openaiRequest && openaiResponse) breakdowns.openai.push((openaiResponse.timestamp - openaiRequest.timestamp) / 1000);
+      if (openaiResponse && whatsappSent) breakdowns.whatsapp.push((whatsappSent.timestamp - openaiResponse.timestamp) / 1000);
     });
     
     // Função para calcular percentis

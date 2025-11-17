@@ -12,7 +12,7 @@ import { setupWebSockets } from "./lib/websocket-manager";
 import { authenticate, authenticateWithTracking, requireAdmin, requireAdminOrSupervisor, requireSalesAccess, requireAnyRole } from "./middleware/auth";
 import { hashPassword, comparePasswords, generateToken, getUserFromUser } from "./lib/auth";
 import { trackSecurityEvent, SecurityEventType } from "./lib/security-events";
-import { extractNumberFromChatId, parseRemoteJid } from "./lib/phone-utils";
+import { extractNumberFromChatId, parseRemoteJid, normalizePhone, buildWhatsAppChatId } from "./lib/phone-utils";
 import OpenAI from "openai";
 
 const openai = new OpenAI({

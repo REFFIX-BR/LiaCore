@@ -1049,7 +1049,7 @@ if (redisConnection) {
           addCheckpoint(latencyTracker, 'whatsapp_sent');
           const { generateLatencyReport, persistLatencyReport } = await import('./lib/latency-tracker');
           const latencyReport = generateLatencyReport(latencyTracker);
-          await persistLatencyReport(latencyReport);
+          await persistLatencyReport(latencyReport, latencyTracker);
 
           // 10. Store AI response (only if message was sent successfully)
           await storage.createMessage({
