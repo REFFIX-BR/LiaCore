@@ -193,9 +193,9 @@ async function updateLatencyMetrics(tracker: LatencyTracker): Promise<void> {
 /**
  * Calcula percentis de latência (P50, P95, P99)
  * 
- * CRITICAL FIX v3: Usa lista circular (LRANGE) para cálculo robusto
- * - Sem desincronização
- * - Ordenação simples em memória
+ * CRITICAL FIX v4: Extrai latência total de objetos tracker salvos
+ * - Calcula latência total (webhook_received → whatsapp_sent)
+ * - Ordenação em memória
  * - Percentis matematicamente corretos
  */
 export async function getLatencyPercentiles(): Promise<{
@@ -205,28 +205,39 @@ export async function getLatencyPercentiles(): Promise<{
   count: number;
 } | null> {
   try {
-    // Obter todas as medições da lista
+    // Obter todas as medições da lista (objetos com checkpoints)
     const measurements = await redis.lrange('latency:measurements', 0, -1);
     
     if (!Array.isArray(measurements) || measurements.length === 0) {
       return null;
     }
     
-    // Converter para números e ordenar
-    const values = measurements
-      .map(m => parseFloat(m as string))
-      .filter(v => !isNaN(v))
-      .sort((a, b) => a - b);
+    // Converter para objetos e calcular latência total de cada
+    const values: number[] = [];
+    measurements.forEach((m: any) => {
+      const data = typeof m === 'string' ? JSON.parse(m) : m;
+      const checkpoints = data.checkpoints || [];
+      
+      const webhook = checkpoints.find((c: any) => c.name === 'webhook_received');
+      const whatsapp = checkpoints.find((c: any) => c.name === 'whatsapp_sent');
+      
+      if (webhook && whatsapp) {
+        // Latência em segundos
+        values.push((whatsapp.timestamp - webhook.timestamp) / 1000);
+      }
+    });
     
-    const count = values.length;
-    
-    if (count === 0) {
+    if (values.length === 0) {
       return null;
     }
     
+    // Ordenar valores
+    const sorted = values.sort((a, b) => a - b);
+    const count = sorted.length;
+    
     const getPercentile = (p: number) => {
       const index = Math.ceil(count * p) - 1;
-      return values[Math.max(0, index)];
+      return sorted[Math.max(0, index)];
     };
     
     return {
@@ -306,10 +317,11 @@ export async function getLatencyMetrics(limit = 1000): Promise<{
 }> {
   try {
     // Buscar últimas medições do Redis (LIST)
-    let measurements: string[] = [];
+    // IMPORTANTE: Upstash Redis retorna objetos já parseados, não strings
+    let measurements: any[] = [];
     try {
       const result = await redis.lrange('latency:measurements', 0, limit - 1);
-      measurements = (result || []) as string[];
+      measurements = (result || []) as any[];
     } catch (error: any) {
       // Se der erro WRONGTYPE, significa que a chave está em formato antigo (ZSET)
       // Deletar e retornar dados vazios
@@ -339,8 +351,9 @@ export async function getLatencyMetrics(limit = 1000): Promise<{
       };
     }
     
-    // Parser medições
-    const data = measurements.map(m => JSON.parse(m as string));
+    // IMPORTANTE: Upstash Redis já retorna objetos parseados - não precisa JSON.parse!
+    // Se vier como string, parsear. Se vier como objeto, usar direto.
+    const data = measurements.map(m => typeof m === 'string' ? JSON.parse(m) : m);
     
     // Calcular latência total (webhook → whatsapp)
     const totalLatencies: number[] = [];
