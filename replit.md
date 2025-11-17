@@ -63,6 +63,8 @@ The frontend, built with React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS,
 ### Scalability & Performance
 A roadmap outlines plans to handle 160,000 messages at peak with 15,000 concurrent conversations through queue optimization, worker scaling, database optimization, OpenAI optimization, multi-tier infrastructure, and extensive observability with Prometheus + Grafana.
 
+**End-to-End Latency Instrumentation (Nov 2024)**: Comprehensive latency tracking system measures response time across the entire message pipeline with 6 checkpoints: (1) webhook_received, (2) queue_enqueued, (3) worker_started, (4) openai_request, (5) openai_response, (6) whatsapp_sent. Uses Redis circular list (LPUSH+LTRIM) to maintain last 1000 measurements without bias, enabling accurate percentile calculations (P50, P95, P99). System automatically alerts when P95 > 30s. Latency data persists in Redis with automatic cleanup, surviving crashes and worker restarts. API endpoints provide current measurements (/api/latency/current), aggregated reports (/api/latency/report), historical data (/api/latency/history), and active alerts (/api/latency/alerts). Performance target: ≤30 seconds end-to-end (P95). Current baseline: 20-36s P95, with OpenAI Assistants API (8-25s) as primary bottleneck, followed by batching (0-3s), queue wait (up to 5s), and WhatsApp send (1-3s).
+
 ## External Dependencies
 - **OpenAI**: AI Assistants API.
 - **Upstash Vector**: Serverless vector database.
