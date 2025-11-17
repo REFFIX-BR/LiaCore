@@ -36,6 +36,7 @@ Advanced features include an automatic retry and rate limiting system for WhatsA
 - **Thread ID Protection System**: Defensive persistence guards prevent conversation `threadId` from being overwritten.
 - **Date/Time Awareness**: All new OpenAI threads automatically receive current date/time context in Brazilian Portuguese (pt-BR).
 - **LID chatId Malformation Fix**: Includes migration scripts and architectural corrections to resolve and prevent malformed WhatsApp Business chatIds.
+- **Message Recovery LID Bug Fix** (Nov 2025): Critical fix for Message Recovery Scheduler that was causing ~20% failure rate for WhatsApp Business accounts. The scheduler now correctly prioritizes `conversation.clientId` (which preserves `lid_` prefix) instead of manually parsing `chatId`. This ensures proper format conversion (`lid_123` → `123@lid`) for Evolution API, resolving all LID-related message delivery failures.
 
 ### Scalability & Performance
 The roadmap targets handling 160,000 messages at peak with 15,000 concurrent conversations through queue optimization, worker scaling, database optimization, OpenAI optimization, multi-tier infrastructure, and extensive observability with Prometheus + Grafana. A comprehensive end-to-end latency tracking system measures response time across the message pipeline, with alerts for P95 latency exceeding 30 seconds.
