@@ -82,6 +82,33 @@ async function recoverStuckMessages() {
         console.log(`   Aguardando há: ${ageMinutes} minutos`);
         console.log(`   Mensagem: "${lastMessage.content.substring(0, 60)}..."`);
         
+        // CRITICAL FIX: Extrair fromNumber corretamente para suportar WhatsApp Business (@lid)
+        // BEFORE: conv.chatId.replace('whatsapp_', '').replace('@lid', '') → removia @lid (BUG!)
+        // AFTER: Usa clientId (já tem lid_ prefix) ou extrai corretamente do chatId
+        let fromNumber: string;
+        
+        if (conv.clientId) {
+          // Usar clientId salvo pelo webhook (formato: "lid_12345" ou "5524999207033")
+          fromNumber = conv.clientId;
+        } else {
+          // Fallback: extrair do chatId preservando formato LID
+          // whatsapp_lid_12345 → lid_12345
+          // whatsapp_54520398757908@lid → lid_54520398757908
+          // whatsapp_5524999207033 → 5524999207033
+          const withoutPrefix = conv.chatId.replace('whatsapp_', '');
+          
+          if (withoutPrefix.startsWith('lid_')) {
+            // Já tem formato correto: whatsapp_lid_12345 → lid_12345
+            fromNumber = withoutPrefix;
+          } else if (withoutPrefix.endsWith('@lid')) {
+            // Formato legado: whatsapp_12345@lid → lid_12345
+            fromNumber = 'lid_' + withoutPrefix.replace('@lid', '');
+          } else {
+            // Regular phone: whatsapp_5524999207033 → 5524999207033
+            fromNumber = withoutPrefix.replace('@s.whatsapp.net', '');
+          }
+        }
+        
         // Adicionar à fila de processamento com prioridade normal
         // IMPORTANT: Generate unique messageId per retry attempt to avoid idempotency blocking
         // Using lastMessage.id would reuse the same key on every retry attempt
@@ -89,7 +116,7 @@ async function recoverStuckMessages() {
           chatId: conv.chatId,
           conversationId: conv.id,
           message: lastMessage.content,
-          fromNumber: conv.chatId.replace('whatsapp_', '').replace('@s.whatsapp.net', '').replace('@lid', ''),
+          fromNumber, // FIXED: Preserva lid_ prefix para WhatsApp Business
           messageId: `recovery_${conv.id}_${Date.now()}`, // Unique per attempt - prevents idempotency blocking
           timestamp: Date.now(),
           evolutionInstance: conv.evolutionInstance || 'Principal',
