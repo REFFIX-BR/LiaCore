@@ -346,6 +346,12 @@ const menuCategories: MenuCategory[] = [
         icon: Settings,
         roles: ["ADMIN", "SUPERVISOR"],
       },
+      {
+        title: "Saúde do Sistema",
+        url: "/system-health",
+        icon: Activity,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
     ],
   },
 ];

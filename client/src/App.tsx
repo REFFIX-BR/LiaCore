@@ -47,6 +47,7 @@ import VoiceSettings from "@/pages/VoiceSettings";
 import MessagingControl from "@/pages/MessagingControl";
 import CobrancasMonitor from "@/pages/CobrancasMonitor";
 import CobrancaErrors from "@/pages/CobrancaErrors";
+import SystemHealth from "@/pages/SystemHealth";
 import { useEffect } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -226,6 +227,9 @@ function Router() {
       </Route>
       <Route path="/context-quality">
         {() => <AdminSupervisorRoute component={ContextQuality} />}
+      </Route>
+      <Route path="/system-health">
+        {() => <AdminSupervisorRoute component={SystemHealth} />}
       </Route>
       <Route path="/vendas">
         {() => <SalesRoute component={Vendas} />}

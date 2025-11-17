@@ -4297,6 +4297,128 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     }
   });
 
+  // ADMIN: List conversations where client sent last message but AI didn't respond
+  app.get("/api/admin/unanswered-conversations", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const { db } = await import("./db");
+      const { sql } = await import("drizzle-orm");
+
+      // Query conversations where last message is from user (client)
+      const unansweredConvs = await db.execute(sql`
+        WITH last_messages AS (
+          SELECT DISTINCT ON (m.conversation_id)
+            m.conversation_id,
+            m.role,
+            m.content,
+            m.timestamp,
+            m.whatsapp_status
+          FROM messages m
+          WHERE m.deleted_at IS NULL
+          ORDER BY m.conversation_id, m.timestamp DESC
+        )
+        SELECT 
+          c.id,
+          c.chat_id,
+          c.client_name,
+          c.status,
+          c.last_message_time,
+          lm.role as last_message_role,
+          LEFT(lm.content, 200) as last_message_preview,
+          lm.whatsapp_status,
+          EXTRACT(EPOCH FROM (NOW() - c.last_message_time))/60 AS minutes_ago
+        FROM conversations c
+        INNER JOIN last_messages lm ON lm.conversation_id = c.id
+        WHERE 
+          lm.role = 'user'
+          AND c.status IN ('active', 'transferred')
+          AND c.last_message_time > NOW() - INTERVAL '2 hours'
+        ORDER BY c.last_message_time DESC
+        LIMIT 50
+      `);
+
+      return res.json(unansweredConvs.rows || []);
+    } catch (error) {
+      console.error("❌ [ADMIN] Erro ao buscar conversas sem resposta:", error);
+      return res.status(500).json({ 
+        error: "Erro ao buscar conversas sem resposta", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+
+  // ADMIN: Reprocess a conversation by adding last client message back to queue
+  app.post("/api/admin/reprocess-conversation/:id", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const { db } = await import("./db");
+      const { conversations, messages } = await import("@shared/schema");
+      const { eq, desc } = await import("drizzle-orm");
+
+      // Get conversation
+      const [conversation] = await db
+        .select()
+        .from(conversations)
+        .where(eq(conversations.id, id))
+        .limit(1);
+
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversa não encontrada" });
+      }
+
+      // Get last user message
+      const lastUserMessages = await db
+        .select()
+        .from(messages)
+        .where(eq(messages.conversationId, id))
+        .orderBy(desc(messages.timestamp))
+        .limit(10);
+
+      const lastUserMessage = lastUserMessages.find(m => m.role === 'user');
+
+      if (!lastUserMessage) {
+        return res.status(404).json({ error: "Nenhuma mensagem do cliente encontrada" });
+      }
+
+      // Add message back to processing queue
+      const { Queue } = await import("bullmq");
+      const { redisConnection } = await import("./lib/redis-config");
+
+      const queue = new Queue('message-processing', {
+        connection: redisConnection
+      });
+
+      const job = await queue.add('process-message', {
+        conversationId: conversation.id,
+        fromNumber: conversation.chatId.replace('whatsapp_', ''),
+        content: lastUserMessage.content,
+        idempotencyKey: `reprocess_${id}_${Date.now()}`,
+        evolutionInstance: conversation.evolutionInstance || 'Leads',
+        hasImage: !!lastUserMessage.imageBase64,
+        imageBase64: lastUserMessage.imageBase64 || undefined,
+      });
+
+      console.log(`✅ [ADMIN] Conversa ${id} (${conversation.clientName}) adicionada para reprocessamento - Job: ${job.id}`);
+
+      return res.json({
+        success: true,
+        message: `Conversa de ${conversation.clientName} adicionada à fila para reprocessamento`,
+        jobId: job.id,
+        conversation: {
+          id: conversation.id,
+          clientName: conversation.clientName,
+          lastMessage: lastUserMessage.content?.substring(0, 100),
+        }
+      });
+    } catch (error) {
+      console.error("❌ [ADMIN] Erro ao reprocessar conversa:", error);
+      return res.status(500).json({ 
+        error: "Erro ao reprocessar conversa", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+
   // Get all active conversations for monitoring (includes resolved from last 24h)
   app.get("/api/monitor/conversations", authenticateWithTracking, async (req, res) => {
     try {
