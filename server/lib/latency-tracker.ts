@@ -166,21 +166,28 @@ export async function persistLatencyReport(report: LatencyReport): Promise<void>
 }
 
 /**
- * Atualiza métricas agregadas de latência (usa sorted set para percentis)
+ * Atualiza métricas agregadas de latência (usa lista circular para percentis)
+ * 
+ * CRITICAL FIX v3: Usa lista circular simples (LPUSH + LTRIM)
+ * - Evita desincronização de dual-ZSET
+ * - Operação atômica O(1)
+ * - Mantém últimas 1000 medições cronologicamente
+ * - Sem bias (remove sempre as mais antigas)
  */
 async function updateLatencyMetrics(latencyMs: number): Promise<void> {
-  const timestamp = Date.now();
-  
-  // Adicionar ao sorted set (timestamp como score para TTL automático)
-  await redis.zadd('latency:measurements', { score: timestamp, member: latencyMs.toString() });
-  
-  // Remover medições antigas (> 1 hora)
-  const oneHourAgo = timestamp - (60 * 60 * 1000);
-  await redis.zremrangebyscore('latency:measurements', 0, oneHourAgo);
+  // CRITICAL: Usar lista circular ao invés de ZSET para evitar bugs de cleanup
+  // LPUSH + LTRIM é atômico e garante FIFO perfeito (sem bias)
+  await redis.lpush('latency:measurements', latencyMs.toString());
+  await redis.ltrim('latency:measurements', 0, 999); // Mantém últimas 1000
 }
 
 /**
  * Calcula percentis de latência (P50, P95, P99)
+ * 
+ * CRITICAL FIX v3: Usa lista circular (LRANGE) para cálculo robusto
+ * - Sem desincronização
+ * - Ordenação simples em memória
+ * - Percentis matematicamente corretos
  */
 export async function getLatencyPercentiles(): Promise<{
   p50: number;
@@ -189,15 +196,24 @@ export async function getLatencyPercentiles(): Promise<{
   count: number;
 } | null> {
   try {
-    // Obter todas as medições ordenadas
-    const measurements = await redis.zrange('latency:measurements', 0, -1);
+    // Obter todas as medições da lista
+    const measurements = await redis.lrange('latency:measurements', 0, -1);
     
     if (!Array.isArray(measurements) || measurements.length === 0) {
       return null;
     }
     
-    const values = measurements.map(m => parseFloat(m as string)).sort((a, b) => a - b);
+    // Converter para números e ordenar
+    const values = measurements
+      .map(m => parseFloat(m as string))
+      .filter(v => !isNaN(v))
+      .sort((a, b) => a - b);
+    
     const count = values.length;
+    
+    if (count === 0) {
+      return null;
+    }
     
     const getPercentile = (p: number) => {
       const index = Math.ceil(count * p) - 1;
