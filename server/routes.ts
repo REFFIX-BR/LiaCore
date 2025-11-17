@@ -12,6 +12,7 @@ import { setupWebSockets } from "./lib/websocket-manager";
 import { authenticate, authenticateWithTracking, requireAdmin, requireAdminOrSupervisor, requireSalesAccess, requireAnyRole } from "./middleware/auth";
 import { hashPassword, comparePasswords, generateToken, getUserFromUser } from "./lib/auth";
 import { trackSecurityEvent, SecurityEventType } from "./lib/security-events";
+import { extractNumberFromChatId, parseRemoteJid } from "./lib/phone-utils";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -133,13 +134,9 @@ async function sendWhatsAppImage(phoneNumber: string, imageBase64: string, capti
   }
 
   try {
-    // Normalizar número do WhatsApp
-    let normalizedNumber = phoneNumber;
-    if (phoneNumber.startsWith('whatsapp_')) {
-      normalizedNumber = phoneNumber.replace('whatsapp_', '');
-    } else if (phoneNumber.includes('@s.whatsapp.net')) {
-      normalizedNumber = phoneNumber.split('@')[0];
-    }
+    // CRITICAL FIX: Use extractNumberFromChatId to properly format number for Evolution API
+    // This ensures @lid suffix for Business accounts, bare phones for regular accounts, and @g.us for groups
+    const normalizedNumber = extractNumberFromChatId(phoneNumber);
     
     // Ensure URL has protocol
     let baseUrl = EVOLUTION_CONFIG.apiUrl.trim();
@@ -206,15 +203,11 @@ async function sendWhatsAppDocument(phoneNumber: string, pdfBase64: string, file
   }
 
   try {
-    // Normalizar número do WhatsApp
-    let normalizedNumber = phoneNumber;
-    if (phoneNumber.startsWith('whatsapp_')) {
-      normalizedNumber = phoneNumber.replace('whatsapp_', '');
-    } else if (phoneNumber.includes('@s.whatsapp.net')) {
-      normalizedNumber = phoneNumber.split('@')[0];
-    }
+    // CRITICAL FIX: Use extractNumberFromChatId to properly format number for Evolution API
+    // This ensures @lid suffix for Business accounts, bare phones for regular accounts, and @g.us for groups
+    const normalizedNumber = extractNumberFromChatId(phoneNumber);
     
-    console.log(`📞 [PDF Debug] Número normalizado: ${phoneNumber} → ${normalizedNumber}`);
+    console.log(`📞 [PDF Debug] Número formatado para Evolution API: ${phoneNumber} → ${normalizedNumber}`);
     
     // Ensure URL has protocol
     let baseUrl = EVOLUTION_CONFIG.apiUrl.trim();
@@ -2236,17 +2229,21 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
           console.log(`💬 [Evolution] Mensagem de grupo ${clientName}: ${messageText}`);
         } else {
           // Individual conversation
-          phoneNumber = remoteJid.replace('@s.whatsapp.net', '');
-          chatId = `whatsapp_${phoneNumber}`;
-          clientName = pushName || `Cliente ${phoneNumber.slice(-4)}`;
-
+          // CRITICAL FIX: Parse remoteJid to handle @lid (WhatsApp Business) and @s.whatsapp.net (regular phones)
+          const parsed = parseRemoteJid(remoteJid, pushName);
+          
+          phoneNumber = parsed.normalizedPhone || parsed.rawId;
+          chatId = parsed.chatId;
+          clientName = parsed.displayName;
+          
           webhookLogger.success('MESSAGE_RECEIVED', `Mensagem de ${clientName}`, {
             phoneNumber,
             messagePreview: messageText.substring(0, 50),
             chatId,
+            type: parsed.type,
           });
 
-          console.log(`💬 [Evolution] Mensagem recebida de ${clientName} (${phoneNumber}): ${messageText}`);
+          console.log(`💬 [Evolution] Mensagem recebida de ${clientName} (${phoneNumber}) [${parsed.type}]: ${messageText}`);
         }
 
         // Get or create conversation

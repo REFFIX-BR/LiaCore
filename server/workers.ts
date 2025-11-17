@@ -16,6 +16,7 @@ import { analyzeImageWithVision } from './lib/vision';
 import { storage } from './storage';
 import { checkAndNotifyMassiveFailure } from './lib/massive-failure-handler';
 import { ContextMonitor } from './lib/context-monitor';
+import { extractNumberFromChatId } from './lib/phone-utils';
 
 // Helper function to validate and normalize Evolution API instance
 // Supported instances: "Leads", "Cobranca", "Principal"
@@ -39,7 +40,14 @@ function validateEvolutionInstance(instance?: string): string {
 }
 
 // Helper function to send WhatsApp message
-async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?: string): Promise<{success: boolean, whatsappMessageId?: string, remoteJid?: string}> {
+async function sendWhatsAppMessage(phoneNumberOrChatId: string, text: string, instance?: string): Promise<{success: boolean, whatsappMessageId?: string, remoteJid?: string}> {
+  // CRITICAL FIX: Extract Evolution API number from chatId
+  // Handles:
+  // - Regular phones: "whatsapp_5524992504803" -> "5524992504803"
+  // - Business (LID): "whatsapp_lid_145853079679217" -> "145853079679217@lid"
+  // - Groups: "whatsapp_120363123456789@g.us" -> "120363123456789@g.us"
+  const phoneNumber = extractNumberFromChatId(phoneNumberOrChatId);
+  
   // Validate and normalize Evolution API instance (Leads, Cobranca, or Principal)
   const rawInstance = instance || process.env.EVOLUTION_API_INSTANCE || 'Leads';
   const evolutionInstance = validateEvolutionInstance(rawInstance);
@@ -116,13 +124,16 @@ async function sendWhatsAppMessage(phoneNumber: string, text: string, instance?:
 
 // Helper function to send WhatsApp media (images, documents, audio)
 export async function sendWhatsAppMedia(
-  phoneNumber: string, 
+  phoneNumberOrChatId: string, 
   mediaBase64: string, 
   mediaType: 'image' | 'document' | 'audio',
   caption?: string,
   fileName?: string,
   instance?: string
 ): Promise<{success: boolean, whatsappMessageId?: string, remoteJid?: string}> {
+  // CRITICAL FIX: Extract Evolution API number from chatId
+  const phoneNumber = extractNumberFromChatId(phoneNumberOrChatId);
+  
   // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
   const rawInstance = instance || process.env.EVOLUTION_API_INSTANCE || 'Leads';
   const evolutionInstance = validateEvolutionInstance(rawInstance);
