@@ -364,6 +364,18 @@ if (redisConnection) {
         hasImage,
         evolutionInstance,
       });
+      
+      // 📊 LATENCY TRACKING: Worker started
+      const { loadTrackerSnapshot, addCheckpoint, saveTrackerSnapshot } = await import('./lib/latency-tracker');
+      let latencyTracker = await loadTrackerSnapshot(messageId || job.id!);
+      if (!latencyTracker) {
+        // Fallback: criar novo tracker se não encontrado
+        const { createLatencyTracker } = await import('./lib/latency-tracker');
+        latencyTracker = createLatencyTracker(messageId || job.id!);
+        console.warn(`⚠️  [Latency] Tracker não encontrado, criando novo`);
+      }
+      addCheckpoint(latencyTracker, 'worker_started');
+      latencyTracker.conversationId = conversationId.toString();
 
     // Acquire chat-level lock to prevent concurrent processing
     const chatLock = await acquireChatLock(chatId);
@@ -801,6 +813,10 @@ if (redisConnection) {
       }
 
       // 8. Send message to OpenAI and get response
+      // 📊 LATENCY TRACKING: OpenAI request start
+      addCheckpoint(latencyTracker, 'openai_request');
+      await saveTrackerSnapshot(latencyTracker);
+      
       let result = await sendMessageAndGetResponse(
         threadId,
         assistantId,
@@ -808,6 +824,10 @@ if (redisConnection) {
         chatId,
         conversationId
       );
+      
+      // 📊 LATENCY TRACKING: OpenAI response received
+      addCheckpoint(latencyTracker, 'openai_response');
+      await saveTrackerSnapshot(latencyTracker);
 
       // 8. Handle special responses
       if (result.transferred) {
@@ -1024,6 +1044,12 @@ if (redisConnection) {
           if (!messageSent.success) {
             throw new Error('Failed to send WhatsApp message - Evolution API error');
           }
+          
+          // 📊 LATENCY TRACKING: WhatsApp message sent - Generate final report
+          addCheckpoint(latencyTracker, 'whatsapp_sent');
+          const { generateLatencyReport, persistLatencyReport } = await import('./lib/latency-tracker');
+          const latencyReport = generateLatencyReport(latencyTracker);
+          await persistLatencyReport(latencyReport);
 
           // 10. Store AI response (only if message was sent successfully)
           await storage.createMessage({

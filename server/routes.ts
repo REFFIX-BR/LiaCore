@@ -1892,6 +1892,11 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
         const { key, pushName, message, messageTimestamp } = data;
         const { remoteJid, fromMe, id: messageId } = key;
 
+        // 📊 LATENCY TRACKING: Início do pipeline
+        const { createLatencyTracker, addCheckpoint, saveTrackerSnapshot } = await import("./lib/latency-tracker");
+        const latencyTracker = createLatencyTracker(messageId);
+        addCheckpoint(latencyTracker, 'webhook_received', { instance, remoteJid });
+        
         // Ignore messages sent by us
         if (fromMe) {
           webhookLogger.info('MESSAGE_IGNORED', 'Mensagem enviada por nós - ignorada');
@@ -2832,6 +2837,11 @@ Qualquer coisa, estamos à disposição! 😊
               hasImage: !!imageBase64,
               imageUrl: imageMediaUrl,
             }, 1);
+            
+            // 📊 LATENCY TRACKING: Mensagem enfileirada (fallback direto)
+            addCheckpoint(latencyTracker, 'queue_enqueued', { batched: false, fallback: true });
+            latencyTracker.conversationId = conversation.id.toString();
+            await saveTrackerSnapshot(latencyTracker);
 
             prodLogger.info('conversation', 'Mensagem processada imediatamente (fallback)', {
               conversationId: conversation.id,
@@ -2847,6 +2857,11 @@ Qualquer coisa, estamos à disposição! 😊
               chatId 
             });
           }
+          
+          // 📊 LATENCY TRACKING: Mensagem enfileirada (via batching)
+          addCheckpoint(latencyTracker, 'queue_enqueued', { batched: true });
+          latencyTracker.conversationId = conversation.id.toString();
+          await saveTrackerSnapshot(latencyTracker);
 
           prodLogger.info('conversation', 'Mensagem adicionada ao batch para processamento', {
             conversationId: conversation.id,
