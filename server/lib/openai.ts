@@ -695,6 +695,29 @@ export async function sendMessageAndGetResponse(
   routingReason?: string;
   functionCalls?: Array<{name: string; arguments: string}>;
 }> {
+  // CONTEXT WINDOW OPTIMIZATION: Verificar se precisa rotacionar thread ANTES de adquirir lock
+  if (conversationId) {
+    const { shouldRotateThread, rotateThread } = await import("./thread-rotation");
+    const needsRotation = await shouldRotateThread(conversationId);
+    
+    if (needsRotation) {
+      console.log(`🔄 [OpenAI] Thread ${threadId} precisa de rotação - iniciando processo...`);
+      const rotationStart = Date.now();
+      
+      try {
+        const { newThreadId, summary } = await rotateThread(conversationId);
+        threadId = newThreadId; // Usar novo thread
+        
+        const rotationDuration = Date.now() - rotationStart;
+        console.log(`✅ [OpenAI] Thread rotacionado em ${rotationDuration}ms - novo thread: ${newThreadId}`);
+        console.log(`   Resumo: ${summary.substring(0, 80)}...`);
+      } catch (error) {
+        console.error("❌ [OpenAI] Erro na rotação de thread:", error);
+        // Continuar com thread atual em caso de erro (fail gracefully)
+      }
+    }
+  }
+  
   // Adquire lock para evitar concorrência na mesma thread
   const lock = await acquireThreadLock(threadId);
   

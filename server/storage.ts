@@ -122,7 +122,12 @@ export interface IStorage {
   createConversationThread(thread: InsertConversationThread): Promise<ConversationThread>;
   getActiveThreadByConversationId(conversationId: string): Promise<ConversationThread | undefined>;
   getThreadsByConversationId(conversationId: string): Promise<ConversationThread[]>;
-  closeConversationThread(id: string, reason: string): Promise<ConversationThread | undefined>;
+  closeConversationThread(
+    id: string, 
+    reason: string, 
+    summary?: string | null, 
+    preservedMessageIds?: string[] | null
+  ): Promise<ConversationThread | undefined>;
   getThreadMessageCount(threadId: string): Promise<number>;
   
   // Alerts
@@ -530,6 +535,7 @@ export class MemStorage implements IStorage {
   private trainingSessions: Map<string, TrainingSession>;
   private contacts: Map<string, Contact>;
   private groups: Map<string, Group>;
+  private conversationThreads: Map<string, ConversationThread>; // Thread tracking
 
   constructor() {
     this.users = new Map();
@@ -548,6 +554,7 @@ export class MemStorage implements IStorage {
     this.activityLogs = new Map();
     this.complaints = new Map();
     this.trainingSessions = new Map();
+    this.conversationThreads = new Map(); // Initialize thread tracking
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -942,37 +949,60 @@ export class MemStorage implements IStorage {
     this.messages.delete(id);
   }
 
-  // Conversation Threads (Context Window Optimization) - Stub implementation
+  // Conversation Threads (Context Window Optimization)
   async createConversationThread(thread: InsertConversationThread): Promise<ConversationThread> {
     const id = randomUUID();
     const newThread: ConversationThread = {
       ...thread,
       id,
+      messageCount: thread.messageCount || 0,
+      summary: thread.summary || null,
+      preservedMessageIds: thread.preservedMessageIds || null,
       closedAt: null,
       closedReason: null,
       createdAt: new Date(),
     };
+    this.conversationThreads.set(id, newThread);
     return newThread;
   }
 
   async getActiveThreadByConversationId(conversationId: string): Promise<ConversationThread | undefined> {
-    // Stub: retorna undefined (MemStorage não rastreia threads)
-    return undefined;
+    return Array.from(this.conversationThreads.values()).find(
+      (thread) => thread.conversationId === conversationId && thread.closedAt === null
+    );
   }
 
   async getThreadsByConversationId(conversationId: string): Promise<ConversationThread[]> {
-    // Stub: retorna array vazio (MemStorage não rastreia threads)
-    return [];
+    return Array.from(this.conversationThreads.values())
+      .filter((thread) => thread.conversationId === conversationId)
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
   }
 
-  async closeConversationThread(id: string, reason: string): Promise<ConversationThread | undefined> {
-    // Stub: retorna undefined (MemStorage não rastreia threads)
-    return undefined;
+  async closeConversationThread(
+    id: string, 
+    reason: string, 
+    summary?: string | null, 
+    preservedMessageIds?: string[] | null
+  ): Promise<ConversationThread | undefined> {
+    const thread = this.conversationThreads.get(id);
+    if (!thread) return undefined;
+    
+    const updated: ConversationThread = {
+      ...thread,
+      closedAt: new Date(),
+      closedReason: reason,
+      ...(summary !== undefined && { summary }),
+      ...(preservedMessageIds !== undefined && { preservedMessageIds }),
+    };
+    this.conversationThreads.set(id, updated);
+    return updated;
   }
 
   async getThreadMessageCount(threadId: string): Promise<number> {
-    // Stub: retorna 0 (MemStorage não rastreia threads)
-    return 0;
+    const thread = Array.from(this.conversationThreads.values()).find(
+      (t) => t.threadId === threadId
+    );
+    return thread?.messageCount || 0;
   }
 
   async getActiveAlerts(): Promise<Alert[]> {
@@ -2470,10 +2500,20 @@ export class DbStorage implements IStorage {
     });
   }
 
-  async closeConversationThread(id: string, reason: string): Promise<ConversationThread | undefined> {
+  async closeConversationThread(
+    id: string, 
+    reason: string, 
+    summary?: string | null, 
+    preservedMessageIds?: string[] | null
+  ): Promise<ConversationThread | undefined> {
     const [updated] = await db
       .update(schema.conversationThreads)
-      .set({ closedAt: new Date(), closedReason: reason })
+      .set({ 
+        closedAt: new Date(), 
+        closedReason: reason,
+        ...(summary !== undefined && { summary }),
+        ...(preservedMessageIds !== undefined && { preservedMessageIds }),
+      })
       .where(eq(schema.conversationThreads.id, id))
       .returning();
     return updated;
