@@ -70,21 +70,37 @@ export async function sendWhatsAppMessage(
   }
 
   try {
-    // Normalize WhatsApp number
+    // CRITICAL FIX: Properly handle WhatsApp Business (@lid) vs regular phones
+    // Business accounts MUST preserve @lid suffix and NOT add country code
     let normalizedNumber = phoneNumber;
     
+    // Remove whatsapp_ prefix if present
     if (phoneNumber.startsWith('whatsapp_')) {
       normalizedNumber = phoneNumber.replace('whatsapp_', '');
-    } else if (phoneNumber.includes('@s.whatsapp.net')) {
-      normalizedNumber = phoneNumber.split('@')[0];
     }
     
-    // Ensure country code +55 (Brazil) is present
-    // Remove any existing + or 55 prefix first to normalize
-    normalizedNumber = normalizedNumber.replace(/^\+?55/, '');
-    
-    // Add 55 prefix (Evolution API expects numbers without +)
-    normalizedNumber = `55${normalizedNumber}`;
+    // Handle different formats
+    if (normalizedNumber.includes('@lid')) {
+      // WhatsApp Business - preserve @lid suffix, NO country code
+      // Evolution API expects: "277394942365881@lid" (as-is)
+      normalizedNumber = normalizedNumber; // Keep as-is
+    } else if (normalizedNumber.includes('@s.whatsapp.net')) {
+      // Regular phone - remove suffix and add country code
+      normalizedNumber = normalizedNumber.split('@')[0];
+      
+      // Ensure country code +55 (Brazil) is present
+      // Remove any existing + or 55 prefix first to normalize
+      normalizedNumber = normalizedNumber.replace(/^\+?55/, '');
+      
+      // Add 55 prefix (Evolution API expects numbers without +)
+      normalizedNumber = `55${normalizedNumber}`;
+    } else if (!normalizedNumber.includes('@')) {
+      // Bare phone number (no suffix) - add country code
+      // Ensure country code +55 (Brazil) is present
+      normalizedNumber = normalizedNumber.replace(/^\+?55/, '');
+      normalizedNumber = `55${normalizedNumber}`;
+    }
+    // else: Already has other suffix (@g.us, etc) - keep as-is
     
     // Ensure URL has protocol
     let baseUrl = EVOLUTION_CONFIG.apiUrl.trim();
