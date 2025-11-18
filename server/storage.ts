@@ -6,6 +6,8 @@ import {
   type InsertConversation,
   type Message,
   type InsertMessage,
+  type ConversationThread,
+  type InsertConversationThread,
   type Alert,
   type InsertAlert,
   type SupervisorAction,
@@ -115,6 +117,13 @@ export interface IStorage {
   getPendingWhatsAppMessages(olderThanMinutes: number): Promise<Message[]>;
   updateMessage(id: string, updates: Partial<Message>): Promise<void>;
   deleteMessage(id: string): Promise<void>;
+  
+  // Conversation Threads (Context Window Optimization)
+  createConversationThread(thread: InsertConversationThread): Promise<ConversationThread>;
+  getActiveThreadByConversationId(conversationId: string): Promise<ConversationThread | undefined>;
+  getThreadsByConversationId(conversationId: string): Promise<ConversationThread[]>;
+  closeConversationThread(id: string, reason: string): Promise<ConversationThread | undefined>;
+  getThreadMessageCount(threadId: string): Promise<number>;
   
   // Alerts
   getActiveAlerts(): Promise<Alert[]>;
@@ -931,6 +940,39 @@ export class MemStorage implements IStorage {
 
   async deleteMessage(id: string): Promise<void> {
     this.messages.delete(id);
+  }
+
+  // Conversation Threads (Context Window Optimization) - Stub implementation
+  async createConversationThread(thread: InsertConversationThread): Promise<ConversationThread> {
+    const id = randomUUID();
+    const newThread: ConversationThread = {
+      ...thread,
+      id,
+      closedAt: null,
+      closedReason: null,
+      createdAt: new Date(),
+    };
+    return newThread;
+  }
+
+  async getActiveThreadByConversationId(conversationId: string): Promise<ConversationThread | undefined> {
+    // Stub: retorna undefined (MemStorage não rastreia threads)
+    return undefined;
+  }
+
+  async getThreadsByConversationId(conversationId: string): Promise<ConversationThread[]> {
+    // Stub: retorna array vazio (MemStorage não rastreia threads)
+    return [];
+  }
+
+  async closeConversationThread(id: string, reason: string): Promise<ConversationThread | undefined> {
+    // Stub: retorna undefined (MemStorage não rastreia threads)
+    return undefined;
+  }
+
+  async getThreadMessageCount(threadId: string): Promise<number> {
+    // Stub: retorna 0 (MemStorage não rastreia threads)
+    return 0;
   }
 
   async getActiveAlerts(): Promise<Alert[]> {
@@ -2403,6 +2445,45 @@ export class DbStorage implements IStorage {
 
   async deleteMessage(id: string): Promise<void> {
     await db.delete(schema.messages).where(eq(schema.messages.id, id));
+  }
+
+  // Conversation Threads (Context Window Optimization)
+  async createConversationThread(thread: InsertConversationThread): Promise<ConversationThread> {
+    const [newThread] = await db.insert(schema.conversationThreads).values(thread).returning();
+    return newThread;
+  }
+
+  async getActiveThreadByConversationId(conversationId: string): Promise<ConversationThread | undefined> {
+    return await db.query.conversationThreads.findFirst({
+      where: and(
+        eq(schema.conversationThreads.conversationId, conversationId),
+        isNull(schema.conversationThreads.closedAt)
+      ),
+      orderBy: [desc(schema.conversationThreads.createdAt)],
+    });
+  }
+
+  async getThreadsByConversationId(conversationId: string): Promise<ConversationThread[]> {
+    return await db.query.conversationThreads.findMany({
+      where: eq(schema.conversationThreads.conversationId, conversationId),
+      orderBy: [desc(schema.conversationThreads.createdAt)],
+    });
+  }
+
+  async closeConversationThread(id: string, reason: string): Promise<ConversationThread | undefined> {
+    const [updated] = await db
+      .update(schema.conversationThreads)
+      .set({ closedAt: new Date(), closedReason: reason })
+      .where(eq(schema.conversationThreads.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getThreadMessageCount(threadId: string): Promise<number> {
+    const thread = await db.query.conversationThreads.findFirst({
+      where: eq(schema.conversationThreads.threadId, threadId),
+    });
+    return thread?.messageCount || 0;
   }
 
   // Alerts

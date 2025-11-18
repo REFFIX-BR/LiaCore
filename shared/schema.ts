@@ -144,6 +144,24 @@ export const messages = pgTable("messages", {
   whatsappMessageIdIdx: index("messages_whatsapp_message_id_idx").on(table.whatsappMessageId),
 }));
 
+// Conversation Threads - Context Window Optimization (Thread Rotation)
+// Rastrea rotações de threads do OpenAI para reduzir latência em conversas longas
+export const conversationThreads = pgTable("conversation_threads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull(),
+  threadId: text("thread_id").notNull(), // OpenAI thread ID
+  messageCount: integer("message_count").notNull().default(0), // Número de mensagens neste thread
+  summary: text("summary"), // Resumo do histórico preservado ao rotacionar
+  preservedMessageIds: text("preserved_message_ids").array(), // IDs de mensagens críticas preservadas
+  createdAt: timestamp("created_at").defaultNow(),
+  closedAt: timestamp("closed_at"), // Quando este thread foi fechado (rotacionado)
+  closedReason: text("closed_reason"), // Motivo do fechamento: 'rotation' | 'conversation_ended'
+}, (table) => ({
+  conversationIdIdx: index("conversation_threads_conversation_id_idx").on(table.conversationId),
+  threadIdIdx: index("conversation_threads_thread_id_idx").on(table.threadId),
+  conversationActiveIdx: index("conversation_threads_active_idx").on(table.conversationId, table.closedAt),
+}));
+
 export const alerts = pgTable("alerts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   conversationId: varchar("conversation_id").notNull(),
@@ -335,6 +353,12 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
   timestamp: true,
 });
 
+export const insertConversationThreadSchema = createInsertSchema(conversationThreads).omit({
+  id: true,
+  createdAt: true,
+  closedAt: true,
+});
+
 export const insertAlertSchema = createInsertSchema(alerts).omit({
   id: true,
   createdAt: true,
@@ -472,6 +496,8 @@ export type Conversation = typeof conversations.$inferSelect;
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type ConversationThread = typeof conversationThreads.$inferSelect;
+export type InsertConversationThread = z.infer<typeof insertConversationThreadSchema>;
 export type Alert = typeof alerts.$inferSelect;
 export type InsertAlert = z.infer<typeof insertAlertSchema>;
 export type SupervisorAction = typeof supervisorActions.$inferSelect;
