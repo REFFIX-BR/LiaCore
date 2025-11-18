@@ -4431,20 +4431,23 @@ export class DbStorage implements IStorage {
       .from(schema.massiveFailures)
       .where(eq(schema.massiveFailures.status, 'active'));
 
-    // Contar notificações (últimos 30 dias)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // CORREÇÃO: Contar apenas notificações de falhas ATIVAS (tempo real)
+    // Antes: contava dos últimos 30 dias (incluindo falhas resolvidas)
+    // Agora: conta apenas das falhas ativas atuais
+    const activeFailureIds = activeFailures.map(f => f.id);
+    
+    const notifications = activeFailureIds.length > 0
+      ? await db.select()
+          .from(schema.failureNotifications)
+          .where(
+            and(
+              eq(schema.failureNotifications.notificationType, 'failure'),
+              inArray(schema.failureNotifications.failureId, activeFailureIds)
+            )
+          )
+      : [];
 
-    const notifications = await db.select()
-      .from(schema.failureNotifications)
-      .where(
-        and(
-          eq(schema.failureNotifications.notificationType, 'failure'),
-          gte(schema.failureNotifications.sentAt, thirtyDaysAgo)
-        )
-      );
-
-    // Clientes únicos notificados
+    // Clientes únicos notificados (apenas das falhas ativas)
     const uniqueClients = new Set(notifications.map(n => n.clientPhone)).size;
 
     // Falhas por severidade

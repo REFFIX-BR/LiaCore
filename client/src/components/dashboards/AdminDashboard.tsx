@@ -545,7 +545,7 @@ export function AdminDashboard() {
                 {metrics.massiveFailures.totalNotifications}
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                Últimos 30 dias
+                Apenas falhas ativas
               </p>
             </CardContent>
           </Card>
