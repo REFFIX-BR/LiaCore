@@ -47,6 +47,9 @@ Advanced features include an automatic retry and rate limiting system for WhatsA
 ### Scalability & Performance
 The roadmap targets handling 160,000 messages at peak with 15,000 concurrent conversations through queue optimization, worker scaling, database optimization, OpenAI optimization, multi-tier infrastructure, and extensive observability with Prometheus + Grafana. A comprehensive end-to-end latency tracking system measures response time across the message pipeline, with alerts for P95 latency exceeding 30 seconds.
 
+### Future Roadmap
+**Hybrid Button System** (Planned): Integration of Meta's interactive buttons with existing AI system for improved triaging and cost reduction. Proposed system would send WhatsApp button menus on first contact, routing simple requests (like invoice retrieval) to 100% automated flows without AI involvement, while complex cases route to existing AI assistants. Expected benefits: 40% faster response for simple requests, ~R$ 300/month savings on OpenAI tokens for automated invoice flows. Full technical specification available in `docs/HYBRID_BUTTON_SYSTEM.md`.
+
 ## External Dependencies
 - **OpenAI**: AI Assistants API.
 - **Upstash Vector**: Serverless vector database.
