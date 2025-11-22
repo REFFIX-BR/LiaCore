@@ -2790,6 +2790,8 @@ Qualquer coisa, estamos à disposição! 😊
           videoMimetype: videoMimetype,
           locationLatitude: locationLatitude,
           locationLongitude: locationLongitude,
+          whatsappMessageId: messageId, // Save WhatsApp message ID for future reference
+          remoteJid: remoteJid, // Save remoteJid for deletion/updates
         });
 
         // ⏱️ IMPORTANTE: Atualizar lastMessageTime quando CLIENTE envia mensagem
@@ -3732,20 +3734,62 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
         const messages = Array.isArray(data) ? data : [data];
         console.log(`📊 [MESSAGES_SET] Processing ${messages.length} message(s)`);
         
+        let locationsFound = 0;
+        let coordinatesUpdated = 0;
+        
         // Process each message looking for location data
         for (const msg of messages) {
           if (msg?.message?.locationMessage) {
             const { key, message } = msg;
             const latitude = message.locationMessage.degreesLatitude;
             const longitude = message.locationMessage.degreesLongitude;
+            const messageId = key?.id;
+            const remoteJid = key?.remoteJid;
             
-            console.log(`📍 [MESSAGES_SET LOCATION FOUND] Message ID: ${key?.id}`);
+            console.log(`📍 [MESSAGES_SET LOCATION FOUND] Message ID: ${messageId}`);
             console.log(`📍 [MESSAGES_SET LOCATION] Coordinates: ${latitude}, ${longitude}`);
             console.log(`📍 [MESSAGES_SET LOCATION] Full locationMessage:`, JSON.stringify(message.locationMessage, null, 2));
+            
+            locationsFound++;
+            
+            // Try to update existing message with coordinates if found
+            if (messageId && latitude && longitude) {
+              try {
+                // Find message by WhatsApp message ID
+                const targetMessage = await storage.getMessageByWhatsAppId(messageId);
+                
+                if (targetMessage && !targetMessage.locationLatitude && !targetMessage.locationLongitude) {
+                  // Update message with coordinates
+                  await storage.updateMessage(targetMessage.id, {
+                    locationLatitude: latitude.toString(),
+                    locationLongitude: longitude.toString(),
+                    content: `[Localização compartilhada]\n📍 https://www.google.com/maps?q=${latitude},${longitude}`
+                  });
+                  
+                  console.log(`✅ [MESSAGES_SET] Updated message ${messageId} with coordinates`);
+                  coordinatesUpdated++;
+                } else if (targetMessage) {
+                  console.log(`⏭️  [MESSAGES_SET] Message ${messageId} already has coordinates - skipping`);
+                } else {
+                  console.log(`⚠️  [MESSAGES_SET] Message ${messageId} not found in database`);
+                }
+              } catch (error: any) {
+                console.error(`❌ [MESSAGES_SET] Error updating message ${messageId}:`, error.message);
+              }
+            }
           }
         }
         
-        return res.json({ success: true, processed: true, eventType: event, messageCount: messages.length });
+        console.log(`📊 [MESSAGES_SET] Summary: ${locationsFound} locations found, ${coordinatesUpdated} coordinates updated`);
+        
+        return res.json({ 
+          success: true, 
+          processed: true, 
+          eventType: event, 
+          messageCount: messages.length,
+          locationsFound,
+          coordinatesUpdated
+        });
       }
 
       // Process other MESSAGES_* events

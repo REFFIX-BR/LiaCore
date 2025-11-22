@@ -24,6 +24,49 @@ let isRunning = false;
 let schedulerInterval: NodeJS.Timeout | null = null;
 
 /**
+ * Normalize string for comparison (trim, lowercase, remove accents)
+ */
+function normalizeString(str: string): string {
+  if (!str) return '';
+  return str
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, ''); // Remove accents
+}
+
+/**
+ * Check if message content is a location placeholder
+ * Handles variations in PT/EN/ES with/without brackets, different casing
+ */
+function isLocationPlaceholder(content: string): boolean {
+  const normalized = normalizeString(content);
+  
+  // Portuguese variations
+  if (normalized.includes('localizacao compartilhada') || 
+      normalized.includes('localizacao') || 
+      normalized === '[localizacao compartilhada]') {
+    return true;
+  }
+  
+  // English variations
+  if (normalized.includes('shared location') || 
+      normalized.includes('location shared') ||
+      normalized === '[shared location]') {
+    return true;
+  }
+  
+  // Spanish variations
+  if (normalized.includes('ubicacion compartida') || 
+      normalized.includes('ubicacion') ||
+      normalized === '[ubicacion compartida]') {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
  * Processa mensagens sem resposta da IA
  */
 async function recoverStuckMessages() {
@@ -90,51 +133,64 @@ async function recoverStuckMessages() {
         let locationLatitude = lastMessage.locationLatitude;
         let locationLongitude = lastMessage.locationLongitude;
         
-        if (lastMessage.content === '[Localização compartilhada]' && !locationLatitude && !locationLongitude) {
+        if (isLocationPlaceholder(lastMessage.content) && !locationLatitude && !locationLongitude) {
           console.log(`📍 [Message Recovery] Location message detected without coordinates - fetching from Evolution API...`);
           
-          try {
-            // Extract remoteJid from chatId for Evolution API query
-            // whatsapp_5524992021103 → 5524992021103@s.whatsapp.net
-            // whatsapp_lid_12345 → 12345@lid
-            let remoteJid: string;
-            const withoutPrefix = conv.chatId.replace('whatsapp_', '');
-            
-            if (withoutPrefix.startsWith('lid_')) {
-              remoteJid = withoutPrefix.replace('lid_', '') + '@lid';
-            } else if (withoutPrefix.includes('@')) {
-              remoteJid = withoutPrefix; // Already has format
-            } else {
-              remoteJid = withoutPrefix + '@s.whatsapp.net';
+          // Check if we have WhatsApp message ID (required for Evolution API fetch)
+          if (!lastMessage.whatsappMessageId) {
+            console.warn(`⚠️  [Message Recovery] Cannot fetch coordinates - whatsappMessageId missing for message ${lastMessage.id}`);
+            console.warn(`⚠️  [Message Recovery] This usually means the message was created before whatsappMessageId persistence was implemented`);
+          } else {
+            try {
+              // Extract remoteJid - prefer stored value, fallback to parsing chatId
+              let remoteJid: string;
+              
+              if (lastMessage.remoteJid) {
+                // Use stored remoteJid if available
+                remoteJid = lastMessage.remoteJid;
+              } else {
+                // Fallback: Extract from chatId
+                // whatsapp_5524992021103 → 5524992021103@s.whatsapp.net
+                // whatsapp_lid_12345 → 12345@lid
+                const withoutPrefix = conv.chatId.replace('whatsapp_', '');
+                
+                if (withoutPrefix.startsWith('lid_')) {
+                  remoteJid = withoutPrefix.replace('lid_', '') + '@lid';
+                } else if (withoutPrefix.includes('@')) {
+                  remoteJid = withoutPrefix; // Already has format
+                } else {
+                  remoteJid = withoutPrefix + '@s.whatsapp.net';
+                }
+              }
+              
+              // Fetch message from Evolution API using WhatsApp message ID
+              const messageResult = await fetchMessageById(
+                lastMessage.whatsappMessageId, // FIXED: Use WhatsApp message ID, not database UUID
+                remoteJid,
+                conv.evolutionInstance || 'Principal'
+              );
+              
+              if (messageResult.success && messageResult.locationData) {
+                locationLatitude = messageResult.locationData.latitude.toString();
+                locationLongitude = messageResult.locationData.longitude.toString();
+                
+                console.log(`✅ [Message Recovery] Location coordinates retrieved: ${locationLatitude}, ${locationLongitude}`);
+                
+                // Update message in database with coordinates
+                await storage.updateMessage(lastMessage.id, {
+                  locationLatitude,
+                  locationLongitude,
+                  content: `[Localização compartilhada]\n📍 https://www.google.com/maps?q=${locationLatitude},${locationLongitude}`
+                });
+                
+                console.log(`💾 [Message Recovery] Message updated with location coordinates`);
+              } else {
+                console.warn(`⚠️  [Message Recovery] Failed to retrieve location coordinates:`, messageResult.error || 'No location data');
+              }
+            } catch (error: any) {
+              console.error(`❌ [Message Recovery] Error fetching location coordinates:`, error.message);
+              // Continue processing without coordinates
             }
-            
-            // Fetch message from Evolution API
-            const messageResult = await fetchMessageById(
-              lastMessage.id, // Message ID from webhook
-              remoteJid,
-              conv.evolutionInstance || 'Principal'
-            );
-            
-            if (messageResult.success && messageResult.locationData) {
-              locationLatitude = messageResult.locationData.latitude.toString();
-              locationLongitude = messageResult.locationData.longitude.toString();
-              
-              console.log(`✅ [Message Recovery] Location coordinates retrieved: ${locationLatitude}, ${locationLongitude}`);
-              
-              // Update message in database with coordinates
-              await storage.updateMessage(lastMessage.id, {
-                locationLatitude,
-                locationLongitude,
-                content: `[Localização compartilhada]\n📍 https://www.google.com/maps?q=${locationLatitude},${locationLongitude}`
-              });
-              
-              console.log(`💾 [Message Recovery] Message updated with location coordinates`);
-            } else {
-              console.warn(`⚠️  [Message Recovery] Failed to retrieve location coordinates:`, messageResult.error || 'No location data');
-            }
-          } catch (error: any) {
-            console.error(`❌ [Message Recovery] Error fetching location coordinates:`, error.message);
-            // Continue processing without coordinates
           }
         }
         
