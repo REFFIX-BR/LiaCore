@@ -251,8 +251,12 @@ export function ChatMessage({ message, canEdit = false, onDelete, onReply, showI
   }
 
   if (hasLocationShared) {
-    // Limpar o conteúdo da mensagem - apenas o botão será exibido
-    messageContent = '';
+    // Remover apenas a tag e URL, preservando texto adicional se houver
+    // Regex robusto: captura variações de URLs do Google Maps (http/https, www ou não, diferentes domínios)
+    messageContent = messageContent
+      .replace(/\[Localização compartilhada\]/gi, '')
+      .replace(/📍\s*https?:\/\/(www\.)?google\.[a-z.]+\/maps[^\s]*/gi, '')
+      .trim();
   }
 
   return (
