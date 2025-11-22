@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Check, CheckCheck, FileText, Download, Trash2, MoreVertical, Copy, Reply } from "lucide-react";
+import { Check, CheckCheck, FileText, Download, Trash2, MoreVertical, Copy, Reply, MapPin } from "lucide-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import {
   DropdownMenu,
@@ -29,6 +29,8 @@ export interface Message {
   videoUrl?: string | null;
   videoName?: string | null;
   videoMimetype?: string | null;
+  locationLatitude?: string | null;
+  locationLongitude?: string | null;
   deletedAt?: Date | null;
   deletedBy?: string | null;
 }
@@ -178,6 +180,11 @@ export function ChatMessage({ message, canEdit = false, onDelete, onReply, showI
 
   // Detectar se mensagem contém vídeo enviado
   const hasVideoAttached = message.content.includes('[Vídeo enviado]');
+
+  // Detectar se mensagem contém localização compartilhada
+  const hasLocationShared = message.content.includes('[Localização compartilhada]') && 
+                             !!message.locationLatitude && 
+                             !!message.locationLongitude;
 
   // Separar conteúdo e análise/transcrição se houver
   let messageContent = message.content;
@@ -401,6 +408,22 @@ export function ChatMessage({ message, canEdit = false, onDelete, onReply, showI
                   <p className="text-sm leading-relaxed whitespace-pre-wrap break-all">{videoCaption}</p>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Localização compartilhada - Link do Google Maps */}
+          {hasLocationShared && message.locationLatitude && message.locationLongitude && (
+            <div className="mb-2">
+              <a
+                href={`https://www.google.com/maps?q=${message.locationLatitude},${message.locationLongitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover-elevate active-elevate-2"
+                data-testid="link-location"
+              >
+                <MapPin className="h-4 w-4 text-primary" />
+                <span className="font-medium">Ver localização no Google Maps</span>
+              </a>
             </div>
           )}
 
