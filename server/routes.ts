@@ -1921,6 +1921,12 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
           fullMessage: JSON.stringify(message).substring(0, 500)
         });
         
+        // FULL JSON DUMP for debugging - save to file system
+        const fs = await import('fs');
+        const debugPath = `/tmp/webhook_debug_${Date.now()}.json`;
+        await fs.promises.writeFile(debugPath, JSON.stringify({ data, message, key }, null, 2));
+        console.log(`📝 [DEBUG] Full webhook saved to: ${debugPath}`);
+        
         // SPECIAL DEBUG: Full dump for location messages
         if (message?.locationMessage) {
           console.log(`📍 [DEBUG LOCATION FOUND] Full locationMessage:`, JSON.stringify(message.locationMessage, null, 2));
