@@ -2364,7 +2364,7 @@ export class DbStorage implements IStorage {
   async getMessagesPaginated(conversationId: string, options: { limit?: number; before?: string }): Promise<{ messages: Message[]; hasMore: boolean }> {
     const limit = options.limit || 15;
     
-    // Selecionar EXPLICITAMENTE todos os campos, incluindo vídeo
+    // Selecionar EXPLICITAMENTE todos os campos, incluindo vídeo, localização e WhatsApp status
     let query = db.select({
       id: schema.messages.id,
       conversationId: schema.messages.conversationId,
@@ -2377,11 +2377,19 @@ export class DbStorage implements IStorage {
       pdfBase64: schema.messages.pdfBase64,
       pdfName: schema.messages.pdfName,
       audioUrl: schema.messages.audioUrl,
+      audioBase64: schema.messages.audioBase64,
       videoUrl: schema.messages.videoUrl,
       videoName: schema.messages.videoName,
       videoMimetype: schema.messages.videoMimetype,
+      locationLatitude: schema.messages.locationLatitude,
+      locationLongitude: schema.messages.locationLongitude,
       whatsappMessageId: schema.messages.whatsappMessageId,
       remoteJid: schema.messages.remoteJid,
+      whatsappStatus: schema.messages.whatsappStatus,
+      whatsappStatusUpdatedAt: schema.messages.whatsappStatusUpdatedAt,
+      whatsappRetryCount: schema.messages.whatsappRetryCount,
+      whatsappLastRetryAt: schema.messages.whatsappLastRetryAt,
+      whatsappTemplateMetadata: schema.messages.whatsappTemplateMetadata,
       isPrivate: schema.messages.isPrivate,
       sendBy: schema.messages.sendBy,
       deletedAt: schema.messages.deletedAt,

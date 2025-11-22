@@ -84,19 +84,7 @@ export const monitorAPI = {
     if (!response.ok) {
       throw new Error(`Failed to fetch conversation details: ${response.status}`);
     }
-    const data = await response.json();
-    
-    // Transform snake_case fields from backend to camelCase for frontend
-    if (data.messages) {
-      data.messages = data.messages.map((msg: any) => ({
-        ...msg,
-        locationLatitude: msg.location_latitude,
-        locationLongitude: msg.location_longitude,
-        timestamp: msg.timestamp ? new Date(msg.timestamp) : msg.timestamp,
-      }));
-    }
-    
-    return data;
+    return response.json();
   },
 
   getAlerts: async (): Promise<AlertData[]> => {

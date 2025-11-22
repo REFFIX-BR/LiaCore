@@ -4729,6 +4729,19 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
 
+      // Debug: Verificar se temos mensagens com localização
+      const locationMessages = messages.filter(m => m.locationLatitude && m.locationLongitude);
+      if (locationMessages.length > 0) {
+        console.log(`📍 [Location Debug] Found ${locationMessages.length} messages with location:`,
+          locationMessages.map(m => ({
+            id: m.id,
+            lat: m.locationLatitude,
+            lng: m.locationLongitude,
+            contentPreview: m.content.substring(0, 50)
+          }))
+        );
+      }
+
       // Debug: log tamanho do JSON antes de enviar
       const responseData = {
         conversation,
