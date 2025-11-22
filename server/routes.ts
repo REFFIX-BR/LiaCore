@@ -1904,7 +1904,7 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
           return res.json({ success: true, processed: false, reason: "fromMe" });
         }
 
-        // DEBUG: Log complete message structure
+        // DEBUG: Log complete message structure (ENHANCED FOR LOCATION DEBUGGING)
         console.log(`🔍 [DEBUG Webhook] Estrutura completa da mensagem:`, {
           messageType: data?.messageType, // Evolution API sends this field
           messageKeys: Object.keys(message || {}),
@@ -1918,6 +1918,13 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
           hasConversation: !!message?.conversation,
           hasExtendedText: !!message?.extendedTextMessage,
           hasMediaUrl: !!data?.message?.mediaUrl,
+          // LOCATION DEBUGGING: Check all known location payload structures
+          hasMessageStubParameters: !!message?.messageStubParameters,
+          hasTemplateButtonReply: !!message?.templateButtonReplyMessage,
+          hasExtendedContextInfo: !!message?.extendedTextMessage?.contextInfo,
+          messageStubParametersPreview: message?.messageStubParameters ? JSON.stringify(message.messageStubParameters).substring(0, 200) : null,
+          templateButtonPreview: message?.templateButtonReplyMessage ? JSON.stringify(message.templateButtonReplyMessage).substring(0, 200) : null,
+          extendedContextPreview: message?.extendedTextMessage?.contextInfo ? JSON.stringify(message.extendedTextMessage.contextInfo).substring(0, 200) : null,
           fullMessage: JSON.stringify(message).substring(0, 500)
         });
         
