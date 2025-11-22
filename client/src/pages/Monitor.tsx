@@ -563,17 +563,25 @@ export default function Monitor() {
   const activeConversation = conversations.find(c => c.id === activeConvId) || 
     (viewMode === "historico_completo" && historyData?.conversations?.find((c: any) => c.id === activeConvId));
   
+  // Mapear TODOS os campos da interface Message do ChatMessage para evitar omissões
   const activeMessages = allMessages.map(msg => ({
     id: msg.id,
     role: msg.role as "user" | "assistant",
     content: msg.content,
     timestamp: new Date(msg.timestamp),
     functionCall: msg.functionCall,
+    assistant: msg.assistant,
+    imageBase64: msg.imageBase64,
     pdfBase64: msg.pdfBase64,
     pdfName: msg.pdfName,
-    imageBase64: msg.imageBase64,
-    audioBase64: msg.audioBase64,
-    audioMimeType: msg.audioMimeType,
+    audioUrl: msg.audioUrl,
+    videoUrl: msg.videoUrl,
+    videoName: msg.videoName,
+    videoMimetype: msg.videoMimetype,
+    locationLatitude: msg.locationLatitude,
+    locationLongitude: msg.locationLongitude,
+    deletedAt: msg.deletedAt,
+    deletedBy: msg.deletedBy,
   }));
 
   const mockAnalysis = {
