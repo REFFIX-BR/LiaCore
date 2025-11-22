@@ -96,6 +96,8 @@ async function processBatchJob(job: Job<BatchProcessingJob>) {
           clientName: msg.clientName,
           hasImage: msg.hasImage,
           imageUrl: msg.imageUrl,
+          locationLatitude: msg.locationLatitude,
+          locationLongitude: msg.locationLongitude,
         }, 1);
       }
       
@@ -119,6 +121,8 @@ async function processBatchJob(job: Job<BatchProcessingJob>) {
         clientName: firstMessage.clientName,
         hasImage: false,
         imageUrl: undefined,
+        locationLatitude: lastMessage.locationLatitude,
+        locationLongitude: lastMessage.locationLongitude,
       }, 1);
       
       console.log(`📬 [Batch Worker] ${batch.length} mensagem(ns) de texto combinadas e enfileiradas`);

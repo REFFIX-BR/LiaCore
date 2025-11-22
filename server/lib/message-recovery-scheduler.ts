@@ -123,6 +123,8 @@ async function recoverStuckMessages() {
           clientName: conv.clientName,
           hasImage: !!lastMessage.imageBase64,
           imageUrl: undefined,
+          locationLatitude: lastMessage.locationLatitude || undefined,
+          locationLongitude: lastMessage.locationLongitude || undefined,
         }, 1); // Prioridade normal
         
         recoveredCount++;

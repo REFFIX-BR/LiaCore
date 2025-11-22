@@ -338,6 +338,8 @@ export interface MessageProcessingJob {
   imageUrl?: string;
   evolutionInstance?: string;
   clientName?: string;
+  locationLatitude?: string;
+  locationLongitude?: string;
 }
 
 export interface AIResponseJob {

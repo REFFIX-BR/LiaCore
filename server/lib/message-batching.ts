@@ -28,6 +28,8 @@ export interface PendingMessage {
   hasPdf?: boolean;
   pdfBase64?: string;
   pdfName?: string;
+  locationLatitude?: string;
+  locationLongitude?: string;
   receivedAt: number; // Quando foi recebida
 }
 
@@ -208,6 +210,8 @@ async function processWhenReady(chatId: string): Promise<void> {
           clientName: msg.clientName,
           hasImage: msg.hasImage,
           imageUrl: msg.imageUrl,
+          locationLatitude: msg.locationLatitude,
+          locationLongitude: msg.locationLongitude,
         }, 1);
         
         // Log metadados preservados
@@ -243,6 +247,8 @@ async function processWhenReady(chatId: string): Promise<void> {
         clientName: firstMessage.clientName,
         hasImage: false,
         imageUrl: undefined,
+        locationLatitude: lastMessage.locationLatitude,
+        locationLongitude: lastMessage.locationLongitude,
       }, 1);
       
       console.log(`📬 [Batch] ${batch.length} mensagem(ns) de texto combinadas e enfileiradas para ${chatId}`);

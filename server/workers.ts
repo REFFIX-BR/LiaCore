@@ -345,7 +345,7 @@ if (redisConnection) {
   messageProcessingWorker = new Worker<MessageProcessingJob>(
     QUEUE_NAMES.MESSAGE_PROCESSING,
     async (job: Job<MessageProcessingJob>) => {
-      const { chatId, conversationId, message, fromNumber, hasImage, imageUrl, evolutionInstance: rawEvolutionInstance, clientName, messageId } = job.data;
+      const { chatId, conversationId, message, fromNumber, hasImage, imageUrl, evolutionInstance: rawEvolutionInstance, clientName, messageId, locationLatitude, locationLongitude } = job.data;
       
       // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
       const evolutionInstance = validateEvolutionInstance(rawEvolutionInstance);
@@ -478,6 +478,8 @@ if (redisConnection) {
           conversationId,
           role: 'user',
           content: message,
+          locationLatitude: locationLatitude,
+          locationLongitude: locationLongitude,
         });
 
         // Mark job as processed

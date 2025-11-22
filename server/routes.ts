@@ -2849,6 +2849,8 @@ Qualquer coisa, estamos à disposição! 😊
             hasPdf: !!pdfBase64,
             pdfBase64: pdfBase64,
             pdfName: pdfName,
+            locationLatitude: locationLatitude,
+            locationLongitude: locationLongitude,
             receivedAt: Date.now(),
           };
           
@@ -2874,6 +2876,8 @@ Qualquer coisa, estamos à disposição! 😊
               clientName,
               hasImage: !!imageBase64,
               imageUrl: imageMediaUrl,
+              locationLatitude: locationLatitude,
+              locationLongitude: locationLongitude,
             }, 1);
             
             // 📊 LATENCY TRACKING: Mensagem enfileirada (fallback direto)
@@ -4064,6 +4068,8 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
               imageUrl: lastMessage.imageBase64 || undefined,
               evolutionInstance: conv.evolutionInstance || 'Leads',
               clientName: conv.clientName || undefined,
+              locationLatitude: lastMessage.locationLatitude || undefined,
+              locationLongitude: lastMessage.locationLongitude || undefined,
             });
 
             console.log(`✅ [REPROCESS] Mensagem enfileirada: ${conv.clientName} (${conv.id})`);
