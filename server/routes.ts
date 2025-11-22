@@ -1912,11 +1912,19 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
           hasVideoMessage: !!message?.videoMessage,
           hasAudioMessage: !!message?.audioMessage,
           hasDocumentMessage: !!message?.documentMessage,
+          hasLocationMessage: !!message?.locationMessage,
+          hasContactMessage: !!message?.contactMessage,
+          hasStickerMessage: !!message?.stickerMessage,
           hasConversation: !!message?.conversation,
           hasExtendedText: !!message?.extendedTextMessage,
           hasMediaUrl: !!data?.message?.mediaUrl,
           fullMessage: JSON.stringify(message).substring(0, 500)
         });
+        
+        // SPECIAL DEBUG: Full dump for location messages
+        if (message?.locationMessage) {
+          console.log(`📍 [DEBUG LOCATION FOUND] Full locationMessage:`, JSON.stringify(message.locationMessage, null, 2));
+        }
 
         // Extract message text content
         let messageText: string | null = null;
