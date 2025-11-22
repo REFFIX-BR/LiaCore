@@ -2128,18 +2128,24 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
         } else if (message?.contactMessage) {
           messageText = `[Contato compartilhado]`;
         } else if (message?.locationMessage) {
+          // DEBUG: Log estrutura completa da mensagem de localização
+          console.log(`🔍 [DEBUG LOCATION] Estrutura completa da locationMessage:`, JSON.stringify(message.locationMessage, null, 2));
+          
           const latitude = message.locationMessage.degreesLatitude;
           const longitude = message.locationMessage.degreesLongitude;
+          
+          console.log(`🔍 [DEBUG LOCATION] Latitude extraída: ${latitude} (tipo: ${typeof latitude})`);
+          console.log(`🔍 [DEBUG LOCATION] Longitude extraída: ${longitude} (tipo: ${typeof longitude})`);
           
           if (latitude && longitude) {
             locationLatitude = latitude.toString();
             locationLongitude = longitude.toString();
             messageText = `[Localização compartilhada]\n📍 https://www.google.com/maps?q=${latitude},${longitude}`;
             
-            console.log(`📍 [Evolution] Localização recebida: ${latitude}, ${longitude}`);
+            console.log(`✅ [Evolution] Localização válida: ${latitude}, ${longitude}`);
           } else {
             messageText = `[Localização compartilhada - coordenadas não disponíveis]`;
-            console.log(`⚠️ [Evolution] Localização sem coordenadas`);
+            console.log(`⚠️ [Evolution] Localização sem coordenadas válidas`);
           }
         } else {
           console.log(`⚠️  [Evolution] Tipo de mensagem não suportado:`, Object.keys(message || {}));
