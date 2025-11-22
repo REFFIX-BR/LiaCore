@@ -250,6 +250,11 @@ export function ChatMessage({ message, canEdit = false, onDelete, onReply, showI
     }
   }
 
+  if (hasLocationShared) {
+    // Limpar o conteúdo da mensagem - apenas o botão será exibido
+    messageContent = '';
+  }
+
   return (
     <div 
       className={`flex w-full mb-4 px-4 ${isUser ? 'justify-start' : 'justify-end'}`}
