@@ -1928,6 +1928,8 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
         let videoUrl: string | undefined = undefined;
         let videoName: string | undefined = undefined;
         let videoMimetype: string | undefined = undefined;
+        let locationLatitude: string | undefined = undefined;
+        let locationLongitude: string | undefined = undefined;
         
         if (message?.conversation) {
           messageText = message.conversation;
@@ -2126,7 +2128,19 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
         } else if (message?.contactMessage) {
           messageText = `[Contato compartilhado]`;
         } else if (message?.locationMessage) {
-          messageText = `[Localização compartilhada]`;
+          const latitude = message.locationMessage.degreesLatitude;
+          const longitude = message.locationMessage.degreesLongitude;
+          
+          if (latitude && longitude) {
+            locationLatitude = latitude.toString();
+            locationLongitude = longitude.toString();
+            messageText = `[Localização compartilhada]\n📍 https://www.google.com/maps?q=${latitude},${longitude}`;
+            
+            console.log(`📍 [Evolution] Localização recebida: ${latitude}, ${longitude}`);
+          } else {
+            messageText = `[Localização compartilhada - coordenadas não disponíveis]`;
+            console.log(`⚠️ [Evolution] Localização sem coordenadas`);
+          }
         } else {
           console.log(`⚠️  [Evolution] Tipo de mensagem não suportado:`, Object.keys(message || {}));
           return res.json({ success: true, processed: false, reason: "unsupported_type" });
@@ -2711,6 +2725,8 @@ Qualquer coisa, estamos à disposição! 😊
           hasVideo: !!videoUrl,
           videoUrl: videoUrl?.substring(0, 100) || 'nenhum',
           videoName: videoName || 'nenhum',
+          hasLocation: !!locationLatitude && !!locationLongitude,
+          locationCoords: locationLatitude && locationLongitude ? `${locationLatitude},${locationLongitude}` : 'nenhum',
           messagePreview: messageText.substring(0, 100)
         });
         
@@ -2726,6 +2742,8 @@ Qualquer coisa, estamos à disposição! 😊
           videoUrl: videoUrl,
           videoName: videoName,
           videoMimetype: videoMimetype,
+          locationLatitude: locationLatitude,
+          locationLongitude: locationLongitude,
         });
 
         // ⏱️ IMPORTANTE: Atualizar lastMessageTime quando CLIENTE envia mensagem

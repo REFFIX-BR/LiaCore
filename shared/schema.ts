@@ -117,6 +117,8 @@ export const messages = pgTable("messages", {
   videoUrl: text("video_url"), // URL do vídeo original (WhatsApp/Evolution API)
   videoName: text("video_name"), // Nome do arquivo de vídeo
   videoMimetype: text("video_mimetype"), // Tipo MIME do vídeo (video/mp4, etc.)
+  locationLatitude: text("location_latitude"), // Latitude da localização compartilhada
+  locationLongitude: text("location_longitude"), // Longitude da localização compartilhada
   whatsappMessageId: text("whatsapp_message_id"), // ID da mensagem no WhatsApp (para deletar)
   remoteJid: text("remote_jid"), // JID do chat WhatsApp (necessário para deletar)
   
