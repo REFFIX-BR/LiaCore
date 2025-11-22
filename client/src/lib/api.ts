@@ -39,6 +39,14 @@ export interface MessageData {
   imageBase64?: string | null;
   audioBase64?: string | null;
   audioMimeType?: string | null;
+  audioUrl?: string | null;
+  videoUrl?: string | null;
+  videoName?: string | null;
+  videoMimetype?: string | null;
+  locationLatitude?: string | null;
+  locationLongitude?: string | null;
+  deletedAt?: Date | null;
+  deletedBy?: string | null;
 }
 
 export interface AlertData {
