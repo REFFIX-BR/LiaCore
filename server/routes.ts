@@ -1779,21 +1779,30 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
 
   // ==================== EVOLUTION API WEBHOOKS ====================
   
-  // 🔍 DEBUG ENDPOINT - Captura webhooks brutos
+  // 🔍 DEBUG ENDPOINT - Captura webhooks brutos (detecta location messages!)
   app.post("/api/webhooks/evolution/debug", async (req, res) => {
     const timestamp = new Date().toISOString();
+    const bodyStr = JSON.stringify(req.body);
+    
     const debugInfo = {
       timestamp,
       headers: req.headers,
       body: req.body,
-      bodySize: JSON.stringify(req.body).length,
-      hasAudioMessage: JSON.stringify(req.body).includes('audioMessage'),
-      hasImageMessage: JSON.stringify(req.body).includes('imageMessage'),
-      hasVideoMessage: JSON.stringify(req.body).includes('videoMessage'),
+      bodySize: bodyStr.length,
+      hasAudioMessage: bodyStr.includes('audioMessage'),
+      hasImageMessage: bodyStr.includes('imageMessage'),
+      hasVideoMessage: bodyStr.includes('videoMessage'),
+      hasLocationMessage: bodyStr.includes('locationMessage'),
+      hasLocationKeywords: bodyStr.includes('location') || bodyStr.includes('latitude') || bodyStr.includes('longitude'),
       event: req.body.event,
       instance: req.body.instance,
       messageType: req.body.data?.message ? Object.keys(req.body.data.message)[0] : 'none'
     };
+    
+    // Save to file for detailed inspection
+    const fs = await import('fs');
+    const debugPath = `/tmp/webhook_debug_raw_${Date.now()}.json`;
+    await fs.promises.writeFile(debugPath, JSON.stringify({ debugInfo, fullPayload: req.body }, null, 2));
     
     console.log(`\n${'='.repeat(80)}`);
     console.log(`🔍 [DEBUG WEBHOOK] ${timestamp}`);
@@ -1801,12 +1810,22 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     console.log(JSON.stringify(debugInfo, null, 2));
     console.log(`\n📦 PAYLOAD COMPLETO:`);
     console.log(JSON.stringify(req.body, null, 2));
+    
+    // SPECIAL ALERT for location messages
+    if (debugInfo.hasLocationMessage || debugInfo.hasLocationKeywords) {
+      console.log(`\n⚠️⚠️⚠️ LOCATION DATA DETECTED! ⚠️⚠️⚠️`);
+      console.log(`📍 Has locationMessage: ${debugInfo.hasLocationMessage}`);
+      console.log(`📍 Has location keywords: ${debugInfo.hasLocationKeywords}`);
+    }
+    
+    console.log(`\n💾 Full payload saved to: ${debugPath}`);
     console.log(`${'='.repeat(80)}\n`);
     
     return res.json({ 
       success: true, 
       debug: true,
-      info: debugInfo 
+      info: debugInfo,
+      savedTo: debugPath
     });
   });
   
@@ -3697,6 +3716,36 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
           });
           return res.json({ success: true, processed: false, reason: "import_error" });
         }
+      }
+
+      // Process MESSAGES_SET event (bulk message sync - may include location messages)
+      if (event === "messages.set") {
+        console.log(`📦 [Evolution] MESSAGES_SET event received - may contain location data`);
+        
+        // Log full payload for debugging
+        const fs = await import('fs');
+        const debugPath = `/tmp/webhook_messages_set_${Date.now()}.json`;
+        await fs.promises.writeFile(debugPath, JSON.stringify(req.body, null, 2));
+        console.log(`📝 [DEBUG MESSAGES_SET] Full payload saved to: ${debugPath}`);
+        
+        // Check if data is an array (bulk sync) or single message
+        const messages = Array.isArray(data) ? data : [data];
+        console.log(`📊 [MESSAGES_SET] Processing ${messages.length} message(s)`);
+        
+        // Process each message looking for location data
+        for (const msg of messages) {
+          if (msg?.message?.locationMessage) {
+            const { key, message } = msg;
+            const latitude = message.locationMessage.degreesLatitude;
+            const longitude = message.locationMessage.degreesLongitude;
+            
+            console.log(`📍 [MESSAGES_SET LOCATION FOUND] Message ID: ${key?.id}`);
+            console.log(`📍 [MESSAGES_SET LOCATION] Coordinates: ${latitude}, ${longitude}`);
+            console.log(`📍 [MESSAGES_SET LOCATION] Full locationMessage:`, JSON.stringify(message.locationMessage, null, 2));
+          }
+        }
+        
+        return res.json({ success: true, processed: true, eventType: event, messageCount: messages.length });
       }
 
       // Process other MESSAGES_* events
