@@ -12,6 +12,7 @@
 
 import { storage } from "../storage";
 import { addMessageToQueue } from "./queue";
+import { fetchMessageById } from "./evolution-api";
 
 // Intervalo de verificação: 2 minutos (120 segundos)
 const CHECK_INTERVAL_MS = 2 * 60 * 1000; // 120000ms = 2 minutos
@@ -82,6 +83,61 @@ async function recoverStuckMessages() {
         console.log(`   Aguardando há: ${ageMinutes} minutos`);
         console.log(`   Mensagem: "${lastMessage.content.substring(0, 60)}..."`);
         
+        // 🗺️ LOCATION MESSAGE RECOVERY
+        // Evolution API doesn't send webhooks for location messages (known issue)
+        // Messages arrive via Message Recovery as "[Localização compartilhada]" with NULL coordinates
+        // Solution: Fetch message directly from Evolution API to extract coordinates
+        let locationLatitude = lastMessage.locationLatitude;
+        let locationLongitude = lastMessage.locationLongitude;
+        
+        if (lastMessage.content === '[Localização compartilhada]' && !locationLatitude && !locationLongitude) {
+          console.log(`📍 [Message Recovery] Location message detected without coordinates - fetching from Evolution API...`);
+          
+          try {
+            // Extract remoteJid from chatId for Evolution API query
+            // whatsapp_5524992021103 → 5524992021103@s.whatsapp.net
+            // whatsapp_lid_12345 → 12345@lid
+            let remoteJid: string;
+            const withoutPrefix = conv.chatId.replace('whatsapp_', '');
+            
+            if (withoutPrefix.startsWith('lid_')) {
+              remoteJid = withoutPrefix.replace('lid_', '') + '@lid';
+            } else if (withoutPrefix.includes('@')) {
+              remoteJid = withoutPrefix; // Already has format
+            } else {
+              remoteJid = withoutPrefix + '@s.whatsapp.net';
+            }
+            
+            // Fetch message from Evolution API
+            const messageResult = await fetchMessageById(
+              lastMessage.id, // Message ID from webhook
+              remoteJid,
+              conv.evolutionInstance || 'Principal'
+            );
+            
+            if (messageResult.success && messageResult.locationData) {
+              locationLatitude = messageResult.locationData.latitude.toString();
+              locationLongitude = messageResult.locationData.longitude.toString();
+              
+              console.log(`✅ [Message Recovery] Location coordinates retrieved: ${locationLatitude}, ${locationLongitude}`);
+              
+              // Update message in database with coordinates
+              await storage.updateMessage(lastMessage.id, {
+                locationLatitude,
+                locationLongitude,
+                content: `[Localização compartilhada]\n📍 https://www.google.com/maps?q=${locationLatitude},${locationLongitude}`
+              });
+              
+              console.log(`💾 [Message Recovery] Message updated with location coordinates`);
+            } else {
+              console.warn(`⚠️  [Message Recovery] Failed to retrieve location coordinates:`, messageResult.error || 'No location data');
+            }
+          } catch (error: any) {
+            console.error(`❌ [Message Recovery] Error fetching location coordinates:`, error.message);
+            // Continue processing without coordinates
+          }
+        }
+        
         // CRITICAL FIX: Extrair fromNumber corretamente para suportar WhatsApp Business (@lid)
         // BEFORE: conv.chatId.replace('whatsapp_', '').replace('@lid', '') → removia @lid (BUG!)
         // AFTER: Usa clientId (já tem lid_ prefix) ou extrai corretamente do chatId
@@ -123,8 +179,8 @@ async function recoverStuckMessages() {
           clientName: conv.clientName,
           hasImage: !!lastMessage.imageBase64,
           imageUrl: undefined,
-          locationLatitude: lastMessage.locationLatitude || undefined,
-          locationLongitude: lastMessage.locationLongitude || undefined,
+          locationLatitude: locationLatitude || undefined,
+          locationLongitude: locationLongitude || undefined,
         }, 1); // Prioridade normal
         
         recoveredCount++;
