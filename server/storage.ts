@@ -912,6 +912,9 @@ export class MemStorage implements IStorage {
       // WhatsApp retry fields
       whatsappRetryCount: insertMsg.whatsappRetryCount || 0,
       whatsappLastRetryAt: insertMsg.whatsappLastRetryAt || null,
+      // Location fields
+      locationLatitude: insertMsg.locationLatitude || null,
+      locationLongitude: insertMsg.locationLongitude || null,
     };
     this.messages.set(id, message);
     return message;
