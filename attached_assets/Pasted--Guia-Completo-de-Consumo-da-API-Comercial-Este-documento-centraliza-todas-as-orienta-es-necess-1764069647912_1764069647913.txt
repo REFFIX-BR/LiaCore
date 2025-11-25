@@ -1,0 +1,229 @@
+# Guia Completo de Consumo da API Comercial
+
+Este documento centraliza todas as orientações necessárias para integrar sistemas externos (sites, chatbots, totens, parceiros, etc.) ao backend comercial da TR Telecom.
+
+> **Base URL de Produção:** `https://comercial.trtelecom.net`
+
+## Convenções Gerais
+- `Content-Type: application/json` em todas as requisições.
+- Os IDs de planos (`plano_id`) devem existir e estar ativos.
+- Telefones no formato brasileiro com DDD. O backend normaliza automaticamente para E.164 quando necessário.
+- Datas em ISO (`YYYY-MM-DD`) ou qualquer formato parseável pelo JavaScript Date.
+- Valores monetários aceitam `number` ou `string` numérica (ex.: `"149.90"`).
+- Sempre que possível informe CPF/CNPJ para correta identificação do cliente.
+
+### Autenticação
+- A maioria dos endpoints de captura de cadastro é pública para facilitar integrações.
+- Endpoints administrativos (ex.: `/api/sales`) exigem token JWT `Bearer <token>`.
+- Opcionalmente você pode enviar `X-API-Key` para rastreio/auditoria. Utilize a chave fornecida pelo time de TI.
+
+### Estrutura de Endereço Padrão
+```json
+"endereco": {
+  "endereco": "Rua Exemplo",
+  "numero": "123",
+  "bairro": "Centro",
+  "cidade": "Volta Redonda",
+  "estado": "RJ",
+  "cep": "27260-000",
+  "complemento": "Apto 201",
+  "referencia": "Próximo à praça"
+}
+```
+
+---
+
+## 1. POST `/api/vendachat` **(Novo)**
+Endpoint indicado para chatbots e integrações completas que já coletam todos os dados necessários para uma venda. Diferentemente do `/api/site-lead`, aqui o **vendedor é obrigatório**.
+
+### Campo `vendedor`
+Informe ao menos um identificador. O backend tenta localizar o usuário na seguinte ordem: `id` → `codigo` → `email` → `telefone` → `nome`.
+```json
+"vendedor": {
+  "id": "uuid-do-consultor",
+  "codigo": "CONSULT123",
+  "email": "consultor@trtelecom.com",
+  "telefone": "(24) 99999-8888",
+  "nome": "Fulano de Tal"
+}
+```
+Você pode enviar apenas um dos campos acima. Strings simples também são aceitas (ex.: `"CONSULT123"`).
+
+### Body completo
+```json
+{
+  "vendedor": {
+    "codigo": "CONSULT123"
+  },
+  "nome_cliente": "Maria Santos",
+  "telefone_cliente": "(24) 99999-1111",
+  "email_cliente": "maria@email.com",
+  "cpf_cliente": "123.456.789-00",
+  "nome_mae": "Ana Santos",
+  "data_nascimento": "1993-05-12",
+  "rg": "12.345.678-9",
+  "sexo": "F",
+  "estado_civil": "C",
+  "dia_vencimento": 10,
+  "forma_pagamento_instalacao": "Cartão",
+  "produtos_adicionais": [],
+  "plano_id": 23,
+  "status": "Aguardando Análise",
+  "observacoes": "Lead vindo do chatbot",
+  "utm_source": "whatsapp",
+  "utm_medium": "bot",
+  "utm_campaign": "campanha-fibra",
+
+  },
+  "endereco": {
+    "endereco": "Rua Antônio Barreiros",
+    "numero": "325",
+    "bairro": "Centro",
+    "cidade": "Volta Redonda",
+    "estado": "RJ",
+    "cep": "27260-123",
+    "complemento": "Casa",
+    "referencia": "Próximo ao supermercado"
+  }
+}
+```
+
+### Resposta
+```json
+{
+  "success": true,
+  "message": "Venda recebida e processada com sucesso",
+  "sale_id": "uuid-da-venda",
+  "status": "Aguardando Análise",
+  "vendedor": {
+    "id": "uuid",
+    "nome": "Consultor XPTO",
+    "codigo_indicacao": "CONSULT123"
+  },
+  "itens_pendentes": [
+    "Foto/Selfie",
+    "Data de nascimento"
+  ]
+}
+```
+
+### Validações específicas
+- `vendedor` obrigatório; retorna `404` se não localizar usuário ativo.
+- Mesma lista de obrigatórios do `/api/site-lead` + endereço completo.
+- Ajusta automaticamente `pedido_tipo` para `2° Ponto` caso CPF/CNPJ já exista.
+- Salva metadados do vendedor (`sellerId`, `sellerName`, `sellerCode`) dentro do cliente.
+
+---
+
+## 2. POST `/api/site-lead`
+Uso recomendado para formulários públicos (landing pages). O vendedor é definido automaticamente como `"Site"`. Documentação detalhada em `docs/SITE_INTEGRATION_API.md`.
+
+Pontos principais:
+- Campos obrigatórios: `nome_cliente`, `telefone_cliente`, `plano_id` + endereço completo.
+- Identifica itens pendentes (selfie, RG, etc.) e retorna no payload.
+- Status inicial: `Aguardando Análise`.
+
+Exemplo rápido:
+```bash
+curl -X POST https://comercial.trtelecom.net/api/site-lead \
+  -H "Content-Type: application/json" \
+  -d '{ "nome_cliente": "João", "telefone_cliente": "(11)99999-9999", "plano_id": 21, "endereco": { ... } }'
+```
+
+---
+
+## 3. POST `/api/external-lead`
+Integrações de parceiros que enviam payload em inglês (ex.: CRMs externos).
+
+### Body resumido
+```json
+{
+  "name": "Cliente Externo",
+  "phone": "(21)99999-8888",
+  "email": "cliente@externo.com",
+  "cpf": "123.456.789-99",
+  "planId": 21,
+  "address": {
+    "street": "Rua B",
+    "number": "10",
+    "city": "Rio de Janeiro",
+    "state": "RJ",
+    "zipCode": "20000-000"
+  },
+  "notes": "Origem Hubspot",
+  "source": "Hubspot"
+}
+```
+O backend converte para o formato interno e atribui um vendedor administrador padrão.
+
+---
+
+## 4. POST `/api/leads`
+Endpoint simples para totens / cadastros rápidos (nome + telefone).
+
+```json
+{
+  "nomeCompleto": "Visitante Totem",
+  "telefone": "(24) 98888-7777",
+  "descricao": "Interesse no plano 300 Mega",
+  "origem": "Totem"
+}
+```
+Retorna `409` caso o telefone já exista.
+
+---
+
+## 5. POST `/wifi-mkt`
+Recebe leads vindos de portais de Wi-Fi Marketing.
+
+```json
+{
+  "nome": "Usuário WiFi",
+  "telefone": "(21) 97777-6666"
+}
+```
+Normaliza telefone, verifica duplicidade em múltiplas tabelas e salva na tabela `totem`.
+
+---
+
+## 6. POST `/api/inbound-email`
+Webhook para provedores de e-mail (Mailgun, Postmark, etc.). Envie o corpo do e-mail como `text` ou `html`. O backend extrai nome/telefone e cria o lead.
+
+Rejeita silenciosamente assuntos que não contenham os marcadores de lead (`[Novo lead]`, `[leads]`, etc.). Retorna `duplicated: true` se o telefone já existir.
+
+---
+
+## 7. POST `/api/sales` *(requer JWT)*
+Fluxo interno usado pelo painel administrativo.
+
+- Header: `Authorization: Bearer <token>`.
+- Body segue o mesmo formato utilizado na aplicação (vide `pages/admin/AdminSales.tsx`).
+- Permite anexar addons, tags, `pedido_tipo`, contrato, etc.
+- Ajusta automaticamente `pedido_tipo` para `2° Ponto` caso detecte CPF/CNPJ duplicado (exceto `Upgrade`/`Reativação`).
+
+---
+
+## 8. Outros Endpoints Úteis
+- `POST /api/site-lead` – Documentação detalhada no arquivo dedicado.
+- `POST /api/external-lead` – Como acima.
+- `GET /api/plans` – Consulta planos ativos (`?all=true` retorna todos). Útil para listar IDs válidos antes de enviar cadastros.
+- `POST /api/plans/sync-altarede` *(JWT)* – Sincroniza planos a partir do Altarede.
+
+---
+
+## Itens Pendentes & Status
+- Sempre que o sistema identificar dados faltantes (selfie, RG, etc.) eles serão listados no array `itens_pendentes`.
+- Status padrão das vendas criadas externamente: `Aguardando Análise`.
+- Possíveis status: `Prospecção`, `Aguardando Análise`, `Aprovado`, `Agendado para Instalação`, `Instalado`, `Cancelado`, `Desistência`, `Inadimplente`.
+
+---
+
+## Boas Práticas
+1. **Valide localmente** (CPF/CNPJ, CEP, telefone) antes de enviar.
+2. **Armazene o `sale_id`** retornado para acompanhar o andamento no painel.
+3. **Envie evidências** (selfie/documentos) sempre que possível para reduzir pendências.
+4. **Reaproveite o mesmo `codigo` de vendedor** para creditar corretamente suas vendas.
+5. **Monitore respostas** de erro (`400` para validação, `409` duplicidade, `500` erros internos).
+
+Em caso de dúvidas ou para solicitar novas credenciais/API Keys, contate o time de TI da TR Telecom.
+
