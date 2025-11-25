@@ -4,11 +4,13 @@
  * Helper para integração com o sistema comercial da TR Telecom
  * Base URL: https://comercial.trtelecom.net
  * 
- * Endpoints utilizados:
- * - POST /api/vendachat - Cadastro completo de venda (chatbot)
- * - POST /api/site-lead - Lead com interesse
- * - POST /api/leads - Lead simples (nome + telefone)
- * - GET /api/plans - Consultar planos ativos
+ * Endpoints disponíveis (Nov 2025):
+ * - POST /api/leads - Lead simples (público, não requer auth)
+ * - GET /api/plans - Consultar planos ativos (público)
+ * - POST /api/sales - Requer autenticação (usar auth/login primeiro)
+ * 
+ * NOTA: /api/vendachat e /api/site-lead NÃO existem.
+ * Todas as vendas/leads devem ir para /api/leads (público) ou /api/sales (autenticado)
  */
 
 const COMERCIAL_API_URL = process.env.COMERCIAL_API_URL || 'https://comercial.trtelecom.net';
@@ -156,9 +158,10 @@ function normalizePhone(phone: string): string {
 }
 
 /**
- * POST /api/vendachat - Enviar cadastro completo de venda
+ * POST /api/leads - Enviar cadastro de venda como lead
  * 
- * Usado para vendas completas vindas do chatbot com todos os dados coletados
+ * Como /api/sales requer autenticação, usamos /api/leads (público)
+ * com informações completas no campo descricao
  */
 export async function enviarVendaChat(dados: {
   tipo_pessoa?: string;
@@ -178,34 +181,42 @@ export async function enviarVendaChat(dados: {
   observacoes?: string;
   conversationId?: string;
 }): Promise<ComercialApiResponse> {
-  const url = `${COMERCIAL_API_URL}/api/vendachat`;
+  const url = `${COMERCIAL_API_URL}/api/leads`;
   
-  console.log(`📤 [Comercial API] Enviando venda para ${url}`);
+  console.log(`📤 [Comercial API] Enviando venda como lead para ${url}`);
   console.log(`   - Cliente: ${dados.nome_cliente}`);
   console.log(`   - Vendedor: ${COMERCIAL_VENDEDOR_CODIGO}`);
   
-  const payload: ComercialVendaChatPayload = {
-    vendedor: {
-      codigo: COMERCIAL_VENDEDOR_CODIGO,
-    },
-    nome_cliente: dados.nome_cliente,
-    telefone_cliente: normalizePhone(dados.telefone_cliente),
-    email_cliente: dados.email_cliente || undefined,
-    cpf_cliente: dados.cpf_cnpj?.replace(/\D/g, '') || undefined,
-    nome_mae: dados.nome_mae || undefined,
-    data_nascimento: dados.data_nascimento || undefined,
-    rg: dados.rg || undefined,
-    sexo: dados.sexo || undefined,
-    estado_civil: dados.estado_civil || undefined,
-    dia_vencimento: dados.dia_vencimento ? parseInt(String(dados.dia_vencimento)) : undefined,
-    forma_pagamento_instalacao: dados.forma_pagamento || undefined,
-    plano_id: dados.plano_id || undefined,
-    status: 'Aguardando Análise',
-    observacoes: dados.observacoes || `Via LIA Bot - Conversa: ${dados.conversationId || 'N/A'}`,
-    utm_source: 'whatsapp',
-    utm_medium: 'bot',
-    utm_campaign: 'lia-cortex',
-    endereco: mapEnderecoToComercial(dados.endereco),
+  // Montar descrição com dados completos da venda
+  const descricaoParts: string[] = ['[VENDA VIA LIA BOT]'];
+  
+  if (dados.cpf_cnpj) descricaoParts.push(`CPF/CNPJ: ${dados.cpf_cnpj}`);
+  if (dados.email_cliente) descricaoParts.push(`Email: ${dados.email_cliente}`);
+  if (dados.plano_id) descricaoParts.push(`Plano ID: ${dados.plano_id}`);
+  if (dados.dia_vencimento) descricaoParts.push(`Vencimento: ${dados.dia_vencimento}`);
+  if (dados.forma_pagamento) descricaoParts.push(`Pagamento: ${dados.forma_pagamento}`);
+  
+  if (dados.endereco) {
+    const end = dados.endereco;
+    const enderecoStr = [
+      end.logradouro || end.address,
+      end.numero || end.number,
+      end.bairro || end.neighborhood,
+      end.cidade || end.city,
+      end.estado || end.state,
+      end.cep
+    ].filter(Boolean).join(', ');
+    if (enderecoStr) descricaoParts.push(`Endereço: ${enderecoStr}`);
+  }
+  
+  if (dados.observacoes) descricaoParts.push(`Obs: ${dados.observacoes}`);
+  if (dados.conversationId) descricaoParts.push(`Conversa: ${dados.conversationId}`);
+  
+  const payload = {
+    nomeCompleto: dados.nome_cliente,
+    telefone: normalizePhone(dados.telefone_cliente),
+    descricao: descricaoParts.join(' | '),
+    origem: `LIA Bot - Venda - ${COMERCIAL_VENDEDOR_CODIGO}`,
   };
   
   try {
@@ -219,12 +230,12 @@ export async function enviarVendaChat(dados: {
     
     const result = await response.json();
     
-    if (response.ok) {
+    if (response.ok && result.success) {
       console.log(`✅ [Comercial API] Venda enviada com sucesso!`);
-      console.log(`   - Sale ID: ${result.sale_id}`);
-      console.log(`   - Status: ${result.status}`);
+      console.log(`   - Lead ID: ${result.lead?.id}`);
       return {
         success: true,
+        sale_id: result.lead?.id,
         ...result,
       };
     } else {
@@ -246,9 +257,9 @@ export async function enviarVendaChat(dados: {
 }
 
 /**
- * POST /api/site-lead - Enviar lead com interesse
+ * POST /api/leads - Enviar lead de prospecção
  * 
- * Usado para leads de prospecção que demonstraram interesse mas não completaram cadastro
+ * Usado para leads de prospecção que demonstraram interesse
  */
 export async function enviarSiteLead(dados: {
   nome: string;
@@ -262,20 +273,40 @@ export async function enviarSiteLead(dados: {
   observacoes?: string;
   endereco?: any;
 }): Promise<ComercialApiResponse> {
-  const url = `${COMERCIAL_API_URL}/api/site-lead`;
+  const url = `${COMERCIAL_API_URL}/api/leads`;
   
-  console.log(`📤 [Comercial API] Enviando site-lead para ${url}`);
+  console.log(`📤 [Comercial API] Enviando lead de prospecção para ${url}`);
   console.log(`   - Cliente: ${dados.nome}`);
   
-  const payload: ComercialSiteLeadPayload = {
-    nome_cliente: dados.nome,
-    telefone_cliente: normalizePhone(dados.telefone),
-    email_cliente: dados.email || undefined,
-    cpf_cliente: dados.cpf?.replace(/\D/g, '') || undefined,
-    plano_id: dados.plano_id || undefined,
-    plano_interesse: dados.plano_interesse || undefined,
-    observacoes: dados.observacoes || 'Lead via LIA Bot',
-    endereco: dados.endereco ? mapEnderecoToComercial(dados.endereco) : undefined,
+  // Montar descrição com dados do lead
+  const descricaoParts: string[] = ['[LEAD PROSPECÇÃO VIA LIA BOT]'];
+  
+  if (dados.cpf) descricaoParts.push(`CPF: ${dados.cpf}`);
+  if (dados.email) descricaoParts.push(`Email: ${dados.email}`);
+  if (dados.plano_interesse) descricaoParts.push(`Plano Interesse: ${dados.plano_interesse}`);
+  if (dados.plano_id) descricaoParts.push(`Plano ID: ${dados.plano_id}`);
+  if (dados.cidade) descricaoParts.push(`Cidade: ${dados.cidade}`);
+  if (dados.estado) descricaoParts.push(`Estado: ${dados.estado}`);
+  
+  if (dados.endereco) {
+    const end = dados.endereco;
+    const enderecoStr = [
+      end.logradouro || end.address,
+      end.numero || end.number,
+      end.bairro || end.neighborhood,
+      end.cidade || end.city,
+      end.estado || end.state,
+    ].filter(Boolean).join(', ');
+    if (enderecoStr) descricaoParts.push(`Endereço: ${enderecoStr}`);
+  }
+  
+  if (dados.observacoes) descricaoParts.push(`Obs: ${dados.observacoes}`);
+  
+  const payload = {
+    nomeCompleto: dados.nome,
+    telefone: normalizePhone(dados.telefone),
+    descricao: descricaoParts.join(' | '),
+    origem: `LIA Bot - Prospecção - ${COMERCIAL_VENDEDOR_CODIGO}`,
   };
   
   try {
@@ -289,14 +320,16 @@ export async function enviarSiteLead(dados: {
     
     const result = await response.json();
     
-    if (response.ok) {
-      console.log(`✅ [Comercial API] Site-lead enviado com sucesso!`);
+    if (response.ok && result.success) {
+      console.log(`✅ [Comercial API] Lead de prospecção enviado com sucesso!`);
+      console.log(`   - Lead ID: ${result.lead?.id}`);
       return {
         success: true,
+        sale_id: result.lead?.id,
         ...result,
       };
     } else {
-      console.error(`❌ [Comercial API] Erro ao enviar site-lead: ${response.status}`);
+      console.error(`❌ [Comercial API] Erro ao enviar lead: ${response.status}`);
       return {
         success: false,
         error: result.message || result.error || `Erro ${response.status}`,
@@ -350,10 +383,12 @@ export async function enviarLeadSimples(dados: {
     
     const result = await response.json();
     
-    if (response.ok) {
+    if (response.ok && result.success) {
       console.log(`✅ [Comercial API] Lead simples enviado com sucesso!`);
+      console.log(`   - Lead ID: ${result.lead?.id}`);
       return {
         success: true,
+        sale_id: result.lead?.id,
         ...result,
       };
     } else {
