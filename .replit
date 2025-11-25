@@ -100,3 +100,9 @@ waitForPort = 5000
 
 [agent]
 integrations = ["javascript_openai:1.0.0", "javascript_database:1.0.0", "twilio:1.0.0"]
+
+[userenv]
+
+[userenv.shared]
+COMERCIAL_API_URL = "https://comercial.trtelecom.net"
+COMERCIAL_VENDEDOR_CODIGO = "LIA"
