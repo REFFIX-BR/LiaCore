@@ -3,6 +3,12 @@ import { z } from "zod";
 import { assistantCache, redisConnection } from "./redis-config";
 import { agentLogger } from "./agent-logger";
 import { trackTokenUsage } from "./openai-usage";
+import { 
+  enviarVendaChat, 
+  enviarSiteLead, 
+  enviarLeadSimples,
+  verificarConexaoComercial 
+} from "./comercial-api";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -99,6 +105,108 @@ const consolidationCircuitBreaker = new CircuitBreaker(
   180000, // 180s timeout (2x do padrão) para processar 50+ sugestões
   30000  // resetTimeout
 );
+
+// ============================================================================
+// SINCRONIZAÇÃO COM API COMERCIAL - Função auxiliar para dual-write
+// ============================================================================
+
+type SyncType = 'venda' | 'lead_prospeccao' | 'lead_sem_cobertura';
+
+interface SyncPayload {
+  type: SyncType;
+  saleId: string;
+  conversationId?: string;
+  payload: any;
+}
+
+/**
+ * Sincroniza dados com API Comercial
+ * Em caso de falha, salva na tabela de pendências para retry posterior
+ */
+async function syncWithComercialApi(syncData: SyncPayload): Promise<{
+  success: boolean;
+  comercialSaleId?: string;
+  error?: string;
+  savedForRetry?: boolean;
+}> {
+  const startTime = Date.now();
+  
+  console.log(`🔄 [Comercial Sync] Iniciando sincronização - Tipo: ${syncData.type}, SaleID: ${syncData.saleId}`);
+  
+  try {
+    let result;
+    
+    switch (syncData.type) {
+      case 'venda':
+        result = await enviarVendaChat(syncData.payload);
+        break;
+      case 'lead_prospeccao':
+        result = await enviarSiteLead(syncData.payload);
+        break;
+      case 'lead_sem_cobertura':
+        result = await enviarLeadSimples(syncData.payload);
+        break;
+      default:
+        throw new Error(`Tipo de sincronização desconhecido: ${syncData.type}`);
+    }
+    
+    if (result.success) {
+      console.log(`✅ [Comercial Sync] Sincronização bem-sucedida em ${Date.now() - startTime}ms`);
+      console.log(`   - Comercial Sale ID: ${result.sale_id || 'N/A'}`);
+      return {
+        success: true,
+        comercialSaleId: result.sale_id,
+      };
+    } else {
+      // Falha na API, salvar para retry
+      console.warn(`⚠️ [Comercial Sync] Falha na API, salvando para retry: ${result.error}`);
+      await savePendingSync(syncData, result.error || 'Erro desconhecido');
+      return {
+        success: false,
+        error: result.error,
+        savedForRetry: true,
+      };
+    }
+  } catch (error: any) {
+    // Erro de conexão, salvar para retry
+    console.error(`❌ [Comercial Sync] Erro de conexão: ${error.message}`);
+    await savePendingSync(syncData, error.message);
+    return {
+      success: false,
+      error: error.message,
+      savedForRetry: true,
+    };
+  }
+}
+
+/**
+ * Salva sincronização pendente para retry posterior
+ */
+async function savePendingSync(syncData: SyncPayload, errorMessage: string): Promise<void> {
+  try {
+    const { db } = await import("../db");
+    const { pendingComercialSync } = await import("../../shared/schema");
+    
+    // Calcular próxima tentativa (exponential backoff: 5min, 15min, 45min, 2h, 6h)
+    const nextRetryMinutes = 5;
+    const nextRetryAt = new Date(Date.now() + nextRetryMinutes * 60 * 1000);
+    
+    await db.insert(pendingComercialSync).values({
+      type: syncData.type,
+      saleId: syncData.saleId,
+      conversationId: syncData.conversationId || null,
+      payload: syncData.payload,
+      status: 'pending',
+      maxAttempts: 5,
+      lastError: errorMessage,
+      nextRetryAt,
+    });
+    
+    console.log(`💾 [Comercial Sync] Pendência salva para retry em ${nextRetryMinutes}min`);
+  } catch (saveError: any) {
+    console.error(`❌ [Comercial Sync] Erro ao salvar pendência:`, saveError.message);
+  }
+}
 
 export async function generateEmbedding(text: string): Promise<number[]> {
   const response = await openaiCircuitBreaker.execute(() =>
@@ -1965,6 +2073,46 @@ Fonte: ${fonte}`;
           console.log(`   - Protocolo: ${sale.id}`);
           console.log(`   - Tempo de gravação: ${saleElapsed}ms`);
           console.log(`   - Status: ${sale.status}`);
+
+          // ============================================================================
+          // SINCRONIZAÇÃO COM API COMERCIAL (dual-write)
+          // Envia dados para comercial.trtelecom.net em background
+          // Em caso de falha, salva para retry posterior (não bloqueia a venda)
+          // ============================================================================
+          const comercialPayload = {
+            tipo_pessoa: args.tipo_pessoa,
+            nome_cliente: args.nome_cliente,
+            cpf_cnpj: args.cpf_cnpj || args.cpf_cliente || args.cnpj,
+            telefone_cliente: args.telefone_cliente || args.telefone,
+            email_cliente: args.email_cliente || args.email,
+            nome_mae: args.nome_mae,
+            data_nascimento: args.data_nascimento,
+            rg: args.rg,
+            sexo: args.sexo,
+            estado_civil: args.estado_civil,
+            plano_id: args.plano_id,
+            endereco: args.endereco,
+            dia_vencimento: args.dia_vencimento,
+            forma_pagamento: args.forma_pagamento,
+            observacoes: args.observacoes,
+            conversationId: conversationId,
+          };
+          
+          // Sincronizar em background (não espera resultado)
+          syncWithComercialApi({
+            type: 'venda',
+            saleId: sale.id,
+            conversationId: conversationId,
+            payload: comercialPayload,
+          }).then(syncResult => {
+            if (syncResult.success) {
+              console.log(`✅ [Sales] Sincronizado com sistema comercial - ID: ${syncResult.comercialSaleId}`);
+            } else if (syncResult.savedForRetry) {
+              console.log(`📋 [Sales] Venda salva para sincronização posterior`);
+            }
+          }).catch(syncError => {
+            console.error(`❌ [Sales] Erro na sincronização (ignorado):`, syncError);
+          });
 
           return JSON.stringify({
             success: true,
