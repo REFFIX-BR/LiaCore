@@ -334,3 +334,141 @@
     inset: -1px;
   }
 }
+
+/* ========================================
+   PRINT STYLES - Gamification Report
+   ======================================== */
+@media print {
+  /* Hide non-printable elements */
+  .print\\:hidden,
+  nav,
+  aside,
+  header:not(.report-header),
+  footer:not(.report-footer),
+  [data-sidebar],
+  .sidebar,
+  button:not([data-testid="button-print"]) {
+    display: none !important;
+  }
+
+  /* Reset page layout */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt !important;
+    line-height: 1.4 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* A4 page setup */
+  @page {
+    size: A4 portrait;
+    margin: 15mm 12mm;
+  }
+
+  /* Report container fills page */
+  .print-report {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Ensure backgrounds print */
+  .champion-card,
+  .podium-card,
+  .stat-card,
+  [class*="bg-gradient"],
+  [class*="bg-yellow"],
+  [class*="bg-gray"],
+  [class*="bg-orange"],
+  [class*="bg-muted"] {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Force color printing for key elements */
+  .champion-card {
+    background: linear-gradient(to bottom right, #fef9c3, #fef3c7) !important;
+    border: 2px solid #facc15 !important;
+  }
+
+  .podium-card.order-2 {
+    background: linear-gradient(to bottom, #fef9c3, #fde68a) !important;
+    border: 2px solid #facc15 !important;
+  }
+
+  .podium-card.order-1 {
+    background: linear-gradient(to bottom, #f3f4f6, #e5e7eb) !important;
+    border: 2px solid #9ca3af !important;
+  }
+
+  .podium-card.order-3 {
+    background: linear-gradient(to bottom, #ffedd5, #fed7aa) !important;
+    border: 2px solid #fb923c !important;
+  }
+
+  /* Typography adjustments for print */
+  h1 { font-size: 24pt !important; }
+  h2 { font-size: 18pt !important; }
+  h3 { font-size: 14pt !important; }
+  h4 { font-size: 12pt !important; }
+
+  /* Ensure icons are visible */
+  svg {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Page break control */
+  .champion-section,
+  .podium-section,
+  .stats-section,
+  .badges-legend {
+    page-break-inside: avoid;
+  }
+
+  /* Ensure text colors are visible */
+  .text-yellow-500,
+  .text-yellow-600 {
+    color: #ca8a04 !important;
+  }
+
+  .text-gray-400,
+  .text-gray-600 {
+    color: #4b5563 !important;
+  }
+
+  .text-orange-600 {
+    color: #ea580c !important;
+  }
+
+  .text-primary {
+    color: #2563eb !important;
+  }
+
+  .text-muted-foreground {
+    color: #6b7280 !important;
+  }
+
+  /* Grid adjustments for print */
+  .grid-cols-3 {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  .grid-cols-4 {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+
+  .grid-cols-2 {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Footer positioning */
+  .footer {
+    margin-top: 20mm !important;
+  }
+}

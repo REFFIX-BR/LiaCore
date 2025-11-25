@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Award, Star, TrendingUp, Users, Calculator, Crown, Zap, Target } from "lucide-react";
+import { Trophy, Award, Star, TrendingUp, Users, Calculator, Crown, Zap, Target, Printer } from "lucide-react";
+import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -155,6 +156,12 @@ export default function Gamification() {
             <Calculator className="w-4 h-4 mr-2" />
             {calculateMutation.isPending ? "Calculando..." : "Recalcular"}
           </Button>
+          <Link href={`/gamification/report?period=${selectedPeriod}`}>
+            <Button variant="outline" data-testid="button-print-report">
+              <Printer className="w-4 h-4 mr-2" />
+              Imprimir
+            </Button>
+          </Link>
         </div>
       </div>
 

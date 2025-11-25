@@ -40,6 +40,7 @@ import PromptManagement from "@/pages/PromptManagement";
 import ContextQuality from "@/pages/ContextQuality";
 import Gamification from "@/pages/Gamification";
 import GamificationSettings from "@/pages/GamificationSettings";
+import GamificationReport from "@/pages/GamificationReport";
 import VoiceCampaigns from "@/pages/VoiceCampaigns";
 import VoiceTargets from "@/pages/VoiceTargets";
 import VoicePromises from "@/pages/VoicePromises";
@@ -200,6 +201,9 @@ function Router() {
       </Route>
       <Route path="/gamification/settings">
         {() => <AdminSupervisorRoute component={GamificationSettings} />}
+      </Route>
+      <Route path="/gamification/report">
+        {() => <ProtectedRoute component={GamificationReport} />}
       </Route>
       <Route path="/assistants">
         {() => <ProtectedRoute component={Assistants} />}
