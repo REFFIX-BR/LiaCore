@@ -4,6 +4,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { startLearningScheduler } from "./lib/learning-scheduler";
 import { startMessageRecoveryScheduler } from "./lib/message-recovery-scheduler";
+import { startComercialSyncWorker } from "./workers/comercial-sync-worker";
 
 // PDF Extraction Fix: Force rebuild with pdf-parse@1.1.1 (2025-10-31)
 // Configurar timezone para horário de Brasília (UTC-3)
@@ -167,6 +168,14 @@ app.use((req, res, next) => {
         console.log('✅ [Startup] Message recovery scheduler started');
       } catch (error) {
         console.error('❌ [Startup] Failed to start message recovery scheduler:', error);
+      }
+      
+      // Start commercial API sync worker for retry of failed syncs
+      try {
+        startComercialSyncWorker();
+        console.log('✅ [Startup] Commercial sync worker started');
+      } catch (error) {
+        console.error('❌ [Startup] Failed to start commercial sync worker:', error);
       }
       
       // Start queue workers only if Redis TCP available
