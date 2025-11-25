@@ -1475,6 +1475,42 @@ export const voiceMessagingSettings = pgTable("voice_messaging_settings", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ============================================================================
+// COMERCIAL API SYNC - Tabela para armazenar sincronizações pendentes
+// ============================================================================
+export const pendingComercialSync = pgTable("pending_comercial_sync", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: text("type").notNull(), // 'venda', 'lead_prospeccao', 'lead_sem_cobertura'
+  saleId: varchar("sale_id"), // ID da venda/lead no banco interno
+  conversationId: varchar("conversation_id"), // ID da conversa original
+  payload: jsonb("payload").notNull(), // Dados a serem enviados para API comercial
+  status: text("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed', 'cancelled'
+  attempts: integer("attempts").notNull().default(0), // Número de tentativas
+  maxAttempts: integer("max_attempts").notNull().default(5), // Máximo de tentativas
+  lastError: text("last_error"), // Último erro retornado
+  lastAttemptAt: timestamp("last_attempt_at"), // Data/hora da última tentativa
+  nextRetryAt: timestamp("next_retry_at"), // Próxima tentativa agendada
+  comercialApiResponse: jsonb("comercial_api_response"), // Resposta da API comercial (quando sucesso)
+  comercialSaleId: text("comercial_sale_id"), // ID retornado pelo sistema comercial
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"), // Quando foi sincronizado com sucesso
+}, (table) => ({
+  statusIdx: index("pending_comercial_sync_status_idx").on(table.status),
+  nextRetryIdx: index("pending_comercial_sync_next_retry_idx").on(table.nextRetryAt),
+  saleIdIdx: index("pending_comercial_sync_sale_id_idx").on(table.saleId),
+}));
+
+export const insertPendingComercialSyncSchema = createInsertSchema(pendingComercialSync).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+  attempts: true,
+  lastAttemptAt: true,
+});
+
+export type PendingComercialSync = typeof pendingComercialSync.$inferSelect;
+export type InsertPendingComercialSync = z.infer<typeof insertPendingComercialSyncSchema>;
+
 // Insert Schemas - COBRANÇAS
 export const insertVoiceCampaignSchema = createInsertSchema(voiceCampaigns).omit({
   id: true,
