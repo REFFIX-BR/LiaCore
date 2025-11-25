@@ -2203,6 +2203,33 @@ Fonte: ${fonte}`;
 
           console.log(`✅ [Lead] Lead sem cobertura registrado com sucesso - ID: ${lead.id}, Cidade: ${args.cidade}`);
 
+          // ============================================================================
+          // SINCRONIZAÇÃO COM API COMERCIAL (dual-write)
+          // Envia lead simples para comercial.trtelecom.net
+          // ============================================================================
+          const comercialPayloadLead = {
+            nome: leadName,
+            telefone: leadPhone,
+            cidade: leadCity,
+            descricao: `Lead sem cobertura - ${leadCity}. ${args.observacoes || ''}`,
+            origem: 'LIA Bot - Sem Cobertura',
+          };
+          
+          syncWithComercialApi({
+            type: 'lead_sem_cobertura',
+            saleId: lead.id,
+            conversationId: conversationId,
+            payload: comercialPayloadLead,
+          }).then(syncResult => {
+            if (syncResult.success) {
+              console.log(`✅ [Lead] Sincronizado com sistema comercial`);
+            } else if (syncResult.savedForRetry) {
+              console.log(`📋 [Lead] Lead salvo para sincronização posterior`);
+            }
+          }).catch(syncError => {
+            console.error(`❌ [Lead] Erro na sincronização (ignorado):`, syncError);
+          });
+
           return JSON.stringify({
             success: true,
             lead_id: lead.id,
@@ -2282,6 +2309,36 @@ Fonte: ${fonte}`;
           const prospect = await storageProspect.addSale(prospectData);
 
           console.log(`✅ [Prospect] Lead em prospecção registrado com sucesso - ID: ${prospect.id}, Nome: ${args.nome}`);
+
+          // ============================================================================
+          // SINCRONIZAÇÃO COM API COMERCIAL (dual-write)
+          // Envia lead de prospecção para comercial.trtelecom.net (via site-lead)
+          // ============================================================================
+          const comercialPayloadProspect = {
+            nome: prospectName,
+            telefone: prospectPhone,
+            email: args.email || undefined,
+            cidade: args.cidade || undefined,
+            estado: args.estado || undefined,
+            plano_id: args.plano_id || undefined,
+            plano_interesse: args.plano_interesse || undefined,
+            observacoes: args.observacoes || `Lead de prospecção via LIA Bot. ${args.plano_interesse ? `Interesse: ${args.plano_interesse}` : ''}`,
+          };
+          
+          syncWithComercialApi({
+            type: 'lead_prospeccao',
+            saleId: prospect.id,
+            conversationId: conversationId,
+            payload: comercialPayloadProspect,
+          }).then(syncResult => {
+            if (syncResult.success) {
+              console.log(`✅ [Prospect] Sincronizado com sistema comercial`);
+            } else if (syncResult.savedForRetry) {
+              console.log(`📋 [Prospect] Lead salvo para sincronização posterior`);
+            }
+          }).catch(syncError => {
+            console.error(`❌ [Prospect] Erro na sincronização (ignorado):`, syncError);
+          });
 
           return JSON.stringify({
             success: true,
