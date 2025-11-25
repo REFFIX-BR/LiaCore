@@ -9,7 +9,7 @@
 
 import { db } from "../db";
 import { pendingComercialSync } from "../../shared/schema";
-import { eq, and, lte, lt } from "drizzle-orm";
+import { eq, and, lte, lt, sql } from "drizzle-orm";
 import { enviarVendaChat, enviarSiteLead, enviarLeadSimples } from "../lib/comercial-api";
 
 const SYNC_INTERVAL_MS = 60 * 1000; // Verificar a cada 1 minuto
@@ -62,6 +62,31 @@ async function runSyncWorker(): Promise<void> {
   const startTime = Date.now();
   
   try {
+    // Primeiro: Marcar como 'failed' qualquer registro que atingiu maxAttempts mas ainda está pending
+    // Isso previne registros presos que nunca seriam processados
+    const stuckItems = await db
+      .select()
+      .from(pendingComercialSync)
+      .where(
+        and(
+          eq(pendingComercialSync.status, 'pending'),
+          sql`${pendingComercialSync.attempts} >= ${pendingComercialSync.maxAttempts}`
+        )
+      );
+    
+    if (stuckItems.length > 0) {
+      console.log(`⚠️ [Comercial Sync Worker] Encontrados ${stuckItems.length} registros presos, marcando como failed`);
+      for (const item of stuckItems) {
+        await db
+          .update(pendingComercialSync)
+          .set({
+            status: 'failed',
+            lastError: 'Máximo de tentativas atingido (auto-cleanup)',
+          })
+          .where(eq(pendingComercialSync.id, item.id));
+      }
+    }
+    
     // Buscar itens pendentes que estão prontos para retry
     const pendingItems = await db
       .select()

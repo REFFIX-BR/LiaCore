@@ -179,16 +179,23 @@ async function syncWithComercialApi(syncData: SyncPayload): Promise<{
   }
 }
 
+// Exponential backoff em minutos: 5, 15, 45, 120 (2h), 360 (6h)
+const BACKOFF_MINUTES = [5, 15, 45, 120, 360];
+
 /**
  * Salva sincronização pendente para retry posterior
+ * Registra como attempts=1 já que a primeira tentativa falhou
  */
 async function savePendingSync(syncData: SyncPayload, errorMessage: string): Promise<void> {
   try {
     const { db } = await import("../db");
     const { pendingComercialSync } = await import("../../shared/schema");
     
-    // Calcular próxima tentativa (exponential backoff: 5min, 15min, 45min, 2h, 6h)
-    const nextRetryMinutes = 5;
+    // A primeira tentativa já falhou, então começamos com attempts=1
+    // Próximo retry usa o índice 1 do backoff (15 minutos)
+    const attempts = 1;
+    const backoffIndex = Math.min(attempts, BACKOFF_MINUTES.length - 1);
+    const nextRetryMinutes = BACKOFF_MINUTES[backoffIndex];
     const nextRetryAt = new Date(Date.now() + nextRetryMinutes * 60 * 1000);
     
     await db.insert(pendingComercialSync).values({
@@ -197,12 +204,14 @@ async function savePendingSync(syncData: SyncPayload, errorMessage: string): Pro
       conversationId: syncData.conversationId || null,
       payload: syncData.payload,
       status: 'pending',
+      attempts: attempts,
       maxAttempts: 5,
       lastError: errorMessage,
+      lastAttemptAt: new Date(),
       nextRetryAt,
     });
     
-    console.log(`💾 [Comercial Sync] Pendência salva para retry em ${nextRetryMinutes}min`);
+    console.log(`💾 [Comercial Sync] Pendência salva para retry em ${nextRetryMinutes}min (tentativa ${attempts + 1}/5)`);
   } catch (saveError: any) {
     console.error(`❌ [Comercial Sync] Erro ao salvar pendência:`, saveError.message);
   }
