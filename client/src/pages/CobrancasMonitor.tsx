@@ -18,7 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Phone, MessageSquare, CheckCircle2, Clock, TrendingUp, Users } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ChatPanel } from "@/components/ChatPanel";
+import { Phone, MessageSquare, CheckCircle2, Clock, TrendingUp, Users, X } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -61,6 +68,18 @@ type ConversationFilter = 'all' | 'inbound' | 'whatsapp_campaign';
 
 export default function CobrancasMonitor() {
   const [conversationFilter, setConversationFilter] = useState<ConversationFilter>('all');
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const handleViewConversation = (conv: Conversation) => {
+    setSelectedConversation(conv);
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setSelectedConversation(null);
+  };
 
   // Fetch unified metrics
   const { data: metrics, isLoading: isLoadingMetrics } = useQuery<VoiceMetrics>({
@@ -284,7 +303,7 @@ export default function CobrancasMonitor() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => window.open(`/conversations?conversationId=${conv.id}`, '_blank')}
+                          onClick={() => handleViewConversation(conv)}
                           data-testid={`button-view-${conv.id}`}
                         >
                           Ver Conversa
@@ -308,6 +327,42 @@ export default function CobrancasMonitor() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal flutuante para ver conversa */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                Conversa - {selectedConversation?.clientName}
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            {selectedConversation && (
+              <ChatPanel
+                conversation={{
+                  id: selectedConversation.id,
+                  chatId: selectedConversation.chatId,
+                  clientName: selectedConversation.clientName,
+                  clientDocument: selectedConversation.clientDocument,
+                  status: selectedConversation.status,
+                  assistantType: selectedConversation.assistantType,
+                  transferredToHuman: selectedConversation.transferredToHuman,
+                  assignedTo: selectedConversation.assignedTo,
+                  lastMessage: selectedConversation.lastMessage,
+                  lastMessageTime: selectedConversation.lastMessageTime ? new Date(selectedConversation.lastMessageTime) : new Date(),
+                  transferReason: null,
+                  transferredAt: null,
+                }}
+                onClose={handleCloseDialog}
+                showCloseButton={true}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
