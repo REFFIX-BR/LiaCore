@@ -295,12 +295,12 @@ export default function Conversations() {
                               )}
                             </div>
                             {conv.transferReason && (
-                              <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                              <div className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words">
                                 {conv.transferReason}
                               </div>
                             )}
                             {conv.lastMessage && (
-                              <div className="text-sm text-muted-foreground mt-1 truncate">
+                              <div className="text-sm text-muted-foreground mt-1 w-full overflow-hidden text-ellipsis whitespace-nowrap">
                                 {conv.lastMessage}
                               </div>
                             )}
@@ -312,7 +312,7 @@ export default function Conversations() {
                             </div>
                           </div>
                         </div>
-                    </div>
+                      </div>
                     )
                   })}
                 </div>
@@ -355,17 +355,17 @@ export default function Conversations() {
                               )}
                             </div>
                             {conv.assignedToName && (
-                              <div className="text-xs text-muted-foreground mt-1 truncate">
+                              <div className="text-xs text-muted-foreground mt-1 w-full overflow-hidden text-ellipsis whitespace-nowrap">
                                 Atribuído por {conv.assignedToName}
                               </div>
                             )}
                             {conv.transferReason && (
-                              <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                              <div className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words">
                                 {conv.transferReason}
                               </div>
                             )}
                             {conv.lastMessage && (
-                              <div className="text-sm text-muted-foreground mt-1 truncate">
+                              <div className="text-sm text-muted-foreground mt-1 w-full overflow-hidden text-ellipsis whitespace-nowrap">
                                 {conv.lastMessage}
                               </div>
                             )}
@@ -377,7 +377,7 @@ export default function Conversations() {
                             </div>
                           </div>
                         </div>
-                    </div>
+                      </div>
                     )
                   })}
                 </div>
