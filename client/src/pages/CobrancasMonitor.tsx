@@ -284,7 +284,7 @@ export default function CobrancasMonitor() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => window.open(`/supervisor?conversationId=${conv.id}`, '_blank')}
+                          onClick={() => window.open(`/conversations?conversationId=${conv.id}`, '_blank')}
                           data-testid={`button-view-${conv.id}`}
                         >
                           Ver Conversa

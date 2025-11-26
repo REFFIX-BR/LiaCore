@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearch, useLocation } from "wouter";
 import { ChatPanel } from "@/components/ChatPanel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
@@ -83,7 +84,14 @@ export default function Conversations() {
     const saved = localStorage.getItem("conversationsLayoutMode");
     return (saved === "single" || saved === "dual") ? saved : "dual";
   });
+  const [initialConversationLoaded, setInitialConversationLoaded] = useState(false);
   const { user, isAgent } = useAuth();
+  const searchString = useSearch();
+  const [, setLocation] = useLocation();
+
+  // Ler conversationId da URL
+  const urlParams = new URLSearchParams(searchString);
+  const conversationIdFromUrl = urlParams.get('conversationId');
 
   // Salvar preferência de layout no localStorage
   useEffect(() => {
@@ -101,6 +109,22 @@ export default function Conversations() {
     queryKey: ["/api/conversations/assigned"],
     refetchInterval: 5000,
   });
+
+  // Query conversa específica (quando vem da URL)
+  const { data: specificConversation } = useQuery<Conversation>({
+    queryKey: ["/api/conversations", conversationIdFromUrl],
+    enabled: !!conversationIdFromUrl && !initialConversationLoaded,
+  });
+
+  // Carregar conversa da URL automaticamente
+  useEffect(() => {
+    if (conversationIdFromUrl && specificConversation && !initialConversationLoaded) {
+      setActiveIds([conversationIdFromUrl]);
+      setInitialConversationLoaded(true);
+      // Limpar o parâmetro da URL
+      setLocation("/conversations", { replace: true });
+    }
+  }, [conversationIdFromUrl, specificConversation, initialConversationLoaded, setLocation]);
 
   // Usar a lista correta baseada na aba ativa
   const conversations = activeTab === "transferred" ? transferredConversations : assignedConversations;
