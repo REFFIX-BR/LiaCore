@@ -315,7 +315,7 @@ export default function Conversations() {
                       </div>
                     )
                   })}
-                  <div className="h-20" aria-hidden="true" />
+                  <div className="h-32" aria-hidden="true" />
                 </div>
               </ScrollArea>
             )}
@@ -381,7 +381,7 @@ export default function Conversations() {
                       </div>
                     )
                   })}
-                  <div className="h-20" aria-hidden="true" />
+                  <div className="h-32" aria-hidden="true" />
                 </div>
               </ScrollArea>
             )}
