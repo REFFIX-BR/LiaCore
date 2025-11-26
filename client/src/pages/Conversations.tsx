@@ -273,7 +273,7 @@ export default function Conversations() {
               </div>
             ) : (
               <ScrollArea className="h-full">
-                <div className="p-2 pb-4 space-y-2">
+                <div className="p-2 space-y-2">
                   {transferredActiveConversations.map((conv) => {
                     const waitTimeIndicator = getWaitTimeIndicator(new Date(conv.lastMessageTime));
                     return (
@@ -315,6 +315,7 @@ export default function Conversations() {
                       </div>
                     )
                   })}
+                  <div className="h-20" aria-hidden="true" />
                 </div>
               </ScrollArea>
             )}
@@ -333,7 +334,7 @@ export default function Conversations() {
               </div>
             ) : (
               <ScrollArea className="h-full">
-                <div className="p-2 pb-4 space-y-2">
+                <div className="p-2 space-y-2">
                   {assignedActiveConversations.map((conv) => {
                     const waitTimeIndicator = getWaitTimeIndicator(new Date(conv.lastMessageTime));
                     return (
@@ -380,6 +381,7 @@ export default function Conversations() {
                       </div>
                     )
                   })}
+                  <div className="h-20" aria-hidden="true" />
                 </div>
               </ScrollArea>
             )}
