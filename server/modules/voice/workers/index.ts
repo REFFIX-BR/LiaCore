@@ -14,8 +14,8 @@ whatsappRetryScheduler.start();
 
 /**
  * STARTUP RECOVERY: Re-enqueue pending targets for active campaigns
- * This ensures BullMQ jobs are restored after server restart
- * Uses jobId based on targetId for idempotency (prevents duplicates)
+ * IDEMPOTENCY: Only processes state='pending' targets. After enqueue,
+ * state is updated to 'scheduled' to prevent re-enqueue on next restart.
  */
 async function recoverPendingCampaignTargets(): Promise<void> {
   console.log('🔄 [Startup Recovery] Checking for pending campaign targets...');
@@ -36,8 +36,9 @@ async function recoverPendingCampaignTargets(): Promise<void> {
     for (const campaign of activeCampaigns) {
       const targets = await storage.getVoiceCampaignTargets(campaign.id);
       
+      // CRITICAL: Only select 'pending' state - 'scheduled' means already in queue
       const pendingTargets = targets.filter(t => 
-        (t.state === 'pending' || t.state === 'scheduled') && 
+        t.state === 'pending' && 
         (t.attemptCount ?? 0) === 0
       );
       
@@ -48,41 +49,42 @@ async function recoverPendingCampaignTargets(): Promise<void> {
         continue;
       }
       
-      const BATCH_SIZE = 100;
-      for (let i = 0; i < pendingTargets.length; i += BATCH_SIZE) {
-        const batch = pendingTargets.slice(i, i + BATCH_SIZE);
+      // Process one at a time to ensure state update after each enqueue
+      for (let i = 0; i < pendingTargets.length; i++) {
+        const target = pendingTargets[i];
         
-        const results = await Promise.allSettled(
-          batch.map(target => 
-            addVoiceWhatsAppCollectionToQueue({
-              targetId: target.id,
-              campaignId: campaign.id,
-              phoneNumber: target.phoneNumber,
-              clientName: target.debtorName,
-              clientDocument: target.debtorDocument || 'N/A',
-              debtAmount: target.debtAmount || 0,
-              attemptNumber: 1,
-            }, 0)
-          )
-        );
-        
-        for (const result of results) {
-          if (result.status === 'fulfilled') {
-            totalEnqueued++;
+        try {
+          await addVoiceWhatsAppCollectionToQueue({
+            targetId: target.id,
+            campaignId: campaign.id,
+            phoneNumber: target.phoneNumber,
+            clientName: target.debtorName,
+            clientDocument: target.debtorDocument || 'N/A',
+            debtAmount: target.debtAmount || 0,
+            attemptNumber: 1,
+          }, 0);
+          
+          // CRITICAL: Mark as 'scheduled' immediately to prevent re-enqueue on restart
+          await storage.updateVoiceCampaignTarget(target.id, { state: 'scheduled' });
+          totalEnqueued++;
+        } catch (error: any) {
+          const errorMsg = error.message || String(error);
+          if (errorMsg.includes('already exists') || errorMsg.includes('duplicate')) {
+            // Job exists, mark as scheduled anyway
+            await storage.updateVoiceCampaignTarget(target.id, { state: 'scheduled' });
+            totalSkipped++;
           } else {
-            const errorMsg = result.reason?.message || String(result.reason);
-            if (errorMsg.includes('already exists') || errorMsg.includes('duplicate')) {
-              totalSkipped++;
-            } else {
-              totalErrors++;
-              if (totalErrors <= 5) {
-                console.error(`❌ [Startup Recovery] Error:`, errorMsg);
-              }
+            totalErrors++;
+            if (totalErrors <= 5) {
+              console.error(`❌ [Startup Recovery] Error:`, errorMsg);
             }
           }
         }
         
-        console.log(`📦 [Startup Recovery] Progress: ${Math.min(i + BATCH_SIZE, pendingTargets.length)}/${pendingTargets.length} processed`);
+        // Log progress every 100 targets
+        if ((i + 1) % 100 === 0) {
+          console.log(`📦 [Startup Recovery] Progress: ${i + 1}/${pendingTargets.length} processed`);
+        }
       }
     }
     

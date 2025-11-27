@@ -10,31 +10,22 @@ const router = express.Router();
 
 /**
  * Service to activate a voice campaign by enqueuing all pending targets
- * This is idempotent - won't duplicate jobs for already-scheduled targets
+ * IDEMPOTENCY: Only processes targets with state='pending'. After enqueue, 
+ * state is updated to 'scheduled' to prevent re-enqueue on restart.
  */
 async function activateVoiceCampaign(campaignId: string): Promise<{ enqueued: number; skipped: number }> {
   console.log(`🚀 [Voice Activation] Activating campaign ${campaignId}`);
   
   const targets = await storage.getVoiceCampaignTargets(campaignId);
   
-  console.log(`🔍 [Voice Activation] DEBUG - First target:`, targets[0] ? {
-    id: targets[0].id,
-    state: targets[0].state,
-    attemptCount: targets[0].attemptCount,
-    keys: Object.keys(targets[0])
-  } : 'No targets');
-  
-  // Accept both 'pending' and 'scheduled' states when attemptCount is 0 or NULL
-  // This allows reactivating campaigns that were previously paused
-  // CRITICAL FIX: Treat NULL attemptCount as 0 (fresh targets from import have NULL)
-  // NOTE: Removed 'enabled' column check - production uses state-based gating only
+  // CRITICAL: Only select 'pending' state - 'scheduled' means already in queue
+  // This prevents duplicate jobs on server restart or re-activation
   const pendingTargets = targets.filter(t => 
-    (t.state === 'pending' || t.state === 'scheduled') && 
+    t.state === 'pending' && 
     (t.attemptCount ?? 0) === 0
-    // Removed: t.enabled === true (column doesn't exist in production)
   );
   
-  console.log(`📊 [Voice Activation] Found ${pendingTargets.length} pending/scheduled targets (${targets.length} total)`);
+  console.log(`📊 [Voice Activation] Found ${pendingTargets.length} pending targets (${targets.length} total)`);
   
   let enqueued = 0;
   let skipped = 0;
@@ -50,13 +41,24 @@ async function activateVoiceCampaign(campaignId: string): Promise<{ enqueued: nu
         clientDocument: target.debtorDocument || 'N/A',
         debtAmount: target.debtAmount || 0,
         attemptNumber: 1,
-      }, 0); // No delay - send immediately
+      }, 0);
+      
+      // CRITICAL: Mark as 'scheduled' immediately to prevent re-enqueue on restart
+      await storage.updateVoiceCampaignTarget(target.id, { state: 'scheduled' });
       
       enqueued++;
-      console.log(`✅ [Voice Activation] Enqueued WhatsApp target: ${target.debtorName} (${target.phoneNumber})`);
+      if (enqueued % 100 === 0) {
+        console.log(`📦 [Voice Activation] Progress: ${enqueued}/${pendingTargets.length}`);
+      }
     } catch (error: any) {
-      console.error(`❌ [Voice Activation] Failed to enqueue target ${target.id}:`, error.message);
-      skipped++;
+      // If job already exists (idempotency), mark as scheduled anyway
+      if (error.message?.includes('already exists') || error.message?.includes('duplicate')) {
+        await storage.updateVoiceCampaignTarget(target.id, { state: 'scheduled' });
+        skipped++;
+      } else {
+        console.error(`❌ [Voice Activation] Failed to enqueue target ${target.id}:`, error.message);
+        skipped++;
+      }
     }
   }
   
