@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Phone, Search, PhoneCall, PhoneOff, Clock, CheckCircle2, XCircle, Trash2, Upload, Calendar, Edit } from 'lucide-react';
+import { Phone, Search, PhoneCall, PhoneOff, Clock, CheckCircle2, XCircle, Trash2, Upload, Calendar, Edit, RefreshCw } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -465,6 +465,21 @@ export default function VoiceTargets() {
               {selectedTargetIds.size > 0 && ` | ${selectedTargetIds.size} selecionados`}
             </CardDescription>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              queryClient.invalidateQueries({ queryKey: ['/api/voice/targets'] });
+              toast({
+                title: 'Atualizado',
+                description: 'Lista de alvos atualizada.',
+              });
+            }}
+            data-testid="button-refresh-targets"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Atualizar
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
