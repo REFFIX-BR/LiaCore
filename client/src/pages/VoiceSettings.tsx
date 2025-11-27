@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, Power, Save, AlertCircle } from 'lucide-react';
+import { Settings, Power, Save, AlertCircle, MessageSquare, Clock } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -29,10 +29,8 @@ export default function VoiceSettings() {
   const { toast } = useToast();
   const [isModuleEnabled, setIsModuleEnabled] = useState(false);
   const [configs, setConfigs] = useState<Record<string, string>>({
-    TWILIO_ACCOUNT_SID: '',
-    TWILIO_AUTH_TOKEN: '',
-    TWILIO_PHONE_NUMBER: '',
-    VOICE_WEBHOOK_BASE_URL: '',
+    WHATSAPP_COLLECTION_DELAY_MS: '300000',
+    WHATSAPP_MAX_ATTEMPTS: '3',
   });
 
   const { data: featureFlags } = useQuery<FeatureFlag[]>({
@@ -128,6 +126,8 @@ export default function VoiceSettings() {
     setConfigs((prev) => ({ ...prev, [key]: value }));
   };
 
+  const delayMinutes = Math.round(parseInt(configs.WHATSAPP_COLLECTION_DELAY_MS || '300000') / 60000);
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
@@ -136,7 +136,7 @@ export default function VoiceSettings() {
             <Settings className="h-8 w-8" />
             Configurações COBRANÇAS
           </h1>
-          <p className="text-muted-foreground">Gerenciar configurações do módulo de voz</p>
+          <p className="text-muted-foreground">Gerenciar configurações do módulo de cobrança via WhatsApp</p>
         </div>
       </div>
 
@@ -176,8 +176,8 @@ export default function VoiceSettings() {
               <AlertTitle>Importante</AlertTitle>
               <AlertDescription>
                 Quando o módulo está ativo, as campanhas agendadas serão executadas
-                automaticamente. Certifique-se de que as credenciais Twilio estão
-                configuradas corretamente antes de ativar.
+                automaticamente via WhatsApp. As mensagens são enviadas através da
+                instância "Cobranca" do Evolution API.
               </AlertDescription>
             </Alert>
           </CardContent>
@@ -185,57 +185,47 @@ export default function VoiceSettings() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Credenciais Twilio</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Configurações WhatsApp
+            </CardTitle>
             <CardDescription>
-              Configure as credenciais da sua conta Twilio para realizar chamadas
+              Configure os parâmetros de envio de mensagens de cobrança via WhatsApp
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="twilio-sid">Account SID</Label>
+              <Label htmlFor="delay-ms" className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Intervalo entre mensagens (ms)
+              </Label>
               <Input
-                id="twilio-sid"
-                type="password"
-                placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                value={configs.TWILIO_ACCOUNT_SID}
-                onChange={(e) => handleConfigChange('TWILIO_ACCOUNT_SID', e.target.value)}
-                data-testid="input-twilio-account-sid"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="twilio-token">Auth Token</Label>
-              <Input
-                id="twilio-token"
-                type="password"
-                placeholder="••••••••••••••••••••••••••••••••"
-                value={configs.TWILIO_AUTH_TOKEN}
-                onChange={(e) => handleConfigChange('TWILIO_AUTH_TOKEN', e.target.value)}
-                data-testid="input-twilio-auth-token"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="twilio-phone">Número de Telefone Twilio</Label>
-              <Input
-                id="twilio-phone"
-                type="tel"
-                placeholder="+5511999999999"
-                value={configs.TWILIO_PHONE_NUMBER}
-                onChange={(e) => handleConfigChange('TWILIO_PHONE_NUMBER', e.target.value)}
-                data-testid="input-twilio-phone-number"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="webhook-url">Webhook Base URL</Label>
-              <Input
-                id="webhook-url"
-                type="url"
-                placeholder="https://your-app.replit.app"
-                value={configs.VOICE_WEBHOOK_BASE_URL}
-                onChange={(e) => handleConfigChange('VOICE_WEBHOOK_BASE_URL', e.target.value)}
-                data-testid="input-webhook-base-url"
+                id="delay-ms"
+                type="number"
+                placeholder="300000"
+                value={configs.WHATSAPP_COLLECTION_DELAY_MS}
+                onChange={(e) => handleConfigChange('WHATSAPP_COLLECTION_DELAY_MS', e.target.value)}
+                data-testid="input-delay-ms"
               />
               <p className="text-xs text-muted-foreground">
-                URL base da aplicação para receber webhooks do Twilio
+                Intervalo de {delayMinutes} minuto(s) entre cada mensagem enviada.
+                Recomendado: 300000ms (5 minutos) para evitar bloqueios do WhatsApp.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="max-attempts">Máximo de Tentativas por Cliente</Label>
+              <Input
+                id="max-attempts"
+                type="number"
+                placeholder="3"
+                min="1"
+                max="10"
+                value={configs.WHATSAPP_MAX_ATTEMPTS}
+                onChange={(e) => handleConfigChange('WHATSAPP_MAX_ATTEMPTS', e.target.value)}
+                data-testid="input-max-attempts"
+              />
+              <p className="text-xs text-muted-foreground">
+                Número máximo de tentativas de contato por cliente antes de marcar como falha.
               </p>
             </div>
             <div className="flex justify-end">
@@ -254,27 +244,29 @@ export default function VoiceSettings() {
         <Card>
           <CardHeader>
             <CardTitle>Informações do Sistema</CardTitle>
-            <CardDescription>Status e configurações do sistema</CardDescription>
+            <CardDescription>Status e configurações do sistema de cobrança</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Workers Ativos</span>
-                <Badge variant="outline">5 workers</Badge>
+                <span className="text-sm font-medium">Canal de Envio</span>
+                <Badge variant="default">WhatsApp (Evolution API)</Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Filas BullMQ</span>
-                <Badge variant="outline">
-                  ingest, scheduling, dialer, post-call, promise-monitor
-                </Badge>
+                <span className="text-sm font-medium">Instância</span>
+                <Badge variant="outline">Cobranca</Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Workers Ativos</span>
+                <Badge variant="outline">WhatsApp Collection, Retry, Promise Monitor</Badge>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Compliance ANATEL</span>
-                <Badge variant="default">08:00 - 20:00</Badge>
+                <Badge variant="default">Seg-Sex: 08:00-20:00 | Sáb: 08:00-18:00</Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Max Tentativas por Cliente</span>
-                <Badge variant="outline">3 tentativas</Badge>
+                <span className="text-sm font-medium">IA Assistente</span>
+                <Badge variant="outline">Lia Cobrança (GPT-5)</Badge>
               </div>
             </div>
           </CardContent>
