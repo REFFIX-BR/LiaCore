@@ -106,3 +106,4 @@ integrations = ["javascript_openai:1.0.0", "javascript_database:1.0.0", "twilio:
 [userenv.shared]
 COMERCIAL_API_URL = "https://comercial.trtelecom.net"
 COMERCIAL_VENDEDOR_CODIGO = "LIA"
+WHATSAPP_COLLECTION_DELAY_MS = "120000"
