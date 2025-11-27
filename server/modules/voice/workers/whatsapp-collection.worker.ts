@@ -302,23 +302,24 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
       }
 
       // ============================================================================
-      // MENSAGEM INICIAL COM TEMPLATE META (Compliance WhatsApp)
+      // MENSAGEM DIRETA DE COBRANÇA (Sem template Meta)
       // ============================================================================
-      console.log(`📋 [Voice WhatsApp] Enviando template Meta aprovado "financeiro_em_atraso"...`);
+      // Estratégia: Envio direto com delay de 5 minutos entre mensagens
+      // Isso contorna problemas de aprovação de templates na Meta
+      // ============================================================================
       
-      // Usar template aprovado pela Meta para evitar banimento do número
-      // Template: "financeiro_em_atraso" com parâmetro {{texto}} = nome do cliente
       const firstName = clientName.split(' ')[0]; // Apenas primeiro nome
       
-      // Mensagem que será enviada (via template Meta):
-      // Olá {firstName}!
-      // Aqui é a Lia, assistente virtual da TR Telecom.
-      // 
-      // Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta.
-      // 
-      // Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível.
+      // Mensagem de cobrança personalizada
+      const collectionMessage = `Olá ${firstName}! 👋
+
+Aqui é a Lia, assistente virtual da TR Telecom.
+
+Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta.
+
+Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível. 💬`;
       
-      console.log(`📋 [Voice WhatsApp] Template parameters: nome="${firstName}"`)
+      console.log(`💬 [Voice WhatsApp] Enviando mensagem direta para ${clientName} (${phoneNumber})`);
 
       // Adquirir token do rate limiter antes de enviar
       console.log('🔑 [Voice WhatsApp] Acquiring rate limiter token...');
@@ -331,30 +332,15 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
       
       console.log('✅ [Voice WhatsApp] Rate limiter token acquired');
 
-      // Enviar template via WhatsApp (Meta-approved)
-      // O template "financeiro_em_atraso" tem:
-      // - Header: "Olá {{texto}}!" (variável nomeada 'texto')
-      // - Body: texto fixo (sem variáveis)
-      const result = await sendWhatsAppTemplate(
+      // Enviar mensagem direta via WhatsApp (sem template)
+      const result = await sendWhatsAppMessage(
         phoneNumber,
-        {
-          templateName: 'financeiro_em_atraso',
-          languageCode: 'en', // Template está registrado como 'English' na Meta
-          headerParameters: [{ 
-            value: firstName, 
-            parameterName: 'texto' // Variável nomeada no template
-          }],
-        },
+        collectionMessage,
         'Cobranca' // CRITICAL: Use accent-free instance name
       );
       
-      // Para referência: texto completo que o cliente receberá
-      const messagePreview = `Olá ${firstName}!
-Aqui é a Lia, assistente virtual da TR Telecom.
-
-Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta.
-
-Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível.`;
+      // Mensagem que será salva no histórico
+      const messagePreview = collectionMessage;
 
       // CRITICAL: Verify WhatsApp send success before marking as completed
       if (!result.success) {
@@ -444,14 +430,6 @@ Use o nome "${clientName.split(' ')[0]}" para se dirigir ao cliente.`;
         whatsappMessageId: result.whatsappMessageId || undefined,
         whatsappStatus: result.success ? 'PENDING' : 'ERROR',
         whatsappStatusUpdatedAt: new Date(),
-        whatsappTemplateMetadata: {
-          templateName: 'financeiro_em_atraso',
-          languageCode: 'en',
-          headerParameters: [{ value: firstName, parameterName: 'texto' }],
-          bodyParameters: [],
-          phoneNumber,
-          evolutionInstance: 'Cobranca',
-        },
       });
 
       // Atualizar conversa com última mensagem
