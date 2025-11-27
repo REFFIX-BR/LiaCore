@@ -50,10 +50,16 @@ async function recoverPendingCampaignTargets(): Promise<void> {
       }
       
       // Process one at a time to ensure state update after each enqueue
+      // Rate limit: 1 message every 2 minutes (120000ms) - use sequential delays
+      const RATE_LIMIT_MS = parseInt(process.env.WHATSAPP_COLLECTION_DELAY_MS || '120000');
+      
       for (let i = 0; i < pendingTargets.length; i++) {
         const target = pendingTargets[i];
         
         try {
+          // Calculate delay: job 0 starts immediately, job 1 at 2min, job 2 at 4min, etc.
+          const delay = i * RATE_LIMIT_MS;
+          
           await addVoiceWhatsAppCollectionToQueue({
             targetId: target.id,
             campaignId: campaign.id,
@@ -62,7 +68,7 @@ async function recoverPendingCampaignTargets(): Promise<void> {
             clientDocument: target.debtorDocument || 'N/A',
             debtAmount: target.debtAmount || 0,
             attemptNumber: 1,
-          }, 0);
+          }, delay);
           
           // CRITICAL: Mark as 'scheduled' immediately to prevent re-enqueue on restart
           await storage.updateVoiceCampaignTarget(target.id, { state: 'scheduled' });

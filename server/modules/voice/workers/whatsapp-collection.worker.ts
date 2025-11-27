@@ -476,13 +476,8 @@ Use o nome "${clientName.split(' ')[0]}" para se dirigir ao cliente.`;
   {
     connection: redisConnection,
     concurrency: 1, // Uma mensagem por vez (sequencial)
-    limiter: {
-      max: 1, // Máximo de 1 mensagem por intervalo (WhatsApp rate limiting)
-      // WhatsApp Business API aplica rate limiting severo para templates
-      // Contas novas: 250 conversas/24h. Delay previne spam detection
-      // Configurável via env: WHATSAPP_COLLECTION_DELAY_MS (padrão: 2 minutos)
-      duration: parseInt(process.env.WHATSAPP_COLLECTION_DELAY_MS || '120000'), // 2 minutos (120000ms)
-    },
+    // NOTE: Removed BullMQ limiter - it has issues with prioritized jobs and restarts
+    // Rate limiting is now handled via job delays at enqueue time
   }
 );
 

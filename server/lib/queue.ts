@@ -576,10 +576,11 @@ export async function addVoicePromiseMonitorToQueue(data: VoicePromiseMonitorJob
 }
 
 export async function addVoiceWhatsAppCollectionToQueue(data: VoiceWhatsAppCollectionJob, delay?: number) {
+  // REMOVED priority - BullMQ limiter doesn't work well with prioritized jobs
+  // The limiter alone controls the rate (1 job per 120 seconds)
   return await voiceWhatsAppCollectionQueue.add('send-whatsapp', data, {
     delay: delay || 0,
     jobId: `target-${data.targetId}`,
-    priority: 2,
   });
 }
 

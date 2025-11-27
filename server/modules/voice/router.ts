@@ -27,11 +27,18 @@ async function activateVoiceCampaign(campaignId: string): Promise<{ enqueued: nu
   
   console.log(`📊 [Voice Activation] Found ${pendingTargets.length} pending targets (${targets.length} total)`);
   
+  // Rate limit: 1 message every 2 minutes (120000ms) - use sequential delays
+  const RATE_LIMIT_MS = parseInt(process.env.WHATSAPP_COLLECTION_DELAY_MS || '120000');
+  
   let enqueued = 0;
   let skipped = 0;
   
-  for (const target of pendingTargets) {
+  for (let i = 0; i < pendingTargets.length; i++) {
+    const target = pendingTargets[i];
     try {
+      // Calculate delay: job 0 starts immediately, job 1 at 2min, job 2 at 4min, etc.
+      const delay = i * RATE_LIMIT_MS;
+      
       // WhatsApp collection - enqueue directly to WhatsApp worker
       await addVoiceWhatsAppCollectionToQueue({
         targetId: target.id,
@@ -41,7 +48,7 @@ async function activateVoiceCampaign(campaignId: string): Promise<{ enqueued: nu
         clientDocument: target.debtorDocument || 'N/A',
         debtAmount: target.debtAmount || 0,
         attemptNumber: 1,
-      }, 0);
+      }, delay);
       
       // CRITICAL: Mark as 'scheduled' immediately to prevent re-enqueue on restart
       await storage.updateVoiceCampaignTarget(target.id, { state: 'scheduled' });
