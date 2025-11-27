@@ -13,6 +13,11 @@ function cleanClientName(name: string): string {
   // Ex: "123 MARIA SILVA" → "MARIA SILVA"
   const cleaned = name.replace(/^\d+\s+/, '').trim();
   
+  // Log para debug
+  if (name !== cleaned) {
+    console.log(`🧹 [CRM Sync] Nome limpo: "${name}" → "${cleaned}"`);
+  }
+  
   return cleaned || 'Cliente sem nome';
 }
 
