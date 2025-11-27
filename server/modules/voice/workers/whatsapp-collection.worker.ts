@@ -107,25 +107,26 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
         return { success: false, reason: 'max_attempts' };
       }
 
+      // TEMPORARIAMENTE DESABILITADO PARA TESTE
       // Verificação de horário comercial (ANATEL compliance)
-      if (!isWithinBusinessHours()) {
-        const nextSlot = getNextBusinessHourSlot();
-        console.log(`🕐 [Voice WhatsApp] Fora do horário comercial, reagendando para ${nextSlot.toISOString()}`);
-        
-        await addVoiceWhatsAppCollectionToQueue({
-          targetId,
-          campaignId,
-          phoneNumber,
-          clientName,
-          clientDocument,
-          debtAmount,
-          attemptNumber,
-        }, nextSlot.getTime() - Date.now());
-
-        return { success: true, rescheduled: true, nextSlot };
-      }
+      // if (!isWithinBusinessHours()) {
+      //   const nextSlot = getNextBusinessHourSlot();
+      //   console.log(`🕐 [Voice WhatsApp] Fora do horário comercial, reagendando para ${nextSlot.toISOString()}`);
+      //   
+      //   await addVoiceWhatsAppCollectionToQueue({
+      //     targetId,
+      //     campaignId,
+      //     phoneNumber,
+      //     clientName,
+      //     clientDocument,
+      //     debtAmount,
+      //     attemptNumber,
+      //   }, nextSlot.getTime() - Date.now());
+      //
+      //   return { success: true, rescheduled: true, nextSlot };
+      // }
       
-      console.log(`✅ [Voice WhatsApp] Dentro do horário comercial - prosseguindo com envio`);
+      console.log(`⚠️ [Voice WhatsApp] MODO TESTE - Horário comercial DESABILITADO`);
 
       // ============================================================================
       // VERIFICAÇÃO PRÉ-ENVIO: Consultar CRM para verificar se já pagou
