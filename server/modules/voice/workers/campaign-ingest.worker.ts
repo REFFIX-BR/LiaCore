@@ -5,6 +5,17 @@ import { storage } from '../../../storage';
 import axios from 'axios';
 import { validarDocumentoFlexivel } from '../../../ai-tools';
 
+function cleanClientName(name: string): string {
+  if (!name) return 'Cliente sem nome';
+  
+  // Remove prefixos numéricos do início do nome
+  // Ex: "2 CRISTIANE APARECIDA" → "CRISTIANE APARECIDA"
+  // Ex: "123 MARIA SILVA" → "MARIA SILVA"
+  const cleaned = name.replace(/^\d+\s+/, '').trim();
+  
+  return cleaned || 'Cliente sem nome';
+}
+
 console.log('🎯 [Voice Campaign Ingest] Worker starting...');
 
 const worker = new Worker<VoiceCampaignIngestJob>(
@@ -67,12 +78,13 @@ const worker = new Worker<VoiceCampaignIngestJob>(
             console.warn(`⚠️ [Voice Campaign Ingest] Documento inválido para cliente ${client.name}: ${validacao.motivo}`);
           }
           
-          console.log(`📝 [Voice Campaign Ingest] Cliente ${client.name} - Documento: ${validacao.tipo} (${validacao.documentoNormalizado.substring(0, 5)}***)`);
+          const nomeCliente = cleanClientName(client.name);
+          console.log(`📝 [Voice Campaign Ingest] Cliente ${nomeCliente} - Documento: ${validacao.tipo} (${validacao.documentoNormalizado.substring(0, 5)}***)`);
         
           
           return {
             campaignId,
-            debtorName: client.name || 'Cliente sem nome',
+            debtorName: nomeCliente,
             debtorDocument: validacao.documentoNormalizado,
             debtorDocumentType: validacao.tipo,
             phoneNumber: client.phone || client.phoneNumber,
