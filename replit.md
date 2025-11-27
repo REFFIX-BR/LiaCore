@@ -31,6 +31,8 @@ The COBRANÇAS - Autonomous Debt Collection Module is a WhatsApp-based system wi
 
 Advanced features include an automatic retry and rate limiting system for WhatsApp messages using a Redis-based token bucket, and an enhanced idempotency architecture for BullMQ workers to ensure reliable message processing. Chat lock optimization reduces concurrency lock timeouts for faster message recovery. Full support for WhatsApp Business accounts (@lid) is implemented, with a centralized `chatId` creation fix to prevent malformation and ensure consistent formatting across all conversation creation paths.
 
+**Campaign Job Persistence System** (Nov 2025): Automatic recovery mechanism for BullMQ campaign jobs after server restarts. When the server starts, the system automatically scans all active campaigns and re-enqueues pending targets (state=pending/scheduled with attemptCount=0). Features include: batch processing (100 targets at a time) for efficiency, idempotent enqueuing using targetId-based jobIds to prevent duplicates, progress logging, and graceful error handling. The 2-minute rate limiter between messages is preserved. This ensures that server restarts never lose campaign progress - all 1000+ targets are automatically recovered and processed in order.
+
 ### System Design Choices
 - **Chat Simulator (Test Chat)**: A professional tool for validating assistant behaviors, isolated from the production database.
 - **Admin Tools**: Features for mass-closing abandoned conversations, reprocessing stuck messages, and configuration management.

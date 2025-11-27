@@ -578,7 +578,7 @@ export async function addVoicePromiseMonitorToQueue(data: VoicePromiseMonitorJob
 export async function addVoiceWhatsAppCollectionToQueue(data: VoiceWhatsAppCollectionJob, delay?: number) {
   return await voiceWhatsAppCollectionQueue.add('send-whatsapp', data, {
     delay: delay || 0,
-    // No fixed jobId to allow retries
+    jobId: `target-${data.targetId}`,
     priority: 2,
   });
 }
