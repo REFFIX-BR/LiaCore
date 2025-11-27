@@ -479,9 +479,9 @@ Use o nome "${clientName.split(' ')[0]}" para se dirigir ao cliente.`;
     limiter: {
       max: 1, // Máximo de 1 mensagem por intervalo (WhatsApp rate limiting)
       // WhatsApp Business API aplica rate limiting severo para templates
-      // Contas novas: 250 conversas/24h. Delay alto previne mensagens travadas em PENDING
-      // Configurável via env: WHATSAPP_COLLECTION_DELAY_MS (padrão: 5 minutos)
-      duration: parseInt(process.env.WHATSAPP_COLLECTION_DELAY_MS || '300000'), // 5 minutos (300000ms)
+      // Contas novas: 250 conversas/24h. Delay previne spam detection
+      // Configurável via env: WHATSAPP_COLLECTION_DELAY_MS (padrão: 2 minutos)
+      duration: parseInt(process.env.WHATSAPP_COLLECTION_DELAY_MS || '120000'), // 2 minutos (120000ms)
     },
   }
 );
