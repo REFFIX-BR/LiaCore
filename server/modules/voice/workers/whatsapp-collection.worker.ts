@@ -280,7 +280,7 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
           assistantType: 'cobranca', // IMPORTANTE: IA Cobrança especializada
           department: 'financial',
           status: 'active',
-          evolutionInstance: 'Cobranca',
+          evolutionInstance: 'Leads',
           conversationSource: 'whatsapp_campaign',
           voiceCampaignTargetId: targetId,
         });
@@ -293,7 +293,7 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
           voiceCampaignTargetId: targetId,
           assistantType: 'cobranca', // IA Cobrança
           department: 'financial',
-          evolutionInstance: 'Cobranca',
+          evolutionInstance: 'Leads',
           status: 'active', // Reativar se estiver resolvida
         });
         console.log(`✅ [Voice WhatsApp] Conversa atualizada com IA Cobrança atribuída`);
@@ -351,7 +351,7 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
       const result = await sendWhatsAppMessage(
         phoneNumber,
         collectionMessage,
-        'Cobranca' // CRITICAL: Use accent-free instance name
+        'Leads' // Usando instância Leads para cobrança
       );
       
       // Mensagem que será salva no histórico
