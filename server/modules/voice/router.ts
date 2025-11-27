@@ -180,17 +180,25 @@ router.patch('/campaigns/:id', authenticate, requireAdminOrSupervisor, async (re
     
     console.log('✅ [Voice API] Campaign updated:', id);
     
-    // If status changed to 'active', enqueue all pending targets
+    // If status changed to 'active', enqueue all pending targets ASYNCHRONOUSLY
+    // This prevents 524 timeouts when there are many targets (1000+)
     if (updates.status === 'active' && currentCampaign.status !== 'active') {
-      try {
-        const result = await activateVoiceCampaign(id);
-        console.log(`✅ [Voice API] Campaign activation complete: ${result.enqueued} targets enqueued`);
-        res.json({ ...campaign, activationResult: result });
-      } catch (activationError: any) {
-        console.error('❌ [Voice API] Error during campaign activation:', activationError);
-        // Campaign was updated but activation failed - still return success but with warning
-        res.json({ ...campaign, activationWarning: 'Campaign updated but target scheduling failed' });
-      }
+      console.log(`🚀 [Voice API] Campaign ${id} activated - starting async target enqueuing...`);
+      
+      // Respond immediately to avoid timeout
+      res.json({ 
+        ...campaign, 
+        activationMessage: 'Campanha ativada! Targets estão sendo enfileirados em background.' 
+      });
+      
+      // Process in background (fire-and-forget)
+      activateVoiceCampaign(id)
+        .then(result => {
+          console.log(`✅ [Voice API] Campaign ${id} activation complete: ${result.enqueued} targets enqueued, ${result.skipped} skipped`);
+        })
+        .catch(error => {
+          console.error(`❌ [Voice API] Campaign ${id} activation failed:`, error);
+        });
     } else {
       res.json(campaign);
     }
