@@ -305,21 +305,35 @@ const worker = new Worker<VoiceWhatsAppCollectionJob>(
       // MENSAGEM DIRETA DE COBRANÇA (Sem template Meta)
       // ============================================================================
       // Estratégia: Envio direto com delay de 5 minutos entre mensagens
-      // Isso contorna problemas de aprovação de templates na Meta
+      // Mensagens randomizadas para parecer mais natural e evitar detecção de spam
       // ============================================================================
       
       const firstName = clientName.split(' ')[0]; // Apenas primeiro nome
       
-      // Mensagem de cobrança personalizada
-      const collectionMessage = `Olá ${firstName}! 👋
-
-Aqui é a Lia, assistente virtual da TR Telecom.
-
-Tudo bem? Estou entrando em contato porque identifiquei uma pendência na sua conta.
-
-Podemos conversar rapidinho sobre isso? Estou aqui para te ajudar a regularizar da melhor forma possível. 💬`;
+      // Array de mensagens variadas para parecer mais natural
+      const collectionMessages = [
+        `Oi ${firstName}, tudo bem? Aqui é a Lia da TR Telecom! Notei uma pendência na sua conta e queria ver se posso te ajudar a resolver. Podemos conversar?`,
+        
+        `Olá ${firstName}! Sou a Lia, assistente da TR Telecom. Vi que tem um valor em aberto na sua conta. Posso te ajudar a regularizar de um jeito simples?`,
+        
+        `E aí ${firstName}, como vai? Aqui é a Lia da TR Telecom. Estou passando porque identifiquei uma pendência no seu cadastro. Bora resolver juntos?`,
+        
+        `Oi ${firstName}! Tudo certo? Sou a Lia da TR Telecom e preciso falar com você sobre sua conta. Tem um minutinho pra gente conversar?`,
+        
+        `${firstName}, boa tarde! Aqui é a Lia, da TR Telecom. Vi que você tem uma pendência e queria te ajudar a colocar tudo em dia. Posso te passar as opções?`,
+        
+        `Olá ${firstName}, aqui é a Lia da TR Telecom! Passando pra lembrar que tem um valor pendente na sua conta. Quer que eu te ajude a resolver isso agora?`,
+        
+        `Oi ${firstName}! Sou a Lia, assistente virtual da TR Telecom. Notei uma pendência aqui e vim ver como posso te ajudar a regularizar. Vamos conversar?`,
+        
+        `Hey ${firstName}, tudo bem contigo? Aqui é a Lia da TR Telecom. Preciso conversar sobre sua conta, tem um tempinho?`,
+      ];
       
-      console.log(`💬 [Voice WhatsApp] Enviando mensagem direta para ${clientName} (${phoneNumber})`);
+      // Selecionar mensagem aleatória
+      const randomIndex = Math.floor(Math.random() * collectionMessages.length);
+      const collectionMessage = collectionMessages[randomIndex];
+      
+      console.log(`💬 [Voice WhatsApp] Enviando mensagem direta para ${clientName} (${phoneNumber}) - Variação #${randomIndex + 1}`);
 
       // Adquirir token do rate limiter antes de enviar
       console.log('🔑 [Voice WhatsApp] Acquiring rate limiter token...');
