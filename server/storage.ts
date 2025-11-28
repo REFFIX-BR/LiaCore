@@ -2570,48 +2570,11 @@ export class DbStorage implements IStorage {
     limit?: number;
     offset?: number;
   }): Promise<{ messages: Message[]; total: number }> {
-    const limit = params.limit || 50;
-    const offset = params.offset || 0;
+    const queryLimit = params.limit || 50;
+    const queryOffset = params.offset || 0;
     
-    // Build conditions
-    const conditions: string[] = ['1=1'];
-    const values: any[] = [];
-    let valueIndex = 1;
-    
-    if (params.conversationId) {
-      conditions.push(`ma.conversation_id = $${valueIndex++}`);
-      values.push(params.conversationId);
-    }
-    if (params.startDate) {
-      conditions.push(`ma.timestamp >= $${valueIndex++}`);
-      values.push(params.startDate);
-    }
-    if (params.endDate) {
-      conditions.push(`ma.timestamp <= $${valueIndex++}`);
-      values.push(params.endDate);
-    }
-    if (params.searchText) {
-      conditions.push(`ma.content ILIKE $${valueIndex++}`);
-      values.push(`%${params.searchText}%`);
-    }
-    if (params.clientName) {
-      conditions.push(`c.client_name ILIKE $${valueIndex++}`);
-      values.push(`%${params.clientName}%`);
-    }
-
-    // Use raw SQL for complex query with joins
-    const whereClause = conditions.join(' AND ');
-    
-    const countResult = await db.execute(sql.raw(`
-      SELECT COUNT(*) as count
-      FROM messages_archive ma
-      LEFT JOIN conversations c ON ma.conversation_id = c.id
-      WHERE ${whereClause}
-    `, ...values));
-    
-    const total = Number(countResult.rows[0]?.count || 0);
-    
-    const result = await db.execute(sql.raw(`
+    // Build dynamic query using Drizzle sql template
+    const result = await db.execute(sql`
       SELECT 
         ma.id, ma.conversation_id as "conversationId", ma.role, ma.content, ma.timestamp,
         ma.function_call as "functionCall", ma.assistant, ma.image_base64 as "imageBase64",
@@ -2629,10 +2592,30 @@ export class DbStorage implements IStorage {
         c.client_name as "clientName"
       FROM messages_archive ma
       LEFT JOIN conversations c ON ma.conversation_id = c.id
-      WHERE ${whereClause}
+      WHERE 1=1
+        ${params.conversationId ? sql`AND ma.conversation_id = ${params.conversationId}` : sql``}
+        ${params.startDate ? sql`AND ma.timestamp >= ${params.startDate}` : sql``}
+        ${params.endDate ? sql`AND ma.timestamp <= ${params.endDate}` : sql``}
+        ${params.searchText ? sql`AND ma.content ILIKE ${'%' + params.searchText + '%'}` : sql``}
+        ${params.clientName ? sql`AND c.client_name ILIKE ${'%' + params.clientName + '%'}` : sql``}
       ORDER BY ma.timestamp DESC
-      LIMIT ${limit} OFFSET ${offset}
-    `, ...values));
+      LIMIT ${queryLimit} OFFSET ${queryOffset}
+    `);
+    
+    // Get total count
+    const countResult = await db.execute(sql`
+      SELECT COUNT(*) as count
+      FROM messages_archive ma
+      LEFT JOIN conversations c ON ma.conversation_id = c.id
+      WHERE 1=1
+        ${params.conversationId ? sql`AND ma.conversation_id = ${params.conversationId}` : sql``}
+        ${params.startDate ? sql`AND ma.timestamp >= ${params.startDate}` : sql``}
+        ${params.endDate ? sql`AND ma.timestamp <= ${params.endDate}` : sql``}
+        ${params.searchText ? sql`AND ma.content ILIKE ${'%' + params.searchText + '%'}` : sql``}
+        ${params.clientName ? sql`AND c.client_name ILIKE ${'%' + params.clientName + '%'}` : sql``}
+    `);
+    
+    const total = Number(countResult.rows[0]?.count || 0);
 
     return { 
       messages: result.rows as unknown as Message[], 

@@ -7638,6 +7638,136 @@ A resposta deve:
     }
   });
 
+  // ========================================
+  // ARCHIVED MESSAGES API
+  // ========================================
+
+  // Get archived messages for a conversation
+  app.get("/api/conversations/:id/messages/archived", authenticate, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Verify conversation exists
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversa não encontrada" });
+      }
+
+      const archivedMessages = await storage.getArchivedMessagesByConversationId(id);
+      
+      return res.json({
+        success: true,
+        messages: archivedMessages,
+        count: archivedMessages.length,
+      });
+    } catch (error) {
+      console.error("Get archived messages error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get all messages (recent + archived) for a conversation
+  app.get("/api/conversations/:id/messages/all", authenticate, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Verify conversation exists
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversa não encontrada" });
+      }
+
+      const allMessages = await storage.getAllMessagesByConversationId(id, { includeArchived: true });
+      
+      return res.json({
+        success: true,
+        messages: allMessages,
+        count: allMessages.length,
+      });
+    } catch (error) {
+      console.error("Get all messages error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Search archived messages
+  app.get("/api/messages/archive/search", authenticate, async (req, res) => {
+    try {
+      const { 
+        conversationId, 
+        startDate, 
+        endDate, 
+        searchText, 
+        clientName,
+        limit = "50",
+        offset = "0"
+      } = req.query;
+
+      const params = {
+        conversationId: conversationId as string | undefined,
+        startDate: startDate ? new Date(startDate as string) : undefined,
+        endDate: endDate ? new Date(endDate as string) : undefined,
+        searchText: searchText as string | undefined,
+        clientName: clientName as string | undefined,
+        limit: parseInt(limit as string, 10),
+        offset: parseInt(offset as string, 10),
+      };
+
+      const result = await storage.searchArchivedMessages(params);
+      
+      return res.json({
+        success: true,
+        messages: result.messages,
+        total: result.total,
+        limit: params.limit,
+        offset: params.offset,
+        hasMore: params.offset + result.messages.length < result.total,
+      });
+    } catch (error) {
+      console.error("Search archived messages error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get archive statistics
+  app.get("/api/messages/archive/stats", authenticate, async (req, res) => {
+    try {
+      const currentUser = req.user!;
+      
+      // Only admin/supervisor can view archive stats
+      if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPERVISOR') {
+        return res.status(403).json({ error: "Acesso negado" });
+      }
+
+      const { db } = await import('./db');
+      const { sql } = await import('drizzle-orm');
+      
+      const stats = await db.execute(sql`
+        SELECT 
+          COUNT(*) as total_archived,
+          MIN(timestamp) as oldest_message,
+          MAX(timestamp) as newest_message,
+          COUNT(DISTINCT conversation_id) as conversations_with_archive
+        FROM messages_archive
+      `);
+
+      const row = stats.rows[0] as any;
+      
+      return res.json({
+        success: true,
+        stats: {
+          totalArchived: Number(row?.total_archived || 0),
+          oldestMessage: row?.oldest_message,
+          newestMessage: row?.newest_message,
+          conversationsWithArchive: Number(row?.conversations_with_archive || 0),
+        }
+      });
+    } catch (error) {
+      console.error("Get archive stats error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Delete message (DB + WhatsApp)
   app.delete("/api/messages/:id", authenticate, async (req, res) => {
     try {
