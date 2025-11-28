@@ -118,6 +118,19 @@ export interface IStorage {
   updateMessage(id: string, updates: Partial<Message>): Promise<void>;
   deleteMessage(id: string): Promise<void>;
   
+  // Archived Messages (mensagens antigas >30 dias)
+  getArchivedMessagesByConversationId(conversationId: string): Promise<Message[]>;
+  getAllMessagesByConversationId(conversationId: string, options?: { includeArchived?: boolean }): Promise<Message[]>;
+  searchArchivedMessages(params: { 
+    conversationId?: string; 
+    startDate?: Date; 
+    endDate?: Date; 
+    searchText?: string;
+    clientName?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ messages: Message[]; total: number }>;
+  
   // Conversation Threads (Context Window Optimization)
   createConversationThread(thread: InsertConversationThread): Promise<ConversationThread>;
   getActiveThreadByConversationId(conversationId: string): Promise<ConversationThread | undefined>;
@@ -950,6 +963,27 @@ export class MemStorage implements IStorage {
 
   async deleteMessage(id: string): Promise<void> {
     this.messages.delete(id);
+  }
+
+  // Archived Messages - MemStorage implementation (in-memory storage doesn't have separate archive)
+  async getArchivedMessagesByConversationId(conversationId: string): Promise<Message[]> {
+    return []; // No archive in memory storage
+  }
+
+  async getAllMessagesByConversationId(conversationId: string, options?: { includeArchived?: boolean }): Promise<Message[]> {
+    return this.getMessagesByConversationId(conversationId);
+  }
+
+  async searchArchivedMessages(params: { 
+    conversationId?: string; 
+    startDate?: Date; 
+    endDate?: Date; 
+    searchText?: string;
+    clientName?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ messages: Message[]; total: number }> {
+    return { messages: [], total: 0 }; // No archive in memory storage
   }
 
   // Conversation Threads (Context Window Optimization)
@@ -2486,6 +2520,124 @@ export class DbStorage implements IStorage {
 
   async deleteMessage(id: string): Promise<void> {
     await db.delete(schema.messages).where(eq(schema.messages.id, id));
+  }
+
+  // Archived Messages - DbStorage implementation
+  async getArchivedMessagesByConversationId(conversationId: string): Promise<Message[]> {
+    const result = await db.execute(sql`
+      SELECT 
+        id, conversation_id as "conversationId", role, content, timestamp,
+        function_call as "functionCall", assistant, image_base64 as "imageBase64",
+        pdf_base64 as "pdfBase64", pdf_name as "pdfName", audio_url as "audioUrl",
+        audio_base64 as "audioBase64", video_url as "videoUrl", video_name as "videoName",
+        video_mimetype as "videoMimetype", location_latitude as "locationLatitude",
+        location_longitude as "locationLongitude", whatsapp_message_id as "whatsappMessageId",
+        remote_jid as "remoteJid", whatsapp_status as "whatsappStatus",
+        whatsapp_status_updated_at as "whatsappStatusUpdatedAt",
+        whatsapp_retry_count as "whatsappRetryCount",
+        whatsapp_last_retry_at as "whatsappLastRetryAt",
+        whatsapp_template_metadata as "whatsappTemplateMetadata",
+        is_private as "isPrivate", send_by as "sendBy",
+        deleted_at as "deletedAt", deleted_by as "deletedBy"
+      FROM messages_archive
+      WHERE conversation_id = ${conversationId}
+      ORDER BY timestamp ASC
+    `);
+    return result.rows as unknown as Message[];
+  }
+
+  async getAllMessagesByConversationId(conversationId: string, options?: { includeArchived?: boolean }): Promise<Message[]> {
+    const recentMessages = await this.getMessagesByConversationId(conversationId);
+    
+    if (options?.includeArchived) {
+      const archivedMessages = await this.getArchivedMessagesByConversationId(conversationId);
+      // Combine and sort by timestamp
+      const allMessages = [...archivedMessages, ...recentMessages];
+      return allMessages.sort((a, b) => 
+        (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0)
+      );
+    }
+    
+    return recentMessages;
+  }
+
+  async searchArchivedMessages(params: { 
+    conversationId?: string; 
+    startDate?: Date; 
+    endDate?: Date; 
+    searchText?: string;
+    clientName?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ messages: Message[]; total: number }> {
+    const limit = params.limit || 50;
+    const offset = params.offset || 0;
+    
+    // Build conditions
+    const conditions: string[] = ['1=1'];
+    const values: any[] = [];
+    let valueIndex = 1;
+    
+    if (params.conversationId) {
+      conditions.push(`ma.conversation_id = $${valueIndex++}`);
+      values.push(params.conversationId);
+    }
+    if (params.startDate) {
+      conditions.push(`ma.timestamp >= $${valueIndex++}`);
+      values.push(params.startDate);
+    }
+    if (params.endDate) {
+      conditions.push(`ma.timestamp <= $${valueIndex++}`);
+      values.push(params.endDate);
+    }
+    if (params.searchText) {
+      conditions.push(`ma.content ILIKE $${valueIndex++}`);
+      values.push(`%${params.searchText}%`);
+    }
+    if (params.clientName) {
+      conditions.push(`c.client_name ILIKE $${valueIndex++}`);
+      values.push(`%${params.clientName}%`);
+    }
+
+    // Use raw SQL for complex query with joins
+    const whereClause = conditions.join(' AND ');
+    
+    const countResult = await db.execute(sql.raw(`
+      SELECT COUNT(*) as count
+      FROM messages_archive ma
+      LEFT JOIN conversations c ON ma.conversation_id = c.id
+      WHERE ${whereClause}
+    `, ...values));
+    
+    const total = Number(countResult.rows[0]?.count || 0);
+    
+    const result = await db.execute(sql.raw(`
+      SELECT 
+        ma.id, ma.conversation_id as "conversationId", ma.role, ma.content, ma.timestamp,
+        ma.function_call as "functionCall", ma.assistant, ma.image_base64 as "imageBase64",
+        ma.pdf_base64 as "pdfBase64", ma.pdf_name as "pdfName", ma.audio_url as "audioUrl",
+        ma.audio_base64 as "audioBase64", ma.video_url as "videoUrl", ma.video_name as "videoName",
+        ma.video_mimetype as "videoMimetype", ma.location_latitude as "locationLatitude",
+        ma.location_longitude as "locationLongitude", ma.whatsapp_message_id as "whatsappMessageId",
+        ma.remote_jid as "remoteJid", ma.whatsapp_status as "whatsappStatus",
+        ma.whatsapp_status_updated_at as "whatsappStatusUpdatedAt",
+        ma.whatsapp_retry_count as "whatsappRetryCount",
+        ma.whatsapp_last_retry_at as "whatsappLastRetryAt",
+        ma.whatsapp_template_metadata as "whatsappTemplateMetadata",
+        ma.is_private as "isPrivate", ma.send_by as "sendBy",
+        ma.deleted_at as "deletedAt", ma.deleted_by as "deletedBy",
+        c.client_name as "clientName"
+      FROM messages_archive ma
+      LEFT JOIN conversations c ON ma.conversation_id = c.id
+      WHERE ${whereClause}
+      ORDER BY ma.timestamp DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `, ...values));
+
+    return { 
+      messages: result.rows as unknown as Message[], 
+      total 
+    };
   }
 
   // Conversation Threads (Context Window Optimization)
