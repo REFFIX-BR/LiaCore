@@ -46,6 +46,13 @@ Advanced features include an automatic retry and rate limiting system for WhatsA
 - **LID chatId Malformation Fix**: Includes migration scripts and architectural corrections to resolve and prevent malformed WhatsApp Business chatIds.
 - **Message Recovery LID Bug Fix** (Nov 2025): Critical fix for Message Recovery Scheduler that was causing ~20% failure rate for WhatsApp Business accounts. The scheduler now correctly prioritizes `conversation.clientId` (which preserves `lid_` prefix) instead of manually parsing `chatId`. This ensures proper format conversion (`lid_123` → `123@lid`) for Evolution API, resolving all LID-related message delivery failures.
 
+**Message Archiving System** (Nov 2025): Two-table architecture for message storage optimization. Messages older than 30 days are automatically archived to `messages_archive` table while remaining fully queryable. Features include:
+- Separate `messages_archive` table with identical structure to `messages`
+- API endpoints for archived message retrieval (`/api/conversations/:id/messages/archived`, `/api/conversations/:id/messages/all`, `/api/messages/archive/search`, `/api/messages/archive/stats`)
+- Search by conversation, date range, text content, or client name
+- Performance optimization: main `messages` table stays lean (~250k records) while archive preserves historical data (~100k records)
+- Transparent access: opening old conversations automatically fetches archived messages when needed
+
 ### Scalability & Performance
 The roadmap targets handling 160,000 messages at peak with 15,000 concurrent conversations through queue optimization, worker scaling, database optimization, OpenAI optimization, multi-tier infrastructure, and extensive observability with Prometheus + Grafana. A comprehensive end-to-end latency tracking system measures response time across the message pipeline, with alerts for P95 latency exceeding 30 seconds.
 
