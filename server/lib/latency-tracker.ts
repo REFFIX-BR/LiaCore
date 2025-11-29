@@ -293,6 +293,11 @@ export async function loadTrackerSnapshot(messageId: string): Promise<LatencyTra
     
     if (!data) return null;
     
+    // Upstash Redis pode retornar objeto já parseado ou string
+    if (typeof data === 'object') {
+      return data as LatencyTracker;
+    }
+    
     return JSON.parse(data as string) as LatencyTracker;
   } catch (error) {
     console.error('❌ [Latency] Erro ao carregar snapshot:', error);
