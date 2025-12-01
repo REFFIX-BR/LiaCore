@@ -1499,7 +1499,7 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
         }
 
       case "consultar_fatura":
-        // REDIRECIONAR para consulta_boleto_cliente (API real)
+        // LGPD: CPF deve ser fornecido a cada consulta - não usar CPF armazenado
         if (!conversationId) {
           console.error("❌ [AI Tool] consultar_fatura chamada sem conversationId");
           return JSON.stringify({
@@ -1507,30 +1507,33 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
           });
         }
         
-        const { consultaBoletoCliente: consultaBoletoFatura } = await import("../ai-tools");
+        const { consultaBoletoCliente: consultaBoletoFatura, validarDocumentoFlexivel: validarDocFatura } = await import("../ai-tools");
         const { storage: storageFatura } = await import("../storage");
         
         try {
-          // Buscar documento do cliente automaticamente da conversa
-          const conversationFatura = await storageFatura.getConversation(conversationId);
+          // LGPD: Verificar se CPF foi fornecido nos argumentos
+          const cpfFornecidoFatura = args.documento || args.cpf || args.cpf_cnpj;
           
-          if (!conversationFatura) {
-            console.error("❌ [AI Tool] Conversa não encontrada:", conversationId);
-            return JSON.stringify({
-              error: "Conversa não encontrada"
-            });
-          }
-          
-          if (!conversationFatura.clientDocument) {
-            console.warn("⚠️ [AI Tool] Cliente ainda não forneceu CPF/CNPJ");
+          if (!cpfFornecidoFatura) {
+            // LGPD: SEMPRE solicitar CPF - não usar CPF armazenado
+            console.warn("⚠️ [AI Tool] LGPD: CPF não fornecido - solicitando ao cliente");
             return JSON.stringify({
               error: "Para consultar seus boletos, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
             });
           }
           
-          // Chamar diretamente a API real
+          // Validar documento fornecido
+          const validacaoFatura = validarDocFatura(cpfFornecidoFatura);
+          
+          if (!validacaoFatura.valido) {
+            return JSON.stringify({
+              error: validacaoFatura.motivo || 'Documento inválido'
+            });
+          }
+          
+          // LGPD: Usar CPF fornecido diretamente, sem armazenar
           const boletosFatura = await consultaBoletoFatura(
-            conversationFatura.clientDocument,
+            validacaoFatura.documentoNormalizado,
             { conversationId },
             storageFatura
           );
@@ -2372,7 +2375,7 @@ Fonte: ${fonte}`;
         
         try {
           const { validarDocumentoFlexivel, consultaBoletoCliente: consultaBoletoDoc } = await import("../ai-tools");
-          const { storage: storageDoc } = await import("../storage");
+          const { storage: storageForBoleto } = await import("../storage");
           const { installationPointManager: pointManagerDoc } = await import("./redis-config");
           
           const cpfCnpj = args.cpf_cnpj;
@@ -2399,11 +2402,11 @@ Fonte: ${fonte}`;
           // LGPD: NÃO salvar CPF no banco de dados - usar diretamente para consulta
           console.log(`✅ [AI Tool] Documento validado (tipo: ${validacao.tipo}) - consultando boletos diretamente...`);
           
-          // Chamar consulta de boletos diretamente com o CPF fornecido
+          // Chamar consulta de boletos diretamente com o CPF fornecido (storage usado apenas para contexto, não para persistir CPF)
           const resultadoBoletos = await consultaBoletoDoc(
             validacao.documentoNormalizado,
             { conversationId },
-            storageDoc
+            storageForBoleto
           );
           
           // Tratar múltiplos pontos

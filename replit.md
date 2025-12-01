@@ -45,6 +45,11 @@ Advanced features include an automatic retry and rate limiting system for WhatsA
 - **Date/Time Awareness**: All new OpenAI threads automatically receive current date/time context in Brazilian Portuguese (pt-BR).
 - **LID chatId Malformation Fix**: Includes migration scripts and architectural corrections to resolve and prevent malformed WhatsApp Business chatIds.
 - **Message Recovery LID Bug Fix** (Nov 2025): Critical fix for Message Recovery Scheduler that was causing ~20% failure rate for WhatsApp Business accounts. The scheduler now correctly prioritizes `conversation.clientId` (which preserves `lid_` prefix) instead of manually parsing `chatId`. This ensures proper format conversion (`lid_123` → `123@lid`) for Evolution API, resolving all LID-related message delivery failures.
+- **LGPD CPF Compliance** (Dec 2025): **CRITICAL ARCHITECTURAL CHANGE** - CPF is no longer stored in the database. When a customer requests a boleto (invoice), the system now ALWAYS asks for the CPF/CNPJ at that moment and uses it directly for the API query without persisting. This ensures full LGPD compliance by:
+  - Removing all stored CPF data from `conversations.clientDocument` and `contacts.document`
+  - Modifying `persistir_documento`, `consultar_boleto_cliente`, and `consultar_fatura` functions to require CPF in arguments
+  - Using Redis with 5-minute TTL for temporary CPF storage during multi-point selection flows only
+  - The assistant prompts and function calls now always request CPF from the customer for each boleto query
 
 **Message Archiving System** (Nov 2025): Two-table architecture for message storage optimization. Messages older than 30 days are automatically archived to `messages_archive` table while remaining fully queryable. Features include:
 - Separate `messages_archive` table with identical structure to `messages`
