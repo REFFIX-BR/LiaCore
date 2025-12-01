@@ -337,6 +337,7 @@
 
 /* ========================================
    PRINT STYLES - Gamification Report
+   HIGH CONTRAST FOR PRINTING
    ======================================== */
 @media print {
   /* Hide non-printable elements */
@@ -351,14 +352,19 @@
     display: none !important;
   }
 
-  /* Reset page layout */
+  /* Reset page layout - FORCED BLACK TEXT */
   body {
     background: white !important;
-    color: black !important;
+    color: #000000 !important;
     font-size: 12pt !important;
     line-height: 1.4 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  /* ALL text defaults to BLACK */
+  * {
+    color: #000000 !important;
   }
 
   /* A4 page setup */
@@ -387,37 +393,72 @@
     print-color-adjust: exact !important;
   }
 
-  /* Force color printing for key elements */
+  /* Champion card - STRONGER GOLD */
   .champion-card {
-    background: linear-gradient(to bottom right, #fef9c3, #fef3c7) !important;
-    border: 2px solid #facc15 !important;
+    background: linear-gradient(to bottom right, #fef08a, #fcd34d) !important;
+    border: 3px solid #b45309 !important;
   }
 
+  /* 1st place - GOLD */
   .podium-card.order-2 {
-    background: linear-gradient(to bottom, #fef9c3, #fde68a) !important;
-    border: 2px solid #facc15 !important;
+    background: linear-gradient(to bottom, #fef08a, #fcd34d) !important;
+    border: 3px solid #b45309 !important;
   }
 
+  /* 2nd place - SILVER (darker gray) */
   .podium-card.order-1 {
-    background: linear-gradient(to bottom, #f3f4f6, #e5e7eb) !important;
-    border: 2px solid #9ca3af !important;
+    background: linear-gradient(to bottom, #e5e7eb, #d1d5db) !important;
+    border: 3px solid #374151 !important;
   }
 
+  /* 3rd place - BRONZE (darker orange) */
   .podium-card.order-3 {
-    background: linear-gradient(to bottom, #ffedd5, #fed7aa) !important;
-    border: 2px solid #fb923c !important;
+    background: linear-gradient(to bottom, #fed7aa, #fdba74) !important;
+    border: 3px solid #c2410c !important;
+  }
+
+  /* Stats cards - light gray background */
+  .stat-card,
+  [class*="bg-muted"] {
+    background: #f3f4f6 !important;
+    border: 1px solid #9ca3af !important;
   }
 
   /* Typography adjustments for print */
-  h1 { font-size: 24pt !important; }
-  h2 { font-size: 18pt !important; }
-  h3 { font-size: 14pt !important; }
-  h4 { font-size: 12pt !important; }
+  h1 { 
+    font-size: 24pt !important; 
+    color: #000000 !important;
+    font-weight: 800 !important;
+  }
+  h2 { 
+    font-size: 18pt !important; 
+    color: #1e3a5f !important;
+    font-weight: 700 !important;
+  }
+  h3 { 
+    font-size: 14pt !important; 
+    color: #000000 !important;
+    font-weight: 700 !important;
+  }
+  h4 { 
+    font-size: 12pt !important;
+    color: #000000 !important;
+    font-weight: 600 !important;
+  }
 
-  /* Ensure icons are visible */
+  /* Ensure icons are visible - DARK */
   svg {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    color: #000000 !important;
+  }
+
+  /* Trophy icons - keep gold */
+  .text-yellow-500 svg,
+  .text-yellow-600 svg,
+  svg.text-yellow-500,
+  svg.text-yellow-600 {
+    color: #92400e !important;
   }
 
   /* Page break control */
@@ -428,27 +469,94 @@
     page-break-inside: avoid;
   }
 
-  /* Ensure text colors are visible */
+  /* COLOR OVERRIDES - DARK FOR PRINT */
+  
+  /* Yellow/Gold text - DARK AMBER */
+  .text-yellow-400,
   .text-yellow-500,
-  .text-yellow-600 {
-    color: #ca8a04 !important;
+  .text-yellow-600,
+  .dark\\:text-yellow-400 {
+    color: #92400e !important;
   }
 
+  /* Gray text - DARK GRAY */
   .text-gray-400,
+  .text-gray-500,
   .text-gray-600 {
-    color: #4b5563 !important;
+    color: #1f2937 !important;
   }
 
+  /* Orange text - DARK ORANGE */
+  .text-orange-400,
+  .text-orange-500,
   .text-orange-600 {
-    color: #ea580c !important;
+    color: #9a3412 !important;
   }
 
+  /* Primary text - DARK BLUE */
   .text-primary {
-    color: #2563eb !important;
+    color: #1e3a8a !important;
   }
 
+  /* Muted foreground - DARK GRAY (not light!) */
   .text-muted-foreground {
-    color: #6b7280 !important;
+    color: #374151 !important;
+  }
+
+  /* Champion name and score - EXTRA BOLD BLACK */
+  .champion-card h3,
+  .champion-card [data-testid="champion-name"] {
+    color: #000000 !important;
+    font-weight: 800 !important;
+  }
+
+  .champion-card [data-testid="champion-score"],
+  .champion-card .text-5xl {
+    color: #92400e !important;
+    font-weight: 900 !important;
+  }
+
+  /* Podium scores - BOLD COLORS */
+  .podium-card .text-2xl,
+  .podium-card .text-3xl {
+    font-weight: 800 !important;
+  }
+
+  /* 1st place podium text */
+  .podium-card.order-2 .text-2xl,
+  .podium-card.order-2 .text-3xl {
+    color: #92400e !important;
+  }
+
+  /* 2nd place podium text */
+  .podium-card.order-1 .text-2xl,
+  .podium-card.order-1 .text-3xl {
+    color: #1f2937 !important;
+  }
+
+  /* 3rd place podium text */
+  .podium-card.order-3 .text-2xl,
+  .podium-card.order-3 .text-3xl {
+    color: #9a3412 !important;
+  }
+
+  /* Stats numbers - DARK BLUE */
+  .stat-card .text-3xl {
+    color: #1e3a8a !important;
+    font-weight: 700 !important;
+  }
+
+  /* Honorable mentions position numbers */
+  .honorable-mentions .text-3xl {
+    color: #374151 !important;
+    font-weight: 700 !important;
+  }
+
+  /* Badge pills - visible background */
+  [class*="bg-white\\/"],
+  [class*="bg-black\\/"] {
+    background: #f9fafb !important;
+    border: 1px solid #d1d5db !important;
   }
 
   /* Grid adjustments for print */
@@ -470,5 +578,38 @@
   /* Footer positioning */
   .footer {
     margin-top: 20mm !important;
+    color: #374151 !important;
+  }
+
+  /* Legenda badges - ensure visibility */
+  .badges-legend [class*="bg-muted"] {
+    background: #f3f4f6 !important;
+    border: 1px solid #9ca3af !important;
+  }
+
+  /* All font-semibold and font-bold - ensure weight */
+  .font-semibold {
+    font-weight: 600 !important;
+    color: #000000 !important;
+  }
+  
+  .font-bold {
+    font-weight: 700 !important;
+  }
+
+  /* Crown and trophy icons */
+  .champion-card svg,
+  .podium-card svg {
+    color: #92400e !important;
+  }
+
+  /* 2nd place icons - darker gray */
+  .podium-card.order-1 svg {
+    color: #374151 !important;
+  }
+
+  /* 3rd place icons - darker orange */
+  .podium-card.order-3 svg {
+    color: #9a3412 !important;
   }
 }
