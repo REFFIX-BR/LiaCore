@@ -340,413 +340,248 @@
    HIGH CONTRAST FOR PRINTING
    ======================================== */
 @media print {
-  /* FORCE LIGHT MODE - Remove dark class */
-  html, html.dark {
-    color-scheme: light !important;
-  }
-  
-  .dark {
-    --background: 0 0% 100% !important;
-    --foreground: 0 0% 0% !important;
-    --card: 0 0% 100% !important;
-    --card-foreground: 0 0% 0% !important;
-    --muted: 0 0% 96% !important;
-    --muted-foreground: 0 0% 25% !important;
+  /* A4 page setup */
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
   }
 
-  /* Hide non-printable elements */
+  /* HIDE EVERYTHING EXCEPT REPORT */
   .print\\:hidden,
   nav,
   aside,
   header:not(.report-header),
   footer:not(.report-footer),
   [data-sidebar],
+  [data-sidebar-wrapper],
   .sidebar,
-  button:not([data-testid="button-print"]) {
+  button,
+  .sticky,
+  .border-b:not(.footer) {
     display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
   }
 
-  /* Reset page layout - FORCED WHITE BACKGROUND */
-  html, body, .min-h-screen, .bg-background {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #000000 !important;
-    font-size: 12pt !important;
-    line-height: 1.4 !important;
+  /* Dark background for entire page */
+  html, body {
+    background: #0a1628 !important;
+    background-color: #0a1628 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* ALL text defaults to BLACK - override dark mode */
-  *, *::before, *::after {
-    color: #000000 !important;
-    border-color: #374151 !important;
+  .min-h-screen, .bg-background {
+    background: #0a1628 !important;
+    background-color: #0a1628 !important;
   }
 
-  /* A4 page setup - larger margins for better layout */
-  @page {
-    size: A4 portrait;
-    margin: 10mm 15mm;
-  }
-
-  /* Report container fills page with proper sizing */
+  /* Report container - full width, dark background */
   .print-report {
-    max-width: 100% !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
     width: 100% !important;
-    padding: 0 !important;
-    margin: 0 auto !important;
-    min-height: 100vh !important;
+    max-width: 100% !important;
+    padding: 15mm !important;
+    margin: 0 !important;
+    background: #0a1628 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   
-  /* Header section - larger and more prominent */
+  /* Header - white text */
   .report-header {
-    margin-bottom: 30px !important;
-    padding-bottom: 15px !important;
+    margin-bottom: 25px !important;
+    text-align: center !important;
   }
   
   .report-header h1 {
-    font-size: 32pt !important;
-    margin-bottom: 8px !important;
+    font-size: 22pt !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.05em !important;
   }
   
   .report-header h2 {
-    font-size: 22pt !important;
-    margin-bottom: 6px !important;
+    font-size: 16pt !important;
+    color: #fbbf24 !important;
+    font-weight: 500 !important;
   }
   
-  /* Champion section - larger */
-  .champion-section {
-    margin-bottom: 35px !important;
+  .report-header p {
+    color: #94a3b8 !important;
+    font-size: 10pt !important;
   }
   
+  /* Trophy icons - gold */
+  .report-header svg {
+    color: #fbbf24 !important;
+  }
+
+  /* Champion card - BLUE */
   .champion-card {
-    padding: 25px 20px !important;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 20px !important;
+    margin-bottom: 25px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  .champion-card * {
+    color: #ffffff !important;
+  }
+  
+  .champion-card .text-yellow-400,
+  .champion-card svg {
+    color: #fcd34d !important;
   }
   
   .champion-card h3 {
-    font-size: 28pt !important;
-  }
-  
-  .champion-card .text-5xl {
-    font-size: 36pt !important;
-  }
-  
-  /* Podium section - better spacing */
-  .podium-section {
-    margin-bottom: 30px !important;
-  }
-  
-  .podium-section h3 {
-    font-size: 18pt !important;
-    margin-bottom: 20px !important;
-  }
-  
-  .podium-card {
-    padding: 20px 15px !important;
-    min-height: 180px !important;
-  }
-  
-  .podium-card h4 {
-    font-size: 14pt !important;
-    margin-bottom: 8px !important;
-  }
-  
-  .podium-card .text-2xl {
     font-size: 20pt !important;
   }
   
-  .podium-card .text-3xl {
-    font-size: 24pt !important;
+  .champion-card .text-4xl {
+    font-size: 26pt !important;
+  }
+
+  /* Podium section header */
+  .podium-section h3 {
+    color: #ffffff !important;
+    font-size: 14pt !important;
   }
   
-  /* Honorable mentions - better sizing */
-  .honorable-mentions {
-    margin-bottom: 30px !important;
+  .podium-section h3 svg {
+    color: #fbbf24 !important;
   }
-  
-  .honorable-mentions h3 {
-    font-size: 16pt !important;
-    margin-bottom: 15px !important;
-  }
-  
-  .honorable-mentions > div > div {
+
+  /* Podium cards base */
+  .podium-card {
+    border-radius: 12px !important;
     padding: 15px !important;
-    min-height: 60px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   
-  /* Stats section - larger numbers */
-  .stats-section {
-    margin-bottom: 25px !important;
+  .podium-card * {
+    color: #ffffff !important;
   }
   
-  .stats-section h3 {
-    font-size: 16pt !important;
+  .podium-card .text-yellow-300 {
+    color: #fcd34d !important;
+  }
+
+  /* 2nd place - SILVER/GRAY (left) */
+  .podium-card[data-testid="podium-card-2"] {
+    background: linear-gradient(180deg, #64748b 0%, #475569 100%) !important;
+    border: 3px solid #94a3b8 !important;
+  }
+
+  /* 1st place - GOLD (center) */
+  .podium-card[data-testid="podium-card-1"] {
+    background: linear-gradient(180deg, #eab308 0%, #ca8a04 100%) !important;
+    border: 4px solid #fcd34d !important;
+  }
+
+  /* 3rd place - BRONZE/ORANGE (right) */
+  .podium-card[data-testid="podium-card-3"] {
+    background: linear-gradient(180deg, #ea580c 0%, #c2410c 100%) !important;
+    border: 3px solid #fb923c !important;
+  }
+
+  /* Honorable mentions */
+  .honorable-mentions h3 {
+    color: #ffffff !important;
+    font-size: 12pt !important;
     margin-bottom: 15px !important;
   }
   
-  .stat-card {
-    padding: 20px 15px !important;
-    min-height: 80px !important;
-  }
-  
-  .stat-card .text-3xl {
-    font-size: 28pt !important;
-    margin-bottom: 5px !important;
-  }
-  
-  /* Footer - at bottom */
-  .footer {
-    margin-top: 40px !important;
-    padding-top: 15px !important;
-    font-size: 11pt !important;
-  }
-
-  /* Ensure backgrounds print */
-  .champion-card,
-  .podium-card,
-  .stat-card,
-  [class*="bg-gradient"],
-  [class*="bg-yellow"],
-  [class*="bg-gray"],
-  [class*="bg-orange"],
-  [class*="bg-muted"] {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* Champion card - VIBRANT GOLD with strong border */
-  .champion-card {
-    background: #fef08a !important;
-    background-image: linear-gradient(135deg, #fef08a 0%, #fbbf24 100%) !important;
-    border: 4px solid #92400e !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-  }
-
-  /* 1st place - GOLD - Strong yellow */
-  .podium-card.order-2 {
-    background: #fef08a !important;
-    background-image: linear-gradient(180deg, #fef08a 0%, #fbbf24 100%) !important;
-    border: 4px solid #92400e !important;
-  }
-
-  /* 2nd place - SILVER - Visible gray */
-  .podium-card.order-1 {
-    background: #e5e7eb !important;
-    background-image: linear-gradient(180deg, #f3f4f6 0%, #d1d5db 100%) !important;
-    border: 4px solid #1f2937 !important;
-  }
-
-  /* 3rd place - BRONZE - Strong orange */
-  .podium-card.order-3 {
-    background: #fed7aa !important;
-    background-image: linear-gradient(180deg, #fed7aa 0%, #fb923c 100%) !important;
-    border: 4px solid #9a3412 !important;
-  }
-
-  /* Stats cards - visible gray background */
-  .stat-card {
-    background: #f3f4f6 !important;
-    border: 2px solid #6b7280 !important;
-  }
-  
-  /* Muted backgrounds - lighter gray */
-  [class*="bg-muted"] {
-    background: #f9fafb !important;
-    border: 1px solid #9ca3af !important;
-  }
-  
-  /* Honorable mentions cards */
   .honorable-mentions > div > div {
-    background: #f3f4f6 !important;
-    border: 2px solid #9ca3af !important;
-  }
-
-  /* Typography adjustments for print */
-  h1 { 
-    font-size: 24pt !important; 
-    color: #000000 !important;
-    font-weight: 800 !important;
-  }
-  h2 { 
-    font-size: 18pt !important; 
-    color: #1e3a5f !important;
-    font-weight: 700 !important;
-  }
-  h3 { 
-    font-size: 14pt !important; 
-    color: #000000 !important;
-    font-weight: 700 !important;
-  }
-  h4 { 
-    font-size: 12pt !important;
-    color: #000000 !important;
-    font-weight: 600 !important;
-  }
-
-  /* Ensure icons are visible - DARK */
-  svg {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    border-radius: 8px !important;
+    padding: 12px !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-    color: #000000 !important;
+  }
+  
+  .honorable-mentions * {
+    color: #ffffff !important;
+  }
+  
+  .honorable-mentions .text-muted-foreground {
+    color: #94a3b8 !important;
+  }
+  
+  .honorable-mentions .text-primary {
+    color: #3b82f6 !important;
   }
 
-  /* Trophy icons - keep gold */
-  .text-yellow-500 svg,
-  .text-yellow-600 svg,
-  svg.text-yellow-500,
-  svg.text-yellow-600 {
-    color: #92400e !important;
+  /* Stats section */
+  .stats-section h3 {
+    color: #ffffff !important;
+    font-size: 12pt !important;
+  }
+  
+  .stat-card {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    border-radius: 10px !important;
+    padding: 15px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  .stat-card .text-4xl {
+    color: #60a5fa !important;
+    font-size: 22pt !important;
+  }
+  
+  .stat-card .text-muted-foreground {
+    color: #94a3b8 !important;
+    font-size: 9pt !important;
+  }
+
+  /* Footer */
+  .footer {
+    border-top: 1px solid #334155 !important;
+    margin-top: 25px !important;
+    padding-top: 12px !important;
+  }
+  
+  .footer * {
+    color: #64748b !important;
+    font-size: 9pt !important;
   }
 
   /* Page break control */
   .champion-section,
   .podium-section,
-  .stats-section,
-  .badges-legend {
+  .stats-section {
     page-break-inside: avoid;
-  }
-
-  /* COLOR OVERRIDES - DARK FOR PRINT */
-  
-  /* Yellow/Gold text - DARK AMBER */
-  .text-yellow-400,
-  .text-yellow-500,
-  .text-yellow-600,
-  .dark\\:text-yellow-400 {
-    color: #92400e !important;
-  }
-
-  /* Gray text - DARK GRAY */
-  .text-gray-400,
-  .text-gray-500,
-  .text-gray-600 {
-    color: #1f2937 !important;
-  }
-
-  /* Orange text - DARK ORANGE */
-  .text-orange-400,
-  .text-orange-500,
-  .text-orange-600 {
-    color: #9a3412 !important;
-  }
-
-  /* Primary text - DARK BLUE */
-  .text-primary {
-    color: #1e3a8a !important;
-  }
-
-  /* Muted foreground - DARK GRAY (not light!) */
-  .text-muted-foreground {
-    color: #374151 !important;
-  }
-
-  /* Champion name and score - EXTRA BOLD BLACK */
-  .champion-card h3,
-  .champion-card [data-testid="champion-name"] {
-    color: #000000 !important;
-    font-weight: 800 !important;
-  }
-
-  .champion-card [data-testid="champion-score"],
-  .champion-card .text-5xl {
-    color: #92400e !important;
-    font-weight: 900 !important;
-  }
-
-  /* Podium scores - BOLD COLORS */
-  .podium-card .text-2xl,
-  .podium-card .text-3xl {
-    font-weight: 800 !important;
-  }
-
-  /* 1st place podium text */
-  .podium-card.order-2 .text-2xl,
-  .podium-card.order-2 .text-3xl {
-    color: #92400e !important;
-  }
-
-  /* 2nd place podium text */
-  .podium-card.order-1 .text-2xl,
-  .podium-card.order-1 .text-3xl {
-    color: #1f2937 !important;
-  }
-
-  /* 3rd place podium text */
-  .podium-card.order-3 .text-2xl,
-  .podium-card.order-3 .text-3xl {
-    color: #9a3412 !important;
-  }
-
-  /* Stats numbers - DARK BLUE */
-  .stat-card .text-3xl {
-    color: #1e3a8a !important;
-    font-weight: 700 !important;
-  }
-
-  /* Honorable mentions position numbers */
-  .honorable-mentions .text-3xl {
-    color: #374151 !important;
-    font-weight: 700 !important;
-  }
-
-  /* Badge pills - visible background */
-  [class*="bg-white\\/"],
-  [class*="bg-black\\/"] {
-    background: #f9fafb !important;
-    border: 1px solid #d1d5db !important;
   }
 
   /* Grid adjustments for print */
   .grid-cols-3 {
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
+    gap: 12px !important;
   }
 
   .grid-cols-4 {
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
+    gap: 10px !important;
   }
 
   .grid-cols-2 {
     display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
-  }
-
-  /* Footer positioning */
-  .footer {
-    margin-top: 20mm !important;
-    color: #374151 !important;
-  }
-
-  /* Legenda badges - ensure visibility */
-  .badges-legend [class*="bg-muted"] {
-    background: #f3f4f6 !important;
-    border: 1px solid #9ca3af !important;
-  }
-
-  /* All font-semibold and font-bold - ensure weight */
-  .font-semibold {
-    font-weight: 600 !important;
-    color: #000000 !important;
-  }
-  
-  .font-bold {
-    font-weight: 700 !important;
-  }
-
-  /* Crown and trophy icons */
-  .champion-card svg,
-  .podium-card svg {
-    color: #92400e !important;
-  }
-
-  /* 2nd place icons - darker gray */
-  .podium-card.order-1 svg {
-    color: #374151 !important;
-  }
-
-  /* 3rd place icons - darker orange */
-  .podium-card.order-3 svg {
-    color: #9a3412 !important;
+    gap: 10px !important;
   }
 }
