@@ -343,86 +343,75 @@
   /* A4 page setup */
   @page {
     size: A4 portrait;
-    margin: 10mm;
+    margin: 12mm;
   }
 
-  /* Reset everything */
-  * {
-    overflow: visible !important;
-    box-sizing: border-box !important;
-  }
-
-  /* HIDE EVERYTHING EXCEPT REPORT */
-  .print\\:hidden,
-  nav,
+  /* FORCE HIDE SIDEBAR AND ALL NAVIGATION */
   aside,
-  header:not(.report-header),
-  footer:not(.report-footer),
+  nav,
   [data-sidebar],
   [data-sidebar-wrapper],
   [data-slot="sidebar"],
+  [class*="sidebar"],
   .sidebar,
-  button,
-  .sticky,
-  .border-b:not(.footer),
-  .flex.h-screen > aside,
-  .flex.h-screen > [data-sidebar] {
+  header.sticky,
+  .sticky.top-0,
+  .border-b.bg-card,
+  .print\\:hidden,
+  button {
     display: none !important;
-    visibility: hidden !important;
     width: 0 !important;
-    min-width: 0 !important;
-    max-width: 0 !important;
     height: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: hidden !important;
-    position: absolute !important;
-    left: -9999px !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    position: fixed !important;
+    left: -99999px !important;
+    top: -99999px !important;
   }
 
-  /* Dark background for entire page */
+  /* Reset all containers */
   html, body {
-    background: #0a1628 !important;
-    background-color: #0a1628 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    overflow: hidden !important;
     width: 100% !important;
     max-width: 100% !important;
-  }
-
-  .min-h-screen, .bg-background {
+    margin: 0 !important;
+    padding: 0 !important;
     background: #0a1628 !important;
-    background-color: #0a1628 !important;
-    overflow: hidden !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  /* Main content wrapper - full width */
+  /* Remove flex layout constraints */
   .flex.h-screen,
-  .flex.h-screen.w-full {
+  .flex.h-screen.w-full,
+  .min-h-screen {
+    display: block !important;
     width: 100% !important;
     max-width: 100% !important;
-    overflow: hidden !important;
+    height: auto !important;
+    min-height: auto !important;
+    background: #0a1628 !important;
   }
 
-  .flex.h-screen > .flex.flex-col.flex-1,
-  .flex.h-screen > div:not([data-sidebar]) {
+  /* Main content area - full width */
+  .flex.flex-col.flex-1,
+  main,
+  .flex-1 {
     width: 100% !important;
     max-width: 100% !important;
-    flex: 1 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
-  /* Report container - full width, dark background */
+  /* Report container - CENTERED */
   .print-report {
-    position: relative !important;
+    display: block !important;
     width: 100% !important;
-    max-width: 100% !important;
-    padding: 8mm !important;
+    max-width: 180mm !important;
     margin: 0 auto !important;
+    padding: 5mm !important;
     background: #0a1628 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-    overflow: hidden !important;
   }
   
   /* Header - white text */
