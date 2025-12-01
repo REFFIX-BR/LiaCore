@@ -5403,10 +5403,17 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
         },
         {
           id: "kb-008",
-          name: "Cancelamento de Serviço",
-          content: "Para cancelar o serviço, entre em contato pelo 0800-123-4567 ou chat. Todos os planos possuem fidelidade de 12 meses - há multa proporcional para cancelamento antes deste período. O serviço permanece ativo até o fim do período pago. Equipamentos devem ser devolvidos em até 15 dias após o cancelamento.",
-          source: "Política de Cancelamento",
-          metadata: { category: "cancelamento", topic: "processo" }
+          name: "Cancelamento e Fidelidade",
+          content: "FIDELIDADE: Todos os planos têm compromisso de 12 meses. Taxa de instalação de R$ 850,00 é ISENTA com fidelidade. MULTA POR CANCELAMENTO ANTECIPADO: Fórmula = (Meses restantes / 12) × R$ 850,00 + correção IPCA + juros 1% ao mês. Exemplo: cancelar com 6 meses restantes = 6/12 × 850 = R$ 425,00 + correção. EXCEÇÕES SEM MULTA: mudança para área sem cobertura, impossibilidade técnica da TR Telecom, descumprimento contratual pela empresa, ou acordo mútuo. APÓS 12 MESES: contrato passa a prazo indeterminado, cancelamento com 30 dias de aviso prévio, sem multa. Equipamentos devem ser devolvidos em até 15 dias.",
+          source: "Termo de Fidelidade - Resolução Anatel 765/2023",
+          metadata: { category: "cancelamento", topic: "fidelidade" }
+        },
+        {
+          id: "kb-012",
+          name: "Taxa de Instalação e Benefícios",
+          content: "TAXA DE INSTALAÇÃO: R$ 850,00 - totalmente ISENTA com compromisso de fidelidade de 12 meses. SEM FIDELIDADE: cliente paga R$ 850,00 de instalação. PERFIS DE RISCO (nome negativado SPC/Serasa): pagamento de R$ 120,00 à vista como condição para ativação. BENEFÍCIOS DA FIDELIDADE: isenção da taxa de instalação + garantia de preço fixo sem reajustes acima do IPCA durante 12 meses. UPGRADE/DOWNGRADE: permitido durante a fidelidade, mantendo as condições do termo.",
+          source: "Termo de Fidelidade - Resolução Anatel 765/2023",
+          metadata: { category: "comercial", topic: "instalacao" }
         },
         {
           id: "kb-009",

@@ -1,0 +1,42 @@
+OBJETO:
+
+Pelo presente termo, as partes estabelecem compromisso de fidelidade de 12 (doze) meses para prestação de serviços de internet banda larga. O CONTRATANTE opta pela fidelidade, ciente de que existe oferta equivalente sem esse compromisso, com taxa de instalação de R$ 850,00 (oitocentos e cinquenta reais), sem os benefícios aqui previstos. Este termo é regido pela Resolução Anatel nº 765/2023 e pelo Código de Defesa do Consumidor (Lei nº 8.078/1990).
+CONDIÇÕES:
+
+PERÍODO DE FIDELIDADE:
+
+O CONTRATANTE se compromete a manter o serviço ativo pelo período mínimo de 12 (doze) meses a contar da data de ativação do serviço.
+TAXA DE INSTALAÇÃO:
+A taxa de instalação, no valor de R$ 850,00 (oitocentos e cinquenta reais), será integralmente isenta durante o período de fidelidade, desde que o cliente cumpra o compromisso. Sem o compromisso de fidelidade, essa taxa será cobrada integralmente.
+Exceções para Perfis de Risco: Em casos de restrições cadastrais comprovadas (ex.: negativação em bureaus de crédito como SPC/Serasa), a isenção total poderá ser convertida em desconto parcial, com pagamento de R$ 120,00 (cento e vinte reais) à vista como condição para ativação. Essa medida visa garantir a viabilidade do serviço e não constitui recusa de contratação, sendo uma facilitação personalizada.
+
+BENEFÍCIOS DA FIDELIDADE:
+
+Durante o período de fidelidade, o CONTRATANTE terá direito aos seguintes benefícios:
+Isenção total da taxa de instalação (valor: R$ 850,00) ou desconto parcial conforme exceção acima (benefício efetivo: R$ 730,00).
+Garantia de preço fixo nas mensalidades, sem reajustes acima do índice IPCA durante os 12 meses (economia estimada: equivalente aos reajustes anuais habituais, conforme oferta sem fidelidade).
+
+PENALIDADES POR QUEBRA DE CONTRATO:
+
+Caso o CONTRATANTE solicite o cancelamento antes do término do período de fidelidade, será cobrada multa proporcional ao benefício concedido e ao tempo restante, limitada ao valor total dos benefícios recebidos (ex.: R$ 850,00 para isenção total ou R$ 730,00 para desconto parcial, acrescida de correção monetária pelo IPCA e juros de 1% ao mês pro rata diei).
+Cálculo da multa:
+Multa = (Meses restantes / 12) × Valor do benefício efetivo (isenção total ou parcial concedida), acrescida de correção e juros conforme acima.
+A multa não poderá exceder o valor total dos benefícios recebidos.
+EXCEÇÕES:
+Não haverá cobrança de multa nos seguintes casos:
+Mudança comprovada para área sem cobertura do serviço pela CONTRATADA.
+Impossibilidade técnica de prestação do serviço pela CONTRATADA.
+Descumprimento de obrigações contratuais ou legais pela CONTRATADA (ex.: interrupções acima do limite de tolerância previsto no SLA - Service Level Agreement, ou não cumprimento das velocidades contratadas conforme Res. Anatel 765/2023).
+Acordo mútuo entre as partes.
+
+RENOVAÇÃO:
+
+Ao término do período de fidelidade, não haverá renovação automática do compromisso, e o contrato passará automaticamente a vigorar por prazo indeterminado. Nesse caso, o CONTRATANTE poderá cancelar o serviço a qualquer momento, mediante aviso prévio de 30 (trinta) dias, sem qualquer ônus ou multa.
+ALTERAÇÃO DE PLANO:
+O CONTRATANTE poderá alterar seu plano durante o período de fidelidade (upgrade ou downgrade), mantendo-se as condições deste termo para o novo plano, com reajuste proporcional dos benefícios e multa, se aplicável.
+
+FORO:
+
+Fica eleito o foro da Comarca de Três Rios, RJ para dirimir quaisquer controvérsias decorrentes deste termo, com renúncia a qualquer outro, por mais privilegiado que seja.
+DECLARAÇÃO:
+Declaro estar ciente de todas as cláusulas deste termo, incluindo a opção de contratação sem fidelidade e eventuais exceções para perfis de risco, e concordo integralmente com seus termos e condições.
