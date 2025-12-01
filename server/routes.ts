@@ -5404,7 +5404,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
         {
           id: "kb-008",
           name: "Cancelamento de Serviço",
-          content: "Para cancelar o serviço, entre em contato pelo 0800-123-4567 ou chat. Não há multa de cancelamento. O serviço permanece ativo até o fim do período pago. Equipamentos devem ser devolvidos em até 15 dias após o cancelamento.",
+          content: "Para cancelar o serviço, entre em contato pelo 0800-123-4567 ou chat. Todos os planos possuem fidelidade de 12 meses - há multa proporcional para cancelamento antes deste período. O serviço permanece ativo até o fim do período pago. Equipamentos devem ser devolvidos em até 15 dias após o cancelamento.",
           source: "Política de Cancelamento",
           metadata: { category: "cancelamento", topic: "processo" }
         },
