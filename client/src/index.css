@@ -383,17 +383,122 @@
     border-color: #374151 !important;
   }
 
-  /* A4 page setup */
+  /* A4 page setup - larger margins for better layout */
   @page {
     size: A4 portrait;
-    margin: 15mm 12mm;
+    margin: 10mm 15mm;
   }
 
-  /* Report container fills page */
+  /* Report container fills page with proper sizing */
   .print-report {
     max-width: 100% !important;
+    width: 100% !important;
     padding: 0 !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
+    min-height: 100vh !important;
+  }
+  
+  /* Header section - larger and more prominent */
+  .report-header {
+    margin-bottom: 30px !important;
+    padding-bottom: 15px !important;
+  }
+  
+  .report-header h1 {
+    font-size: 32pt !important;
+    margin-bottom: 8px !important;
+  }
+  
+  .report-header h2 {
+    font-size: 22pt !important;
+    margin-bottom: 6px !important;
+  }
+  
+  /* Champion section - larger */
+  .champion-section {
+    margin-bottom: 35px !important;
+  }
+  
+  .champion-card {
+    padding: 25px 20px !important;
+  }
+  
+  .champion-card h3 {
+    font-size: 28pt !important;
+  }
+  
+  .champion-card .text-5xl {
+    font-size: 36pt !important;
+  }
+  
+  /* Podium section - better spacing */
+  .podium-section {
+    margin-bottom: 30px !important;
+  }
+  
+  .podium-section h3 {
+    font-size: 18pt !important;
+    margin-bottom: 20px !important;
+  }
+  
+  .podium-card {
+    padding: 20px 15px !important;
+    min-height: 180px !important;
+  }
+  
+  .podium-card h4 {
+    font-size: 14pt !important;
+    margin-bottom: 8px !important;
+  }
+  
+  .podium-card .text-2xl {
+    font-size: 20pt !important;
+  }
+  
+  .podium-card .text-3xl {
+    font-size: 24pt !important;
+  }
+  
+  /* Honorable mentions - better sizing */
+  .honorable-mentions {
+    margin-bottom: 30px !important;
+  }
+  
+  .honorable-mentions h3 {
+    font-size: 16pt !important;
+    margin-bottom: 15px !important;
+  }
+  
+  .honorable-mentions > div > div {
+    padding: 15px !important;
+    min-height: 60px !important;
+  }
+  
+  /* Stats section - larger numbers */
+  .stats-section {
+    margin-bottom: 25px !important;
+  }
+  
+  .stats-section h3 {
+    font-size: 16pt !important;
+    margin-bottom: 15px !important;
+  }
+  
+  .stat-card {
+    padding: 20px 15px !important;
+    min-height: 80px !important;
+  }
+  
+  .stat-card .text-3xl {
+    font-size: 28pt !important;
+    margin-bottom: 5px !important;
+  }
+  
+  /* Footer - at bottom */
+  .footer {
+    margin-top: 40px !important;
+    padding-top: 15px !important;
+    font-size: 11pt !important;
   }
 
   /* Ensure backgrounds print */
