@@ -5397,7 +5397,7 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
         {
           id: "kb-007",
           name: "Preços dos Planos",
-          content: "O plano Fibra 300 custa R$ 99,90/mês, Fibra 500 custa R$ 129,90/mês e Fibra Gamer 1 Gbps custa R$ 199,90/mês. Todos os planos incluem instalação gratuita, sem fidelidade, e Wi-Fi 6 incluso.",
+          content: "O plano Fibra 300 custa R$ 99,90/mês, Fibra 500 custa R$ 129,90/mês e Fibra Gamer 1 Gbps custa R$ 199,90/mês. Todos os planos incluem instalação gratuita, fidelidade de 12 meses e Wi-Fi 6 incluso.",
           source: "Tabela de Preços",
           metadata: { category: "comercial", topic: "precos" }
         },
