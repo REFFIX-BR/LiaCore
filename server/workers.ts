@@ -19,12 +19,12 @@ import { ContextMonitor } from './lib/context-monitor';
 import { extractNumberFromChatId } from './lib/phone-utils';
 
 // Helper function to validate and normalize Evolution API instance
-// Supported instances: "Leads", "Cobranca", "Principal"
+// Supported instances: "Cobranca", "Principal" (Leads was suspended by Meta)
 function validateEvolutionInstance(instance?: string): string {
-  const allowedInstances = ['Leads', 'Cobranca', 'Principal'];
+  const allowedInstances = ['Cobranca', 'Principal'];
   
   if (!instance) {
-    return 'Leads'; // Default
+    return 'Principal'; // Default (Leads was suspended by Meta)
   }
   
   // Normalize case
@@ -34,9 +34,15 @@ function validateEvolutionInstance(instance?: string): string {
     return normalized;
   }
   
-  // If invalid instance, force to Leads
-  console.warn(`⚠️ [Evolution] Invalid instance "${instance}" - forcing to "Leads" (allowed: ${allowedInstances.join(', ')})`);
-  return 'Leads';
+  // Legacy: map "Leads" to "Principal" since Leads was suspended
+  if (normalized === 'Leads') {
+    console.warn(`⚠️ [Evolution] Instance "Leads" was suspended by Meta - using "Principal" instead`);
+    return 'Principal';
+  }
+  
+  // If invalid instance, force to Principal
+  console.warn(`⚠️ [Evolution] Invalid instance "${instance}" - forcing to "Principal" (allowed: ${allowedInstances.join(', ')})`);
+  return 'Principal';
 }
 
 // Helper function to send WhatsApp message
@@ -48,8 +54,8 @@ async function sendWhatsAppMessage(phoneNumberOrChatId: string, text: string, in
   // - Groups: "whatsapp_120363123456789@g.us" -> "120363123456789@g.us"
   const phoneNumber = extractNumberFromChatId(phoneNumberOrChatId);
   
-  // Validate and normalize Evolution API instance (Leads, Cobranca, or Principal)
-  const rawInstance = instance || process.env.EVOLUTION_API_INSTANCE || 'Leads';
+  // Validate and normalize Evolution API instance (Cobranca, or Principal)
+  const rawInstance = instance || process.env.EVOLUTION_API_INSTANCE || 'Principal';
   const evolutionInstance = validateEvolutionInstance(rawInstance);
   
   if (!instance) {
@@ -134,8 +140,8 @@ export async function sendWhatsAppMedia(
   // CRITICAL FIX: Extract Evolution API number from chatId
   const phoneNumber = extractNumberFromChatId(phoneNumberOrChatId);
   
-  // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
-  const rawInstance = instance || process.env.EVOLUTION_API_INSTANCE || 'Leads';
+  // Validate and normalize Evolution instance (Cobranca, or Principal)
+  const rawInstance = instance || process.env.EVOLUTION_API_INSTANCE || 'Principal';
   const evolutionInstance = validateEvolutionInstance(rawInstance);
   
   if (!instance) {
@@ -505,7 +511,7 @@ if (redisConnection) {
           conversationId,
           fromNumber,
           conversation.clientDocument,
-          evolutionInstance || 'Leads',
+          evolutionInstance || 'Principal',
           sendWhatsAppMessage
         );
 

@@ -31,13 +31,13 @@ function normalizeEvolutionUrl(url?: string): string {
 }
 
 // Helper function to validate and normalize Evolution API instance
-// Supported instances: "Leads", "Cobranca", "Principal"
+// Supported instances: "Cobranca", "Principal" (Leads was suspended by Meta)
 // NOTE: Accepts both "Cobranca" and "Cobrança" (accent-insensitive)
 function validateEvolutionInstance(instance?: string | null): string {
-  const allowedInstances = ['Leads', 'Cobranca', 'Principal'];
+  const allowedInstances = ['Cobranca', 'Principal'];
   
   if (!instance) {
-    return 'Leads'; // Default
+    return 'Principal'; // Default (Leads was suspended by Meta)
   }
   
   // Normalize case and remove accents (ç -> c, ã -> a, etc.)
@@ -48,9 +48,15 @@ function validateEvolutionInstance(instance?: string | null): string {
     return normalized;
   }
   
-  // If invalid instance, force to Leads
-  console.warn(`⚠️ [Evolution] Invalid instance "${instance}" - forcing to "Leads" (allowed: ${allowedInstances.join(', ')})`);
-  return 'Leads';
+  // Legacy: map "Leads" to "Principal" since Leads was suspended
+  if (normalized === 'Leads') {
+    console.warn(`⚠️ [Evolution] Instance "Leads" was suspended by Meta - using "Principal" instead`);
+    return 'Principal';
+  }
+  
+  // If invalid instance, force to Principal
+  console.warn(`⚠️ [Evolution] Invalid instance "${instance}" - forcing to "Principal" (allowed: ${allowedInstances.join(', ')})`);
+  return 'Principal';
 }
 
 // Helper function to get effective Evolution instance, preserving existing conversation instance
@@ -75,15 +81,15 @@ function getEffectiveEvolutionInstance(
   }
   
   // PRIORITY 3: Fallback to default
-  console.log(`⚠️ [Instance] No instance found - using default: Leads`);
-  return 'Leads';
+  console.log(`⚠️ [Instance] No instance found - using default: Principal`);
+  return 'Principal';
 }
 
 // Evolution API configuration
 const EVOLUTION_CONFIG = {
   apiUrl: normalizeEvolutionUrl(process.env.EVOLUTION_API_URL),
   apiKey: process.env.EVOLUTION_API_KEY,
-  instance: "Leads", // Default instance (supported: Leads, Cobranca, Principal)
+  instance: "Principal", // Default instance (Leads was suspended by Meta)
 };
 
 // Log configuration at startup
@@ -4166,7 +4172,7 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
               timestamp: lastMessage.timestamp ? lastMessage.timestamp.getTime() : Date.now(),
               hasImage: !!lastMessage.imageBase64,
               imageUrl: lastMessage.imageBase64 || undefined,
-              evolutionInstance: conv.evolutionInstance || 'Leads',
+              evolutionInstance: conv.evolutionInstance || 'Principal',
               clientName: conv.clientName || undefined,
               locationLatitude: lastMessage.locationLatitude || undefined,
               locationLongitude: lastMessage.locationLongitude || undefined,
@@ -4576,7 +4582,7 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
         fromNumber: conversation.chatId.replace('whatsapp_', ''),
         content: lastUserMessage.content,
         idempotencyKey: `reprocess_${id}_${Date.now()}`,
-        evolutionInstance: conversation.evolutionInstance || 'Leads',
+        evolutionInstance: conversation.evolutionInstance || 'Principal',
         hasImage: !!lastUserMessage.imageBase64,
         imageBase64: lastUserMessage.imageBase64 || undefined,
       });
@@ -8727,7 +8733,7 @@ A resposta deve:
         transferReason: 'Novo contato criado via painel - aguardando mensagem manual do atendente',
         transferredAt: new Date(),
         assignedTo: assignedTo === 'none' || !assignedTo ? null : assignedTo, // null = "Transferidas", specific ID = "Atribuídas"
-        evolutionInstance: evolutionInstance || 'Leads', // Default to Leads if not provided
+        evolutionInstance: evolutionInstance || 'Principal', // Default to Leads if not provided
         metadata: { 
           createdFromContact: true, 
           createdBy: req.user?.userId,
@@ -8796,7 +8802,7 @@ A resposta deve:
 
       if (!conversation) {
         // Determine evolutionInstance and department: use last conversation's values or defaults
-        let evolutionInstance = 'Leads'; // Default instance (supported: Leads, Cobranca, Principal)
+        let evolutionInstance = 'Principal'; // Default instance (Leads was suspended by Meta)
         let department = 'support'; // Default: support instead of general (so it appears in Transferidas)
         let assistantType = 'suporte'; // Default: suporte assistant
         
@@ -8998,7 +9004,7 @@ A resposta deve:
       // Get Evolution API configuration
       const evolutionUrl = process.env.EVOLUTION_API_URL;
       // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
-      const instance = validateEvolutionInstance(group.evolutionInstance || 'Leads');
+      const instance = validateEvolutionInstance(group.evolutionInstance || 'Principal');
 
       if (!evolutionUrl) {
         return res.status(500).json({ error: "Evolution API not configured" });
@@ -9127,7 +9133,7 @@ A resposta deve:
       }
 
       // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
-      const instance = validateEvolutionInstance(group.evolutionInstance || 'Leads');
+      const instance = validateEvolutionInstance(group.evolutionInstance || 'Principal');
 
       console.log(`📤 [Groups] Sending ${mediaType} to group ${group.name}`);
 
@@ -9766,7 +9772,7 @@ A resposta deve:
                   ? await storage.getConversation(notification.conversationId)
                   : null;
                 
-                const evolutionInstance = conversation?.evolutionInstance || 'Leads';
+                const evolutionInstance = conversation?.evolutionInstance || 'Principal';
                 
                 // Enviar mensagem via WhatsApp
                 await sendWhatsAppMessage(notification.clientPhone, messageText, evolutionInstance);
