@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Printer, Trophy, Crown, Award, Medal, Target, Zap, Star, TrendingUp, Users, BarChart3, ArrowLeft } from "lucide-react";
+import { Printer, Trophy, Crown, Award, Target, Zap, BarChart3 } from "lucide-react";
 import { Link, useSearch } from "wouter";
 
 interface GamificationScore {
@@ -156,21 +156,21 @@ export default function GamificationReport() {
 
       <div 
         ref={printRef} 
-        className="print-report max-w-4xl mx-auto p-8 print:p-0 print:max-w-none"
+        className="print-report max-w-4xl mx-auto p-8 print:p-4 print:max-w-none print:bg-[#0a1628]"
         data-testid="report-container"
       >
-        <div className="report-header text-center mb-8 print:mb-6">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Trophy className="w-12 h-12 text-yellow-500 print:text-yellow-600" />
-            <h1 className="text-4xl font-bold tracking-tight print:text-3xl" data-testid="report-title">
+        <div className="report-header text-center mb-10 print:mb-8">
+          <div className="flex items-center justify-center gap-4 mb-3">
+            <Trophy className="w-10 h-10 text-yellow-500 print:text-yellow-400" />
+            <h1 className="text-3xl font-bold tracking-wide print:text-2xl print:text-white" data-testid="report-title">
               RANKING DE DESEMPENHO
             </h1>
-            <Trophy className="w-12 h-12 text-yellow-500 print:text-yellow-600" />
+            <Trophy className="w-10 h-10 text-yellow-500 print:text-yellow-400" />
           </div>
-          <h2 className="text-2xl font-semibold text-primary print:text-xl" data-testid="report-period">
+          <h2 className="text-xl font-medium text-yellow-500 print:text-lg print:text-yellow-400 underline decoration-1 underline-offset-4" data-testid="report-period">
             {periodName}
           </h2>
-          <p className="text-muted-foreground mt-2 print:text-sm">
+          <p className="text-muted-foreground mt-1 text-sm print:text-xs print:text-gray-400">
             LIA CORTEX - Sistema de Gamificação
           </p>
         </div>
@@ -186,42 +186,33 @@ export default function GamificationReport() {
           </div>
         ) : (
           <>
-            <div className="champion-section mb-8 print:mb-6">
+            <div className="champion-section mb-10 print:mb-8">
               {top5[0] && (
                 <div 
-                  className="champion-card bg-gradient-to-br from-yellow-50 to-amber-100 dark:from-yellow-900/30 dark:to-amber-900/20 border-2 border-yellow-400 rounded-xl p-6 text-center print:bg-yellow-50 print:border-yellow-500"
+                  className="champion-card bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 rounded-xl p-6 text-center text-white print:bg-blue-600"
                   data-testid="champion-card"
                 >
                   <div className="flex items-center justify-center gap-2 mb-3">
-                    <Crown className="w-10 h-10 text-yellow-500" />
-                    <span className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 uppercase tracking-wide">
+                    <Crown className="w-7 h-7 text-yellow-400" />
+                    <span className="text-lg font-bold text-yellow-400 uppercase tracking-wider">
                       Campeão do Mês
                     </span>
-                    <Crown className="w-10 h-10 text-yellow-500" />
+                    <Crown className="w-7 h-7 text-yellow-400" />
                   </div>
-                  <h3 className="text-4xl font-bold mb-2 print:text-3xl" data-testid="champion-name">
+                  <h3 className="text-3xl font-bold mb-2 print:text-2xl" data-testid="champion-name">
                     {top5[0].agentName}
                   </h3>
-                  <div className="text-5xl font-black text-yellow-600 dark:text-yellow-400 mb-4 print:text-4xl" data-testid="champion-score">
+                  <div className="text-4xl font-black text-white mb-4 print:text-3xl" data-testid="champion-score">
                     {top5[0].totalScore} pontos
                   </div>
-                  <div className="flex items-center justify-center gap-6 text-sm print:text-xs">
-                    <div className="flex items-center gap-1">
-                      <Users className="w-4 h-4" />
-                      <span><strong>{top5[0].totalConversations}</strong> atendimentos</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4" />
-                      <span>NPS <strong>{top5[0].avgNps.toFixed(1)}</strong></span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <TrendingUp className="w-4 h-4" />
-                      <span><strong>{top5[0].successRate.toFixed(0)}%</strong> resolução</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Zap className="w-4 h-4" />
-                      <span><strong>{formatResponseTime(top5[0].avgResponseTime)}</strong> resposta</span>
-                    </div>
+                  <div className="flex items-center justify-center gap-4 text-sm opacity-90">
+                    <span>{top5[0].totalConversations} atendimentos</span>
+                    <span className="opacity-60">|</span>
+                    <span>NPS {top5[0].avgNps.toFixed(1)}</span>
+                    <span className="opacity-60">|</span>
+                    <span>{top5[0].successRate.toFixed(0)}% resolução</span>
+                    <span className="opacity-60">|</span>
+                    <span>{formatResponseTime(top5[0].avgResponseTime)} resposta</span>
                   </div>
                   {top5[0].badges.length > 0 && (
                     <div className="flex items-center justify-center gap-3 mt-4">
@@ -232,7 +223,7 @@ export default function GamificationReport() {
                         return (
                           <div 
                             key={idx}
-                            className="flex items-center gap-1 px-3 py-1 bg-white/80 dark:bg-black/20 rounded-full text-sm font-medium print:bg-white"
+                            className="flex items-center gap-1 px-3 py-1 bg-white/20 rounded-full text-sm font-medium"
                             data-testid={`champion-badge-${badge.type}`}
                           >
                             <BadgeIcon className="w-4 h-4" />
@@ -246,111 +237,146 @@ export default function GamificationReport() {
               )}
             </div>
 
-            <div className="podium-section mb-8 print:mb-6">
-              <h3 className="text-xl font-bold text-center mb-6 flex items-center justify-center gap-2 print:text-lg">
-                <Medal className="w-6 h-6" />
+            <div className="podium-section mb-10 print:mb-8">
+              <h3 className="text-lg font-bold text-center mb-6 flex items-center justify-center gap-2 print:text-base print:text-white">
+                <Trophy className="w-5 h-5 text-yellow-500" />
                 PÓDIO DE VENCEDORES
-                <Medal className="w-6 h-6" />
+                <Trophy className="w-5 h-5 text-yellow-500" />
               </h3>
-              <div className="grid grid-cols-3 gap-4 print:gap-2">
-                {[1, 0, 2].map((podiumIdx) => {
-                  const agent = top5[podiumIdx];
-                  if (!agent) return <div key={podiumIdx} />;
-                  
-                  const isFirst = podiumIdx === 0;
-                  const isSecond = podiumIdx === 1;
-                  const isThird = podiumIdx === 2;
-                  
-                  const bgClass = isFirst 
-                    ? "bg-gradient-to-b from-yellow-100 to-yellow-200 dark:from-yellow-900/40 dark:to-yellow-800/30 border-yellow-400 print:from-yellow-100 print:to-yellow-200"
-                    : isSecond 
-                    ? "bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-800/40 dark:to-gray-700/30 border-gray-400 print:from-gray-100 print:to-gray-200"
-                    : "bg-gradient-to-b from-orange-100 to-orange-200 dark:from-orange-900/40 dark:to-orange-800/30 border-orange-400 print:from-orange-100 print:to-orange-200";
-                  
-                  const placeColor = isFirst ? "text-yellow-600" : isSecond ? "text-gray-600" : "text-orange-600";
-                  const PlaceIcon = isFirst ? Crown : Award;
-                  
-                  return (
-                    <div 
-                      key={podiumIdx}
-                      className={`podium-card ${bgClass} border-2 rounded-xl p-4 text-center ${isFirst ? 'order-2' : isSecond ? 'order-1' : 'order-3'}`}
-                      data-testid={`podium-card-${podiumIdx + 1}`}
-                    >
-                      <PlaceIcon className={`w-8 h-8 mx-auto mb-2 ${placeColor} print:w-6 print:h-6`} />
-                      <div className={`text-3xl font-black ${placeColor} mb-1 print:text-2xl`}>
-                        {podiumIdx + 1}º
-                      </div>
-                      <h4 className="text-lg font-bold mb-1 print:text-base" data-testid={`podium-name-${podiumIdx + 1}`}>
-                        {agent.agentName}
-                      </h4>
-                      <div className={`text-2xl font-bold ${placeColor} mb-2 print:text-xl`} data-testid={`podium-score-${podiumIdx + 1}`}>
-                        {agent.totalScore} pts
-                      </div>
-                      <div className="text-xs space-y-1 text-muted-foreground print:text-[10px]">
-                        <div>{agent.totalConversations} atendimentos</div>
-                        <div>NPS {agent.avgNps.toFixed(1)} • {agent.successRate.toFixed(0)}% resolução</div>
-                      </div>
-                      {agent.badges.length > 0 && (
-                        <div className="flex items-center justify-center gap-1 mt-2">
-                          {agent.badges.map((badge, idx) => {
-                            const info = BADGE_INFO[badge.type as keyof typeof BADGE_INFO];
-                            if (!info) return null;
-                            const BadgeIcon = info.icon;
-                            return (
-                              <div 
-                                key={idx}
-                                className="p-1 bg-white/60 dark:bg-black/20 rounded print:bg-white"
-                                title={info.name}
-                              >
-                                <BadgeIcon className="w-4 h-4" />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+              <div className="grid grid-cols-3 gap-4 items-end print:gap-3">
+                {top5[1] && (
+                  <div 
+                    className="podium-card bg-gradient-to-b from-slate-400 to-slate-500 dark:from-slate-500 dark:to-slate-600 rounded-xl p-5 text-center text-white print:bg-slate-500"
+                    style={{ minHeight: '200px' }}
+                    data-testid="podium-card-2"
+                  >
+                    <Award className="w-8 h-8 mx-auto mb-2 text-slate-200" />
+                    <div className="text-3xl font-black mb-1">2º</div>
+                    <h4 className="text-base font-bold mb-1 leading-tight" data-testid="podium-name-2">
+                      {top5[1].agentName}
+                    </h4>
+                    <div className="text-2xl font-bold text-yellow-300 mb-2" data-testid="podium-score-2">
+                      {top5[1].totalScore} pts
                     </div>
-                  );
-                })}
+                    <div className="text-xs opacity-80 space-y-0.5">
+                      <div>{top5[1].totalConversations} atendimentos</div>
+                      <div>NPS {top5[1].avgNps.toFixed(1)} • {top5[1].successRate.toFixed(0)}% resolução</div>
+                    </div>
+                    {top5[1].badges.length > 0 && (
+                      <div className="flex items-center justify-center gap-1 mt-3">
+                        {top5[1].badges.map((badge, idx) => {
+                          const info = BADGE_INFO[badge.type as keyof typeof BADGE_INFO];
+                          if (!info) return null;
+                          const BadgeIcon = info.icon;
+                          return (
+                            <div key={idx} className="p-1.5 bg-white/20 rounded" title={info.name}>
+                              <BadgeIcon className="w-4 h-4" />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {top5[0] && (
+                  <div 
+                    className="podium-card bg-gradient-to-b from-yellow-500 to-yellow-600 dark:from-yellow-500 dark:to-yellow-600 rounded-xl p-5 text-center text-white border-4 border-yellow-400 print:bg-yellow-500"
+                    style={{ minHeight: '240px' }}
+                    data-testid="podium-card-1"
+                  >
+                    <Crown className="w-10 h-10 mx-auto mb-2 text-white" />
+                    <div className="text-4xl font-black mb-1">1º</div>
+                    <h4 className="text-lg font-bold mb-1 leading-tight" data-testid="podium-name-1">
+                      {top5[0].agentName}
+                    </h4>
+                    <div className="text-3xl font-bold text-white mb-2" data-testid="podium-score-1">
+                      {top5[0].totalScore} pts
+                    </div>
+                    <div className="text-xs opacity-90 space-y-0.5">
+                      <div>{top5[0].totalConversations} atendimentos</div>
+                      <div>NPS {top5[0].avgNps.toFixed(1)} • {top5[0].successRate.toFixed(0)}% resolução</div>
+                    </div>
+                    {top5[0].badges.length > 0 && (
+                      <div className="flex items-center justify-center gap-1 mt-3">
+                        {top5[0].badges.map((badge, idx) => {
+                          const info = BADGE_INFO[badge.type as keyof typeof BADGE_INFO];
+                          if (!info) return null;
+                          const BadgeIcon = info.icon;
+                          return (
+                            <div key={idx} className="p-1.5 bg-white/30 rounded" title={info.name}>
+                              <BadgeIcon className="w-4 h-4" />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {top5[2] && (
+                  <div 
+                    className="podium-card bg-gradient-to-b from-orange-500 to-orange-600 dark:from-orange-500 dark:to-orange-600 rounded-xl p-5 text-center text-white print:bg-orange-500"
+                    style={{ minHeight: '180px' }}
+                    data-testid="podium-card-3"
+                  >
+                    <Award className="w-8 h-8 mx-auto mb-2 text-orange-200" />
+                    <div className="text-3xl font-black mb-1">3º</div>
+                    <h4 className="text-base font-bold mb-1 leading-tight" data-testid="podium-name-3">
+                      {top5[2].agentName}
+                    </h4>
+                    <div className="text-2xl font-bold text-yellow-300 mb-2" data-testid="podium-score-3">
+                      {top5[2].totalScore} pts
+                    </div>
+                    <div className="text-xs opacity-80 space-y-0.5">
+                      <div>{top5[2].totalConversations} atendimentos</div>
+                      <div>NPS {top5[2].avgNps.toFixed(1)} • {top5[2].successRate.toFixed(0)}% resolução</div>
+                    </div>
+                    {top5[2].badges.length > 0 && (
+                      <div className="flex items-center justify-center gap-1 mt-3">
+                        {top5[2].badges.map((badge, idx) => {
+                          const info = BADGE_INFO[badge.type as keyof typeof BADGE_INFO];
+                          if (!info) return null;
+                          const BadgeIcon = info.icon;
+                          return (
+                            <div key={idx} className="p-1.5 bg-white/20 rounded" title={info.name}>
+                              <BadgeIcon className="w-4 h-4" />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
             {top5.length > 3 && (
-              <div className="honorable-mentions mb-8 print:mb-6">
-                <h3 className="text-lg font-bold text-center mb-4 print:text-base">
+              <div className="honorable-mentions mb-10 print:mb-8">
+                <h3 className="text-lg font-bold text-center mb-5 print:text-base print:text-white">
                   MENÇÕES HONROSAS
                 </h3>
-                <div className="grid grid-cols-2 gap-4 print:gap-2">
+                <div className="grid grid-cols-2 gap-4 print:gap-3">
                   {top5.slice(3).map((agent, idx) => (
                     <div 
                       key={agent.agentId}
-                      className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg print:p-3"
+                      className="flex items-center gap-4 p-4 bg-muted/30 dark:bg-slate-800/50 rounded-lg border border-border/50 print:bg-slate-800 print:border-slate-600"
                       data-testid={`mention-card-${idx + 4}`}
                     >
-                      <div className="text-3xl font-bold text-muted-foreground print:text-2xl">
+                      <div className="text-3xl font-bold text-muted-foreground print:text-gray-400">
                         {idx + 4}º
                       </div>
-                      <div className="flex-1">
-                        <div className="font-semibold print:text-sm" data-testid={`mention-name-${idx + 4}`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold truncate print:text-white" data-testid={`mention-name-${idx + 4}`}>
                           {agent.agentName}
                         </div>
-                        <div className="text-sm text-muted-foreground print:text-xs">
-                          {agent.totalScore} pontos • {agent.totalConversations} atendimentos
+                        <div className="text-sm text-muted-foreground print:text-gray-400">
+                          {agent.totalScore} pts • {agent.totalConversations} atendimentos
                         </div>
                       </div>
-                      {agent.badges.length > 0 && (
-                        <div className="flex gap-1">
-                          {agent.badges.map((badge, badgeIdx) => {
-                            const info = BADGE_INFO[badge.type as keyof typeof BADGE_INFO];
-                            if (!info) return null;
-                            const BadgeIcon = info.icon;
-                            return (
-                              <div key={badgeIdx} className="p-1 bg-background rounded" title={info.name}>
-                                <BadgeIcon className="w-4 h-4" />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                      <div className="text-2xl font-bold text-primary print:text-blue-400">
+                        {agent.totalScore}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -359,40 +385,40 @@ export default function GamificationReport() {
 
             {stats && (
               <div className="stats-section mb-8 print:mb-6">
-                <h3 className="text-lg font-bold text-center mb-4 flex items-center justify-center gap-2 print:text-base">
+                <h3 className="text-lg font-bold text-center mb-5 flex items-center justify-center gap-2 print:text-base print:text-white">
                   <BarChart3 className="w-5 h-5" />
                   ESTATÍSTICAS DO PERÍODO
                 </h3>
-                <div className="grid grid-cols-4 gap-4 print:gap-2">
-                  <div className="stat-card bg-muted/30 rounded-lg p-4 text-center print:p-3">
-                    <div className="text-3xl font-bold text-primary print:text-2xl" data-testid="stat-top-score">
+                <div className="grid grid-cols-4 gap-4 print:gap-3">
+                  <div className="stat-card bg-muted/30 dark:bg-slate-800/50 rounded-xl p-5 text-center border border-border/30 print:bg-slate-800 print:border-slate-600">
+                    <div className="text-4xl font-bold text-primary print:text-3xl print:text-blue-400" data-testid="stat-top-score">
                       {stats.topScore}
                     </div>
-                    <div className="text-sm text-muted-foreground print:text-xs">Top Score</div>
+                    <div className="text-sm text-muted-foreground mt-1 print:text-gray-400">Top Score</div>
                   </div>
-                  <div className="stat-card bg-muted/30 rounded-lg p-4 text-center print:p-3">
-                    <div className="text-3xl font-bold text-primary print:text-2xl" data-testid="stat-avg-score">
+                  <div className="stat-card bg-muted/30 dark:bg-slate-800/50 rounded-xl p-5 text-center border border-border/30 print:bg-slate-800 print:border-slate-600">
+                    <div className="text-4xl font-bold text-primary print:text-3xl print:text-blue-400" data-testid="stat-avg-score">
                       {stats.avgTotalScore}
                     </div>
-                    <div className="text-sm text-muted-foreground print:text-xs">Média Geral</div>
+                    <div className="text-sm text-muted-foreground mt-1 print:text-gray-400">Média Geral</div>
                   </div>
-                  <div className="stat-card bg-muted/30 rounded-lg p-4 text-center print:p-3">
-                    <div className="text-3xl font-bold text-primary print:text-2xl" data-testid="stat-participants">
+                  <div className="stat-card bg-muted/30 dark:bg-slate-800/50 rounded-xl p-5 text-center border border-border/30 print:bg-slate-800 print:border-slate-600">
+                    <div className="text-4xl font-bold text-primary print:text-3xl print:text-blue-400" data-testid="stat-participants">
                       {stats.totalAgents}
                     </div>
-                    <div className="text-sm text-muted-foreground print:text-xs">Participantes</div>
+                    <div className="text-sm text-muted-foreground mt-1 print:text-gray-400">Participantes</div>
                   </div>
-                  <div className="stat-card bg-muted/30 rounded-lg p-4 text-center print:p-3">
-                    <div className="text-3xl font-bold text-primary print:text-2xl" data-testid="stat-total-badges">
+                  <div className="stat-card bg-muted/30 dark:bg-slate-800/50 rounded-xl p-5 text-center border border-border/30 print:bg-slate-800 print:border-slate-600">
+                    <div className="text-4xl font-bold text-primary print:text-3xl print:text-blue-400" data-testid="stat-total-badges">
                       {stats.badgeDistribution.solucionador + stats.badgeDistribution.velocista + stats.badgeDistribution.campeao_volume}
                     </div>
-                    <div className="text-sm text-muted-foreground print:text-xs">Badges</div>
+                    <div className="text-sm text-muted-foreground mt-1 print:text-gray-400">Badges</div>
                   </div>
                 </div>
               </div>
             )}
 
-            <div className="footer mt-8 pt-4 border-t text-center text-xs text-muted-foreground print:mt-6">
+            <div className="footer mt-10 pt-4 border-t border-border/30 text-center text-xs text-muted-foreground print:mt-8 print:border-slate-600 print:text-gray-500">
               <p>Relatório gerado em {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
               <p className="font-semibold mt-1">TR Telecom - LIA CORTEX</p>
             </div>
