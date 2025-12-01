@@ -2362,6 +2362,7 @@ Fonte: ${fonte}`;
         }
 
       case "persistir_documento":
+        // LGPD: CPF não é mais armazenado - apenas validado e usado diretamente
         if (!conversationId) {
           console.error(`❌ [AI Tool] persistir_documento chamada sem conversationId`);
           return JSON.stringify({
@@ -2370,8 +2371,9 @@ Fonte: ${fonte}`;
         }
         
         try {
+          const { validarDocumentoFlexivel, consultaBoletoCliente: consultaBoletoDoc } = await import("../ai-tools");
           const { storage: storageDoc } = await import("../storage");
-          const { validarDocumentoFlexivel } = await import("../ai-tools");
+          const { installationPointManager: pointManagerDoc } = await import("./redis-config");
           
           const cpfCnpj = args.cpf_cnpj;
           
@@ -2382,7 +2384,7 @@ Fonte: ${fonte}`;
             });
           }
           
-          console.log(`📝 [AI Tool] Persistindo documento do cliente (conversação: ${conversationId})`);
+          console.log(`📝 [AI Tool] Validando documento do cliente (LGPD: sem armazenamento) - conversação: ${conversationId}`);
           
           // Validar e classificar documento (aceita CPF, CNPJ ou código de cliente)
           const validacao = validarDocumentoFlexivel(cpfCnpj);
@@ -2394,33 +2396,112 @@ Fonte: ${fonte}`;
             });
           }
           
-          // Salvar documento e tipo na conversa
-          await storageDoc.updateConversation(conversationId, {
-            clientDocument: validacao.documentoNormalizado,
-            clientDocumentType: validacao.tipo
-          });
+          // LGPD: NÃO salvar CPF no banco de dados - usar diretamente para consulta
+          console.log(`✅ [AI Tool] Documento validado (tipo: ${validacao.tipo}) - consultando boletos diretamente...`);
           
-          console.log(`✅ [AI Tool] Documento salvo com sucesso (tipo: ${validacao.tipo})`);
+          // Chamar consulta de boletos diretamente com o CPF fornecido
+          const resultadoBoletos = await consultaBoletoDoc(
+            validacao.documentoNormalizado,
+            { conversationId },
+            storageDoc
+          );
           
-          // Mensagem personalizada por tipo
-          const mensagemSucesso = validacao.tipo === 'CLIENT_CODE'
-            ? "Código de cliente salvo com sucesso. Agora posso consultar seus boletos!"
-            : "CPF/CNPJ salvo com sucesso. Agora posso consultar seus boletos!";
+          // Tratar múltiplos pontos
+          if (resultadoBoletos.hasMultiplePoints && resultadoBoletos.pontos) {
+            const { pontos, totalBoletos } = resultadoBoletos;
+            
+            console.log(`🏠 [Boletos] Cliente possui ${pontos.length} pontos de instalação - apresentando menu`);
+            
+            // Salvar menu no Redis (efêmero - 5 minutos) COM o CPF temporário
+            const menuItems = pontos.map((p: any) => ({
+              numero: parseInt(p.numero),
+              endereco: p.endereco,
+              bairro: p.bairro,
+              cidade: p.cidade,
+              totalBoletos: p.totalBoletos,
+              totalVencidos: p.totalVencidos,
+              valorTotal: p.valorTotal,
+              valorMensalidade: p.valorMensalidade,
+              keywords: [
+                p.endereco.toLowerCase(),
+                p.bairro.toLowerCase(),
+                p.cidade.toLowerCase(),
+                p.numero
+              ]
+            }));
+            
+            await pointManagerDoc.saveMenu({
+              conversationId,
+              cpf: validacao.documentoNormalizado,
+              pontos: menuItems,
+              createdAt: Date.now()
+            });
+            
+            console.log(`💾 [Boletos] Menu salvo no Redis com CPF temporário (TTL: 5min)`);
+            
+            // Construir menu formatado
+            let menuFormatado = `📍 *Encontrei ${pontos.length} endereços cadastrados:*\n\n`;
+            
+            pontos.forEach((ponto: any, index: number) => {
+              const numero = index + 1;
+              menuFormatado += `${numero}️⃣ *${ponto.endereco}*\n`;
+              menuFormatado += `   📌 ${ponto.bairro} - ${ponto.cidade}\n`;
+              menuFormatado += `   📦 Mensalidade: R$ ${ponto.valorMensalidade.toFixed(2)}\n`;
+              if (ponto.totalVencidos > 0) {
+                menuFormatado += `   ⚠️ ${ponto.totalVencidos} boleto(s) vencido(s)\n`;
+              }
+              menuFormatado += '\n';
+            });
+            
+            menuFormatado += '\n*Qual endereço você deseja consultar?*\n';
+            menuFormatado += '_Responda com o número ou o nome do bairro._';
+            
+            return JSON.stringify({
+              success: true,
+              hasMultiplePoints: true,
+              menuParaCliente: menuFormatado,
+              totalPontos: pontos.length,
+              totalBoletos
+            });
+          }
+          
+          // Ponto único - retornar boletos diretamente
+          const { boletos } = resultadoBoletos;
+          
+          if (!boletos || boletos.length === 0) {
+            return JSON.stringify({
+              success: true,
+              mensagem: "Cliente está EM DIA - sem boletos pendentes, vencidos ou em aberto.",
+              boletos: []
+            });
+          }
+          
+          const boletosFormatados = boletos.map((boleto: any) => ({
+            vencimento: boleto.DATA_VENCIMENTO || 'Não disponível',
+            valor: boleto.VALOR_TOTAL || '0.00',
+            codigo_barras: boleto.CODIGO_BARRA_TRANSACAO || '',
+            codigo_barras_sem_espacos: boleto.CODIGO_BARRA_TRANSACAO?.replace(/\D/g, '') || '',
+            link_pagamento: boleto.link_carne_completo || '',
+            pix: boleto.PIX_TXT || '',
+            status: boleto.STATUS || 'DESCONHECIDO'
+          }));
           
           return JSON.stringify({
             success: true,
-            tipo_documento: validacao.tipo,
-            mensagem: mensagemSucesso
+            boletos: boletosFormatados
           });
+          
         } catch (error) {
-          console.error("❌ [AI Tool] Erro ao persistir documento:", error);
+          console.error("❌ [AI Tool] Erro ao consultar boletos:", error);
           return JSON.stringify({
-            error: "Erro ao salvar documento. Tente novamente."
+            error: error instanceof Error ? error.message : "Erro ao consultar boletos",
+            instrucao_ia: "ATENÇÃO: A consulta de boletos FALHOU. NÃO invente dados. Informe ao cliente que houve um problema técnico temporário."
           });
         }
 
       case "consultar_faturas":
       case "consultar_boleto_cliente":
+        // LGPD: CPF deve ser fornecido a cada consulta - não usar CPF armazenado
         console.log(`🚨 [DEBUG] ENTRANDO NO CASE ${functionName} - conversationId: ${conversationId || 'UNDEFINED'}`);
         if (!conversationId) {
           console.error(`❌ [AI Tool] ${functionName} chamada sem conversationId`);
@@ -2436,30 +2517,34 @@ Fonte: ${fonte}`;
         try {
           console.log(`🔍 [AI Tool Handler] Iniciando consulta de boletos para conversação ${conversationId}`);
           
-          // Buscar documento do cliente automaticamente da conversa
-          const conversation = await storage.getConversation(conversationId);
+          // LGPD: Verificar se CPF foi fornecido nos argumentos
+          const cpfFornecido = args.documento || args.cpf || args.cpf_cnpj;
           
-          if (!conversation) {
-            console.error("❌ [AI Tool] Conversa não encontrada:", conversationId);
-            return JSON.stringify({
-              error: "Conversa não encontrada"
-            });
-          }
-          
-          console.log(`🔍 [AI Tool Handler] Conversa encontrada. clientDocument: ${conversation.clientDocument ? 'SIM' : 'NÃO'}`);
-          
-          if (!conversation.clientDocument) {
-            console.warn("⚠️ [AI Tool] Cliente ainda não forneceu CPF/CNPJ");
+          if (!cpfFornecido) {
+            // LGPD: SEMPRE solicitar CPF - não usar CPF armazenado
+            console.warn("⚠️ [AI Tool] LGPD: CPF não fornecido - solicitando ao cliente");
             return JSON.stringify({
               error: "Para consultar seus boletos, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
             });
           }
           
-          console.log(`🔍 [AI Tool Handler] Chamando consultaBoletoCliente com documento do banco...`);
+          console.log(`🔍 [AI Tool Handler] Chamando consultaBoletoCliente com CPF fornecido (LGPD: sem armazenamento)...`);
+          
+          // LGPD: Validar documento fornecido
+          const { validarDocumentoFlexivel } = await import("../ai-tools");
+          const validacaoCpf = validarDocumentoFlexivel(cpfFornecido);
+          
+          if (!validacaoCpf.valido) {
+            return JSON.stringify({
+              error: validacaoCpf.motivo || 'Documento inválido'
+            });
+          }
+          
+          const cpfNormalizado = validacaoCpf.documentoNormalizado;
           
           // Chamar diretamente a API real - pode retornar { boletos, hasMultiplePoints } OU { pontos, hasMultiplePoints }
           const resultadoBoletos = await consultaBoletoCliente(
-            conversation.clientDocument,
+            cpfNormalizado,
             { conversationId },
             storage
           );
@@ -2500,9 +2585,10 @@ Fonte: ${fonte}`;
               ]
             }));
             
+            // LGPD: Salvar CPF no Redis temporário (5min) apenas para seleção de ponto
             await installationPointManager.saveMenu({
               conversationId,
-              cpf: conversation.clientDocument,
+              cpf: cpfNormalizado,
               pontos: menuItems,
               createdAt: Date.now()
             });
