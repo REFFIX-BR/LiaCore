@@ -392,35 +392,6 @@ export default function GamificationReport() {
               </div>
             )}
 
-            <div className="badges-legend border-t pt-6 print:pt-4">
-              <h3 className="text-lg font-bold text-center mb-4 print:text-base">
-                LEGENDA DE CONQUISTAS
-              </h3>
-              <div className="grid grid-cols-3 gap-4 print:gap-2">
-                {Object.entries(BADGE_INFO).map(([type, info]) => {
-                  const BadgeIcon = info.icon;
-                  return (
-                    <div 
-                      key={type}
-                      className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg print:p-2"
-                      data-testid={`legend-${type}`}
-                    >
-                      <BadgeIcon className="w-8 h-8 text-primary print:w-6 print:h-6" />
-                      <div>
-                        <div className="font-semibold print:text-sm">{info.name}</div>
-                        <div className="text-xs text-muted-foreground print:text-[10px]">{info.description}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="formula-section mt-6 text-center text-sm text-muted-foreground print:text-xs print:mt-4">
-              <p className="font-medium">Fórmula de Pontuação:</p>
-              <p>40% NPS + 30% Volume de Atendimentos + 20% Taxa de Resolução + 10% Tempo de Resposta</p>
-            </div>
-
             <div className="footer mt-8 pt-4 border-t text-center text-xs text-muted-foreground print:mt-6">
               <p>Relatório gerado em {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
               <p className="font-semibold mt-1">TR Telecom - LIA CORTEX</p>
