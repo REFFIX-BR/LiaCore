@@ -1149,25 +1149,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         analyzeUrgency, 
         detectTechnicalProblem,
         checkRecurrence,
-        updateConversationIntelligence,
-        persistClientDocument 
+        updateConversationIntelligence
       } = await import("./lib/conversation-intelligence");
       
-      // 🔍 Detect and store CPF/CNPJ if present in PROCESSED message (covers image/audio transcriptions)
-      if (!conversation.clientDocument) {
-        // Try processedMessage first (includes image/audio analysis), then fallback to raw message
-        const textToScan = processedMessage || message || '';
-        const cpfMatch = textToScan.match(/\b(\d{3}\.?\d{3}\.?\d{3}-?\d{2})\b/);
-        const cnpjMatch = textToScan.match(/\b(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})\b/);
-        const documentMatch = cpfMatch || cnpjMatch;
-        
-        if (documentMatch) {
-          const cleanDocument = documentMatch[1].replace(/[.\-\/]/g, '');
-          await persistClientDocument(conversation.id, cleanDocument);
-          conversation.clientDocument = cleanDocument;
-          console.log(`📝 [Test Chat] CPF/CNPJ detectado e persistido`);
-        }
-      }
+      // 🔐 LGPD COMPLIANCE: CPF/CNPJ NÃO é mais salvo automaticamente no banco de dados
+      // O documento é solicitado ao cliente quando necessário e usado de forma transitória
+      // Armazenamento temporário apenas em Redis com TTL de 5 minutos para fluxos multi-ponto
       
       const sentimentAnalysis = analyzeSentiment(processedMessage);
       const urgencyAnalysis = analyzeUrgency(processedMessage);
@@ -2670,34 +2657,9 @@ Qualquer coisa, estamos à disposição! 😊
           Object.assign(conversation, updateData);
         }
 
-        // Detect and store CPF/CNPJ if present in message
-        if (!conversation.clientDocument) {
-          // Regex para CPF (com ou sem formatação): 000.000.000-00 ou 00000000000
-          const cpfMatch = messageText.match(/\b(\d{3}\.?\d{3}\.?\d{3}-?\d{2})\b/);
-          // Regex para CNPJ (com ou sem formatação): 00.000.000/0000-00 ou 00000000000000
-          const cnpjMatch = messageText.match(/\b(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})\b/);
-          
-          const documentMatch = cpfMatch || cnpjMatch;
-          
-          if (documentMatch) {
-            // Remove formatação (pontos, traços, barras)
-            const cleanDocument = documentMatch[1].replace(/[.\-\/]/g, '');
-            
-            // Mascara segura: CPF (11 dígitos) ou CNPJ (14 dígitos)
-            const maskedDocument = cleanDocument.length === 11
-              ? cleanDocument.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '***.***.***-**')  // CPF: ***.***.***: -**
-              : cleanDocument.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '**.***.***/****-**');  // CNPJ: **.***.***/****-**
-            
-            console.log(`📝 [CPF/CNPJ Detected] Cliente ${clientName} forneceu documento: ${maskedDocument}`);
-            
-            // Usar função de persistência que salva em metadata também
-            const { persistClientDocument } = await import("./lib/conversation-intelligence");
-            await persistClientDocument(conversation.id, cleanDocument);
-            
-            // Update local conversation object
-            conversation.clientDocument = cleanDocument;
-          }
-        }
+        // 🔐 LGPD COMPLIANCE: CPF/CNPJ NÃO é mais salvo automaticamente no banco de dados
+        // O documento é solicitado ao cliente quando necessário e usado de forma transitória
+        // Armazenamento temporário apenas em Redis com TTL de 5 minutos para fluxos multi-ponto
 
         // 🧠 ANÁLISE DE INTELIGÊNCIA: Sentiment, Urgência e Problemas Técnicos
         const { 
