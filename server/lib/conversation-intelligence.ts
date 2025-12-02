@@ -241,23 +241,19 @@ export async function updateConversationIntelligence(
 }
 
 /**
- * Salva CPF validado na metadata para evitar perder contexto
+ * @deprecated LGPD COMPLIANCE - Esta função NÃO deve mais ser usada!
+ * CPF/CNPJ não é mais persistido no banco de dados.
+ * Use Redis com TTL de 5 minutos para armazenamento temporário em fluxos multi-ponto.
+ * Mantida apenas para compatibilidade com dados legados.
  */
 export async function persistClientDocument(
   conversationId: string,
   document: string
 ) {
-  await db
-    .update(conversations)
-    .set({
-      clientDocument: document,
-      metadata: sql`jsonb_set(
-        COALESCE(metadata, '{}'::jsonb),
-        '{cliente,cpfValidado}',
-        to_jsonb(${document}::text)
-      )`
-    })
-    .where(eq(conversations.id, conversationId));
+  console.warn(`⚠️ [LGPD] persistClientDocument chamada para conversa ${conversationId} - CPF não será salvo!`);
+  // LGPD: Não salvar mais CPF no banco de dados
+  // Esta função foi desativada para conformidade com LGPD
+  return;
 }
 
 /**
