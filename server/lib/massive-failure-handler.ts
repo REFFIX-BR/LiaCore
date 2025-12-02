@@ -16,34 +16,38 @@ export interface InstallationPoint {
 }
 
 /**
- * PRIVATE: Consulta a API CRM (sem cache) para obter informações de pontos de instalação
+ * PRIVATE: Consulta a API check_pppoe_status (sem cache) para obter informações de pontos de instalação
+ * IMPORTANTE: Usa check_pppoe_status porque retorna o ENDEREÇO DE INSTALAÇÃO correto de cada login
+ * A API infoscontrato retorna apenas o endereço de cobrança (mesmo para todos os pontos)
  * Use `fetchClientInstallationPoints` com cache ao invés dessa função
  */
 async function fetchClientInstallationPointsFromCRM(cpfCnpj: string): Promise<InstallationPoint[] | null> {
-  const CRM_API_URL = "https://webhook.trtelecom.net/webhook/consultar/cliente/infoscontrato";
+  const CRM_API_URL = "https://webhook.trtelecom.net/webhook/check_pppoe_status";
   
   if (!cpfCnpj) {
-    console.log("⚠️ [Massive Failure] CPF/CNPJ não fornecido");
+    console.log("⚠️ [Installation Points] CPF/CNPJ não fornecido");
     return null;
   }
 
   try {
-    const response = await fetch(`${CRM_API_URL}?documento=${cpfCnpj}`, {
-      method: "GET",
+    // IMPORTANTE: check_pppoe_status é POST com body JSON
+    const response = await fetch(CRM_API_URL, {
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
+      body: JSON.stringify({ documento: cpfCnpj }),
     });
 
     if (!response.ok) {
-      console.error(`❌ [Massive Failure] CRM API error: ${response.status} ${response.statusText}`);
+      console.error(`❌ [Installation Points] API error: ${response.status} ${response.statusText}`);
       return null;
     }
 
     // Verificar se a resposta tem conteúdo antes de tentar fazer parse
     const text = await response.text();
     if (!text || text.trim() === '') {
-      console.log(`⚠️ [Massive Failure] CRM retornou resposta vazia para CPF/CNPJ ${cpfCnpj}`);
+      console.log(`⚠️ [Installation Points] API retornou resposta vazia para CPF/CNPJ ${cpfCnpj}`);
       return null;
     }
 
@@ -51,52 +55,48 @@ async function fetchClientInstallationPointsFromCRM(cpfCnpj: string): Promise<In
     try {
       data = JSON.parse(text);
     } catch (parseError) {
-      console.error(`❌ [Massive Failure] Erro ao fazer parse do JSON. Resposta: "${text.substring(0, 200)}"`);
+      console.error(`❌ [Installation Points] Erro ao fazer parse do JSON. Resposta: "${text.substring(0, 200)}"`);
       return null;
     }
     
-    // CRM retorna array de contratos (cliente pode ter múltiplos pontos)
-    const contracts = Array.isArray(data) ? data : [data];
+    // check_pppoe_status retorna array de conexões (cliente pode ter múltiplos pontos)
+    const connections = Array.isArray(data) ? data : [data];
     
-    if (contracts.length === 0) {
-      console.log("⚠️ [Massive Failure] Nenhum contrato encontrado no CRM");
+    if (connections.length === 0) {
+      console.log("⚠️ [Installation Points] Nenhuma conexão encontrada");
       return null;
     }
 
-    // Mapear contratos para pontos de instalação
-    const points: InstallationPoint[] = contracts
-      .filter((contract: any) => contract.BAIRRO && contract.CIDADE)
-      .map((contract: any, index: number) => {
-        // Extrair número do ponto (se começar com número no nome)
-        const nomeMatch = contract.nomeCliente?.match(/^(\d+)\s+(.+)$/) || null;
-        const pontoNumero = nomeMatch ? nomeMatch[1] : (index + 1).toString();
-        const nomeCliente = nomeMatch ? nomeMatch[2] : contract.nomeCliente;
-
+    // Mapear conexões para pontos de instalação
+    // check_pppoe_status retorna o ENDEREÇO DE INSTALAÇÃO correto de cada login
+    const points: InstallationPoint[] = connections
+      .filter((conn: any) => conn.BAIRRO && conn.CIDADE)
+      .map((conn: any, index: number) => {
         return {
-          numero: pontoNumero,
-          nomeCliente: nomeCliente || "Cliente",
-          endereco: contract.ENDERECO || "",
-          bairro: contract.BAIRRO || "",
-          cidade: contract.CIDADE || "",
-          complemento: contract.COMPLEMENTO || "",
-          login: contract.LOGIN || "",
-          plano: contract.plano || "",
+          numero: (index + 1).toString(),
+          nomeCliente: conn.nomeCliente || conn.NOME || "Cliente",
+          endereco: conn.ENDERECO || "",
+          bairro: conn.BAIRRO || "",
+          cidade: conn.CIDADE || "",
+          complemento: conn.COMPLEMENTO || "",
+          login: conn.LOGIN || "",
+          plano: conn.plano || conn.PLANO || "",
         };
       });
 
     if (points.length === 0) {
-      console.log("⚠️ [Massive Failure] Nenhum ponto válido encontrado (BAIRRO/CIDADE ausentes)");
+      console.log("⚠️ [Installation Points] Nenhum ponto válido encontrado (BAIRRO/CIDADE ausentes)");
       return null;
     }
 
-    console.log(`✅ [Massive Failure] ${points.length} ponto(s) de instalação encontrado(s) no CRM`);
+    console.log(`✅ [Installation Points] ${points.length} ponto(s) de instalação encontrado(s) via check_pppoe_status`);
     points.forEach(p => {
-      console.log(`   📍 Ponto ${p.numero}: ${p.cidade}/${p.bairro} - ${p.endereco}`);
+      console.log(`   📍 Ponto ${p.numero} (Login ${p.login}): ${p.cidade}/${p.bairro} - ${p.endereco} ${p.complemento}`);
     });
 
     return points;
   } catch (error) {
-    console.error("❌ [Massive Failure] Erro ao consultar CRM:", error);
+    console.error("❌ [Installation Points] Erro ao consultar API:", error);
     return null;
   }
 }
