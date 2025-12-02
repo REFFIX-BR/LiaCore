@@ -283,6 +283,56 @@ export async function getPersistedDocument(conversationId: string): Promise<stri
 }
 
 /**
+ * Valida matematicamente se um CPF é válido
+ * @param cpf CPF apenas números (11 dígitos)
+ * @returns true se CPF válido, false caso contrário
+ */
+function isValidCpf(cpf: string): boolean {
+  // Deve ter exatamente 11 dígitos
+  if (cpf.length !== 11) return false;
+  
+  // Rejeita sequências repetidas (111.111.111-11, etc.)
+  if (/^(\d)\1{10}$/.test(cpf)) {
+    console.log(`⚠️ [CPF Validation] Rejeitado: sequência repetida`);
+    return false;
+  }
+  
+  // Rejeita números que começam com muitos zeros (típico de códigos de barras)
+  if (/^0{5,}/.test(cpf)) {
+    console.log(`⚠️ [CPF Validation] Rejeitado: muitos zeros no início (provável código de barras)`);
+    return false;
+  }
+  
+  // Calcula primeiro dígito verificador
+  let soma = 0;
+  for (let i = 0; i < 9; i++) {
+    soma += parseInt(cpf.charAt(i)) * (10 - i);
+  }
+  let resto = soma % 11;
+  const digito1 = resto < 2 ? 0 : 11 - resto;
+  
+  if (parseInt(cpf.charAt(9)) !== digito1) {
+    console.log(`⚠️ [CPF Validation] Rejeitado: primeiro dígito verificador inválido`);
+    return false;
+  }
+  
+  // Calcula segundo dígito verificador
+  soma = 0;
+  for (let i = 0; i < 10; i++) {
+    soma += parseInt(cpf.charAt(i)) * (11 - i);
+  }
+  resto = soma % 11;
+  const digito2 = resto < 2 ? 0 : 11 - resto;
+  
+  if (parseInt(cpf.charAt(10)) !== digito2) {
+    console.log(`⚠️ [CPF Validation] Rejeitado: segundo dígito verificador inválido`);
+    return false;
+  }
+  
+  return true;
+}
+
+/**
  * Detecta e extrai CPF ou CNPJ de uma mensagem
  * @param message Mensagem do cliente
  * @returns CPF/CNPJ limpo (apenas números) ou null se não encontrado
@@ -299,8 +349,8 @@ export function detectClientDocument(message: string): string | null {
     for (const match of cpfMatchesOriginal) {
       // Limpar formatação (manter apenas números)
       const cpfLimpo = match.replace(/\D/g, '');
-      if (cpfLimpo.length === 11) {
-        console.log(`📋 [Document Detection] CPF detectado (mascarado: ***.***.*${cpfLimpo.slice(-2)})`);
+      if (cpfLimpo.length === 11 && isValidCpf(cpfLimpo)) {
+        console.log(`📋 [Document Detection] CPF detectado e VALIDADO (mascarado: ***.***.*${cpfLimpo.slice(-2)})`);
         return cpfLimpo;
       }
     }
@@ -318,8 +368,8 @@ export function detectClientDocument(message: string): string | null {
     for (const match of cpfMatches) {
       // Limpar formatação (manter apenas números)
       const cpfLimpo = match.replace(/\D/g, '');
-      if (cpfLimpo.length === 11) {
-        console.log(`📋 [Document Detection] CPF detectado (mascarado: ***.***.*${cpfLimpo.slice(-2)})`);
+      if (cpfLimpo.length === 11 && isValidCpf(cpfLimpo)) {
+        console.log(`📋 [Document Detection] CPF detectado e VALIDADO (mascarado: ***.***.*${cpfLimpo.slice(-2)})`);
         return cpfLimpo;
       }
     }
@@ -331,8 +381,13 @@ export function detectClientDocument(message: string): string | null {
   
   if (cpfPlainMatch) {
     const cpfLimpo = cpfPlainMatch[0];
-    console.log(`📋 [Document Detection] CPF sem formatação detectado (mascarado: ***.***.*${cpfLimpo.slice(-2)})`);
-    return cpfLimpo;
+    // CRÍTICO: Validar matematicamente antes de aceitar!
+    if (isValidCpf(cpfLimpo)) {
+      console.log(`📋 [Document Detection] CPF sem formatação detectado e VALIDADO (mascarado: ***.***.*${cpfLimpo.slice(-2)})`);
+      return cpfLimpo;
+    } else {
+      console.log(`⚠️ [Document Detection] Sequência de 11 dígitos rejeitada - não é CPF válido: ${cpfLimpo.substring(0, 3)}***`);
+    }
   }
 
   // Regex FLEXÍVEL para CNPJ: aceita qualquer combinação de pontos, barras e hífens
