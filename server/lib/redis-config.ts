@@ -230,13 +230,13 @@ export interface InstallationPointMenu {
 
 /**
  * Sistema efêmero para gerenciar seleção de pontos de instalação
- * - TTL: 5 minutos (tempo suficiente para cliente escolher)
+ * - TTL: 15 minutos (tempo suficiente para cliente escolher)
  * - Não persiste no banco de dados
  * - Cada consulta de boleto recomeça do zero
  */
 export class InstallationPointSelectionManager {
-  private readonly MENU_TTL = 300; // 5 minutos
-  private readonly FLAG_TTL = 300; // 5 minutos
+  private readonly MENU_TTL = 900; // 15 minutos
+  private readonly FLAG_TTL = 900; // 15 minutos
   
   /**
    * Salva menu de pontos de instalação no Redis (efêmero)
