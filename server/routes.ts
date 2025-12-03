@@ -8399,6 +8399,107 @@ A resposta deve:
     }
   });
 
+  // Get fair resolution metrics (based on activity_log - never overwritten)
+  // This provides accurate counting even when conversations are reopened
+  app.get("/api/reports/fair-resolutions", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { startDate, endDate, agentId } = req.query;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: "startDate and endDate are required" });
+      }
+
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return res.status(400).json({ error: "Invalid date format" });
+      }
+
+      // Buscar métricas justas (activity_log)
+      const fairResolutions = await storage.getFairResolutions({
+        startDate: start,
+        endDate: end,
+        agentId: agentId as string | undefined
+      });
+
+      // Buscar totais do resolved_by independentemente
+      const comparison = await storage.getAgentReports({
+        startDate: start,
+        endDate: end,
+        agentId: agentId as string | undefined,
+        groupBy: 'day'
+      });
+
+      // Criar mapa completo de todos os agentes (união de ambas as fontes)
+      const allAgents = new Map<string, {
+        agentId: string;
+        agentName: string;
+        totalResolutions: number;
+        totalSelfAssigns: number;
+        uniqueConversations: number;
+        resolvedByCount: number;
+      }>();
+
+      // Adicionar dados do activity_log (métricas justas)
+      fairResolutions.forEach(fr => {
+        allAgents.set(fr.agentId, {
+          agentId: fr.agentId,
+          agentName: fr.agentName,
+          totalResolutions: fr.totalResolutions,
+          totalSelfAssigns: fr.totalSelfAssigns,
+          uniqueConversations: fr.uniqueConversations,
+          resolvedByCount: 0
+        });
+      });
+
+      // Adicionar/atualizar dados do resolved_by
+      comparison.forEach(r => {
+        if (r.agentId) {
+          if (allAgents.has(r.agentId)) {
+            allAgents.get(r.agentId)!.resolvedByCount += r.resolvedConversations;
+          } else {
+            // Agente que tem resolved_by mas não tem activity_log
+            allAgents.set(r.agentId, {
+              agentId: r.agentId,
+              agentName: r.agentName || 'Desconhecido',
+              totalResolutions: 0,
+              totalSelfAssigns: 0,
+              uniqueConversations: 0,
+              resolvedByCount: r.resolvedConversations
+            });
+          }
+        }
+      });
+
+      // Calcular diferença e ordenar
+      const enrichedResults = Array.from(allAgents.values())
+        .map(agent => ({
+          ...agent,
+          difference: agent.totalResolutions - agent.resolvedByCount
+        }))
+        .sort((a, b) => b.totalResolutions - a.totalResolutions);
+
+      // Calcular totais corretamente
+      const totalFairResolutions = enrichedResults.reduce((sum, r) => sum + r.totalResolutions, 0);
+      const totalResolvedBy = enrichedResults.reduce((sum, r) => sum + r.resolvedByCount, 0);
+
+      return res.json({
+        fairResolutions: enrichedResults,
+        summary: {
+          totalAgents: enrichedResults.length,
+          totalFairResolutions,
+          totalResolvedBy,
+          totalDifference: totalFairResolutions - totalResolvedBy,
+          explanation: "totalResolutions = ações de 'Finalizar' no activity_log (nunca sobrescrito). resolvedByCount = campo resolved_by (sobrescrito quando conversa reabre). difference = créditos perdidos."
+        }
+      });
+    } catch (error) {
+      console.error("❌ [Reports] Error getting fair resolutions:", error);
+      return res.status(500).json({ error: "Error fetching fair resolutions" });
+    }
+  });
+
   // ============================================================================
   // COMPLAINTS (OUVIDORIA)
   // ============================================================================

@@ -267,6 +267,19 @@ export interface IStorage {
   getRecentActivityLogs(limit?: number): Promise<Array<ActivityLog & { user?: User }>>;
   getLastLoginLog(userId: string): Promise<ActivityLog | undefined>;
 
+  // Fair Resolutions (baseado em activity_log - métrica justa que não é sobrescrita)
+  getFairResolutions(params: {
+    startDate: Date;
+    endDate: Date;
+    agentId?: string;
+  }): Promise<Array<{
+    agentId: string;
+    agentName: string;
+    totalResolutions: number;
+    totalSelfAssigns: number;
+    uniqueConversations: number;
+  }>>;
+
   // Agent Reports
   getAgentReports(params: {
     startDate: Date;
@@ -3513,6 +3526,115 @@ export class DbStorage implements IStorage {
       .orderBy(desc(schema.activityLogs.createdAt))
       .limit(1);
     return log;
+  }
+
+  /**
+   * Métricas justas de resolução baseadas em activity_log
+   * Diferente de resolved_by (sobrescrito quando conversa é reaberta),
+   * activity_log preserva TODAS as ações de finalização
+   * 
+   * Otimizado: Agregação em SQL para melhor performance
+   */
+  async getFairResolutions(params: {
+    startDate: Date;
+    endDate: Date;
+    agentId?: string;
+  }): Promise<Array<{
+    agentId: string;
+    agentName: string;
+    totalResolutions: number;
+    totalSelfAssigns: number;
+    uniqueConversations: number;
+  }>> {
+    const { startDate, endDate, agentId } = params;
+
+    // Query otimizada: agregar diretamente em SQL
+    // Conta apenas logs com conversationId válido para evitar números inflados
+    const resolutionQuery = sql`
+      SELECT 
+        al.user_id as "userId",
+        COUNT(*) as "totalResolutions",
+        COUNT(DISTINCT al.conversation_id) as "uniqueConversations"
+      FROM activity_logs al
+      WHERE al.action = 'resolve_conversation'
+        AND al.created_at >= ${startDate}
+        AND al.created_at <= ${endDate}
+        AND al.conversation_id IS NOT NULL
+        ${agentId ? sql`AND al.user_id = ${agentId}` : sql``}
+      GROUP BY al.user_id
+    `;
+
+    const selfAssignQuery = sql`
+      SELECT 
+        al.user_id as "userId",
+        COUNT(*) as "totalSelfAssigns"
+      FROM activity_logs al
+      WHERE al.action = 'self_assign'
+        AND al.created_at >= ${startDate}
+        AND al.created_at <= ${endDate}
+        ${agentId ? sql`AND al.user_id = ${agentId}` : sql``}
+      GROUP BY al.user_id
+    `;
+
+    const [resolutions, selfAssigns] = await Promise.all([
+      db.execute(resolutionQuery),
+      db.execute(selfAssignQuery)
+    ]);
+
+    // Criar mapa de estatísticas
+    const agentStats = new Map<string, {
+      totalResolutions: number;
+      totalSelfAssigns: number;
+      uniqueConversations: number;
+    }>();
+
+    // Processar resoluções
+    for (const r of resolutions.rows as any[]) {
+      if (!r.userId) continue;
+      agentStats.set(r.userId, {
+        totalResolutions: Number(r.totalResolutions) || 0,
+        totalSelfAssigns: 0,
+        uniqueConversations: Number(r.uniqueConversations) || 0
+      });
+    }
+
+    // Adicionar self-assigns
+    for (const s of selfAssigns.rows as any[]) {
+      if (!s.userId) continue;
+      if (agentStats.has(s.userId)) {
+        agentStats.get(s.userId)!.totalSelfAssigns = Number(s.totalSelfAssigns) || 0;
+      } else {
+        agentStats.set(s.userId, {
+          totalResolutions: 0,
+          totalSelfAssigns: Number(s.totalSelfAssigns) || 0,
+          uniqueConversations: 0
+        });
+      }
+    }
+
+    // Buscar nomes dos agentes em uma única query
+    const agentIds = Array.from(agentStats.keys());
+    if (agentIds.length === 0) return [];
+
+    const agents = await db.select({
+      id: schema.users.id,
+      fullName: schema.users.fullName
+    })
+      .from(schema.users)
+      .where(sql`${schema.users.id} IN (${sql.join(agentIds.map(id => sql`${id}`), sql`, `)})`);
+
+    const agentNameMap = new Map(agents.map(a => [a.id, a.fullName]));
+
+    // Montar resultado ordenado por totalResolutions
+    const result = Array.from(agentStats.entries()).map(([userId, stats]) => ({
+      agentId: userId,
+      agentName: agentNameMap.get(userId) || 'Desconhecido',
+      totalResolutions: stats.totalResolutions,
+      totalSelfAssigns: stats.totalSelfAssigns,
+      uniqueConversations: stats.uniqueConversations
+    }));
+
+    return result.sort((a, b) => b.totalResolutions - a.totalResolutions);
   }
 
   async getAgentReports(params: {

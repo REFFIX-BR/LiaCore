@@ -25,6 +25,13 @@ A Prompt Management System offers an AI-powered editor with version control, dra
 
 The platform includes a Gamification System for performance ranking and badges, and a Supervisor Dashboard for real-time monitoring, KPIs, live queues, alerts, transcripts, human intervention controls, and live logs. An Agent Dashboard supports period-based filtering for performance metrics. A Continuous Learning System with a GPT-4 agent suggests prompt improvements.
 
+**Fair Resolution Metrics System** (Dec 2025): New endpoint `/api/reports/fair-resolutions` provides accurate agent performance metrics based on `activity_log` instead of `resolved_by` field. The `resolved_by` field is overwritten when conversations are reopened/auto-closed, causing agents to lose credit for finalized conversations (~130 lost credits/day observed). The new system:
+- Uses `activity_logs` (action='resolve_conversation') which is never overwritten
+- Provides comparison between fair metrics and resolved_by for transparency
+- Shows `difference` field indicating lost credits per agent
+- Aggregates in SQL for optimal performance with high-volume logs
+- API: `GET /api/reports/fair-resolutions?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD`
+
 Hybrid Supervised Mode manages "Transferred" and "Assigned" conversations with AI-assisted agent responses. Native WhatsApp integration with Evolution API supports three WhatsApp instances with end-to-end routing. Role-Based Access Control (RBAC) is implemented with ADMIN, SUPERVISOR, and AGENT tiers. A centralized Contact Management System with automatic WhatsApp contact sync and an Announcements/Communications System are also present.
 
 The COBRANÇAS - Autonomous Debt Collection Module is a WhatsApp-based system with a dedicated AI Cobrança assistant for debt negotiation, payment promise registration, and compliance, utilizing Meta-approved templates. It features dedicated monitoring, a Messaging Control Center for flexible contact method management, and campaign conversation tracking. The collection system is WhatsApp-only, integrating with CRM for proactive debt collection, including configurable sync schedules, data transformation, smart deduplication, and error handling. A comprehensive phone normalization utility ensures canonical format for WhatsApp integration. A Selective Target Activation System allows bulk management of collection volumes.
