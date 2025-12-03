@@ -31,13 +31,13 @@ function normalizeEvolutionUrl(url?: string): string {
 }
 
 // Helper function to validate and normalize Evolution API instance
-// Supported instances: "Cobranca", "Principal" (Leads was suspended by Meta)
+// Supported instances: "Cobranca", "Principal", "Leads"
 // NOTE: Accepts both "Cobranca" and "Cobrança" (accent-insensitive)
 function validateEvolutionInstance(instance?: string | null): string {
-  const allowedInstances = ['Cobranca', 'Principal'];
+  const allowedInstances = ['Cobranca', 'Principal', 'Leads'];
   
   if (!instance) {
-    return 'Principal'; // Default (Leads was suspended by Meta)
+    return 'Principal'; // Default instance
   }
   
   // Normalize case and remove accents (ç -> c, ã -> a, etc.)
@@ -46,12 +46,6 @@ function validateEvolutionInstance(instance?: string | null): string {
   
   if (allowedInstances.includes(normalized)) {
     return normalized;
-  }
-  
-  // Legacy: map "Leads" to "Principal" since Leads was suspended
-  if (normalized === 'Leads') {
-    console.warn(`⚠️ [Evolution] Instance "Leads" was suspended by Meta - using "Principal" instead`);
-    return 'Principal';
   }
   
   // If invalid instance, force to Principal

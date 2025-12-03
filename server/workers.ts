@@ -19,12 +19,12 @@ import { ContextMonitor } from './lib/context-monitor';
 import { extractNumberFromChatId } from './lib/phone-utils';
 
 // Helper function to validate and normalize Evolution API instance
-// Supported instances: "Cobranca", "Principal" (Leads was suspended by Meta)
+// Supported instances: "Cobranca", "Principal", "Leads"
 function validateEvolutionInstance(instance?: string): string {
-  const allowedInstances = ['Cobranca', 'Principal'];
+  const allowedInstances = ['Cobranca', 'Principal', 'Leads'];
   
   if (!instance) {
-    return 'Principal'; // Default (Leads was suspended by Meta)
+    return 'Principal'; // Default instance
   }
   
   // Normalize case
@@ -32,12 +32,6 @@ function validateEvolutionInstance(instance?: string): string {
   
   if (allowedInstances.includes(normalized)) {
     return normalized;
-  }
-  
-  // Legacy: map "Leads" to "Principal" since Leads was suspended
-  if (normalized === 'Leads') {
-    console.warn(`⚠️ [Evolution] Instance "Leads" was suspended by Meta - using "Principal" instead`);
-    return 'Principal';
   }
   
   // If invalid instance, force to Principal
