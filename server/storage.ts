@@ -280,6 +280,9 @@ export interface IStorage {
     uniqueConversations: number;
   }>>;
 
+  // Backfill first_resolved_by from activity_logs for historical fairness
+  backfillFirstResolvedFromActivityLogs(): Promise<{ updated: number; skipped: number; errors: number }>;
+
   // Agent Reports
   getAgentReports(params: {
     startDate: Date;
@@ -2316,6 +2319,7 @@ export class DbStorage implements IStorage {
   }
 
   // ✅ Atomic conversation resolution - handles update + activity logs in ONE transaction
+  // Also preserves first_resolved_by and first_resolved_at for fair metrics (never overwritten)
   async resolveConversation(params: {
     conversationId: string;
     resolvedBy: string | null;
@@ -2341,6 +2345,9 @@ export class DbStorage implements IStorage {
       additionalUpdates = {},
     } = params;
 
+    // Buscar conversa atual para verificar se já tem first_resolved_by
+    const currentConversation = await this.getConversation(conversationId);
+
     // Construir update object
     const updates: Partial<Conversation> = {
       status: 'resolved',
@@ -2348,6 +2355,14 @@ export class DbStorage implements IStorage {
       resolvedAt,
       ...additionalUpdates,
     };
+
+    // 🔒 FAIR METRICS: Preserve first resolver (never overwrite)
+    // first_resolved_by é usado para gamificação/ranking justo
+    if (!currentConversation?.firstResolvedBy && resolvedBy) {
+      updates.firstResolvedBy = resolvedBy;
+      updates.firstResolvedAt = resolvedAt;
+      console.log(`📊 [Fair Metrics] Setting first_resolved_by=${resolvedBy} for conversation ${conversationId}`);
+    }
 
     // Adicionar campos opcionais
     if (autoClosed !== undefined) updates.autoClosed = autoClosed;
@@ -3635,6 +3650,87 @@ export class DbStorage implements IStorage {
     }));
 
     return result.sort((a, b) => b.totalResolutions - a.totalResolutions);
+  }
+
+  /**
+   * Backfill first_resolved_by and first_resolved_at from activity_logs
+   * for historical conversations that don't have these fields set.
+   * This ensures fair gamification metrics for all historical data.
+   */
+  async backfillFirstResolvedFromActivityLogs(): Promise<{ updated: number; skipped: number; errors: number }> {
+    let updated = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    // Find all resolved conversations without first_resolved_by
+    const conversationsToBackfill = await db.select({
+      id: schema.conversations.id,
+    })
+      .from(schema.conversations)
+      .where(and(
+        eq(schema.conversations.status, 'resolved'),
+        isNull(schema.conversations.firstResolvedBy)
+      ));
+
+    console.log(`📊 [Backfill] Found ${conversationsToBackfill.length} conversations to backfill`);
+
+    // Process in batches of 100
+    const batchSize = 100;
+    for (let i = 0; i < conversationsToBackfill.length; i += batchSize) {
+      const batch = conversationsToBackfill.slice(i, i + batchSize);
+      const convIds = batch.map(c => c.id);
+
+      // Get first resolve_conversation log for each conversation
+      const firstResolveLogs = await db.select({
+        conversationId: schema.activityLogs.conversationId,
+        userId: schema.activityLogs.userId,
+        createdAt: schema.activityLogs.createdAt,
+      })
+        .from(schema.activityLogs)
+        .where(and(
+          eq(schema.activityLogs.action, 'resolve_conversation'),
+          sql`${schema.activityLogs.conversationId} IN (${sql.join(convIds.map(id => sql`${id}`), sql`, `)})`
+        ))
+        .orderBy(schema.activityLogs.createdAt);
+
+      // Group by conversationId and take first log
+      const firstResolveByConv = new Map<string, { userId: string; createdAt: Date }>();
+      for (const log of firstResolveLogs) {
+        if (log.conversationId && log.userId && log.createdAt && !firstResolveByConv.has(log.conversationId)) {
+          firstResolveByConv.set(log.conversationId, {
+            userId: log.userId,
+            createdAt: log.createdAt
+          });
+        }
+      }
+
+      // Update conversations
+      for (const conv of batch) {
+        try {
+          const firstResolve = firstResolveByConv.get(conv.id);
+          if (firstResolve) {
+            await db.update(schema.conversations)
+              .set({
+                firstResolvedBy: firstResolve.userId,
+                firstResolvedAt: firstResolve.createdAt
+              })
+              .where(eq(schema.conversations.id, conv.id));
+            updated++;
+          } else {
+            skipped++; // No activity log found for this conversation
+          }
+        } catch (error) {
+          console.error(`❌ [Backfill] Error updating conversation ${conv.id}:`, error);
+          errors++;
+        }
+      }
+
+      if ((i + batchSize) % 500 === 0) {
+        console.log(`📊 [Backfill] Progress: ${Math.min(i + batchSize, conversationsToBackfill.length)}/${conversationsToBackfill.length}`);
+      }
+    }
+
+    return { updated, skipped, errors };
   }
 
   async getAgentReports(params: {
@@ -5135,6 +5231,10 @@ export class DbStorage implements IStorage {
   /**
    * Calcula e atualiza as pontuações de gamificação para um período específico (mês)
    * Usa pesos configuráveis definidos em gamificationSettings
+   * 
+   * ✅ FAIR METRICS: Usa first_resolved_by (nunca sobrescrito) ao invés de resolved_by
+   * - first_resolved_by preserva o crédito do primeiro atendente que finalizou
+   * - Fallback para resolved_by em conversas antigas sem first_resolved_by
    */
   async calculateGamificationScores(period: string): Promise<void> {
     // Busca configurações dinâmicas
@@ -5165,15 +5265,35 @@ export class DbStorage implements IStorage {
     // Para cada agente, calcula as métricas
     const scores = [];
     for (const agent of agents) {
-      // Pega conversas resolvidas pelo agente no período
+      // 🔒 FAIR METRICS: Busca conversas onde o agente foi o PRIMEIRO resolver
+      // Usa first_resolved_by (nunca sobrescrito) com fallback para resolved_by
       const conversations = await db.select()
         .from(schema.conversations)
         .where(and(
           eq(schema.conversations.status, 'resolved'),
-          eq(schema.conversations.resolvedBy, agent.id),
-          isNotNull(schema.conversations.resolvedAt),
-          gte(schema.conversations.resolvedAt, startDate),
-          lte(schema.conversations.resolvedAt, endDate)
+          or(
+            // Prioriza first_resolved_by (métricas justas - nunca sobrescrito)
+            eq(schema.conversations.firstResolvedBy, agent.id),
+            // Fallback para conversas antigas sem first_resolved_by
+            and(
+              eq(schema.conversations.resolvedBy, agent.id),
+              isNull(schema.conversations.firstResolvedBy)
+            )
+          ),
+          // Usa firstResolvedAt quando disponível, senão resolvedAt
+          or(
+            and(
+              isNotNull(schema.conversations.firstResolvedAt),
+              gte(schema.conversations.firstResolvedAt, startDate),
+              lte(schema.conversations.firstResolvedAt, endDate)
+            ),
+            and(
+              isNull(schema.conversations.firstResolvedAt),
+              isNotNull(schema.conversations.resolvedAt),
+              gte(schema.conversations.resolvedAt, startDate),
+              lte(schema.conversations.resolvedAt, endDate)
+            )
+          )
         ));
 
       const totalConversations = conversations.length;
@@ -5183,18 +5303,34 @@ export class DbStorage implements IStorage {
         continue;
       }
 
-      // Pega feedbacks NPS do período (baseado na data de resolução da conversa, não na data de criação do feedback)
+      // 🔒 FAIR METRICS: NPS também baseado em first_resolved_by
       const feedbacks = await db.select({
         feedback: schema.satisfactionFeedback,
       })
         .from(schema.satisfactionFeedback)
         .innerJoin(schema.conversations, eq(schema.satisfactionFeedback.conversationId, schema.conversations.id))
         .where(and(
-          eq(schema.conversations.resolvedBy, agent.id),
           eq(schema.conversations.status, 'resolved'),
-          isNotNull(schema.conversations.resolvedAt),
-          gte(schema.conversations.resolvedAt, startDate),
-          lte(schema.conversations.resolvedAt, endDate)
+          or(
+            eq(schema.conversations.firstResolvedBy, agent.id),
+            and(
+              eq(schema.conversations.resolvedBy, agent.id),
+              isNull(schema.conversations.firstResolvedBy)
+            )
+          ),
+          or(
+            and(
+              isNotNull(schema.conversations.firstResolvedAt),
+              gte(schema.conversations.firstResolvedAt, startDate),
+              lte(schema.conversations.firstResolvedAt, endDate)
+            ),
+            and(
+              isNull(schema.conversations.firstResolvedAt),
+              isNotNull(schema.conversations.resolvedAt),
+              gte(schema.conversations.resolvedAt, startDate),
+              lte(schema.conversations.resolvedAt, endDate)
+            )
+          )
         ));
 
       // Calcula NPS médio

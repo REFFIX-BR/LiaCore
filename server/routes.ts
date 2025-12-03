@@ -8500,6 +8500,26 @@ A resposta deve:
     }
   });
 
+  // Backfill first_resolved_by from activity_logs for historical data
+  app.post("/api/reports/backfill-first-resolved", authenticate, requireAdmin, async (req, res) => {
+    try {
+      console.log("📊 [Backfill] Starting first_resolved_by backfill from activity_logs...");
+      
+      const result = await storage.backfillFirstResolvedFromActivityLogs();
+      
+      console.log(`✅ [Backfill] Completed: ${result.updated} conversations updated, ${result.skipped} skipped (already had first_resolved_by)`);
+      
+      return res.json({
+        success: true,
+        message: `Backfill completed: ${result.updated} conversations updated`,
+        details: result
+      });
+    } catch (error) {
+      console.error("❌ [Backfill] Error:", error);
+      return res.status(500).json({ error: "Error during backfill" });
+    }
+  });
+
   // ============================================================================
   // COMPLAINTS (OUVIDORIA)
   // ============================================================================

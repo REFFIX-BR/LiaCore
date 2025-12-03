@@ -79,8 +79,10 @@ export const conversations = pgTable("conversations", {
   transferReason: text("transfer_reason"),
   transferredAt: timestamp("transferred_at"),
   assignedTo: varchar("assigned_to"), // User ID of the agent assigned
-  resolvedBy: varchar("resolved_by"), // User ID of who resolved the conversation
+  resolvedBy: varchar("resolved_by"), // User ID of who resolved the conversation (gets overwritten on reopen)
   resolvedAt: timestamp("resolved_at"),
+  firstResolvedBy: varchar("first_resolved_by"), // User ID of FIRST resolver (never overwritten - for fair metrics)
+  firstResolvedAt: timestamp("first_resolved_at"), // When conversation was FIRST resolved (never overwritten)
   resolutionTime: integer("resolution_time"), // Time in seconds from transfer to resolution
   evolutionInstance: text("evolution_instance"), // Nome da instância Evolution API (para multi-instância)
   autoClosed: boolean("auto_closed").default(false), // Se a conversa foi encerrada automaticamente por inatividade
@@ -99,6 +101,9 @@ export const conversations = pgTable("conversations", {
   assignedToIdx: index("conversations_assigned_to_idx").on(table.assignedTo),
   transferredToHumanIdx: index("conversations_transferred_idx").on(table.transferredToHuman),
   departmentIdx: index("conversations_department_idx").on(table.department),
+  // Índices para fair metrics (gamificação/ranking justo)
+  firstResolvedByIdx: index("conversations_first_resolved_by_idx").on(table.firstResolvedBy),
+  firstResolvedAtIdx: index("conversations_first_resolved_at_idx").on(table.firstResolvedAt),
 }));
 
 export const messages = pgTable("messages", {
