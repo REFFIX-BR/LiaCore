@@ -1356,14 +1356,27 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
             console.log(`🔍 [AI Tool Handler] Conversa encontrada. clientDocument: ${conversationConexao.clientDocument ? 'SIM' : 'NÃO'}`);
             
             if (!conversationConexao.clientDocument) {
-              console.warn("⚠️ [AI Tool] Cliente ainda não forneceu CPF/CNPJ");
-              return JSON.stringify({
-                error: "Para verificar sua conexão, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
-              });
+              // ESTRATÉGIA 3: Extrair CPF do histórico de mensagens (LGPD compliance)
+              console.log(`🔍 [AI Tool Handler] CPF não no banco, tentando extrair do histórico...`);
+              const { extractCPFFromHistory } = await import("./cpf-context-injector");
+              const messagesForCPF = await storageConexao.getMessagesByConversationId(conversationId);
+              const cpfExtraido = extractCPFFromHistory(
+                messagesForCPF.map(m => ({ content: m.content, role: m.role as 'user' | 'assistant' }))
+              );
+              
+              if (cpfExtraido) {
+                documentoParaUsar = cpfExtraido;
+                console.log(`✅ [AI Tool Handler] CPF extraído do histórico: ${cpfExtraido.slice(0, 3)}...`);
+              } else {
+                console.warn("⚠️ [AI Tool] Cliente ainda não forneceu CPF/CNPJ");
+                return JSON.stringify({
+                  error: "Para verificar sua conexão, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
+                });
+              }
+            } else {
+              documentoParaUsar = conversationConexao.clientDocument;
+              console.log(`✅ [AI Tool Handler] CPF encontrado no banco! Usando CPF persistido.`);
             }
-            
-            documentoParaUsar = conversationConexao.clientDocument;
-            console.log(`✅ [AI Tool Handler] CPF encontrado no banco! Usando CPF persistido.`);
           } else {
             console.log(`✅ [AI Tool Handler] Usando documento fornecido como parâmetro: ***.***.***-${documentoParaUsar.slice(-2)}`);
           }
