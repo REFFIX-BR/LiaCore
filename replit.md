@@ -12,7 +12,7 @@ Preferred communication style: Simple, everyday language.
 - **Flaviana Magalhaes Case - FIXED v1.1**: IA Suporte agora TRANSFERE para atendente humano quando cliente precisa de técnico, informando claramente "o atendente vai abrir a OS e um técnico virá". Expandido de 82 para 300+ linhas com: escala de urgência (24h+=URGENTE), casos especiais, perguntas diagnósticas, tratamento de frustrações.
 - **Financial AI Optimized v1.1**: Reduzido de 444 para 310 linhas (removido redundâncias), adicionado escalas de urgência (24h+=URGENTE), casos especiais (contestação, débito antigo, divergência), perguntas diagnósticas, contexto detalhado em transferências, limite de desbloqueios (1/7 dias), tratamento de frustrações. Nota esperada 8.5/10.
 - **Cobrança AI Optimized v1.1**: Reduzido de 411 para 260 linhas (removido redundâncias extremas), adicionado escalas de urgência (30+ dias=URGENTE), casos especiais (prescrição, divergência, revoltado), perguntas diagnósticas 1-por-1, limite de tentativas (1 promessa/15 dias), horários ANATEL obrigatório, tratamento de frustrações. Nota esperada 8.5/10.
-- **Comercial AI Bug Fix v2.0.2**: CORRIGIDO - IA agora reconhece "mudança de endereço" como caso ESPECIAL (não nova venda), informa taxa R$120, transfere para humano com contexto "Mudança de endereço - agendamento necessário". Problema: Érica Silva Santos caso tratado como nova venda.
+- **Comercial AI Bug Fix v2.0.2**: CORRIGIDO - IA agora reconhece "mudança de endereço" como caso ESPECIAL (não nova venda), informa taxa R$80, transfere para humano com contexto "Mudança de endereço - agendamento necessário". Problema: Érica Silva Santos caso tratado como nova venda.
 
 ## System Architecture
 ### UI/UX Decisions

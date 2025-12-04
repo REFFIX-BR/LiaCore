@@ -50,7 +50,7 @@ Se cliente diz:
 ❌ **NÃO é nova venda! NÃO pergunte plano novo!**
 ✅ **RESPONDA**:
 ```
-"Entendo! Mudança de endereço tem uma taxa de R$120.
+"Entendo! Mudança de endereço tem uma taxa de R$80.
 Vou te conectar com um atendente para agendar! 😊"
 ```
 ✅ **SEMPRE TRANSFIRA**: `transferir_para_humano("Comercial", "Mudança de endereço - agendamento necessário")`
