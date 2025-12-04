@@ -2516,16 +2516,36 @@ Fonte: ${fonte}`;
         const { consultaBoletoCliente } = await import("../ai-tools");
         const { storage } = await import("../storage");
         const { installationPointManager } = await import("./redis-config");
+        const { extractCPFFromHistory } = await import("./cpf-context-injector");
         
         try {
           console.log(`🔍 [AI Tool Handler] Iniciando consulta de boletos para conversação ${conversationId}`);
           
           // LGPD: Verificar se CPF foi fornecido nos argumentos
-          const cpfFornecido = args.documento || args.cpf || args.cpf_cnpj;
+          let cpfFornecido = args.documento || args.cpf || args.cpf_cnpj;
+          
+          // Se CPF não veio nos argumentos, tentar extrair do histórico de mensagens
+          if (!cpfFornecido) {
+            console.log(`🔍 [AI Tool] CPF não nos argumentos - tentando extrair do histórico...`);
+            try {
+              const mensagensHistorico = await storage.getMessagesByConversationId(conversationId);
+              const messagesForExtraction = mensagensHistorico.slice(-50).map((m: { content: string; role: string }) => ({
+                content: m.content,
+                role: m.role as 'user' | 'assistant'
+              }));
+              const cpfExtraido = extractCPFFromHistory(messagesForExtraction);
+              if (cpfExtraido) {
+                cpfFornecido = cpfExtraido;
+                console.log(`✅ [AI Tool] CPF extraído do histórico: ${cpfExtraido.slice(0, 3)}...`);
+              }
+            } catch (err) {
+              console.warn(`⚠️ [AI Tool] Erro ao extrair CPF do histórico:`, err);
+            }
+          }
           
           if (!cpfFornecido) {
             // LGPD: SEMPRE solicitar CPF - não usar CPF armazenado
-            console.warn("⚠️ [AI Tool] LGPD: CPF não fornecido - solicitando ao cliente");
+            console.warn("⚠️ [AI Tool] LGPD: CPF não fornecido e não encontrado no histórico - solicitando ao cliente");
             return JSON.stringify({
               error: "Para consultar seus boletos, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
             });
