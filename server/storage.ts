@@ -5266,45 +5266,36 @@ export class DbStorage implements IStorage {
     // Para cada agente, calcula as métricas
     const scores = [];
     for (const agent of agents) {
-      // 🔒 FAIR METRICS: Busca conversas onde o agente foi o PRIMEIRO resolver
-      // Usa first_resolved_by (nunca sobrescrito) com fallback para resolved_by
+      // 🎯 VOLUME METRICS: Conta CADA ação de fechamento via activity_logs
+      // Cada fechamento conta independentemente, mesmo se a conversa for reaberta
+      const resolutionLogs = await db.select()
+        .from(schema.activityLogs)
+        .where(and(
+          eq(schema.activityLogs.userId, agent.id),
+          eq(schema.activityLogs.action, 'resolve_conversation'),
+          gte(schema.activityLogs.createdAt, startDate),
+          lte(schema.activityLogs.createdAt, endDate)
+        ));
+
+      const totalConversations = resolutionLogs.length;
+      
+      // Busca conversas únicas para cálculo de NPS e taxa de sucesso
+      // Usa as conversas onde o agente fechou no período (via resolved_by + resolved_at)
       const conversations = await db.select()
         .from(schema.conversations)
         .where(and(
           eq(schema.conversations.status, 'resolved'),
-          or(
-            // Prioriza first_resolved_by (métricas justas - nunca sobrescrito)
-            eq(schema.conversations.firstResolvedBy, agent.id),
-            // Fallback para conversas antigas sem first_resolved_by
-            and(
-              eq(schema.conversations.resolvedBy, agent.id),
-              isNull(schema.conversations.firstResolvedBy)
-            )
-          ),
-          // Usa firstResolvedAt quando disponível, senão resolvedAt
-          or(
-            and(
-              isNotNull(schema.conversations.firstResolvedAt),
-              gte(schema.conversations.firstResolvedAt, startDate),
-              lte(schema.conversations.firstResolvedAt, endDate)
-            ),
-            and(
-              isNull(schema.conversations.firstResolvedAt),
-              isNotNull(schema.conversations.resolvedAt),
-              gte(schema.conversations.resolvedAt, startDate),
-              lte(schema.conversations.resolvedAt, endDate)
-            )
-          )
+          eq(schema.conversations.resolvedBy, agent.id),
+          gte(schema.conversations.resolvedAt, startDate),
+          lte(schema.conversations.resolvedAt, endDate)
         ));
-
-      const totalConversations = conversations.length;
 
       // Se o agente não tem conversas, pula
       if (totalConversations === 0) {
         continue;
       }
 
-      // 🔒 FAIR METRICS: NPS também baseado em first_resolved_by
+      // NPS baseado em conversas atuais resolvidas pelo agente
       const feedbacks = await db.select({
         feedback: schema.satisfactionFeedback,
       })
@@ -5312,26 +5303,9 @@ export class DbStorage implements IStorage {
         .innerJoin(schema.conversations, eq(schema.satisfactionFeedback.conversationId, schema.conversations.id))
         .where(and(
           eq(schema.conversations.status, 'resolved'),
-          or(
-            eq(schema.conversations.firstResolvedBy, agent.id),
-            and(
-              eq(schema.conversations.resolvedBy, agent.id),
-              isNull(schema.conversations.firstResolvedBy)
-            )
-          ),
-          or(
-            and(
-              isNotNull(schema.conversations.firstResolvedAt),
-              gte(schema.conversations.firstResolvedAt, startDate),
-              lte(schema.conversations.firstResolvedAt, endDate)
-            ),
-            and(
-              isNull(schema.conversations.firstResolvedAt),
-              isNotNull(schema.conversations.resolvedAt),
-              gte(schema.conversations.resolvedAt, startDate),
-              lte(schema.conversations.resolvedAt, endDate)
-            )
-          )
+          eq(schema.conversations.resolvedBy, agent.id),
+          gte(schema.conversations.resolvedAt, startDate),
+          lte(schema.conversations.resolvedAt, endDate)
         ));
 
       // Calcula NPS médio
