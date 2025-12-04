@@ -17,6 +17,7 @@ import { storage } from './storage';
 import { checkAndNotifyMassiveFailure } from './lib/massive-failure-handler';
 import { ContextMonitor } from './lib/context-monitor';
 import { extractNumberFromChatId } from './lib/phone-utils';
+import { extractCPFFromHistory, injectCPFContext } from './lib/cpf-context-injector';
 
 // Helper function to validate and normalize Evolution API instance
 // Supported instances: "Cobranca", "Principal", "Leads"
@@ -805,6 +806,23 @@ if (redisConnection) {
           await installationPointManager.deleteMenu(conversationId);
           // Permitir que IA processe (fallback)
         }
+      }
+
+      // 8. ✅ INJETAR CONTEXTO DE CPF (LGPD Compliance)
+      // Extrair CPF do histórico e injetar para evitar que IA peça novamente
+      try {
+        const historyMessages = await storage.getMessagesByConversationId(conversationId);
+        const cpfFromHistory = extractCPFFromHistory(
+          historyMessages.map(m => ({ content: m.content, role: m.role as 'user' | 'assistant' }))
+        );
+        
+        if (cpfFromHistory) {
+          enhancedMessage = injectCPFContext(enhancedMessage, cpfFromHistory, conversation.assistantType);
+          console.log(`✅ [Worker] CPF injetado no contexto para assistente ${conversation.assistantType}`);
+        }
+      } catch (cpfError) {
+        console.warn(`⚠️ [Worker] Erro ao injetar CPF:`, cpfError);
+        // Não falhar o processamento - continuar normalmente
       }
 
       // 8. Send message to OpenAI and get response
