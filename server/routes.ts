@@ -4257,21 +4257,31 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
             const { conversations } = await import("@shared/schema");
             const { eq } = await import("drizzle-orm");
 
-            const newMetadata = {
+            // ✅ BUG FIX: Usar resolveConversation com resolvedBy do admin que executou
+            const currentUser = req.user!;
+            const existingMetadata = conv.metadata && typeof conv.metadata === 'object' 
+              ? conv.metadata as Record<string, any>
+              : {};
+            
+            await storage.resolveConversation({
+              conversationId: conv.id,
+              resolvedBy: currentUser.userId, // ✅ AGORA preenche o resolvedBy
+              resolvedAt: new Date(),
               autoClosed: true,
               autoClosedReason: 'admin_abandoned_cleanup',
-              autoClosedAt: new Date().toISOString(),
-              minutesInactiveWhenClosed: minutesInactive,
-              npsSent: true,
-              npsScheduledAt: new Date().toISOString(),
-            };
-
-            await db.update(conversations)
-              .set({
-                status: 'resolved',
-                metadata: sql`COALESCE(metadata, '{}'::jsonb) || ${JSON.stringify(newMetadata)}::jsonb`,
-              })
-              .where(eq(conversations.id, conv.id));
+              autoClosedAt: new Date(),
+              createActivityLog: true,
+              activityLogDetails: {
+                clientName: conv.clientName || 'Cliente',
+                assistantType: conv.assistantType,
+              },
+              metadata: {
+                ...existingMetadata,
+                minutesInactiveWhenClosed: minutesInactive,
+                npsSent: true,
+                npsScheduledAt: new Date().toISOString(),
+              },
+            });
 
             // 2. Enviar mensagem de encerramento (opcional - descomente se quiser)
             // const closureMessage = `A conversa foi encerrada por inatividade. Se precisar de ajuda, é só chamar novamente! 😊`;
@@ -5147,13 +5157,22 @@ Digite um número de 0 (muito insatisfeito) a 10 (muito satisfeito)`;
           const currentMetadata = conversation.metadata as any || {};
           const isWhatsApp = currentMetadata?.source === 'evolution_api';
 
-          // Atualizar status da conversa
-          await storage.updateConversation(conversation.id, {
-            status: "resolved",
+          // ✅ BUG FIX: Usar resolveConversation para preencher resolvedBy corretamente
+          const currentUser = req.user!;
+          await storage.resolveConversation({
+            conversationId: conversation.id,
+            resolvedBy: currentUser.userId, // ✅ AGORA preenche o resolvedBy
             resolvedAt: new Date(),
-            assignedTo: null,
-            transferredToHuman: false,
-            metadata: isWhatsApp ? { ...currentMetadata, awaitingNPS: true } : currentMetadata,
+            createActivityLog: true,
+            activityLogDetails: {
+              clientName: conversation.clientName || 'Cliente',
+              assistantType: conversation.assistantType,
+            },
+            additionalUpdates: {
+              assignedTo: null,
+              transferredToHuman: false,
+            },
+            metadata: isWhatsApp ? { ...currentMetadata, awaitingNPS: true, bulkResolved: true } : { ...currentMetadata, bulkResolved: true },
           });
 
           // Criar evento de aprendizado
