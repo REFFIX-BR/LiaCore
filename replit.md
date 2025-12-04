@@ -10,6 +10,7 @@ Preferred communication style: Simple, everyday language.
 - **Gabriele Bernardes Case - FIXED**: IA Comercial agora reconhece cliente EXISTENTE consultando plano (ex: "qual meu plano?") e chama `consultar_plano_cliente(cpf)` via API em vez de oferecer novos planos. Elimina loops infinitos.
 - **Commercial AI Optimized v2.0.1**: Adicionado suporte a consulta de planos existentes via API TR Telecom.
 - **Flaviana Magalhaes Case - FIXED v1.1**: IA Suporte agora TRANSFERE para atendente humano quando cliente precisa de técnico, informando claramente "o atendente vai abrir a OS e um técnico virá". Expandido de 82 para 300+ linhas com: escala de urgência (24h+=URGENTE), casos especiais, perguntas diagnósticas, tratamento de frustrações.
+- **Financial AI Optimized v1.1**: Reduzido de 444 para 310 linhas (removido redundâncias), adicionado escalas de urgência (24h+=URGENTE), casos especiais (contestação, débito antigo, divergência), perguntas diagnósticas, contexto detalhado em transferências, limite de desbloqueios (1/7 dias), tratamento de frustrações. Nota esperada 8.5/10.
 
 ## System Architecture
 ### UI/UX Decisions
