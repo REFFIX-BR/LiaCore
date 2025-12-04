@@ -1102,7 +1102,8 @@ export async function abrirTicketCRM(
   motivo: string,
   conversationContext: { conversationId: string },
   storage: IStorage,
-  comprovante_url?: string
+  comprovante_url?: string,
+  clientDocument?: string  // LGPD: CPF extraído do histórico (opcional)
 ): Promise<AbrirTicketResult> {
   try {
     // Validação de segurança OBRIGATÓRIA
@@ -1118,11 +1119,16 @@ export async function abrirTicketCRM(
       throw new Error("Conversa não encontrada - contexto de segurança inválido");
     }
 
-    // CRÍTICO: clientDocument deve existir OBRIGATORIAMENTE
-    if (!conversation.clientDocument) {
-      console.error(`❌ [AI Tool Security] Tentativa de abrir ticket sem documento do cliente armazenado`);
+    // LGPD Compliance: usar CPF fornecido como parâmetro ou buscar do banco
+    const documentoCliente = clientDocument || conversation.clientDocument;
+    
+    // CRÍTICO: documento deve existir OBRIGATORIAMENTE
+    if (!documentoCliente) {
+      console.error(`❌ [AI Tool Security] Tentativa de abrir ticket sem documento do cliente`);
       throw new Error("Não é possível abrir ticket sem o CPF ou CNPJ do cliente. Por favor, solicite o documento ao cliente primeiro usando: 'Para finalizar e registrar seu atendimento, preciso do seu CPF ou CNPJ.'");
     }
+    
+    console.log(`🎫 [AI Tool] Documento do cliente: ***.***.***-${documentoCliente.slice(-2)} (fonte: ${clientDocument ? 'parâmetro' : 'banco'})`);
 
     // Validação de setor/motivo ANTES de enviar ao webhook
     const validacao = validarSetorMotivo(setor, motivo);
@@ -1150,7 +1156,7 @@ export async function abrirTicketCRM(
     const resultado = await fetchWithRetry<AbrirTicketResult[]>(
       "https://webhook.trtelecom.net/webhook/abrir_ticket",
       {
-        documento: conversation.clientDocument,
+        documento: documentoCliente,  // LGPD: usar documento fornecido ou extraído
         resumo: resumoCompleto,
         setor: setor.toUpperCase(),
         motivo: motivo.toUpperCase(),

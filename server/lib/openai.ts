@@ -2872,7 +2872,28 @@ Fonte: ${fonte}`;
           
           console.log(`🎫 [AI Tool Handler] Conversa encontrada. clientDocument: ${conversationTicket.clientDocument ? 'SIM' : 'NÃO'}`);
           
-          if (!conversationTicket.clientDocument) {
+          // LGPD Compliance: Tentar extrair CPF do histórico se não estiver no banco
+          let clientDocumentTicket = conversationTicket.clientDocument;
+          
+          if (!clientDocumentTicket) {
+            console.log(`🔍 [AI Tool Handler] CPF não encontrado no banco, buscando no histórico...`);
+            
+            // Buscar mensagens da conversa
+            const messagesForCPF = await storageTicket.getRecentMessagesByConversationId(conversationId, 50);
+            const { extractCPFFromHistory } = await import("./cpf-context-injector");
+            
+            const extractedCPF = extractCPFFromHistory(messagesForCPF.map((m: { content: string; role: string }) => ({
+              content: m.content,
+              role: m.role as 'user' | 'assistant'
+            })));
+            
+            if (extractedCPF) {
+              clientDocumentTicket = extractedCPF;
+              console.log(`✅ [AI Tool Handler] CPF extraído do histórico: ***.***.***-${extractedCPF.slice(-2)}`);
+            }
+          }
+          
+          if (!clientDocumentTicket) {
             console.warn("⚠️ [AI Tool] Cliente ainda não forneceu CPF/CNPJ");
             return JSON.stringify({
               error: "Para abrir um ticket, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
@@ -2913,16 +2934,17 @@ Fonte: ${fonte}`;
             }
           }
           
-          console.log(`🎫 [AI Tool Handler] Chamando abrirTicketCRM...`, { setor: setorTicket, motivo: motivoTicket, comprovanteUrl: imageUrl ? 'SIM' : 'NÃO' });
+          console.log(`🎫 [AI Tool Handler] Chamando abrirTicketCRM...`, { setor: setorTicket, motivo: motivoTicket, comprovanteUrl: imageUrl ? 'SIM' : 'NÃO', cpfExtraido: !!clientDocumentTicket });
           
-          // Chamar função de abertura de ticket COM link do comprovante
+          // Chamar função de abertura de ticket COM link do comprovante E CPF extraído (LGPD)
           const resultado = await abrirTicketCRM(
             resumoTicket,
             setorTicket,
             motivoTicket,
             { conversationId },
             storageTicket,
-            imageUrl  // ← AGORA PASSA O LINK DO COMPROVANTE!
+            imageUrl,           // ← LINK DO COMPROVANTE
+            clientDocumentTicket // ← CPF EXTRAÍDO DO HISTÓRICO (LGPD)
           );
           
           // Extrair protocolo da resposta
