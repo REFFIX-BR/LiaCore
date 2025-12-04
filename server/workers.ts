@@ -501,6 +501,7 @@ if (redisConnection) {
 
       // 3.5 MASSIVE FAILURE DETECTION - Check for active failures affecting this client
       let multiplePointsContext = '';
+      let massiveFailureContext = '';
       try {
         // LGPD Compliance: Extrair CPF do histórico se não estiver no banco
         let cpfForFailureCheck: string | null | undefined = conversation.clientDocument;
@@ -527,6 +528,14 @@ if (redisConnection) {
           console.log(`✅ [Massive Failure] Cliente ACABOU de ser notificado - IA continua atendimento`);
         } else if (failureResult.alreadyNotified) {
           console.log(`✅ [Massive Failure] Cliente JÁ foi notificado anteriormente - IA continua atendimento`);
+        }
+
+        // ✅ INJETAR CONTEXTO DE FALHA MASSIVA PARA IA
+        // Se há falha massiva ativa na região, informar a IA para que ela saiba e possa orientar o cliente
+        if (failureResult.hasActiveFailure && failureResult.failureInfo) {
+          console.log(`🚨 [Massive Failure Context] Injetando contexto de falha massiva para IA: ${failureResult.failureInfo.name}`);
+          
+          massiveFailureContext = `\n\n---\n[⚠️ FALHA MASSIVA ATIVA - INFORMAR AO CLIENTE]\nHá uma falha massiva na região do cliente:\n- **Nome:** ${failureResult.failureInfo.name}\n- **Áreas afetadas:** ${failureResult.failureInfo.affectedAreas}\n${failureResult.failureInfo.estimatedResolution ? `- **Previsão de resolução:** ${failureResult.failureInfo.estimatedResolution}` : ''}\n\n**AÇÃO OBRIGATÓRIA:**\n- ✅ INFORME ao cliente que há uma falha massiva na região dele\n- ✅ Diga que a equipe técnica já está trabalhando para resolver\n- ✅ NÃO faça diagnóstico individual (reiniciar modem, etc.) - o problema é na rede\n- ✅ Ofereça transferir para humano se cliente solicitar acompanhamento\n---\n`;
         }
 
         // NUNCA bloquear processamento - apenas notificar UMA VEZ e continuar
@@ -709,6 +718,12 @@ if (redisConnection) {
         console.log(`🔀 [Worker] Contexto de múltiplos pontos injetado na mensagem (assistente: ${conversation.assistantType})`);
       } else if (multiplePointsContext) {
         console.log(`⏭️  [Worker] Contexto de múltiplos pontos NÃO injetado - assistente ${conversation.assistantType} não precisa`);
+      }
+
+      // 7.5.1. Injetar contexto de falha massiva para IA de suporte saber e informar ao cliente
+      if (massiveFailureContext && conversation.assistantType === 'suporte') {
+        enhancedMessage = enhancedMessage + massiveFailureContext;
+        console.log(`🚨 [Worker] Contexto de falha massiva injetado na mensagem para IA de suporte`);
       }
 
       // 7.6. 🆕 INTERCEPTOR: Verificar se está aguardando seleção de ponto de instalação

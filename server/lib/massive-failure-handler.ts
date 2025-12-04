@@ -152,6 +152,12 @@ export interface MassiveFailureCheckResult {
   justNotified: boolean; // Acabou de notificar AGORA (primeira vez)
   alreadyNotified: boolean; // Cliente já foi notificado ANTES
   needsPointSelection: boolean;
+  hasActiveFailure: boolean; // Se há falha massiva ativa afetando o cliente
+  failureInfo?: { // Informação sobre a falha para contexto da IA
+    name: string;
+    affectedAreas: string;
+    estimatedResolution?: string;
+  };
 }
 
 /**
@@ -174,7 +180,7 @@ export async function checkAndNotifyMassiveFailure(
   
   if (!cpfCnpj) {
     console.log("⚠️ [Massive Failure] CPF/CNPJ não disponível, pulando verificação");
-    return { hasMultiplePoints: false, justNotified: false, alreadyNotified: false, needsPointSelection: false };
+    return { hasMultiplePoints: false, justNotified: false, alreadyNotified: false, needsPointSelection: false, hasActiveFailure: false };
   }
 
   // 1. Consultar CRM para obter pontos de instalação
@@ -182,7 +188,7 @@ export async function checkAndNotifyMassiveFailure(
   
   if (!points || points.length === 0) {
     console.log("⚠️ [Massive Failure] Nenhum ponto de instalação encontrado");
-    return { hasMultiplePoints: false, justNotified: false, alreadyNotified: false, needsPointSelection: false };
+    return { hasMultiplePoints: false, justNotified: false, alreadyNotified: false, needsPointSelection: false, hasActiveFailure: false };
   }
 
   // 2. Verificar falhas massivas em TODOS os pontos de instalação
@@ -208,10 +214,11 @@ export async function checkAndNotifyMassiveFailure(
         justNotified: false,
         alreadyNotified: false,
         needsPointSelection: true,
+        hasActiveFailure: false,
       };
     }
     
-    return { hasMultiplePoints: false, justNotified: false, alreadyNotified: false, needsPointSelection: false };
+    return { hasMultiplePoints: false, justNotified: false, alreadyNotified: false, needsPointSelection: false, hasActiveFailure: false };
   }
 
   // 4. Há falha(s) massiva(s) em um ou mais pontos
@@ -230,6 +237,14 @@ export async function checkAndNotifyMassiveFailure(
     }
   }
 
+  // Preparar informação da falha para contexto da IA
+  const firstFailure = pointsWithFailures[0].failure;
+  const failureInfo = {
+    name: firstFailure.name,
+    affectedAreas: pointsWithFailures.map(pf => `${pf.point.bairro}, ${pf.point.cidade}`).join('; '),
+    estimatedResolution: firstFailure.estimatedResolution || undefined,
+  };
+
   if (alreadyNotified) {
     console.log(`✅ [Massive Failure] Cliente já notificado - IA continua atendimento normalmente`);
     // Ainda retornar múltiplos pontos se aplicável para contexto da IA
@@ -240,9 +255,11 @@ export async function checkAndNotifyMassiveFailure(
         justNotified: false,
         alreadyNotified: true,
         needsPointSelection: true,
+        hasActiveFailure: true,
+        failureInfo,
       };
     }
-    return { hasMultiplePoints: false, justNotified: false, alreadyNotified: true, needsPointSelection: false };
+    return { hasMultiplePoints: false, justNotified: false, alreadyNotified: true, needsPointSelection: false, hasActiveFailure: true, failureInfo };
   }
 
   // 6. Montar mensagem de notificação considerando múltiplos pontos
@@ -278,7 +295,7 @@ export async function checkAndNotifyMassiveFailure(
 
   if (!messageSent.success) {
     console.error(`❌ [Massive Failure] Falha ao enviar mensagem de notificação para ${clientPhone}`);
-    return { hasMultiplePoints: points.length > 1, points, justNotified: false, alreadyNotified: false, needsPointSelection: points.length > 1 };
+    return { hasMultiplePoints: points.length > 1, points, justNotified: false, alreadyNotified: false, needsPointSelection: points.length > 1, hasActiveFailure: true, failureInfo };
   }
 
   console.log(`✅ [Massive Failure] Mensagem de notificação enviada para ${clientPhone}`);
@@ -308,6 +325,8 @@ export async function checkAndNotifyMassiveFailure(
     points, 
     justNotified: true, 
     alreadyNotified: false,
-    needsPointSelection: points.length > 1 
+    needsPointSelection: points.length > 1,
+    hasActiveFailure: true,
+    failureInfo,
   };
 }

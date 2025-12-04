@@ -12,8 +12,8 @@ interface MessageWithContent {
  * Extrai CPF válido do histórico de mensagens (busca do mais recente para o mais antigo)
  */
 export function extractCPFFromHistory(messages: MessageWithContent[]): string | null {
-  // Regex para CPF: XXX.XXX.XXX-XX ou XXXXXXXXXXX
-  const cpfRegex = /(\d{3})[.\-]?(\d{3})[.\-]?(\d{3})[.\-]?(\d{2})/g;
+  // Regex para CPF: XXX.XXX.XXX-XX ou XXXXXXXXXXX ou XXX XXX XXX XX (com espaços)
+  const cpfRegex = /(\d{3})[\s.\-]?(\d{3})[\s.\-]?(\d{3})[\s.\-]?(\d{2})/g;
   
   // Buscar do MAIS RECENTE para o MAIS ANTIGO
   for (let i = messages.length - 1; i >= 0; i--) {
