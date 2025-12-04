@@ -502,10 +502,22 @@ if (redisConnection) {
       // 3.5 MASSIVE FAILURE DETECTION - Check for active failures affecting this client
       let multiplePointsContext = '';
       try {
+        // LGPD Compliance: Extrair CPF do histórico se não estiver no banco
+        let cpfForFailureCheck: string | null | undefined = conversation.clientDocument;
+        if (!cpfForFailureCheck) {
+          const historyForCpf = await storage.getMessagesByConversationId(conversationId);
+          cpfForFailureCheck = extractCPFFromHistory(
+            historyForCpf.map(m => ({ content: m.content, role: m.role as 'user' | 'assistant' }))
+          );
+          if (cpfForFailureCheck) {
+            console.log(`✅ [Massive Failure] CPF extraído do histórico: ${cpfForFailureCheck.substring(0, 3)}...`);
+          }
+        }
+        
         const failureResult = await checkAndNotifyMassiveFailure(
           conversationId,
           fromNumber,
-          conversation.clientDocument,
+          cpfForFailureCheck,
           evolutionInstance || 'Principal',
           sendWhatsAppMessage
         );
