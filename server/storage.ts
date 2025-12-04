@@ -3057,9 +3057,10 @@ export class DbStorage implements IStorage {
           inArray(schema.conversations.status, ['active', 'queued'])
         ));
 
+      // ✅ FIX: Usar resolvedBy (quem finalizou) ao invés de assignedTo (atribuição pode ser limpa ao resolver)
       const finishedToday = await db.select().from(schema.conversations)
         .where(and(
-          eq(schema.conversations.assignedTo, agent.id),
+          eq(schema.conversations.resolvedBy, agent.id),
           eq(schema.conversations.status, 'resolved'),
           gte(schema.conversations.resolvedAt, today)
         ));
