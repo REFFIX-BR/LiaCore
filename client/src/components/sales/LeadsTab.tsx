@@ -71,12 +71,14 @@ type Lead = {
 
 const LEAD_STATUS_OPTIONS = [
   "Prospecção",
+  "Cliente",
   "Cancelado",
   "Lead Sem Cobertura"
 ];
 
 const STATUS_COLORS: Record<string, string> = {
   "Prospecção": "bg-blue-500",
+  "Cliente": "bg-green-500",
   "Aguardando Análise": "bg-yellow-500",
   "Aprovado": "bg-green-500",
   "Cancelado": "bg-red-500",
