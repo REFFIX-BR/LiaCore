@@ -9,6 +9,7 @@ Preferred communication style: Simple, everyday language.
 ## Recent Fixes
 - **Gabriele Bernardes Case - FIXED**: IA Comercial agora reconhece cliente EXISTENTE consultando plano (ex: "qual meu plano?") e chama `consultar_plano_cliente(cpf)` via API em vez de oferecer novos planos. Elimina loops infinitos.
 - **Commercial AI Optimized v2.0.1**: Adicionado suporte a consulta de planos existentes via API TR Telecom.
+- **Flaviana Magalhaes Case - FIXED**: IA Suporte agora abre Ordem de Serviço (abrir_ticket_crm) quando cliente precisa de técnico, e SEMPRE informa protocolo + data/hora ao cliente. Nunca mais abandona cliente frustrado.
 
 ## System Architecture
 ### UI/UX Decisions
