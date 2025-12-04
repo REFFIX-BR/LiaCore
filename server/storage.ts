@@ -2958,28 +2958,40 @@ export class DbStorage implements IStorage {
         eq(schema.conversations.status, 'active')
       ));
 
-    // Conversas finalizadas no período (resolvidas pelo agente)
-    const finishedInPeriod = await db.select().from(schema.conversations)
+    // ✅ FIX: Usar activity_logs para contar CADA fechamento (igual à gamificação)
+    // Cada ação de fechamento conta, mesmo se a conversa for reaberta depois
+    const finishedInPeriod = await db.select().from(schema.activityLogs)
       .where(and(
-        eq(schema.conversations.resolvedBy, userId),
-        eq(schema.conversations.status, 'resolved'),
-        gte(schema.conversations.resolvedAt, periodStart)
+        eq(schema.activityLogs.userId, userId),
+        eq(schema.activityLogs.action, 'resolve_conversation'),
+        gte(schema.activityLogs.createdAt, periodStart)
       ));
 
     // Calcular TMA (Tempo Médio de Atendimento) para conversas finalizadas no período
+    // Buscar as conversas únicas a partir dos logs de fechamento
     let avgResponseTime = 0;
-    const conversationsWithTime = finishedInPeriod.filter(c => 
-      c.createdAt && c.resolvedAt && c.resolvedAt > c.createdAt
-    );
+    const conversationIds = finishedInPeriod
+      .filter(log => log.conversationId)
+      .map(log => log.conversationId as string);
     
-    if (conversationsWithTime.length > 0) {
-      const totalTime = conversationsWithTime.reduce((sum, c) => {
-        const startTime = new Date(c.createdAt!).getTime();
-        const endTime = new Date(c.resolvedAt!).getTime();
-        const diffInSeconds = Math.floor((endTime - startTime) / 1000);
-        return sum + diffInSeconds;
-      }, 0);
-      avgResponseTime = Math.floor(totalTime / conversationsWithTime.length);
+    if (conversationIds.length > 0) {
+      const uniqueIds = [...new Set(conversationIds)];
+      const conversations = await db.select().from(schema.conversations)
+        .where(sql`${schema.conversations.id} IN (${sql.join(uniqueIds.map(id => sql`${id}`), sql`, `)})`);
+      
+      const conversationsWithTime = conversations.filter(c => 
+        c.createdAt && c.resolvedAt && c.resolvedAt > c.createdAt
+      );
+      
+      if (conversationsWithTime.length > 0) {
+        const totalTime = conversationsWithTime.reduce((sum, c) => {
+          const startTime = new Date(c.createdAt!).getTime();
+          const endTime = new Date(c.resolvedAt!).getTime();
+          const diffInSeconds = Math.floor((endTime - startTime) / 1000);
+          return sum + diffInSeconds;
+        }, 0);
+        avgResponseTime = Math.floor(totalTime / conversationsWithTime.length);
+      }
     }
 
     // NPS pessoal (últimas 30 conversas resolvidas pelo agente)
@@ -3057,12 +3069,13 @@ export class DbStorage implements IStorage {
           inArray(schema.conversations.status, ['active', 'queued'])
         ));
 
-      // ✅ FIX: Usar resolvedBy (quem finalizou) ao invés de assignedTo (atribuição pode ser limpa ao resolver)
-      const finishedToday = await db.select().from(schema.conversations)
+      // ✅ FIX: Usar activity_logs para contar CADA fechamento (igual à gamificação)
+      // Cada ação de fechamento conta, mesmo se a conversa for reaberta depois
+      const finishedToday = await db.select().from(schema.activityLogs)
         .where(and(
-          eq(schema.conversations.resolvedBy, agent.id),
-          eq(schema.conversations.status, 'resolved'),
-          gte(schema.conversations.resolvedAt, today)
+          eq(schema.activityLogs.userId, agent.id),
+          eq(schema.activityLogs.action, 'resolve_conversation'),
+          gte(schema.activityLogs.createdAt, today)
         ));
 
       return {
