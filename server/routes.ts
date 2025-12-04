@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertConversationSchema, insertMessageSchema, insertAlertSchema, insertSupervisorActionSchema, insertLearningEventSchema, insertPromptSuggestionSchema, insertPromptUpdateSchema, insertSatisfactionFeedbackSchema, loginSchema, insertUserSchema, updateUserSchema, insertComplaintSchema, updateComplaintSchema, insertPlanSchema, updatePlanSchema, insertSaleSchema, updateGamificationSettingsSchema, type Conversation } from "@shared/schema";
 import { routeMessage, createThread, sendMessageAndGetResponse, summarizeConversation, routeMessageWithContext, CONTEXT_CONFIG } from "./lib/openai";
+import { extractCPFFromHistory, injectCPFContext } from "./lib/cpf-context-injector";
 import { z } from "zod";
 import { storeConversationThread, getConversationThread, searchKnowledge } from "./lib/upstash";
 import { RedisCache } from "./lib/redis-config";
@@ -1208,8 +1209,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: "Thread ID not found" });
       }
 
+      // 🔐 CPF CONTEXT INJECTOR - Injetar CPF do histórico para assistentes financeiro/suporte
+      let messageToSend = processedMessage;
+      if (conversation.assistantType === 'financeiro' || conversation.assistantType === 'suporte') {
+        try {
+          // Buscar mensagens anteriores da conversa
+          const previousMessages = await storage.getMessagesByConversationId(conversation.id);
+          const messagesForExtraction = previousMessages.slice(-50).map((m: { content: string; role: string }) => ({
+            content: m.content,
+            role: m.role as 'user' | 'assistant'
+          }));
+          
+          // Extrair CPF do histórico
+          const extractedCPF = extractCPFFromHistory(messagesForExtraction);
+          
+          // Injetar contexto se CPF encontrado
+          if (extractedCPF) {
+            messageToSend = injectCPFContext(processedMessage, extractedCPF, conversation.assistantType);
+            console.log(`✅ [Test Chat] CPF injetado no contexto para assistente ${conversation.assistantType}`);
+          }
+        } catch (error) {
+          console.error(`⚠️ [Test Chat] Erro ao injetar CPF:`, error);
+        }
+      }
+
       const assistantId = (conversation.metadata as any)?.routing?.assistantId;
-      const result = await sendMessageAndGetResponse(threadId, assistantId, processedMessage, chatId, conversation.id);
+      const result = await sendMessageAndGetResponse(threadId, assistantId, messageToSend, chatId, conversation.id);
 
       // Store assistant response (ensure it's always a string)
       const responseText = typeof result.response === 'string' 
