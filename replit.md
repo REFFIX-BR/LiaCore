@@ -6,6 +6,10 @@ LIA CORTEX is an enterprise-grade AI middleware orchestration platform designed 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Fixes
+- **Gabriele Bernardes Case - FIXED**: IA Comercial agora reconhece cliente EXISTENTE consultando plano (ex: "qual meu plano?") e chama `consultar_plano_cliente(cpf)` via API em vez de oferecer novos planos. Elimina loops infinitos.
+- **Commercial AI Optimized v2.0.1**: Adicionado suporte a consulta de planos existentes via API TR Telecom.
+
 ## System Architecture
 ### UI/UX Decisions
 The frontend, built with React, TypeScript, Vite, `shadcn/ui`, and Tailwind CSS, draws inspiration from Carbon Design System and Linear, supporting both dark and light modes. Key features include color-coded wait times, enhanced complaint descriptions, private note dialogs, new contact creation, conversation reopening, and comprehensive activity logs. Dashboards provide KPIs and CRUD interfaces for sales and plans management. The chat interface supports message pagination, auto-scroll, auto-focus, and inline PDF viewing. The agent conversation interface offers flexible layout modes, with preferences persisted locally.
