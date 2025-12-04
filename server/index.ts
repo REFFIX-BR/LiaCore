@@ -196,7 +196,10 @@ app.use((req, res, next) => {
             console.log('   Falling back to async processing');
           });
           
-          // Start voice workers (always start - they log their own initialization)
+          // 🔴 DESATIVADO: Voice/Cobrança workers - instância Cobrança desativada
+          // Para reativar, descomente o bloco abaixo
+          console.log('⏸️  [Voice Workers] Módulo de cobrança DESATIVADO - workers não iniciados');
+          /*
           import('./modules/voice/workers').then(() => {
             console.log('✅ [Voice Workers] Voice module workers initialized with Redis');
           }).catch((error) => {
@@ -204,6 +207,7 @@ app.use((req, res, next) => {
             console.error('   Error details:', error);
             console.log('   Voice module will be disabled');
           });
+          */
         })();
       }
     });
