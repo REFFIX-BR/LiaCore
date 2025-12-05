@@ -413,9 +413,10 @@ export async function consultaBoletoCliente(
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, ''); // Remove acentos
       
-      // Lista de STATUS que indicam boleto FECHADO/PAGO (não em aberto)
-      // "EM DIA" = cliente está em dia, sem débitos pendentes
-      const statusFechados = ['PAGO', 'CANCELADO', 'QUITADO', 'LIQUIDADO', 'BAIXADO', 'EM DIA'];
+      // Lista de STATUS que indicam boleto REALMENTE PAGO/QUITADO (não enviar)
+      // IMPORTANTE: "EM DIA" = boleto a vencer, DEVE ser enviado!
+      // Boletos são gerados anualmente por humanos - cliente precisa receber mesmo antes do vencimento
+      const statusFechados = ['PAGO', 'CANCELADO', 'QUITADO', 'LIQUIDADO', 'BAIXADO'];
       
       // Tratar STATUS vazio como potencialmente problemático - logar
       if (!statusNormalizado) {
