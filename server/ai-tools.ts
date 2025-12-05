@@ -414,7 +414,8 @@ export async function consultaBoletoCliente(
         .replace(/[\u0300-\u036f]/g, ''); // Remove acentos
       
       // Lista de STATUS que indicam boleto FECHADO/PAGO (não em aberto)
-      const statusFechados = ['PAGO', 'CANCELADO', 'QUITADO', 'LIQUIDADO', 'BAIXADO'];
+      // "EM DIA" = cliente está em dia, sem débitos pendentes
+      const statusFechados = ['PAGO', 'CANCELADO', 'QUITADO', 'LIQUIDADO', 'BAIXADO', 'EM DIA'];
       
       // Tratar STATUS vazio como potencialmente problemático - logar
       if (!statusNormalizado) {
