@@ -914,9 +914,10 @@ const SETOR_MOTIVO_MAP: Record<string, string[]> = {
 /**
  * Valida se a combinação setor/motivo é válida
  */
-function validarSetorMotivo(setor: string, motivo: string): { valido: boolean; erro?: string } {
+function validarSetorMotivo(setor: string, motivo: string): { valido: boolean; erro?: string; motivoNormalizado?: string } {
   const setorUpper = setor.toUpperCase();
-  const motivoUpper = motivo.toUpperCase();
+  // Normalizar motivo: substituir underscores por espaços (IA às vezes usa INFORMAR_PAGAMENTO ao invés de INFORMAR PAGAMENTO)
+  const motivoNormalizado = motivo.toUpperCase().replace(/_/g, ' ');
   
   // Verifica se setor existe
   if (!SETOR_MOTIVO_MAP[setorUpper]) {
@@ -929,14 +930,14 @@ function validarSetorMotivo(setor: string, motivo: string): { valido: boolean; e
   
   // Verifica se motivo é compatível com o setor
   const motivosValidos = SETOR_MOTIVO_MAP[setorUpper];
-  if (!motivosValidos.includes(motivoUpper)) {
+  if (!motivosValidos.includes(motivoNormalizado)) {
     return {
       valido: false,
       erro: `Motivo "${motivo}" não é compatível com setor "${setor}". Motivos válidos para ${setor}: ${motivosValidos.join(", ")}`
     };
   }
   
-  return { valido: true };
+  return { valido: true, motivoNormalizado };
 }
 
 /**
@@ -1138,6 +1139,9 @@ export async function abrirTicketCRM(
       console.error(`❌ [AI Tool] Combinação setor/motivo inválida: ${validacao.erro}`);
       throw new Error(validacao.erro);
     }
+    
+    // Usar motivo normalizado (underscores convertidos para espaços)
+    const motivoFinal = validacao.motivoNormalizado || motivo.toUpperCase();
 
     // Extrair número de telefone do chatId (ex: "whatsapp_5522997074180" ou "5522997074180")
     let phoneNumber = conversation.chatId;
@@ -1153,7 +1157,7 @@ export async function abrirTicketCRM(
       console.log(`📎 [AI Tool] Link do comprovante incluído no ticket`);
     }
 
-    console.log(`🎫 [AI Tool] Abrindo ticket no CRM (conversação: ${conversationContext.conversationId}, setor: ${setor}, motivo: ${motivo}, telefone: ${phoneNumber})`);
+    console.log(`🎫 [AI Tool] Abrindo ticket no CRM (conversação: ${conversationContext.conversationId}, setor: ${setor}, motivo: ${motivoFinal}, telefone: ${phoneNumber})`);
 
     const resultado = await fetchWithRetry<AbrirTicketResult[]>(
       "https://webhook.trtelecom.net/webhook/abrir_ticket",
@@ -1161,7 +1165,7 @@ export async function abrirTicketCRM(
         documento: documentoCliente,  // LGPD: usar documento fornecido ou extraído
         resumo: resumoCompleto,
         setor: setor.toUpperCase(),
-        motivo: motivo.toUpperCase(),
+        motivo: motivoFinal,  // Usar motivo normalizado (underscores -> espaços)
         finalizar: "N"  // "N" = ticket fica ABERTO para verificação manual do atendente
       },
       { operationName: "abertura de ticket no CRM" }
