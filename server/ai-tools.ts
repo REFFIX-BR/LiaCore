@@ -773,23 +773,25 @@ export async function solicitarDesbloqueio(
       throw new Error("Conversa não encontrada - contexto de segurança inválido");
     }
 
-    // CRÍTICO: clientDocument deve existir OBRIGATORIAMENTE
-    if (!conversation.clientDocument) {
-      console.error(`❌ [AI Tool Security] Tentativa de desbloqueio sem documento do cliente armazenado`);
+    // LGPD: documento é passado pelo handler (extraído do histórico ou do banco)
+    // Não verificamos mais clientDocument aqui pois por LGPD pode estar vazio
+    if (!documento) {
+      console.error(`❌ [AI Tool Security] Tentativa de desbloqueio sem documento fornecido`);
       throw new Error("Para solicitar desbloqueio, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento.");
     }
 
-    // CRÍTICO: Validação de documento usando valor do BANCO DE DADOS (fonte confiável)
-    // Normalizar documentos (remover formatação) antes de comparar
+    // Normalizar documento (remover formatação)
     const documentoNormalizado = documento.replace(/\D/g, '');
-    const clientDocumentNormalizado = conversation.clientDocument.replace(/\D/g, '');
     
-    // AUDITORIA: Logar quando cliente consulta CPF diferente do seu (ex: familiar)
-    if (clientDocumentNormalizado !== documentoNormalizado) {
-      console.warn(`⚠️  [AUDIT] Cliente solicitando desbloqueio de CPF diferente - Conversa: ${conversationContext.conversationId}, CPF próprio: ***${clientDocumentNormalizado.slice(-4)}, CPF consultado: ***${documentoNormalizado.slice(-4)}`);
+    // AUDITORIA: Logar quando há clientDocument no banco e é diferente do passado
+    if (conversation.clientDocument) {
+      const clientDocumentNormalizado = conversation.clientDocument.replace(/\D/g, '');
+      if (clientDocumentNormalizado !== documentoNormalizado) {
+        console.warn(`⚠️  [AUDIT] Cliente solicitando desbloqueio de CPF diferente - Conversa: ${conversationContext.conversationId}, CPF próprio: ***${clientDocumentNormalizado.slice(-4)}, CPF consultado: ***${documentoNormalizado.slice(-4)}`);
+      }
     }
 
-    console.log(`🔓 [AI Tool] Solicitando desbloqueio (conversação: ${conversationContext.conversationId})`);
+    console.log(`🔓 [AI Tool] Solicitando desbloqueio (conversação: ${conversationContext.conversationId}, CPF: ***${documentoNormalizado.slice(-4)})`);
 
 
     const resultado = await fetchWithRetry<DesbloqueioResult[]>(

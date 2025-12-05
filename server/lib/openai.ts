@@ -2732,18 +2732,33 @@ Fonte: ${fonte}`;
           
           console.log(`🔓 [AI Tool Handler] Conversa encontrada. clientDocument: ${conversationDesbloqueio.clientDocument ? 'SIM' : 'NÃO'}`);
           
-          if (!conversationDesbloqueio.clientDocument) {
-            console.warn("⚠️ [AI Tool] Cliente ainda não forneceu CPF/CNPJ");
-            return JSON.stringify({
-              error: "Para solicitar desbloqueio, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
-            });
+          let documentoParaDesbloqueio = conversationDesbloqueio.clientDocument;
+          
+          // ESTRATÉGIA LGPD: Se não houver documento no banco, extrair do histórico
+          if (!documentoParaDesbloqueio) {
+            console.log(`🔍 [AI Tool Handler] CPF não no banco (LGPD), tentando extrair do histórico...`);
+            const { extractCPFFromHistory } = await import("./cpf-context-injector");
+            const messagesForDesbloqueio = await storageDesbloqueio.getMessagesByConversationId(conversationId);
+            const cpfExtraidoDesbloqueio = extractCPFFromHistory(
+              messagesForDesbloqueio.map(m => ({ content: m.content, role: m.role as 'user' | 'assistant' }))
+            );
+            
+            if (cpfExtraidoDesbloqueio) {
+              documentoParaDesbloqueio = cpfExtraidoDesbloqueio;
+              console.log(`✅ [AI Tool Handler] CPF extraído do histórico para desbloqueio: ${cpfExtraidoDesbloqueio.slice(0, 3)}...`);
+            } else {
+              console.warn("⚠️ [AI Tool] Cliente ainda não forneceu CPF/CNPJ - não encontrado no histórico");
+              return JSON.stringify({
+                error: "Para solicitar desbloqueio, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
+              });
+            }
           }
           
-          console.log(`🔓 [AI Tool Handler] Chamando solicitarDesbloqueio com documento do banco...`);
+          console.log(`🔓 [AI Tool Handler] Chamando solicitarDesbloqueio com documento...`);
           
           // Chamar diretamente a API real de desbloqueio
           const resultado = await solicitarDesbloqueio(
-            conversationDesbloqueio.clientDocument,
+            documentoParaDesbloqueio,
             { conversationId },
             storageDesbloqueio
           );
