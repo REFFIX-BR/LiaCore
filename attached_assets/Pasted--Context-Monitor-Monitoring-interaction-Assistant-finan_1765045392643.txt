@@ -1,0 +1,767 @@
+🔍 [Context Monitor] Monitoring interaction - Assistant: financeiro, Conversation: 309c179c...
+🔍 [Context Monitor] Analyzing 26 messages for potential issues...
+✅ [Context Monitor] No issues detected - conversation quality is good
+⏰ [Worker] Follow-up de inatividade agendado para daqui a 10 minutos (após resposta da IA)
+✅ [Worker] Message processed successfully
+🔓 [Worker] Chat lock released for whatsapp_5524993243134
+✅ [Worker] Message completed: { jobId: '36320', duration: 12962 }
+🔄 [Worker] Processing message from 5524998729744 {
+  jobId: '36321',
+  idempotencyKey: 'wamid.HBgNNTUyNDk5ODcyOTc0NBUCABIYIEE1NDZBNzk5MjE0QkQ3OTJDQzZEODFEQUQxMzk2MDI0AA==',
+  conversationId: '38a417e3-9efe-47f3-aea1-4ed0b6eceb43',
+  hasImage: true,
+  evolutionInstance: 'Principal'
+}
+🔒 [Worker] Chat lock acquired for whatsapp_5524998729744
+⚙️ [INFO] [worker] Processing message | {"conversationId":"38a417e3-9efe-47f3-aea1-4ed0b6eceb43","fromNumber":"5524998729744","jobId":"36321","hasImage":true}
+✅ [Inactivity] Follow-up cancelado para conversa 38a417e3-9efe-47f3-aea1-4ed0b6eceb43
+✅ [Worker] Follow-up de inatividade e auto-closure cancelados - cliente respondeu
+✅ [CPF Injector] CPF encontrado no histórico: 136.151.395-51
+✅ [Massive Failure] CPF extraído do histórico: 136...
+🔍 [Massive Failure Cache] Cache MISS para CPF 13615139551 - consultando CRM...
+
+🔄 [Message Recovery] Iniciando verificação de mensagens travadas...
+📊 [Message Recovery] Analisando 3 conversas ativas...
+✅ [Message Recovery] Nenhuma mensagem travada encontrada
+
+
+🔄 [Batch Worker] Job disparado para whatsapp_5524993243134
+   Timer esperado: 1765045062110
+   Job ID: batch-whatsapp_5524993243134-1765045062110
+🔍 [Batch Worker] Timer atual: 1765045063037
+⏸️  [Batch Worker] Timer mudou (1765045062110 → 1765045063037) - novo job foi agendado
+⏭️  [Batch Worker] Job batch-whatsapp_5524993243134-1765045062110 ignorado: timer_updated
+
+🔄 [Batch Worker] Job disparado para whatsapp_5524993243134
+   Timer esperado: 1765045063037
+   Job ID: batch-whatsapp_5524993243134-1765045063037
+🔍 [Batch Worker] Timer atual: 1765045063037
+✅ [Batch Worker] Processando 2 mensagem(ns) de whatsapp_5524993243134
+📬 [Batch Worker] 2 mensagem(ns) de texto combinadas e enfileiradas
+✅ [Batch Worker] Job batch-whatsapp_5524993243134-1765045063037 concluído: 2 mensagens processadas
+🔄 [Worker] Processing message from 5524993243134 {
+  jobId: '36322',
+  idempotencyKey: 'wamid.HBgNNTUyNDk5MzI0MzEzNBUCABIYFDNBNjhBRTdBNEIyRjM4RjZCMUU4AA==',
+  conversationId: '309c179c-6cd7-41ae-b7a8-47c010c693b2',
+  hasImage: false,
+  evolutionInstance: 'Principal'
+}
+🔒 [Worker] Chat lock acquired for whatsapp_5524993243134
+⚙️ [INFO] [worker] Processing message | {"conversationId":"309c179c-6cd7-41ae-b7a8-47c010c693b2","fromNumber":"5524993243134","jobId":"36322","hasImage":false}
+✅ [Inactivity] Follow-up cancelado para conversa 309c179c-6cd7-41ae-b7a8-47c010c693b2
+✅ [Worker] Follow-up de inatividade e auto-closure cancelados - cliente respondeu
+✅ [CPF Injector] CPF encontrado no histórico: 078.586.877-19
+✅ [Massive Failure] CPF extraído do histórico: 078...
+🔍 [Massive Failure Cache] Cache MISS para CPF 07858687719 - consultando CRM...
+⚠️ [Installation Points] API retornou resposta vazia para CPF/CNPJ 13615139551
+⚠️ [Massive Failure] Nenhum ponto de instalação encontrado
+🖼️ [Worker] Image detected, analyzing...
+🔗 [Worker] imageUrl é URL S3/MinIO, baixando...
+🔍 [Worker] URL: https://s3.trtelecom.net/evolution/evolution-api/04ab38d6-28c5-4098-9f86-f821893b6b0c/5524998729744%...
+📥 [Vision] Baixando mídia de URL S3/MinIO...
+🔍 [Vision] URL: https://s3.trtelecom.net/evolution/evolution-api/04ab38d6-28c5-4098-9f86-f821893b6b0c/5524998729744%...
+✅ [Vision] Mídia baixada com sucesso de S3 (58880 caracteres base64)
+✅ [Worker] Imagem baixada de S3 via imageUrl (58880 chars, formato: jpeg)
+🔍 [Vision] Analisando imagem com GPT-4o Vision...
+🔍 [Vision] Base64 length: 58903, starts with: data:image/jpeg;base64,/9j/4AA
+🔍 [Vision] Final imageUrl length: 58903, starts with: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD
+🔄 [Worker] Processing message from 5524993243134 {
+  jobId: '36323',
+  idempotencyKey: 'wamid.HBgNNTUyNDk5MzI0MzEzNBUCABIYFDNBMzA2M0IxNTM3MEYyQTQ1MEQ3AA==',
+  conversationId: '309c179c-6cd7-41ae-b7a8-47c010c693b2',
+  hasImage: false,
+  evolutionInstance: 'Principal'
+}
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+📊 [OpenAI Usage] Tracked: 1103 tokens, $0.0082 (gpt-4o)
+✅ [Vision] Análise concluída: O comprovante de pagamento do Mercado Pago mostra as seguintes informações:
+
+- **Data e Hora do Paga...
+✅ [Worker] Vision analysis completed successfully
+
+🔄 [Batch Worker] Job disparado para whatsapp_5524993243134
+   Timer esperado: 1765045076501
+   Job ID: batch-whatsapp_5524993243134-1765045076501
+⚠️ [Storage] Attempted to clear threadId for conversation 38a417e3-9efe-47f3-aea1-4ed0b6eceb43 (current: thread_tOfaZ0z29TZPxPGSHtGNIOrc) - BLOCKED
+   Caller stack trace: Error
+    at DbStorage.updateConversation (/home/runner/workspace/server/storage.ts:2306:48)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Worker.Worker.connection (/home/runner/workspace/server/workers.ts:661:15)
+    at async <anonymous> (/home/runner/workspace/node_modules/bullmq/src/classes/worker.ts:939:26)
+🔍 [Batch Worker] Timer atual: 1765045076501
+📎 [Worker] Link da imagem salvo no metadata para acesso futuro
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+✅ [Batch Worker] Processando 1 mensagem(ns) de whatsapp_5524993243134
+🚩 [Boleto Selection] DEBUG - Chave: awaiting:point:38a417e3-9efe-47f3-aea1-4ed0b6eceb43, Valor bruto: null (tipo: object), Valor string: "null", Awaiting: false
+🚩 [Boleto Selection] Conversa 38a417e3-9efe-47f3-aea1-4ed0b6eceb43 aguardando seleção: false
+✅ [CPF Injector] CPF encontrado no histórico: 136.151.395-51
+ℹ️ [CPF Injector] CPF já mencionado na mensagem, não injeta contexto
+✅ [Worker] CPF injetado no contexto para assistente financeiro
+📬 [Batch Worker] 1 mensagem(ns) de texto combinadas e enfileiradas
+✅ [Batch Worker] Job batch-whatsapp_5524993243134-1765045076501 concluído: 1 mensagens processadas
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+🔄 [Worker] Processing message from 5524993243134 {
+  jobId: '36324',
+  idempotencyKey: 'wamid.HBgNNTUyNDk5MzI0MzEzNBUCABIYFDNBNUNFOTY2RTRCQTFGRDBBNkJGAA==',
+  conversationId: '309c179c-6cd7-41ae-b7a8-47c010c693b2',
+  hasImage: false,
+  evolutionInstance: 'Principal'
+}
+🔒 [OpenAI] Lock acquired for thread thread_tOfaZ0z29TZPxPGSHtGNIOrc with value lock-1765045080930-0.9860731231889839 (attempt 1)
+🔵 [OpenAI] Sending message: {
+  threadId: 'thread_tOfaZ0z29TZPxPGSHtGNIOrc',
+  assistantId: 'asst_pRXVhoy1o4YxNxVmaRiNOTMX',
+  providedAssistantId: 'asst_pRXVhoy1o4YxNxVmaRiNOTMX',
+  usedFallback: false
+}
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+✅ [OpenAI] Message created successfully (attempt 1)
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+🔵 [OpenAI] Run created: {
+  runId: 'run_LuGo6LqbUVvBnBLF1UXsyENc',
+  threadId: 'thread_tOfaZ0z29TZPxPGSHtGNIOrc'
+}
+🔄 [OpenAI] Polling run: {
+  status: 'queued',
+  runId: 'run_LuGo6LqbUVvBnBLF1UXsyENc',
+  threadId: 'thread_tOfaZ0z29TZPxPGSHtGNIOrc',
+  attempt: 0
+}
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+🔄 [OpenAI] Polling run: {
+  status: 'in_progress',
+  runId: 'run_LuGo6LqbUVvBnBLF1UXsyENc',
+  threadId: 'thread_tOfaZ0z29TZPxPGSHtGNIOrc',
+  attempt: 1
+}
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏰ [Worker] Chat lock timeout for whatsapp_5524993243134 after 10000ms
+❌ [Worker] Could not acquire chat lock for whatsapp_5524993243134 - message will be retried
+❌ [Worker] Message processing failed: {
+  jobId: '36323',
+  error: 'Chat lock timeout for whatsapp_5524993243134 - concurrent processing detected'
+}
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+🔄 [OpenAI] Polling run: {
+  status: 'in_progress',
+  runId: 'run_LuGo6LqbUVvBnBLF1UXsyENc',
+  threadId: 'thread_tOfaZ0z29TZPxPGSHtGNIOrc',
+  attempt: 2
+}
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+🔄 [OpenAI] Polling run: {
+  status: 'requires_action',
+  runId: 'run_LuGo6LqbUVvBnBLF1UXsyENc',
+  threadId: 'thread_tOfaZ0z29TZPxPGSHtGNIOrc',
+  attempt: 3
+}
+🔧 [OpenAI] Handling tool calls...
+🔧 [AI Tool] Handling function call: abrir_ticket_crm
+🔧 [AI Tool] Function arguments: {"setor":"FINANCEIRO","motivo":"INFORMAR PAGAMENTO","resumo":"Cliente Eliane Pacheco Ragazzi enviou comprovante pagamento Mercado Pago de R$ 81,99 em 06/12/2025 para TR SERVIÇOS DE TELECOMUNICACOES LTDA (CNPJ 22.915.355/0001-43)."}
+🔧 [AI Tool] Context - chatId: whatsapp_5524998729744, conversationId: 38a417e3-9efe-47f3-aea1-4ed0b6eceb43
+🔧 [AI Tool] Entering switch for function: "abrir_ticket_crm" (length: 16)
+🎫 [AI Tool Handler] Iniciando abertura de ticket para conversação 38a417e3-9efe-47f3-aea1-4ed0b6eceb43
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+🎫 [AI Tool Handler] Conversa encontrada. clientDocument: NÃO
+🔍 [AI Tool Handler] CPF não encontrado no banco, buscando no histórico...
+✅ [CPF Injector] CPF encontrado no histórico: 065.176.877-06
+✅ [AI Tool Handler] CPF extraído do histórico: ***.***.***-06
+✅ [AI Tool Security] imageUrl validado - processado há 0.1 minutos
+🎫 [AI Tool Handler] Chamando abrirTicketCRM... {
+  setor: 'FINANCEIRO',
+  motivo: 'INFORMAR PAGAMENTO',
+  comprovanteUrl: 'SIM',
+  cpfExtraido: true
+}
+🎫 [AI Tool] Documento do cliente: ***.***.***-06 (fonte: parâmetro)
+📎 [AI Tool] Link do comprovante incluído no ticket
+🎫 [AI Tool] Abrindo ticket no CRM (conversação: 38a417e3-9efe-47f3-aea1-4ed0b6eceb43, setor: FINANCEIRO, motivo: INFORMAR PAGAMENTO, telefone: 5524998729744)
+🔄 [AI Tool] Tentativa 1/3 de abertura de ticket no CRM
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏰ [Worker] Chat lock timeout for whatsapp_5524993243134 after 10000ms
+❌ [Worker] Could not acquire chat lock for whatsapp_5524993243134 - message will be retried
+❌ [Worker] Message processing failed: {
+  jobId: '36324',
+  error: 'Chat lock timeout for whatsapp_5524993243134 - concurrent processing detected'
+}
+🔄 [Worker] Processing message from 5524993243134 {
+  jobId: '36324',
+  idempotencyKey: 'wamid.HBgNNTUyNDk5MzI0MzEzNBUCABIYFDNBNUNFOTY2RTRCQTFGRDBBNkJGAA==',
+  conversationId: '309c179c-6cd7-41ae-b7a8-47c010c693b2',
+  hasImage: false,
+  evolutionInstance: 'Principal'
+}
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+🔄 [Worker] Processing message from 5524993243134 {
+  jobId: '36323',
+  idempotencyKey: 'wamid.HBgNNTUyNDk5MzI0MzEzNBUCABIYFDNBMzA2M0IxNTM3MEYyQTQ1MEQ3AA==',
+  conversationId: '309c179c-6cd7-41ae-b7a8-47c010c693b2',
+  hasImage: false,
+  evolutionInstance: 'Principal'
+}
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏰ [Worker] Chat lock timeout for whatsapp_5524993243134 after 10000ms
+❌ [Worker] Could not acquire chat lock for whatsapp_5524993243134 - message will be retried
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+❌ [Worker] Message processing failed: {
+  jobId: '36324',
+  error: 'Chat lock timeout for whatsapp_5524993243134 - concurrent processing detected'
+}
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+🔄 [Worker] Processing message from 5524993243134 {
+  jobId: '36324',
+  idempotencyKey: 'wamid.HBgNNTUyNDk5MzI0MzEzNBUCABIYFDNBNUNFOTY2RTRCQTFGRDBBNkJGAA==',
+  conversationId: '309c179c-6cd7-41ae-b7a8-47c010c693b2',
+  hasImage: false,
+  evolutionInstance: 'Principal'
+}
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏰ [Worker] Chat lock timeout for whatsapp_5524993243134 after 10000ms
+❌ [Worker] Could not acquire chat lock for whatsapp_5524993243134 - message will be retried
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+❌ [Worker] Message processing failed: {
+  jobId: '36323',
+  error: 'Chat lock timeout for whatsapp_5524993243134 - concurrent processing detected'
+}
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏳ [Worker] Waiting for chat lock: whatsapp_5524993243134...
+⏰ [Worker] Chat lock timeout for whatsapp_5524993243134 after 10000ms
+❌ [Worker] Could not acquire chat lock for whatsapp_5524993243134 - message will be retried
+❌ [Worker] Message processing failed: {
+  jobId: '36324',
+  error: 'Chat lock timeout for whatsapp_5524993243134 - concurrent processing detected'
+}
+⚠️  [AI Tool] Tentativa 1 falhou após 30002ms: This operation was aborted. Aguardando 1000ms antes de tentar novamente...
+🔄 [AI Tool] Tentativa 2/3 de abertura de ticket no CRM
+✅ [Installation Points] 1 ponto(s) de instalação encontrado(s) via check_pppoe_status
+   📍 Ponto 1 (Login 20221456): TRES RIOS/CANTAGALO - NILO CORREIA SILVA ABRAÃO 40
+💾 [Massive Failure Cache] Pontos armazenados no cache (TTL: 300s)
+✅ [Massive Failure] Nenhuma falha ativa nos 1 ponto(s) do cliente
+🚩 [Boleto Selection] DEBUG - Chave: awaiting:point:309c179c-6cd7-41ae-b7a8-47c010c693b2, Valor bruto: null (tipo: object), Valor string: "null", Awaiting: false
+🚩 [Boleto Selection] Conversa 309c179c-6cd7-41ae-b7a8-47c010c693b2 aguardando seleção: false
+✅ [CPF Injector] CPF encontrado no histórico: 078.586.877-19
+ℹ️ [CPF Injector] CPF já mencionado na mensagem, não injeta contexto
+✅ [Worker] CPF injetado no contexto para assistente financeiro
+✅ [AI Tool] abertura de ticket no CRM concluída com sucesso em 59243ms (tentativa 2/3)
+📋 [AI Tool] Ticket criado com sucesso - Protocolo: ERRO
+⚠️ [Storage] Attempted to clear threadId for conversation 38a417e3-9efe-47f3-aea1-4ed0b6eceb43 (current: thread_tOfaZ0z29TZPxPGSHtGNIOrc) - BLOCKED
+   Caller stack trace: Error
+    at DbStorage.updateConversation (/home/runner/workspace/server/storage.ts:2306:48)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async abrirTicketCRM (/home/runner/workspace/server/ai-tools.ts:1185:7)
+    at async handleToolCall (/home/runner/workspace/server/lib/openai.ts:2973:29)
+    at async <anonymous> (/home/runner/workspace/server/lib/openai.ts:1044:28)
+    at async Promise.all (index 0)
+    at async sendMessageAndGetResponse (/home/runner/workspace/server/lib/openai.ts:1036:29)
+    at async Worker.Worker.connection (/home/runner/workspace/server/workers.ts:860:20)
+    at async <anonymous> (/home/runner/workspace/node_modules/bullmq/src/classes/worker.ts:939:26)
+🧹 [AI Tool] Metadata do comprovante limpo após criar ticket
+✅ [AI Tool Handler] Ticket aberto com sucesso - Protocolo: ERRO_SEM_PROTOCOLO
+🔒 [OpenAI] Lock acquired for thread thread_ChnEa7NtNGRIBySJtI77rU43 with value lock-1765045146314-0.4567768877699756 (attempt 1)
+🔵 [OpenAI] Sending message: {
+  threadId: 'thread_ChnEa7NtNGRIBySJtI77rU43',
+  assistantId: 'asst_pRXVhoy1o4YxNxVmaRiNOTMX',
+  providedAssistantId: 'asst_pRXVhoy1o4YxNxVmaRiNOTMX',
+  usedFallback: false
+}
+🔄 [OpenAI] Polling run: {
+  status: 'queued',
+  runId: 'run_LuGo6LqbUVvBnBLF1UXsyENc',
+  threadId: 'thread_tOfaZ0z29TZPxPGSHtGNIOrc',
+  attempt: 4
+}
+✅ [OpenAI] Message created successfully (attempt 1)
+🔄 [OpenAI] Polling run: {
+  status: 'in_progress',
+  runId: 'run_LuGo6LqbUVvBnBLF1UXsyENc',
+  threadId: 'thread_tOfaZ0z29TZPxPGSHtGNIOrc',
+  attempt: 5
+}
+🔵 [OpenAI] Run created: {
+  runId: 'run_Nu4Zyssrl4h9ILAVoMAeM0X6',
+  threadId: 'thread_ChnEa7NtNGRIBySJtI77rU43'
+}
+🔄 [OpenAI] Polling run: {
+  status: 'queued',
+  runId: 'run_Nu4Zyssrl4h9ILAVoMAeM0X6',
+  threadId: 'thread_ChnEa7NtNGRIBySJtI77rU43',
+  attempt: 0
+}
+🔵 [OpenAI] Run completed: {
+  runId: 'run_LuGo6LqbUVvBnBLF1UXsyENc',
+  status: 'completed',
+  threadId: 'thread_tOfaZ0z29TZPxPGSHtGNIOrc'
+}
+📊 [OpenAI Usage] Tracked: 20938 tokens, $0.0535 (gpt-5)
+🔄 [OpenAI] Polling run: {
+  status: 'in_progress',
+  runId: 'run_Nu4Zyssrl4h9ILAVoMAeM0X6',
+  threadId: 'thread_ChnEa7NtNGRIBySJtI77rU43',
+  attempt: 1
+}
+🔍 [OpenAI DEBUG] Last message: {
+  "id": "msg_Axe5AtezzYqDFR8JlUsBwUpi",
+  "object": "thread.message",
+  "created_at": 1765045148,
+  "assistant_id": "asst_pRXVhoy1o4YxNxVmaRiNOTMX",
+  "thread_id": "thread_tOfaZ0z29TZPxPGSHtGNIOrc",
+  "run_id": "run_LuGo6LqbUVvBnBLF1UXsyENc",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": {
+        "value": "Recebi seu comprovante de pagamento de R$ 81,99! ✅\n\nVou registrar essa informação para que o setor financeiro possa confirmar o pagamento e atualizar seu status. Por favor, aguarde um momento.\n\n---\n\nPor enquanto, caso tenha qualquer outra dúvida ou precise de algo, estou à disposição!",
+        "annotations": []
+      }
+    }
+  ],
+  "attachments": [],
+  "metadata": {}
+}
+🔓 [OpenAI] Lock released for thread thread_tOfaZ0z29TZPxPGSHtGNIOrc
+📱 [Extract Number] Raw phone number detected (no lid_ prefix): "5524998729744" - returning as-is (bare phone)
+⚠️  [WhatsApp] URL sem protocolo detectada, adicionando https://: https://evolutionapi.trtelecom.net
+📤 [WhatsApp] Sending message to: 5524998729744 via https://evolutionapi.trtelecom.net/message/sendText/Principal
+🔄 [OpenAI] Polling run: {
+  status: 'requires_action',
+  runId: 'run_Nu4Zyssrl4h9ILAVoMAeM0X6',
+  threadId: 'thread_ChnEa7NtNGRIBySJtI77rU43',
+  attempt: 2
+}
+🔧 [OpenAI] Handling tool calls...
+🔧 [AI Tool] Handling function call: solicitarDesbloqueio
+🔧 [AI Tool] Function arguments: {}
+🔧 [AI Tool] Context - chatId: whatsapp_5524993243134, conversationId: 309c179c-6cd7-41ae-b7a8-47c010c693b2
+🔧 [AI Tool] Entering switch for function: "solicitarDesbloqueio" (length: 20)
+🔓 [AI Tool Handler] Iniciando solicitação de desbloqueio para conversação 309c179c-6cd7-41ae-b7a8-47c010c693b2
+🔓 [AI Tool Handler] Conversa encontrada. clientDocument: NÃO
+🔍 [AI Tool Handler] CPF não no banco (LGPD), tentando extrair do histórico...
+✅ [CPF Injector] CPF encontrado no histórico: 078.586.877-19
+✅ [AI Tool Handler] CPF extraído do histórico para desbloqueio: 078...
+🔓 [AI Tool Handler] Chamando solicitarDesbloqueio com documento...
+🔓 [AI Tool] Solicitando desbloqueio (conversação: 309c179c-6cd7-41ae-b7a8-47c010c693b2, CPF: ***7719)
+🔄 [AI Tool] Tentativa 1/3 de solicitação de desbloqueio
+⏱️  [Latency] Total: 105.93s | OpenAI: 69358ms | Queue: 486ms {
+  messageId: 'wamid.HBgNNTUyNDk5ODcyOTc0NBUCABIYIEE1NDZBNzk5MjE0QkQ3OTJDQzZEODFEQUQxMzk2MDI0AA==',
+  conversationId: '38a417e3-9efe-47f3-aea1-4ed0b6eceb43',
+  breakdown: {
+    webhook_to_queue: 6786,
+    queue_to_worker: 486,
+    worker_to_openai: 26518,
+    openai_processing: 69358,
+    openai_to_whatsapp: 2781
+  }
+}
+⚠️  [Latency] SLA BREACH! Resposta demorou 105.93s (meta: ≤30s) {
+  messageId: 'wamid.HBgNNTUyNDk5ODcyOTc0NBUCABIYIEE1NDZBNzk5MjE0QkQ3OTJDQzZEODFEQUQxMzk2MDI0AA==',
+  breakdown: {
+    webhook_to_queue: 6786,
+    queue_to_worker: 486,
+    worker_to_openai: 26518,
+    openai_processing: 69358,
+    openai_to_whatsapp: 2781
+  }
+}
+🔍 [Context Monitor] Monitoring interaction - Assistant: financeiro, Conversation: 38a417e3...
+🔍 [Context Monitor] Analyzing 21 messages for potential issues...
+✅ [Context Monitor] No issues detected - conversation quality is good
+⏰ [Worker] Follow-up de inatividade agendado para daqui a 10 minutos (após resposta da IA)
+✅ [Worker] Message processed successfully
+⚠️  [Worker] Chat lock for whatsapp_5524998729744 was already released or taken by another worker
+✅ [Worker] Message completed: { jobId: '36321', duration: 100739 }
+✅ [AI Tool] solicitação de desbloqueio concluída com sucesso em 4659ms (tentativa 1/3)
+📋 [AI Tool] Desbloqueio processado - Status: S - Obs: DESBLOQUEIO EFETUADO
+✅ [AI Tool Handler] Desbloqueio solicitado com sucesso: { data: [ { resposta: [Array], status: [Array] } ] }
+⚠️ [Storage] Attempted to clear threadId for conversation 309c179c-6cd7-41ae-b7a8-47c010c693b2 (current: thread_ChnEa7NtNGRIBySJtI77rU43) - BLOCKED
+   Caller stack trace: Error
+    at DbStorage.updateConversation (/home/runner/workspace/server/storage.ts:2306:48)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async handleToolCall (/home/runner/workspace/server/lib/openai.ts:2780:13)
+    at async <anonymous> (/home/runner/workspace/server/lib/openai.ts:1044:28)
+    at async Promise.all (index 0)
+    at async sendMessageAndGetResponse (/home/runner/workspace/server/lib/openai.ts:1036:29)
+    at async Worker.Worker.connection (/home/runner/workspace/server/workers.ts:860:20)
+    at async <anonymous> (/home/runner/workspace/node_modules/bullmq/src/classes/worker.ts:939:26)
+🔓 [AI Tool Handler] Metadata de desbloqueio em confiança persistida na conversa 309c179c-6cd7-41ae-b7a8-47c010c693b2
+🔄 [OpenAI] Polling run: {
+  status: 'queued',
+  runId: 'run_Nu4Zyssrl4h9ILAVoMAeM0X6',
+  threadId: 'thread_ChnEa7NtNGRIBySJtI77rU43',
+  attempt: 3
+}
+🔄 [OpenAI] Polling run: {
+  status: 'in_progress',
+  runId: 'run_Nu4Zyssrl4h9ILAVoMAeM0X6',
+  threadId: 'thread_ChnEa7NtNGRIBySJtI77rU43',
+  attempt: 4
+}
+🔵 [OpenAI] Run completed: {
+  runId: 'run_Nu4Zyssrl4h9ILAVoMAeM0X6',
+  status: 'completed',
+  threadId: 'thread_ChnEa7NtNGRIBySJtI77rU43'
+}
+📊 [OpenAI Usage] Tracked: 25246 tokens, $0.0638 (gpt-5)
+🔍 [OpenAI DEBUG] Last message: {
+  "id": "msg_a1iCZ84k4SWncffNHQJq2rW4",
+  "object": "thread.message",
+  "created_at": 1765045157,
+  "assistant_id": "asst_pRXVhoy1o4YxNxVmaRiNOTMX",
+  "thread_id": "thread_ChnEa7NtNGRIBySJtI77rU43",
+  "run_id": "run_Nu4Zyssrl4h9ILAVoMAeM0X6",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": {
+        "value": "Pronto! Sua internet foi liberada com sucesso! 🎉\n\n⏰ A liberação é válida até AMANHÃ às 10h da manhã.  \n💰 Por favor, regularize o pagamento para evitar novo bloqueio.\n\nSe quiser, posso enviar novamente o boleto para facilitar o pagamento. Quer que eu faça isso?",
+        "annotations": []
+      }
+    }
+  ],
+  "attachments": [],
+  "metadata": {}
+}
+🔓 [OpenAI] Lock released for thread thread_ChnEa7NtNGRIBySJtI77rU43
+📱 [Extract Number] Raw phone number detected (no lid_ prefix): "5524993243134" - returning as-is (bare phone)
+⚠️  [WhatsApp] URL sem protocolo detectada, adicionando https://: https://evolutionapi.trtelecom.net
+📤 [WhatsApp] Sending message to: 5524993243134 via https://evolutionapi.trtelecom.net/message/sendText/Principal
+⏱️  [Latency] Total: 99.66s | OpenAI: 13913ms | Queue: 4083ms {
+  messageId: 'wamid.HBgNNTUyNDk5MzI0MzEzNBUCABIYFDNBNjhBRTdBNEIyRjM4RjZCMUU4AA==',
+  conversationId: '309c179c-6cd7-41ae-b7a8-47c010c693b2',
+  breakdown: {
+    webhook_to_queue: 1138,
+    queue_to_worker: 4083,
+    worker_to_openai: 78378,
+    openai_processing: 13913,
+    openai_to_whatsapp: 2144
+  }
+}
+⚠️  [Latency] SLA BREACH! Resposta demorou 99.66s (meta: ≤30s) {
+  messageId: 'wamid.HBgNNTUyNDk5MzI0MzEzNBUCABIYFDNBNjhBRTdBNEIyRjM4RjZCMUU4AA==',
+  breakdown: {
+    webhook_to_queue: 1138,
+    queue_to_worker: 4083,
+    worker_to_openai: 78378,
+    openai_processing: 13913,
+    openai_to_whatsapp: 2144
+  }
+}
+🔍 [Context Monitor] Monitoring interaction - Assistant: financeiro, Conversation: 309c179c...
+🔍 [Context Monitor] Analyzing 31 messages for potential issues...
+✅ [Context Monitor] No issues detected - conversation quality is good
+⏰ [Worker] Follow-up de inatividade agendado para daqui a 10 minutos (após resposta da IA)
+✅ [Worker] Message processed successfully
+⚠️  [Worker] Chat lock for whatsapp_5524993243134 was already released or taken by another worker
+✅ [Worker] Message completed: { jobId: '36322', duration: 96428 }
+
+🔄 [Message Recovery] Iniciando verificação de mensagens travadas...
+📊 [Message Recovery] Analisando 2 conversas ativas...
+✅ [Message Recovery] Nenhuma mensagem travada encontrada
+
+
+🔄 [Batch Worker] Job disparado para whatsapp_5524993243134
+   Timer esperado: 1765045198028
+   Job ID: batch-whatsapp_5524993243134-1765045198028
+🔍 [Batch Worker] Timer atual: 1765045198028
+✅ [Batch Worker] Processando 2 mensagem(ns) de whatsapp_5524993243134
+📬 [Batch Worker] 2 mensagem(ns) de texto combinadas e enfileiradas
+✅ [Batch Worker] Job batch-whatsapp_5524993243134-1765045198028 concluído: 2 mensagens processadas
+🔄 [Worker] Processing message from 5524993243134 {
+  jobId: '36325',
+  idempotencyKey: 'wamid.HBgNNTUyNDk5MzI0MzEzNBUCABIYFDNBMjE3Q0M5Q0VBQjYxNzMyQjhFAA==',
+  conversationId: '309c179c-6cd7-41ae-b7a8-47c010c693b2',
+  hasImage: false,
+  evolutionInstance: 'Principal'
+}
+🔒 [Worker] Chat lock acquired for whatsapp_5524993243134
+⚙️ [INFO] [worker] Processing message | {"conversationId":"309c179c-6cd7-41ae-b7a8-47c010c693b2","fromNumber":"5524993243134","jobId":"36325","hasImage":false}
+✅ [Inactivity] Follow-up cancelado para conversa 309c179c-6cd7-41ae-b7a8-47c010c693b2
+✅ [Worker] Follow-up de inatividade e auto-closure cancelados - cliente respondeu
+✅ [CPF Injector] CPF encontrado no histórico: 078.586.877-19
+✅ [Massive Failure] CPF extraído do histórico: 078...
+💾 [Massive Failure Cache] Cache HIT para CPF 07858687719 - 1 pontos
+✅ [Massive Failure] Nenhuma falha ativa nos 1 ponto(s) do cliente
+🚩 [Boleto Selection] DEBUG - Chave: awaiting:point:309c179c-6cd7-41ae-b7a8-47c010c693b2, Valor bruto: null (tipo: object), Valor string: "null", Awaiting: false
+🚩 [Boleto Selection] Conversa 309c179c-6cd7-41ae-b7a8-47c010c693b2 aguardando seleção: false
+✅ [CPF Injector] CPF encontrado no histórico: 078.586.877-19
+✅ [CPF Injector] Contexto de CPF injetado para financeiro
+✅ [Worker] CPF injetado no contexto para assistente financeiro
+🔒 [OpenAI] Lock acquired for thread thread_ChnEa7NtNGRIBySJtI77rU43 with value lock-1765045204100-0.05892446423418929 (attempt 1)
+🔵 [OpenAI] Sending message: {
+  threadId: 'thread_ChnEa7NtNGRIBySJtI77rU43',
+  assistantId: 'asst_pRXVhoy1o4YxNxVmaRiNOTMX',
+  providedAssistantId: 'asst_pRXVhoy1o4YxNxVmaRiNOTMX',
+  usedFallback: false
+}
+✅ [OpenAI] Message created successfully (attempt 1)
+
+🔄 [Batch Worker] Job disparado para whatsapp_5524993243134
+   Timer esperado: 1765045202062
+   Job ID: batch-whatsapp_5524993243134-1765045202062
+🔍 [Batch Worker] Timer atual: 1765045202062
+📭 [Batch Worker] Batch vazio para whatsapp_5524993243134 - nada a processar
+🔵 [OpenAI] Run created: {
+  runId: 'run_luWxe4TtQBKx4VFoECBE5PA9',
+  threadId: 'thread_ChnEa7NtNGRIBySJtI77rU43'
+}
+🔄 [OpenAI] Polling run: {
+  status: 'queued',
+  runId: 'run_luWxe4TtQBKx4VFoECBE5PA9',
+  threadId: 'thread_ChnEa7NtNGRIBySJtI77rU43',
+  attempt: 0
+}
+🔄 [OpenAI] Polling run: {
+  status: 'in_progress',
+  runId: 'run_luWxe4TtQBKx4VFoECBE5PA9',
+  threadId: 'thread_ChnEa7NtNGRIBySJtI77rU43',
+  attempt: 1
+}
+🔄 [OpenAI] Polling run: {
+  status: 'requires_action',
+  runId: 'run_luWxe4TtQBKx4VFoECBE5PA9',
+  threadId: 'thread_ChnEa7NtNGRIBySJtI77rU43',
+  attempt: 2
+}
+🔧 [OpenAI] Handling tool calls...
+🔧 [AI Tool] Handling function call: transferir_para_humano
+🔧 [AI Tool] Function arguments: {"departamento":"Suporte","motivo":"Cliente solicita troca de senha. CPF 078.586.877-19."}
+🔧 [AI Tool] Context - chatId: whatsapp_5524993243134, conversationId: 309c179c-6cd7-41ae-b7a8-47c010c693b2
+🔧 [AI Tool] Entering switch for function: "transferir_para_humano" (length: 22)
+🔀 [Transfer] IA solicitou transferência para HUMANO: {
+  chatId: 'whatsapp_5524993243134',
+  departamento: 'Suporte',
+  motivo: 'Cliente solicita troca de senha. CPF 078.586.877-19.'
+}
+🛠️ [Agent LIA Financeiro] [FUNCTION_TRANSFERIR_PARA_HUMANO] Transferindo para humano - Departamento: Suporte 
+   Details: {
+  "conversationId": "309c179c-6cd7-41ae-b7a8-47c010c693b2",
+  "department": "Suporte",
+  "reason": "Cliente solicita troca de senha. CPF 078.586.877-19.",
+  "decision": "Cliente precisa de atendimen...
+🔄 [OpenAI] Polling run: {
+  status: 'queued',
+  runId: 'run_luWxe4TtQBKx4VFoECBE5PA9',
+  threadId: 'thread_ChnEa7NtNGRIBySJtI77rU43',
+  attempt: 3
+}
+🔄 [OpenAI] Polling run: {
+  status: 'in_progress',
+  runId: 'run_luWxe4TtQBKx4VFoECBE5PA9',
+  threadId: 'thread_ChnEa7NtNGRIBySJtI77rU43',
+  attempt: 4
+}
+🔵 [OpenAI] Run completed: {
+  runId: 'run_luWxe4TtQBKx4VFoECBE5PA9',
+  status: 'completed',
+  threadId: 'thread_ChnEa7NtNGRIBySJtI77rU43'
+}
+📊 [OpenAI Usage] Tracked: 38448 tokens, $0.0968 (gpt-5)
+🔍 [OpenAI DEBUG] Last message: {
+  "id": "msg_3KKbTMoHSbJOWriwCwgGIMYy",
+  "object": "thread.message",
+  "created_at": 1765045211,
+  "assistant_id": "asst_pRXVhoy1o4YxNxVmaRiNOTMX",
+  "thread_id": "thread_ChnEa7NtNGRIBySJtI77rU43",
+  "run_id": "run_luWxe4TtQBKx4VFoECBE5PA9",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": {
+        "value": "Estou transferindo você para o suporte técnico que poderá ajudar com a troca de senha. Por favor, aguarde um momento!",
+        "annotations": []
+      }
+    }
+  ],
+  "attachments": [],
+  "metadata": {}
+}
+🔓 [OpenAI] Lock released for thread thread_ChnEa7NtNGRIBySJtI77rU43
+🔀 [Worker] Conversation transferred to human
+⚠️ [Storage] Attempted to clear threadId for conversation 309c179c-6cd7-41ae-b7a8-47c010c693b2 (current: thread_ChnEa7NtNGRIBySJtI77rU43) - BLOCKED
+   Caller stack trace: Error
+    at DbStorage.updateConversation (/home/runner/workspace/server/storage.ts:2306:48)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Worker.Worker.connection (/home/runner/workspace/server/workers.ts:892:9)
+    at async <anonymous> (/home/runner/workspace/node_modules/bullmq/src/classes/worker.ts:939:26)
+✅ [Worker] Conversation transferred to support department
+📱 [Extract Number] Raw phone number detected (no lid_ prefix): "5524993243134" - returning as-is (bare phone)
+⚠️  [WhatsApp] URL sem protocolo detectada, adicionando https://: https://evolutionapi.trtelecom.net
+📤 [WhatsApp] Sending message to: 5524993243134 via https://evolutionapi.trtelecom.net/message/sendText/Principal
+⏱️  [Latency] Total: 13.35s | OpenAI: 9085ms | Queue: 178ms {
+  messageId: 'wamid.HBgNNTUyNDk5MzI0MzEzNBUCABIYFDNBMjE3Q0M5Q0VBQjYxNzMyQjhFAA==',
+  conversationId: '309c179c-6cd7-41ae-b7a8-47c010c693b2',
+  breakdown: {
+    webhook_to_queue: 1001,
+    queue_to_worker: 178,
+    worker_to_openai: 1184,
+    openai_processing: 9085,
+    openai_to_whatsapp: 1901
+  }
+}
+🔍 [Context Monitor] Monitoring interaction - Assistant: financeiro, Conversation: 309c179c...
+🔍 [Context Monitor] Analyzing 34 messages for potential issues...
+✅ [Context Monitor] No issues detected - conversation quality is good
+✅ [Worker] Message processed successfully
+🔓 [Worker] Chat lock released for whatsapp_5524993243134
+✅ [Worker] Message completed: { jobId: '36325', duration: 13723 }
+3:21:40 PM [express] GET /api/auth/me 304 in 154ms :: {"user":{"id":"f8071e6d-446b-4c84-b175-6ff7f54…
+
+🔄 [Message Recovery] Iniciando verificação de mensagens travadas...
+🔄 [Cache] Admin metrics MISS - calculating fresh data
+📊 [AI Metrics] apresentacao: { total: 1, transferred: 0, resolvedByAI: 1, pending: 0 }
+3:21:41 PM [express] GET /api/announcements/active 304 in 247ms :: []
+📊 [AI Metrics] financeiro: { total: 12, transferred: 3, resolvedByAI: 8, pending: 1 }
+3:21:41 PM [express] GET /api/failures 304 in 299ms :: [{"id":"4b819de4-e3c7-4fc4-968c-2d0adc8d059c"…
+📊 [AI Metrics] suporte: { total: 12, transferred: 7, resolvedByAI: 5, pending: 0 }
+📊 [AI Metrics] ouvidoria: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] cancelamento: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] comercial: { total: 8, transferred: 6, resolvedByAI: 2, pending: 0 }
+📊 [Message Recovery] Analisando 1 conversas ativas...
+3:21:41 PM [express] GET /api/dashboard/ai-performance 200 in 642ms :: [{"assistantType":"apresentac…
+✅ [Message Recovery] Nenhuma mensagem travada encontrada
+
+💾 [Cache] Admin metrics cached for 60s
+3:22:04 PM [express] GET /api/dashboard/admin 200 in 23564ms :: {"systemStatus":{"api":true,"databas…
+3:22:11 PM [express] GET /api/announcements/active 304 in 41ms :: []
+3:22:11 PM [express] GET /api/failures 304 in 158ms :: [{"id":"4b819de4-e3c7-4fc4-968c-2d0adc8d059c"…
+📊 [AI Metrics] apresentacao: { total: 1, transferred: 0, resolvedByAI: 1, pending: 0 }
+📊 [AI Metrics] comercial: { total: 8, transferred: 6, resolvedByAI: 2, pending: 0 }
+📊 [AI Metrics] cancelamento: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] ouvidoria: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] financeiro: { total: 12, transferred: 3, resolvedByAI: 8, pending: 1 }
+📊 [AI Metrics] suporte: { total: 12, transferred: 7, resolvedByAI: 5, pending: 0 }
+3:22:12 PM [express] GET /api/dashboard/ai-performance 304 in 304ms :: [{"assistantType":"apresentac…
+^A^A📦 [Cache] Admin metrics HIT - returning cached data
