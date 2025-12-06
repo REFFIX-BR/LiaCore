@@ -276,8 +276,8 @@ async function markJobProcessed(jobId: string, ttlSeconds = 300): Promise<void> 
 }
 
 // Chat-level concurrency lock (prevents parallel processing of same chat messages)
-// ⚡ OPTIMIZED: Reduced timeout from 30s to 10s for faster message recovery
-async function acquireChatLock(chatId: string, timeoutMs: number = 10000): Promise<{ acquired: boolean; lockValue?: string }> {
+// ⚡ OPTIMIZED: Increased timeout to 90s to accommodate OpenAI + CRM calls (can take 60s+)
+async function acquireChatLock(chatId: string, timeoutMs: number = 90000): Promise<{ acquired: boolean; lockValue?: string }> {
   if (!redisConnection) return { acquired: true }; // No Redis = no lock needed
   
   const lockKey = `chat-processing-lock:${chatId}`;
@@ -286,8 +286,8 @@ async function acquireChatLock(chatId: string, timeoutMs: number = 10000): Promi
   
   while (Date.now() < maxWaitTime) {
     try {
-      // TTL de 60s (tempo máximo razoável para processar uma mensagem)
-      const acquired = await redisConnection.set(lockKey, lockValue, 'EX', 60, 'NX');
+      // TTL de 120s (tempo máximo para processar OpenAI + tool calls como CRM)
+      const acquired = await redisConnection.set(lockKey, lockValue, 'EX', 120, 'NX');
       
       if (acquired === 'OK') {
         console.log(`🔒 [Worker] Chat lock acquired for ${chatId}`);
