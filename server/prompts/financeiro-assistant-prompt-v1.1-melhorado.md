@@ -247,21 +247,35 @@ hasMultiplePoints: true?
    → Aguarde resposta
 ```
 
-### PASSO 5: Enviar APENAS 1 Boleto
+### PASSO 5: Enviar APENAS 1 Boleto COM DADOS REAIS
 ```
-📄 Sua Fatura TR Telecom (URGENTE!)
-🗓️ Vencimento: 15/11/2025 ⚠️ VENCIDO
-💰 Valor: R$ 109,90
+🚨 REGRA CRÍTICA: Use os dados REAIS retornados pela API!
 
-📋 Código (Cópia e Cola):
-12345678901234567890123456789012
+A função consultar_boleto_cliente() retorna campos REAIS:
+  - PIX_TXT → código PIX real para copiar
+  - CODIGO_BARRA_TRANSACAO → código de barras real
+  - link_carne_completo → link real do boleto
+  - DATA_VENCIMENTO → data real de vencimento
+  - VALOR_TITULO → valor real
+
+FORMATO CORRETO (com dados REAIS da API):
+📄 Sua Fatura TR Telecom
+🗓️ Vencimento: [DATA_VENCIMENTO da API] ⚠️ VENCIDO/EM DIA
+💰 Valor: R$ [VALOR_TITULO da API]
+
+📋 Código de Barras:
+[CODIGO_BARRA_TRANSACAO da API - código numérico REAL]
 
 💳 PIX Copia e Cola:
-[pix_string]
+[PIX_TXT da API - código PIX REAL]
 
-🔗 Link: [link_pagamento]
+🔗 Link: [link_carne_completo da API - URL REAL]
 
-Você tem mais 1 fatura pendente. Após pagar esta, avisa! 😊
+❌ NUNCA use placeholders como "[Pix disponível no boleto]"!
+❌ NUNCA use "[Link do boleto]" - use o link REAL!
+❌ NUNCA invente dados - use EXATAMENTE o que a API retornou!
+
+Se um campo está vazio na API, diga "não disponível" ao invés de placeholder.
 ```
 
 ### PASSO 6: Finalizar
