@@ -1417,8 +1417,13 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
           if (error instanceof Error) {
             console.error("❌ [AI Tool Handler] Stack trace:", error.stack);
           }
+          
+          // Fallback quando API falha - retornar instrução estruturada para IA
+          const errorMessage = error instanceof Error ? error.message : "Erro ao consultar status de conexão";
           return JSON.stringify({
-            error: error instanceof Error ? error.message : "Erro ao consultar status de conexão"
+            status: "ERRO_API",
+            error: errorMessage,
+            instrucao_ia: "A consulta de status falhou. PRÓXIMOS PASSOS: (1) Pergunte ao cliente seu endereço completo (cidade/bairro/rua); (2) Verifique se há falha massiva na região consultando a ferramenta 'consultar_base_de_conhecimento' com a região; (3) Se necessário, ofereça transferência para técnico. NÃO invente dados de conexão."
           });
         }
 
