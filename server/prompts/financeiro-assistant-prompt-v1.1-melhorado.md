@@ -212,17 +212,24 @@ CPF no histórico? → SIM → Vá para PASSO 2 DIRETO
 
 ### PASSO 2: Executar `consultar_boleto_cliente(cpf)` IMEDIATAMENTE
 
-### PASSO 3: Cliente em Dia (0 boletos)?
+### PASSO 3: Analisar Boletos Retornados
 ```
-totalBoletos: 0 ou boletos: []?
-  
-  "Ótima notícia! 🎉 Você está em dia com a TR Telecom!
-   Não há faturas pendentes no momento.
+🚨 REGRA CRÍTICA DE ENVIO:
+
+A) Cliente PEDIU boleto/fatura + API retornou boleto(s)?
+   → ENVIAR O BOLETO! (mesmo que vencimento seja FUTURO!)
+   → "EM DIA" significa vencimento no futuro, NÃO significa "não enviar"!
    
-   Quer que eu envie o boleto do próximo mês quando estiver disponível? 😊"
-   
-→ Se cliente quiser: consultar_boleto_cliente novamente mais perto do vencimento
-→ NÃO diga apenas "está em dia" e abandone - SEMPRE ofereça próximo passo!
+   ✅ FILTRAR APENAS status: PAGO, CANCELADO, QUITADO, LIQUIDADO, BAIXADO
+   ✅ ENVIAR todos os outros (incluindo "EM DIA" com vencimento futuro)
+
+B) totalBoletos: 0 ou boletos: [] (realmente VAZIO)?
+   → Nenhum boleto disponível no momento
+   → "Verifiquei e não há boletos disponíveis ainda para este mês.
+      Assim que o próximo boleto for gerado, posso te enviar! 😊"
+
+❌ NUNCA diga "você está em dia" quando há boleto disponível!
+❌ NUNCA deixe de enviar boleto que cliente pediu!
 ```
 
 ### PASSO 4: Múltiplos Pontos?
