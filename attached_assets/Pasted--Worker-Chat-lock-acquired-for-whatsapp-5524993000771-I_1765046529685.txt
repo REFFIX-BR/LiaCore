@@ -1,0 +1,427 @@
+}
+🔒 [Worker] Chat lock acquired for whatsapp_5524993000771
+⚙️ [INFO] [worker] Processing message | {"conversationId":"ad2203a7-ed70-4e46-b2c4-2a3ab113af18","fromNumber":"5524993000771","jobId":"36327","hasImage":false}
+✅ [Worker] Follow-up de inatividade e auto-closure cancelados - cliente respondeu
+🔍 [Massive Failure Cache] Cache MISS para CPF 05888759708 - consultando CRM...
+📊 [AI Metrics] apresentacao: { total: 1, transferred: 0, resolvedByAI: 1, pending: 0 }
+📊 [AI Metrics] comercial: { total: 8, transferred: 6, resolvedByAI: 2, pending: 0 }
+📊 [AI Metrics] suporte: { total: 12, transferred: 7, resolvedByAI: 5, pending: 0 }
+📊 [AI Metrics] cancelamento: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] ouvidoria: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] financeiro: { total: 12, transferred: 3, resolvedByAI: 8, pending: 1 }
+3:38:27 PM [express] GET /api/dashboard/ai-performance 304 in 336ms :: [{"assistantType":"apresentac…
+🔄 [Cache] Admin metrics MISS - calculating fresh data
+3:38:51 PM [express] GET /api/announcements/active 304 in 169ms :: []
+3:38:51 PM [express] GET /api/failures 304 in 186ms :: [{"id":"4b819de4-e3c7-4fc4-968c-2d0adc8d059c"…
+💾 [Cache] Admin metrics cached for 60s
+3:38:53 PM [express] GET /api/dashboard/admin 200 in 25264ms :: {"systemStatus":{"api":true,"databas…
+🔒 [Auto-Closure Worker] Verificando encerramento automático para conversa 24e7363e-0294-42ce-b04b-e0599c30e0bc
+✅ [Auto-Closure Worker] Usando template personalizado: auto_closure
+📤 [Auto-Closure Worker] Enviando mensagem de encerramento para Micaela☺️
+📱 [Extract Number] Raw phone number detected (no lid_ prefix): "5524999074626" - returning as-is (bare phone)
+⚠️  [WhatsApp] URL sem protocolo detectada, adicionando https://: https://evolutionapi.trtelecom.net
+📤 [WhatsApp] Sending message to: 5524999074626 via https://evolutionapi.trtelecom.net/message/sendText/Principal
+✅ [Auto-Closure Worker] Conversa 24e7363e-0294-42ce-b04b-e0599c30e0bc encerrada automaticamente por inatividade
+⚠️ [Auto-Lead] Venda já existe para conversa 24e7363e-0294-42ce-b04b-e0599c30e0bc (status: Prospecção) - não criar lead duplicado
+📊 [AI Metrics] apresentacao: { total: 1, transferred: 0, resolvedByAI: 1, pending: 0 }
+📊 [AI Metrics] financeiro: { total: 12, transferred: 3, resolvedByAI: 8, pending: 1 }
+📊 [AI Metrics] comercial: { total: 8, transferred: 6, resolvedByAI: 2, pending: 0 }
+📊 [AI Metrics] ouvidoria: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] cancelamento: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] suporte: { total: 12, transferred: 7, resolvedByAI: 5, pending: 0 }
+3:38:57 PM [express] GET /api/dashboard/ai-performance 304 in 302ms :: [{"assistantType":"apresentac…
+✅ [Installation Points] 1 ponto(s) de instalação encontrado(s) via check_pppoe_status
+   📍 Ponto 1 (Login 20252663): TRÊS RIOS/VILA ISABEL - PREFEITO SAMIR NASSER 109 CASA 109 - CARIRI
+💾 [Massive Failure Cache] Pontos armazenados no cache (TTL: 300s)
+✅ [Massive Failure] Nenhuma falha ativa nos 1 ponto(s) do cliente
+🚩 [Boleto Selection] DEBUG - Chave: awaiting:point:ad2203a7-ed70-4e46-b2c4-2a3ab113af18, Valor bruto: null (tipo: object), Valor string: "null", Awaiting: false
+🚩 [Boleto Selection] Conversa ad2203a7-ed70-4e46-b2c4-2a3ab113af18 aguardando seleção: false
+✅ [CPF Injector] CPF encontrado no histórico: 058.887.597-08
+✅ [CPF Injector] Contexto de CPF injetado para financeiro
+✅ [Worker] CPF injetado no contexto para assistente financeiro
+🔄 [Thread Rotation] Thread thread_INpSE tem 59 mensagens (threshold: 55)
+🔄 [OpenAI] Thread thread_INpSErb2CyZ2iw8aV4QJl8rN precisa de rotação - iniciando processo...
+🔄 [Thread Rotation] Iniciando rotação para conversa ad2203a7-ed70-4e46-b2c4-2a3ab113af18
+📌 [Thread Rotation] Preservando mensagem crítica: finalizar_conversa (1d6b8acb)
+📝 [Thread Rotation] Resumo gerado: O cliente, Felipe Paes França (CPF: 058.887.597-08), entrou em contato para solicitar o desbloqueio ...
+📅 [Thread Rotation] Novo thread criado: thread_8aLRmSlArbj8YNulzB2JkMud
+📋 [Thread Rotation] Mensagem preservada copiada: 1d6b8acb
+✅ [Thread Rotation] Concluída em 4203ms
+   Thread antigo: thread_INpSErb2CyZ2iw8aV4QJl8rN (59 msgs)
+   Thread novo: thread_8aLRmSlArbj8YNulzB2JkMud (2 msgs)
+   Redução: 96.6%
+✅ [OpenAI] Thread rotacionado em 4205ms - novo thread: thread_8aLRmSlArbj8YNulzB2JkMud
+   Resumo: O cliente, Felipe Paes França (CPF: 058.887.597-08), entrou em contato para soli...
+🔒 [OpenAI] Lock acquired for thread thread_8aLRmSlArbj8YNulzB2JkMud with value lock-1765046356831-0.4516544562103937 (attempt 1)
+🔵 [OpenAI] Sending message: {
+  threadId: 'thread_8aLRmSlArbj8YNulzB2JkMud',
+  assistantId: 'asst_pRXVhoy1o4YxNxVmaRiNOTMX',
+  providedAssistantId: 'asst_pRXVhoy1o4YxNxVmaRiNOTMX',
+  usedFallback: false
+}
+✅ [OpenAI] Message created successfully (attempt 1)
+🔵 [OpenAI] Run created: {
+  runId: 'run_gaCiXVdlrVJBtRzkqTvJAjOo',
+  threadId: 'thread_8aLRmSlArbj8YNulzB2JkMud'
+}
+🔄 [OpenAI] Polling run: {
+  status: 'queued',
+  runId: 'run_gaCiXVdlrVJBtRzkqTvJAjOo',
+  threadId: 'thread_8aLRmSlArbj8YNulzB2JkMud',
+  attempt: 0
+}
+🔄 [OpenAI] Polling run: {
+  status: 'in_progress',
+  runId: 'run_gaCiXVdlrVJBtRzkqTvJAjOo',
+  threadId: 'thread_8aLRmSlArbj8YNulzB2JkMud',
+  attempt: 1
+}
+🔵 [OpenAI] Run completed: {
+  runId: 'run_gaCiXVdlrVJBtRzkqTvJAjOo',
+  status: 'completed',
+  threadId: 'thread_8aLRmSlArbj8YNulzB2JkMud'
+}
+📊 [OpenAI Usage] Tracked: 7107 tokens, $0.0179 (gpt-5)
+🔍 [OpenAI DEBUG] Last message: {
+  "id": "msg_8WIVRhYJL72tkQVKy0HpX6sg",
+  "object": "thread.message",
+  "created_at": 1765046359,
+  "assistant_id": "asst_pRXVhoy1o4YxNxVmaRiNOTMX",
+  "thread_id": "thread_8aLRmSlArbj8YNulzB2JkMud",
+  "run_id": "run_gaCiXVdlrVJBtRzkqTvJAjOo",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": {
+        "value": "Boa tarde, Felipe! Como posso ajudar você hoje? Está tudo certo com a visita técnica?",
+        "annotations": []
+      }
+    }
+  ],
+  "attachments": [],
+  "metadata": {}
+}
+🔓 [OpenAI] Lock released for thread thread_8aLRmSlArbj8YNulzB2JkMud
+3:39:21 PM [express] GET /api/announcements/active 304 in 37ms :: []
+📱 [Extract Number] Raw phone number detected (no lid_ prefix): "5524993000771" - returning as-is (bare phone)
+⚠️  [WhatsApp] URL sem protocolo detectada, adicionando https://: https://evolutionapi.trtelecom.net
+📤 [WhatsApp] Sending message to: 5524993000771 via https://evolutionapi.trtelecom.net/message/sendText/Principal
+3:39:21 PM [express] GET /api/failures 304 in 71ms :: [{"id":"4b819de4-e3c7-4fc4-968c-2d0adc8d059c",…
+📦 [Cache] Admin metrics HIT - returning cached data
+3:39:23 PM [express] GET /api/dashboard/admin 304 in 1ms :: {"systemStatus":{"api":true,"database":t…
+⏱️  [Latency] Total: 66.55s | OpenAI: 8979ms | Queue: 4469ms {
+  messageId: 'wamid.HBgNNTUyNDk5MzAwMDc3MRUCABIYIEFDQTQyRUFBQzNDQUNFRTAwNEI3M0VEMzhFQjg1MDAzAA==',
+  conversationId: 'ad2203a7-ed70-4e46-b2c4-2a3ab113af18',
+  breakdown: {
+    webhook_to_queue: 1303,
+    queue_to_worker: 4469,
+    worker_to_openai: 50175,
+    openai_processing: 8979,
+    openai_to_whatsapp: 1624
+  }
+}
+⚠️  [Latency] SLA BREACH! Resposta demorou 66.55s (meta: ≤30s) {
+  messageId: 'wamid.HBgNNTUyNDk5MzAwMDc3MRUCABIYIEFDQTQyRUFBQzNDQUNFRTAwNEI3M0VEMzhFQjg1MDAzAA==',
+  breakdown: {
+    webhook_to_queue: 1303,
+    queue_to_worker: 4469,
+    worker_to_openai: 50175,
+    openai_processing: 8979,
+    openai_to_whatsapp: 1624
+  }
+}
+🔍 [Context Monitor] Monitoring interaction - Assistant: financeiro, Conversation: ad2203a7...
+🔍 [Context Monitor] Analyzing 50 messages for potential issues...
+✅ [Context Monitor] No issues detected - conversation quality is good
+⏰ [Worker] Follow-up de inatividade agendado para daqui a 10 minutos (após resposta da IA)
+✅ [Worker] Message processed successfully
+🔓 [Worker] Chat lock released for whatsapp_5524993000771
+✅ [Worker] Message completed: { jobId: '36327', duration: 62934 }
+📊 [AI Metrics] apresentacao: { total: 1, transferred: 0, resolvedByAI: 1, pending: 0 }
+📊 [AI Metrics] ouvidoria: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] cancelamento: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] suporte: { total: 12, transferred: 7, resolvedByAI: 5, pending: 0 }
+📊 [AI Metrics] financeiro: { total: 12, transferred: 3, resolvedByAI: 8, pending: 1 }
+📊 [AI Metrics] comercial: { total: 8, transferred: 6, resolvedByAI: 2, pending: 0 }
+3:39:28 PM [express] GET /api/dashboard/ai-performance 304 in 326ms :: [{"assistantType":"apresentac…
+3:39:52 PM [express] GET /api/announcements/active 304 in 149ms :: []
+3:39:52 PM [express] GET /api/failures 304 in 164ms :: [{"id":"4b819de4-e3c7-4fc4-968c-2d0adc8d059c"…
+🔄 [Cache] Admin metrics MISS - calculating fresh data
+📊 [AI Metrics] apresentacao: { total: 1, transferred: 0, resolvedByAI: 1, pending: 0 }
+📊 [AI Metrics] ouvidoria: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] comercial: { total: 8, transferred: 6, resolvedByAI: 2, pending: 0 }
+📊 [AI Metrics] suporte: { total: 12, transferred: 7, resolvedByAI: 5, pending: 0 }
+📊 [AI Metrics] financeiro: { total: 12, transferred: 3, resolvedByAI: 8, pending: 1 }
+📊 [AI Metrics] cancelamento: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+3:39:58 PM [express] GET /api/dashboard/ai-performance 304 in 546ms :: [{"assistantType":"apresentac…
+
+🔄 [Message Recovery] Iniciando verificação de mensagens travadas...
+📊 [Message Recovery] Analisando 3 conversas ativas...
+✅ [Message Recovery] Nenhuma mensagem travada encontrada
+
+💾 [Cache] Admin metrics cached for 60s
+3:40:18 PM [express] GET /api/dashboard/admin 200 in 25120ms :: {"systemStatus":{"api":true,"databas…
+
+🔄 [Batch Worker] Job disparado para whatsapp_5524993227019
+   Timer esperado: 1765046416169
+   Job ID: batch-whatsapp_5524993227019-1765046416169
+🔍 [Batch Worker] Timer atual: 1765046416169
+✅ [Batch Worker] Processando 1 mensagem(ns) de whatsapp_5524993227019
+📬 [Batch Worker] 1 mensagem(ns) de texto combinadas e enfileiradas
+✅ [Batch Worker] Job batch-whatsapp_5524993227019-1765046416169 concluído: 1 mensagens processadas
+🔄 [Worker] Processing message from 5524993227019 {
+  jobId: '36328',
+  idempotencyKey: 'wamid.HBgNNTUyNDk5MzIyNzAxORUCABIYIEFDNUQ3MTIyOUUwMTc0NTYyQjJGMjgyMEYxMUVCODkyAA==',
+  conversationId: 'f934ac8e-2294-4db1-883a-44c538ba0755',
+  hasImage: false,
+  evolutionInstance: 'Principal'
+}
+🔒 [Worker] Chat lock acquired for whatsapp_5524993227019
+⚙️ [INFO] [worker] Processing message | {"conversationId":"f934ac8e-2294-4db1-883a-44c538ba0755","fromNumber":"5524993227019","jobId":"36328","hasImage":false}
+✅ [Inactivity] Follow-up cancelado para conversa f934ac8e-2294-4db1-883a-44c538ba0755
+✅ [Auto-Closure] Encerramento automático cancelado para conversa f934ac8e-2294-4db1-883a-44c538ba0755
+✅ [Worker] Follow-up de inatividade e auto-closure cancelados - cliente respondeu
+🔍 [Massive Failure Cache] Cache MISS para CPF 10595526713 - consultando CRM...
+3:40:22 PM [express] GET /api/announcements/active 304 in 44ms :: []
+3:40:22 PM [express] GET /api/failures 304 in 63ms :: [{"id":"4b819de4-e3c7-4fc4-968c-2d0adc8d059c",…
+📊 [AI Metrics] apresentacao: { total: 1, transferred: 0, resolvedByAI: 1, pending: 0 }
+📊 [AI Metrics] ouvidoria: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] cancelamento: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] financeiro: { total: 12, transferred: 3, resolvedByAI: 8, pending: 1 }
+📊 [AI Metrics] suporte: { total: 12, transferred: 7, resolvedByAI: 5, pending: 0 }
+📊 [AI Metrics] comercial: { total: 8, transferred: 6, resolvedByAI: 2, pending: 0 }
+3:40:29 PM [express] GET /api/dashboard/ai-performance 304 in 355ms :: [{"assistantType":"apresentac…
+✅ [Installation Points] 2 ponto(s) de instalação encontrado(s) via check_pppoe_status
+   📍 Ponto 1 (Login 2019934): TRES RIOS/MOURA BRASIL - ARAÚJO RANGEL 69
+   📍 Ponto 2 (Login 20231972): TRES RIOS/MOURA BRASIL - PAULO SÉRGIO MENDES FERREIRA 10
+💾 [Massive Failure Cache] Pontos armazenados no cache (TTL: 300s)
+✅ [Massive Failure] Nenhuma falha ativa nos 2 ponto(s) do cliente
+🔀 [Multiple Points] Cliente possui 2 pontos - identificação SILENCIOSA
+🔀 [Worker] Contexto de múltiplos pontos injetado na mensagem (assistente: suporte)
+🚩 [Boleto Selection] DEBUG - Chave: awaiting:point:f934ac8e-2294-4db1-883a-44c538ba0755, Valor bruto: null (tipo: object), Valor string: "null", Awaiting: false
+🚩 [Boleto Selection] Conversa f934ac8e-2294-4db1-883a-44c538ba0755 aguardando seleção: false
+✅ [CPF Injector] CPF encontrado no histórico: 105.955.267-13
+✅ [CPF Injector] Contexto de CPF injetado para suporte
+✅ [Worker] CPF injetado no contexto para assistente suporte
+🔒 [OpenAI] Lock acquired for thread thread_NbRThJyd8CaqQHsfooMAIIJO with value lock-1765046433413-0.3285031559893765 (attempt 1)
+🔵 [OpenAI] Sending message: {
+  threadId: 'thread_NbRThJyd8CaqQHsfooMAIIJO',
+  assistantId: 'asst_CDkh1oE8YvKLtJYs3WY4rJX8',
+  providedAssistantId: 'asst_CDkh1oE8YvKLtJYs3WY4rJX8',
+  usedFallback: false
+}
+✅ [OpenAI] Message created successfully (attempt 1)
+🔵 [OpenAI] Run created: {
+  runId: 'run_HHWgZOQLrrgYzfkEexy7a5TA',
+  threadId: 'thread_NbRThJyd8CaqQHsfooMAIIJO'
+}
+🔄 [OpenAI] Polling run: {
+  status: 'queued',
+  runId: 'run_HHWgZOQLrrgYzfkEexy7a5TA',
+  threadId: 'thread_NbRThJyd8CaqQHsfooMAIIJO',
+  attempt: 0
+}
+🔄 [OpenAI] Polling run: {
+  status: 'in_progress',
+  runId: 'run_HHWgZOQLrrgYzfkEexy7a5TA',
+  threadId: 'thread_NbRThJyd8CaqQHsfooMAIIJO',
+  attempt: 1
+}
+🔵 [OpenAI] Run completed: {
+  runId: 'run_HHWgZOQLrrgYzfkEexy7a5TA',
+  status: 'completed',
+  threadId: 'thread_NbRThJyd8CaqQHsfooMAIIJO'
+}
+📊 [OpenAI Usage] Tracked: 8559 tokens, $0.0215 (gpt-5)
+🔍 [OpenAI DEBUG] Last message: {
+  "id": "msg_bVwX0Ca15uQRL0k5TLdzfrvl",
+  "object": "thread.message",
+  "created_at": 1765046437,
+  "assistant_id": "asst_CDkh1oE8YvKLtJYs3WY4rJX8",
+  "thread_id": "thread_NbRThJyd8CaqQHsfooMAIIJO",
+  "run_id": "run_HHWgZOQLrrgYzfkEexy7a5TA",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": {
+        "value": "Olá! Como posso ajudar você hoje? Está enfrentando algum problema com a internet?",
+        "annotations": []
+      }
+    }
+  ],
+  "attachments": [],
+  "metadata": {}
+}
+🔓 [OpenAI] Lock released for thread thread_NbRThJyd8CaqQHsfooMAIIJO
+📱 [Extract Number] Raw phone number detected (no lid_ prefix): "5524993227019" - returning as-is (bare phone)
+⚠️  [WhatsApp] URL sem protocolo detectada, adicionando https://: https://evolutionapi.trtelecom.net
+📤 [WhatsApp] Sending message to: 5524993227019 via https://evolutionapi.trtelecom.net/message/sendText/Principal
+⏱️  [Latency] Total: 25.58s | OpenAI: 5703ms | Queue: 4505ms {
+  messageId: 'wamid.HBgNNTUyNDk5MzIyNzAxORUCABIYIEFDNUQ3MTIyOUUwMTc0NTYyQjJGMjgyMEYxMUVCODkyAA==',
+  conversationId: 'f934ac8e-2294-4db1-883a-44c538ba0755',
+  breakdown: {
+    webhook_to_queue: 1436,
+    queue_to_worker: 4505,
+    worker_to_openai: 12017,
+    openai_processing: 5703,
+    openai_to_whatsapp: 1923
+  }
+}
+🔍 [Context Monitor] Monitoring interaction - Assistant: suporte, Conversation: f934ac8e...
+🔍 [Context Monitor] Analyzing 50 messages for potential issues...
+💾 [Context Monitor] Alert saved to database: ignored_history
+⚠️  [CONTEXT MONITOR] MEDIUM: Assistente enviou saudação genérica ignorando 50 mensagens anteriores
+   Conversation: f934ac8e-2294-4db1-883a-44c538ba0755
+   Alert Type: ignored_history
+   Assistant: suporte
+⚠️  [Context Monitor] Detected 1 quality issue(s)
+🧹 [Context Monitor] Cleaned 4 old alerts from database (>7 days)
+⏰ [Worker] Follow-up de inatividade agendado para daqui a 10 minutos (após resposta da IA)
+✅ [Worker] Message processed successfully
+🔓 [Worker] Chat lock released for whatsapp_5524993227019
+✅ [Worker] Message completed: { jobId: '36328', duration: 22008 }
+📦 [Cache] Admin metrics HIT - returning cached data
+3:40:48 PM [express] GET /api/dashboard/admin 304 in 1ms :: {"systemStatus":{"api":true,"database":t…
+3:40:53 PM [express] GET /api/announcements/active 304 in 146ms :: []
+3:40:53 PM [express] GET /api/failures 304 in 165ms :: [{"id":"4b819de4-e3c7-4fc4-968c-2d0adc8d059c"…
+📊 [AI Metrics] apresentacao: { total: 1, transferred: 0, resolvedByAI: 1, pending: 0 }
+📊 [AI Metrics] comercial: { total: 8, transferred: 6, resolvedByAI: 2, pending: 0 }
+📊 [AI Metrics] ouvidoria: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] cancelamento: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] suporte: { total: 12, transferred: 7, resolvedByAI: 5, pending: 0 }
+📊 [AI Metrics] financeiro: { total: 12, transferred: 3, resolvedByAI: 8, pending: 1 }
+3:41:00 PM [express] GET /api/dashboard/ai-performance 304 in 317ms :: [{"assistantType":"apresentac…
+🔄 [Worker] Processing message from 5524993227019 {
+  jobId: '36329',
+  idempotencyKey: 'wamid.HBgNNTUyNDk5MzIyNzAxORUCABIYIEFDMjAyN0ZFRURFNUY5RTMxRDMzOEM2OUI4RTdFNEYwAA==',
+  conversationId: 'f934ac8e-2294-4db1-883a-44c538ba0755',
+  hasImage: false,
+  evolutionInstance: 'Principal'
+}
+🔒 [Worker] Chat lock acquired for whatsapp_5524993227019
+⚙️ [INFO] [worker] Processing message | {"conversationId":"f934ac8e-2294-4db1-883a-44c538ba0755","fromNumber":"5524993227019","jobId":"36329","hasImage":false}
+✅ [Inactivity] Follow-up cancelado para conversa f934ac8e-2294-4db1-883a-44c538ba0755
+✅ [Worker] Follow-up de inatividade e auto-closure cancelados - cliente respondeu
+💾 [Massive Failure Cache] Cache HIT para CPF 10595526713 - 2 pontos
+✅ [Massive Failure] Nenhuma falha ativa nos 2 ponto(s) do cliente
+🔀 [Multiple Points] Cliente possui 2 pontos - identificação SILENCIOSA
+🔀 [Worker] Contexto de múltiplos pontos injetado na mensagem (assistente: suporte)
+🚩 [Boleto Selection] DEBUG - Chave: awaiting:point:f934ac8e-2294-4db1-883a-44c538ba0755, Valor bruto: null (tipo: object), Valor string: "null", Awaiting: false
+🚩 [Boleto Selection] Conversa f934ac8e-2294-4db1-883a-44c538ba0755 aguardando seleção: false
+✅ [CPF Injector] CPF encontrado no histórico: 105.955.267-13
+✅ [CPF Injector] Contexto de CPF injetado para suporte
+✅ [Worker] CPF injetado no contexto para assistente suporte
+🔒 [OpenAI] Lock acquired for thread thread_NbRThJyd8CaqQHsfooMAIIJO with value lock-1765046465864-0.18200850873708174 (attempt 1)
+🔵 [OpenAI] Sending message: {
+  threadId: 'thread_NbRThJyd8CaqQHsfooMAIIJO',
+  assistantId: 'asst_CDkh1oE8YvKLtJYs3WY4rJX8',
+  providedAssistantId: 'asst_CDkh1oE8YvKLtJYs3WY4rJX8',
+  usedFallback: false
+}
+✅ [OpenAI] Message created successfully (attempt 1)
+🔵 [OpenAI] Run created: {
+  runId: 'run_UCXj3DrDTn7bFydnqrhd5B1K',
+  threadId: 'thread_NbRThJyd8CaqQHsfooMAIIJO'
+}
+🔄 [OpenAI] Polling run: {
+  status: 'queued',
+  runId: 'run_UCXj3DrDTn7bFydnqrhd5B1K',
+  threadId: 'thread_NbRThJyd8CaqQHsfooMAIIJO',
+  attempt: 0
+}
+🔄 [OpenAI] Polling run: {
+  status: 'in_progress',
+  runId: 'run_UCXj3DrDTn7bFydnqrhd5B1K',
+  threadId: 'thread_NbRThJyd8CaqQHsfooMAIIJO',
+  attempt: 1
+}
+🔵 [OpenAI] Run completed: {
+  runId: 'run_UCXj3DrDTn7bFydnqrhd5B1K',
+  status: 'completed',
+  threadId: 'thread_NbRThJyd8CaqQHsfooMAIIJO'
+}
+📊 [OpenAI Usage] Tracked: 8776 tokens, $0.0221 (gpt-5)
+🔍 [OpenAI DEBUG] Last message: {
+  "id": "msg_3dGz9auQaRVgmjp4MZkkUvct",
+  "object": "thread.message",
+  "created_at": 1765046468,
+  "assistant_id": "asst_CDkh1oE8YvKLtJYs3WY4rJX8",
+  "thread_id": "thread_NbRThJyd8CaqQHsfooMAIIJO",
+  "run_id": "run_UCXj3DrDTn7bFydnqrhd5B1K",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": {
+        "value": "Entendo, para qual endereço você está com problema na internet?",
+        "annotations": []
+      }
+    }
+  ],
+  "attachments": [],
+  "metadata": {}
+}
+🔓 [OpenAI] Lock released for thread thread_NbRThJyd8CaqQHsfooMAIIJO
+📱 [Extract Number] Raw phone number detected (no lid_ prefix): "5524993227019" - returning as-is (bare phone)
+⚠️  [WhatsApp] URL sem protocolo detectada, adicionando https://: https://evolutionapi.trtelecom.net
+📤 [WhatsApp] Sending message to: 5524993227019 via https://evolutionapi.trtelecom.net/message/sendText/Principal
+⏱️  [Latency] Total: 13.37s | OpenAI: 5062ms | Queue: 4291ms {
+  messageId: 'wamid.HBgNNTUyNDk5MzIyNzAxORUCABIYIEFDMjAyN0ZFRURFNUY5RTMxRDMzOEM2OUI4RTdFNEYwAA==',
+  conversationId: 'f934ac8e-2294-4db1-883a-44c538ba0755',
+  breakdown: {
+    webhook_to_queue: 1433,
+    queue_to_worker: 4291,
+    worker_to_openai: 1076,
+    openai_processing: 5062,
+    openai_to_whatsapp: 1509
+  }
+}
+🔍 [Context Monitor] Monitoring interaction - Assistant: suporte, Conversation: f934ac8e...
+🔍 [Context Monitor] Analyzing 50 messages for potential issues...
+💾 [Context Monitor] Alert saved to database: duplicate_data_request
+⚠️  [CONTEXT MONITOR] HIGH: Assistente pediu ENDERECO que cliente já forneceu anteriormente
+   Conversation: f934ac8e-2294-4db1-883a-44c538ba0755
+   Alert Type: duplicate_data_request
+   Assistant: suporte
+⚠️  [Context Monitor] Detected 1 quality issue(s)
+🧹 [Context Monitor] Cleaned 1 old alerts from database (>7 days)
+⏰ [Worker] Follow-up de inatividade agendado para daqui a 10 minutos (após resposta da IA)
+✅ [Worker] Message processed successfully
+🔓 [Worker] Chat lock released for whatsapp_5524993227019
+✅ [Worker] Message completed: { jobId: '36329', duration: 9804 }
+
+🔄 [Batch Worker] Job disparado para whatsapp_5524993000771
+   Timer esperado: 1765046473273
+   Job ID: batch-whatsapp_5524993000771-1765046473273
+🔍 [Batch Worker] Timer atual: 1765046473273
+✅ [Batch Worker] Processando 1 mensagem(ns) de whatsapp_5524993000771
+📬 [Batch Worker] 1 mensagem(ns) de texto combinadas e enfileiradas
+✅ [Batch Worker] Job batch-whatsapp_5524993000771-1765046473273 concluído: 1 mensagens processadas
+🔄 [Worker] Processing message from 5524993000771 {
+  jobId: '36330',
+  idempotencyKey: 'wamid.HBgNNTUyNDk5MzAwMDc3MRUCABIYIEFDQjM0NzUwOUUzRTdFOTNGMTM5REI4NDE3ODM2NUMzAA==',
+  conversationId: 'ad2203a7-ed70-4e46-b2c4-2a3ab113af18',
+  hasImage: false,
+  evolutionInstance: 'Principal'
+}
+🔒 [Worker] Chat lock acquired for whatsapp_5524993000771
+⚙️ [INFO] [worker] Processing message | {"conversationId":"ad2203a7-ed70-4e46-b2c4-2a3ab113af18","fromNumber":"5524993000771","jobId":"36330","hasImage":false}
+✅ [Inactivity] Follow-up cancelado para conversa ad2203a7-ed70-4e46-b2c4-2a3ab113af18
+✅ [Worker] Follow-up de inatividade e auto-closure cancelados - cliente respondeu
+💾 [Massive Failure Cache] Cache HIT para CPF 05888759708 - 1 pontos
+✅ [Massive Failure] Nenhuma falha ativa nos 1 ponto(s) do cliente
+🔄 [Cache] Admin metrics MISS - calculating fresh data
+🚩 [Boleto Selection] DEBUG - Chave: awaiting:point:ad2203a7-ed70-4e46-b2c4-2a3ab113af18, Valor bruto: null (tipo: object), Valor string: "null", Awaiting: false
+🚩 [Boleto Selection] Conversa ad2203a7-ed70-4e46-b2c4-2a3ab113af18 aguardando seleção: false
+✅ [CPF Injector] CPF encontrado no histórico: 058.887.597-08
+✅ [CPF Injector] Contexto de CPF injetado para financeiro
+✅ [Worker] CPF injetado no contexto para assistente financeiro
+🔒 [OpenAI] Lock acquired for thread thread_8aLRmSlArbj8YNulzB2JkMud with value lock-1765046479516-0.23848408725260462 (attempt 1)
+🔵 [OpenAI] Sending message: {
+  threadId: 'thread_8aLRmSlArbj8YNulzB2JkMud',
+  assistantId: 'asst_pRXVhoy1o4YxNxVmaRiNOTMX',
+  providedAssistantId: 'asst_pRXVhoy1o4YxNxVmaRiNOTMX',
+  usedFallback: false
+}
