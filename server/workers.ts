@@ -763,13 +763,25 @@ if (redisConnection) {
             
             // Consultar boletos COM filtro de ponto
             const { consultaBoletoCliente } = await import('./ai-tools');
+            const { extractCPFFromHistory } = await import('./lib/cpf-context-injector');
             
-            if (!conversation.clientDocument) {
+            // 🔐 LGPD FIX: Extrair CPF do histórico (não do banco)
+            const conversationMessages = await storage.getMessagesByConversationId(conversationId);
+            const messagesForCpf = conversationMessages.map((m: { content: string; role: string }) => ({
+              content: m.content,
+              role: m.role as 'user' | 'assistant'
+            }));
+            const extractedCpf = extractCPFFromHistory(messagesForCpf);
+            
+            if (!extractedCpf) {
+              console.error(`❌ [Worker] CPF não encontrado no histórico para seleção de ponto`);
               throw new Error('CPF/CNPJ não disponível para consulta');
             }
             
+            console.log(`✅ [Worker] CPF extraído do histórico para seleção de ponto: ${extractedCpf.slice(0, 3)}...`);
+            
             const boletosResult = await consultaBoletoCliente(
-              conversation.clientDocument,
+              extractedCpf,
               { conversationId },
               storage,
               selectedPointNumber // 🎯 Filtrar por ponto selecionado

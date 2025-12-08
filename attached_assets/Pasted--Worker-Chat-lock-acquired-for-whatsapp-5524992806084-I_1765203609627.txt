@@ -1,0 +1,30 @@
+🔒 [Worker] Chat lock acquired for whatsapp_5524992806084
+⚙️ [INFO] [worker] Processing message | {"conversationId":"5c8fdc09-b77e-460b-b86e-0077b17fe87d","fromNumber":"5524992806084","jobId":"38215","hasImage":false}
+✅ [Inactivity] Follow-up cancelado para conversa 5c8fdc09-b77e-460b-b86e-0077b17fe87d
+✅ [Worker] Follow-up de inatividade e auto-closure cancelados - cliente respondeu
+✅ [CPF Injector] CPF encontrado no histórico: 063.705.267-62
+✅ [Massive Failure] CPF extraído do histórico: 063...
+💾 [Massive Failure Cache] Cache HIT para CPF 06370526762 - 2 pontos
+✅ [Massive Failure] Nenhuma falha ativa nos 2 ponto(s) do cliente
+🔀 [Multiple Points] Cliente possui 2 pontos - identificação SILENCIOSA
+🔀 [Worker] Contexto de múltiplos pontos injetado na mensagem (assistente: financeiro)
+🚩 [Boleto Selection] DEBUG - Chave: awaiting:point:5c8fdc09-b77e-460b-b86e-0077b17fe87d, Valor bruto: 1 (tipo: number), Valor string: "1", Awaiting: true
+🚩 [Boleto Selection] Conversa 5c8fdc09-b77e-460b-b86e-0077b17fe87d aguardando seleção: true
+🎯 [Worker] Conversa aguardando seleção de ponto - processando resposta do cliente
+💾 [Boleto Menu] Menu recuperado para conversa 5c8fdc09-b77e-460b-b86e-0077b17fe87d (2 pontos)
+🎯 [Boleto Mapping] Cliente escolheu 1º item do menu → ponto número 1
+✅ [Worker] Cliente selecionou ponto 1 - consultando boletos filtrados
+❌ [Worker] Erro ao processar seleção de ponto: Error: CPF/CNPJ não disponível para consulta
+    at Worker.Worker.connection (/home/runner/workspace/server/workers.ts:768:21)
+    at async <anonymous> (/home/runner/workspace/node_modules/bullmq/src/classes/worker.ts:939:26)
+🚩 [Boleto Selection] Flag REMOVIDA para conversa 5c8fdc09-b77e-460b-b86e-0077b17fe87d
+🗑️ [Boleto Menu] Menu removido para conversa 5c8fdc09-b77e-460b-b86e-0077b17fe87d
+✅ [CPF Injector] CPF encontrado no histórico: 063.705.267-62
+✅ [CPF Injector] Contexto de CPF injetado para financeiro
+✅ [Worker] CPF injetado no contexto para assistente financeiro
+🔒 [OpenAI] Lock acquired for thread thread_yCQJQ7hmo9iiptBiShDJtR6A with value lock-1765203569730-0.0771403613949897 (attempt 1)
+🔵 [OpenAI] Sending message: {
+  threadId: 'thread_yCQJQ7hmo9iiptBiShDJtR6A',
+  assistantId: 'asst_pRXVhoy1o4YxNxVmaRiNOTMX',
+  providedAssistantId: 'asst_pRXVhoy1o4YxNxVmaRiNOTMX',
+  usedFallback: false
