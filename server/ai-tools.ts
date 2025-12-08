@@ -1244,12 +1244,28 @@ export async function selecionarPontoInstalacao(
 
     // Buscar pontos de instalação do CRM
     const { fetchClientInstallationPoints } = await import('./lib/massive-failure-handler');
+    const { extractCPFFromHistory } = await import('./lib/cpf-context-injector');
     
-    if (!conversation.clientDocument) {
-      throw new Error("CPF/CNPJ não disponível para buscar pontos de instalação");
+    // 🔐 LGPD FIX: Extrair CPF do histórico se não estiver no banco
+    let documentoCliente = conversation.clientDocument;
+    if (!documentoCliente) {
+      const messages = await storage.getMessagesByConversationId(conversationContext.conversationId);
+      const messagesForCpf = messages.map((m: { content: string; role: string }) => ({
+        content: m.content,
+        role: m.role as 'user' | 'assistant'
+      }));
+      documentoCliente = extractCPFFromHistory(messagesForCpf);
+      
+      if (documentoCliente) {
+        console.log(`✅ [AI Tool] CPF extraído do histórico para seleção de ponto: ${documentoCliente.slice(0, 3)}...`);
+      }
+    }
+    
+    if (!documentoCliente) {
+      throw new Error("CPF/CNPJ não disponível para buscar pontos de instalação. Por favor, informe seu CPF.");
     }
 
-    const points = await fetchClientInstallationPoints(conversation.clientDocument);
+    const points = await fetchClientInstallationPoints(documentoCliente);
     
     if (!points || points.length === 0) {
       throw new Error("Nenhum ponto de instalação encontrado");
@@ -1351,9 +1367,25 @@ export async function registrarReclamacaoOuvidoria(
       throw new Error("Conversa não encontrada - contexto de segurança inválido");
     }
 
+    // 🔐 LGPD FIX: Extrair CPF do histórico se não estiver no banco
+    const { extractCPFFromHistory } = await import('./lib/cpf-context-injector');
+    let documentoCliente = conversation.clientDocument;
+    if (!documentoCliente) {
+      const messages = await storage.getMessagesByConversationId(conversationContext.conversationId);
+      const messagesForCpf = messages.map((m: { content: string; role: string }) => ({
+        content: m.content,
+        role: m.role as 'user' | 'assistant'
+      }));
+      documentoCliente = extractCPFFromHistory(messagesForCpf);
+      
+      if (documentoCliente) {
+        console.log(`✅ [Ouvidoria] CPF extraído do histórico: ${documentoCliente.slice(0, 3)}...`);
+      }
+    }
+    
     // CRÍTICO: clientDocument deve existir OBRIGATORIAMENTE
-    if (!conversation.clientDocument) {
-      console.error(`❌ [AI Tool Security] Tentativa de registrar ouvidoria sem documento do cliente armazenado`);
+    if (!documentoCliente) {
+      console.error(`❌ [AI Tool Security] Tentativa de registrar ouvidoria sem documento do cliente`);
       throw new Error("Não é possível registrar na ouvidoria sem o CPF ou CNPJ do cliente. Por favor, solicite o documento ao cliente primeiro.");
     }
 
@@ -1389,7 +1421,7 @@ export async function registrarReclamacaoOuvidoria(
       status: 'novo',
       metadata: {
         tipoOuvidoria: tipoNormalizado,
-        clientDocument: conversation.clientDocument,
+        clientDocument: documentoCliente,
         clientName: conversation.clientName || 'Não informado',
         chatId: conversation.chatId
       }
