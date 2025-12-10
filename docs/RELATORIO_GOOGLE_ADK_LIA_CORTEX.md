@@ -413,5 +413,351 @@ comercial_agent = LlmAgent(
 
 ---
 
+## Anexo B: Vertex AI Agent Engine - Infraestrutura Gerenciada
+
+### B.1 O que é Vertex AI Agent Engine
+
+O **Vertex AI Agent Engine** é o serviço de nuvem do Google que hospeda e executa agentes ADK automaticamente, sem necessidade de gerenciar servidores. É a opção recomendada para produção enterprise.
+
+### B.2 Comparação: Auto-Hospedado vs Gerenciado
+
+| Aspecto | Auto-Hospedado (Cloud Run/Docker) | Vertex AI Agent Engine |
+|---------|----------------------------------|------------------------|
+| **Configuração** | Dockerfile, variáveis, scaling manual | `adk deploy` e pronto |
+| **Servidores** | Você configura e mantém | Google gerencia |
+| **Escalabilidade** | Configurar manualmente | Automática (serverless) |
+| **Atualizações** | Você faz deploy | Google aplica patches |
+| **Monitoramento** | Configurar Prometheus/Grafana | Dashboard nativo |
+| **Sessões** | Implementar com Redis/Firestore | Gerenciado automaticamente |
+| **SLA** | Depende da sua infra | 99.9% garantido pelo Google |
+| **Custo** | Infra + manutenção + DevOps | Pay-per-use |
+
+### B.3 Equivalência com Infraestrutura Atual do LIA CORTEX
+
+| Componente Atual | Função | Equivalente Vertex AI |
+|------------------|--------|----------------------|
+| **Replit** | Hospedagem do servidor | **Agent Engine Runtime** |
+| **Upstash Redis** | Sessões/cache | **Managed Sessions** |
+| **BullMQ Workers** | Fila de processamento | **Cloud Tasks + Agent Engine** |
+| **Neon PostgreSQL** | Banco de dados | **AlloyDB / Cloud SQL** |
+| **Upstash Vector** | RAG embeddings | **Vertex AI Vector Search** |
+
+### B.4 Arquitetura Proposta com Vertex AI
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    LIA CORTEX v3.0 - VERTEX AI AGENT ENGINE                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────┐      ┌──────────────────────────────────────────────────┐  │
+│  │  WhatsApp   │      │         VERTEX AI AGENT ENGINE                   │  │
+│  │  Evolution  │─────▶│  ┌────────────────────────────────────────────┐  │  │
+│  │    API      │      │  │          Managed Runtime                   │  │  │
+│  └─────────────┘      │  │                                            │  │  │
+│                       │  │  ┌────────────────────────────────────┐    │  │  │
+│                       │  │  │   LIA_Cortex_Agent (ADK)           │    │  │  │
+│                       │  │  │                                    │    │  │  │
+│                       │  │  │   ┌──────────┐  ┌──────────┐       │    │  │  │
+│                       │  │  │   │Recepcio- │  │Comercial │       │    │  │  │
+│                       │  │  │   │  nista   │─▶│Financeiro│       │    │  │  │
+│                       │  │  │   └──────────┘  │ Suporte  │       │    │  │  │
+│                       │  │  │                 └──────────┘       │    │  │  │
+│                       │  │  └────────────────────────────────────┘    │  │  │
+│                       │  │                                            │  │  │
+│                       │  │  ┌─────────────┐  ┌─────────────────────┐  │  │  │
+│                       │  │  │  Managed    │  │   Auto-Scaling      │  │  │  │
+│                       │  │  │  Sessions   │  │   0 → 1000+ pods    │  │  │  │
+│                       │  │  └─────────────┘  └─────────────────────┘  │  │  │
+│                       │  └────────────────────────────────────────────┘  │  │
+│                       │                                                  │  │
+│                       │  ┌─────────────┐  ┌─────────────┐  ┌──────────┐  │  │
+│                       │  │  Logging    │  │  Metrics    │  │  Alerts  │  │  │
+│                       │  │  Cloud      │  │  Dashboard  │  │  Native  │  │  │
+│                       │  │  Logging    │  │             │  │          │  │  │
+│                       │  └─────────────┘  └─────────────┘  └──────────┘  │  │
+│                       └──────────────────────────────────────────────────┘  │
+│                                          │                                  │
+│                                          ▼                                  │
+│                       ┌──────────────────────────────────────────────────┐  │
+│                       │              INTEGRAÇÕES                         │  │
+│                       │  ┌──────────┐  ┌──────────┐  ┌──────────┐       │  │
+│                       │  │ AlloyDB  │  │  Vertex  │  │   APIs   │       │  │
+│                       │  │PostgreSQL│  │  Vector  │  │TR Telecom│       │  │
+│                       │  │          │  │  Search  │  │          │       │  │
+│                       │  └──────────┘  └──────────┘  └──────────┘       │  │
+│                       └──────────────────────────────────────────────────┘  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### B.5 Processo de Deploy
+
+#### B.5.1 Deploy Simples (CLI)
+
+```bash
+# 1. Estrutura do projeto
+lia_cortex_adk/
+├── agent.py           # Definição dos agentes
+├── tools.py           # Funções (consultar_boleto, etc.)
+├── prompts/           # Prompts dos assistentes
+├── requirements.txt   # Dependências Python
+└── .env              # Configurações
+
+# 2. Login no Google Cloud
+gcloud auth login
+gcloud config set project tr-telecom-lia
+
+# 3. Deploy com um comando
+adk deploy --project=tr-telecom-lia --region=us-central1
+
+# 4. Pronto! Agente rodando em:
+# https://us-central1-tr-telecom-lia.cloudfunctions.net/lia-cortex
+```
+
+#### B.5.2 Deploy com Configuração Avançada
+
+```python
+# deploy_config.py
+from google.adk.deploy import AgentEngineConfig
+
+config = AgentEngineConfig(
+    project_id="tr-telecom-lia",
+    region="southamerica-east1",  # São Paulo
+    
+    # Scaling
+    min_instances=1,              # Sempre 1 pod ativo (cold start = 0)
+    max_instances=100,            # Escala até 100 pods
+    
+    # Recursos por instância
+    memory="2Gi",
+    cpu="2",
+    
+    # Timeout
+    request_timeout_seconds=60,
+    
+    # Sessões
+    session_service="firestore",  # Persistência automática
+    session_ttl_hours=24,         # TTL de 24h
+    
+    # Segurança
+    require_authentication=True,
+    allowed_origins=["https://evolutionapi.trtelecom.net"]
+)
+```
+
+### B.6 Estimativa de Custos Vertex AI Agent Engine
+
+#### B.6.1 Componentes de Custo
+
+| Componente | Precificação | Estimativa Mensal* |
+|------------|--------------|-------------------|
+| **Agent Engine Runtime** | $0.0025/1K requests | $400 (160K msgs) |
+| **Compute (vCPU)** | $0.048/vCPU-hora | $70 (2 vCPU médio) |
+| **Memória** | $0.005/GB-hora | $15 (2GB médio) |
+| **Sessões (Firestore)** | $0.18/100K reads | $30 |
+| **Networking (egress)** | $0.12/GB | $10 |
+| **SUBTOTAL INFRA** | - | **~$525/mês** |
+| | | |
+| **Gemini 2.0 Flash (tokens)** | $0.075/$0.30 per 1M | **~$200/mês** |
+| | | |
+| **TOTAL ESTIMADO** | - | **~$725/mês** |
+
+*Baseado em 160K mensagens/mês, ~5M tokens input, ~2M tokens output
+
+#### B.6.2 Comparação de Custos Total
+
+| Item | Atual (OpenAI + Replit) | Vertex AI Agent Engine |
+|------|------------------------|------------------------|
+| **Tokens/Modelo** | ~$800-1200/mês (GPT-5) | ~$200/mês (Gemini Flash) |
+| **Infraestrutura** | ~$50/mês (Replit) | ~$525/mês (Vertex) |
+| **Redis/Vector** | ~$40/mês (Upstash) | Incluído |
+| **TOTAL** | **~$890-1290/mês** | **~$725/mês** |
+| **Economia** | - | **~20-45%** |
+
+**Nota:** A economia real depende do volume. Em volumes maiores (500K+ msgs), Vertex AI escala melhor e a economia aumenta para 50-60%.
+
+### B.7 Recursos do Dashboard Agent Engine
+
+O Vertex AI Agent Engine inclui dashboard completo:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  VERTEX AI AGENT ENGINE - DASHBOARD                                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  📊 MÉTRICAS EM TEMPO REAL                                              │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐         │
+│  │ Requests/min   │  │ Latência P95    │  │ Error Rate      │         │
+│  │     847        │  │    2.3s         │  │    0.02%        │         │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘         │
+│                                                                         │
+│  📈 GRÁFICOS                                                            │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │  Requests over time                                             │   │
+│  │  ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄   │   │
+│  │  ████████████████████████████████████████████████████████████   │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                         │
+│  🔍 SESSÕES ATIVAS                                                      │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │ ID                  │ Usuário          │ Assistente  │ Duração   │  │
+│  │ sess_abc123         │ 5524999887766    │ Comercial   │ 5m 23s    │  │
+│  │ sess_def456         │ 5524988776655    │ Financeiro  │ 2m 10s    │  │
+│  │ sess_ghi789         │ 5524977665544    │ Suporte     │ 8m 45s    │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+│                                                                         │
+│  🐛 DEBUG & TRACING                                                     │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │ [15:30:45] → Recepcionista: Classificou como "boleto"            │  │
+│  │ [15:30:46] → Roteou para: Financeiro                             │  │
+│  │ [15:30:47] → Tool call: consultar_boleto_cliente(cnpj=...)       │  │
+│  │ [15:30:48] → API Response: 2 boletos encontrados                 │  │
+│  │ [15:30:49] → Resposta enviada ao cliente                         │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### B.8 Plano de Implementação Vertex AI
+
+#### Fase 1: Preparação (2 semanas)
+
+| Tarefa | Responsável | Duração |
+|--------|-------------|---------|
+| Criar projeto Google Cloud | DevOps | 1 dia |
+| Configurar billing e quotas | Admin | 1 dia |
+| Habilitar APIs necessárias | DevOps | 1 dia |
+| Setup ambiente de desenvolvimento | Dev | 3 dias |
+| Configurar CI/CD (Cloud Build) | DevOps | 3 dias |
+
+```bash
+# APIs necessárias
+gcloud services enable \
+  aiplatform.googleapis.com \
+  cloudbuild.googleapis.com \
+  run.googleapis.com \
+  firestore.googleapis.com \
+  secretmanager.googleapis.com
+```
+
+#### Fase 2: Migração de Código (4 semanas)
+
+| Tarefa | Descrição | Duração |
+|--------|-----------|---------|
+| Converter tools.ts → tools.py | Migrar 30+ funções | 1 semana |
+| Converter prompts | Adaptar para ADK format | 2 dias |
+| Implementar SessionService | Integrar com Firestore | 3 dias |
+| Implementar orquestração | SequentialAgent com routing | 1 semana |
+| Testes unitários | Cobertura > 80% | 1 semana |
+
+```python
+# Exemplo: tools.py
+from google.adk.tools import FunctionTool
+import httpx
+
+async def consultar_boleto_cliente(documento: str) -> dict:
+    """
+    Consulta boletos de um cliente via API TR Telecom.
+    
+    Args:
+        documento: CPF (11 dígitos) ou CNPJ (14 dígitos)
+    
+    Returns:
+        dict com boletos encontrados ou erro
+    """
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"https://api.trtelecom.net/boletos/{documento}",
+            headers={"Authorization": f"Bearer {API_KEY}"}
+        )
+        return response.json()
+
+# Registrar como tool
+consultar_boleto_tool = FunctionTool(consultar_boleto_cliente)
+```
+
+#### Fase 3: Deploy e Testes (2 semanas)
+
+| Tarefa | Descrição | Duração |
+|--------|-----------|---------|
+| Deploy em staging | Ambiente isolado | 2 dias |
+| Testes de integração | WhatsApp → Agent → APIs | 3 dias |
+| Testes de carga | Simular 160K msgs | 2 dias |
+| Validação de qualidade | Comparar respostas com OpenAI | 3 dias |
+| Ajustes de prompts | Fine-tuning para Gemini | 2 dias |
+
+```bash
+# Deploy staging
+adk deploy \
+  --project=tr-telecom-lia \
+  --region=southamerica-east1 \
+  --env=staging \
+  --min-instances=0 \
+  --max-instances=10
+```
+
+#### Fase 4: Go-Live Gradual (4 semanas)
+
+| Semana | % Tráfego | Observações |
+|--------|-----------|-------------|
+| 1 | 5% | Apenas horário comercial |
+| 2 | 15% | Expandir para noite |
+| 3 | 30% | Incluir fins de semana |
+| 4 | 50% | Monitorar métricas |
+| 5 | 75% | Preparar rollback |
+| 6 | 100% | Desativar OpenAI |
+
+### B.9 Checklist de Migração
+
+```
+PRÉ-REQUISITOS
+[ ] Conta Google Cloud ativa com billing
+[ ] Quotas aprovadas para Vertex AI
+[ ] Equipe treinada em Python/ADK
+[ ] Ambiente de staging configurado
+
+MIGRAÇÃO DE CÓDIGO
+[ ] tools.ts → tools.py (30+ funções)
+[ ] Prompts adaptados para Gemini
+[ ] Orquestração implementada (7 agentes)
+[ ] SessionService configurado
+[ ] Testes unitários passando
+
+INFRAESTRUTURA
+[ ] VPC configurada
+[ ] Secrets Manager com credenciais
+[ ] Cloud Armor (WAF) configurado
+[ ] Alertas configurados
+[ ] Runbooks documentados
+
+INTEGRAÇÃO
+[ ] Evolution API conectada
+[ ] APIs TR Telecom testadas
+[ ] Banco de dados migrado
+[ ] Vector search configurado
+
+VALIDAÇÃO
+[ ] Testes de carga OK (160K msgs)
+[ ] Latência < 5s P95
+[ ] Taxa de erro < 0.1%
+[ ] Qualidade de resposta validada
+[ ] Rollback testado
+
+GO-LIVE
+[ ] Feature flag configurada
+[ ] Tráfego gradual iniciado
+[ ] Monitoramento 24/7 ativo
+[ ] Equipe de plantão escalada
+```
+
+### B.10 Referências Vertex AI
+
+- [Vertex AI Agent Engine Docs](https://cloud.google.com/agent-builder/agent-engine)
+- [Deploy ADK to Agent Engine](https://google.github.io/adk-docs/deploy/agent-engine/)
+- [Pricing Calculator](https://cloud.google.com/products/calculator)
+- [Best Practices](https://cloud.google.com/architecture/ai-ml)
+
+---
+
 **Documento preparado para avaliação estratégica.**  
 **Próxima revisão recomendada:** Março 2026 (após lançamento ADK 2.0)
