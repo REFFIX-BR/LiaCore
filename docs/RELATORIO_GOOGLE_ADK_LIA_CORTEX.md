@@ -759,5 +759,442 @@ GO-LIVE
 
 ---
 
+## Anexo C: Blue-Green Deployment - Migração com Zero Risco
+
+### C.1 Conceito
+
+O **Blue-Green Deployment** permite rodar dois ambientes em paralelo:
+- **Blue (Azul):** Sistema atual (Replit + OpenAI) - produção estável
+- **Green (Verde):** Sistema novo (Google Cloud + ADK) - em validação
+
+Um roteador simples direciona o tráfego para um ou outro, permitindo:
+- Testar com clientes reais sem risco
+- Rollback instantâneo se houver problemas
+- Comparação de performance lado a lado
+
+### C.2 Arquitetura Blue-Green
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    ARQUITETURA PARALELA (BLUE-GREEN)                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│                              ┌─────────────────────┐                        │
+│                              │    ROTEADOR         │                        │
+│                              │  (Feature Flag)     │                        │
+│     WhatsApp ───────────────▶│                     │                        │
+│     Evolution API            │  AI_BACKEND=?       │                        │
+│                              │                     │                        │
+│                              └──────────┬──────────┘                        │
+│                                         │                                   │
+│                         ┌───────────────┴───────────────┐                   │
+│                         │                               │                   │
+│                         ▼                               ▼                   │
+│      ┌────────────────────────────┐   ┌────────────────────────────┐       │
+│      │                            │   │                            │       │
+│      │   🔵 BLUE (ATUAL)          │   │   🟢 GREEN (NOVO)          │       │
+│      │                            │   │                            │       │
+│      │   Replit                   │   │   Google Cloud             │       │
+│      │   ├── OpenAI GPT-5         │   │   ├── Vertex AI Agent      │       │
+│      │   ├── Upstash Redis        │   │   │   Engine               │       │
+│      │   ├── Upstash Vector       │   │   ├── ADK + Gemini 2.0     │       │
+│      │   ├── BullMQ Workers       │   │   ├── Firestore Sessions   │       │
+│      │   └── Neon PostgreSQL      │   │   ├── Vertex AI Vector     │       │
+│      │                            │   │   └── AlloyDB PostgreSQL   │       │
+│      │   ✅ Produção Estável      │   │                            │       │
+│      │   💰 ~$1000/mês            │   │   🧪 Validação/Teste       │       │
+│      │                            │   │   💰 ~$725/mês             │       │
+│      └────────────────────────────┘   └────────────────────────────┘       │
+│                                                                             │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │  ROLLBACK INSTANTÂNEO                                               │   │
+│   │                                                                     │   │
+│   │  Problema detectado?                                                │   │
+│   │  1. Mudar AI_BACKEND=blue                                           │   │
+│   │  2. Pronto! Todo tráfego volta para OpenAI em segundos              │   │
+│   │                                                                     │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### C.3 Implementação do Roteador
+
+Adicionar no código atual do LIA CORTEX (workers.ts ou routes.ts):
+
+```typescript
+// ============================================================
+// ROTEADOR BLUE-GREEN - Migração ADK
+// ============================================================
+
+// Configuração via variável de ambiente
+const AI_BACKEND = process.env.AI_BACKEND || 'blue'; // 'blue' | 'green' | 'split'
+const GREEN_TRAFFIC_PERCENT = parseInt(process.env.GREEN_TRAFFIC_PERCENT || '0');
+
+// URLs dos backends
+const VERTEX_AI_ENDPOINT = process.env.VERTEX_AI_ENDPOINT || 
+  'https://southamerica-east1-tr-telecom-lia.cloudfunctions.net/lia-cortex';
+
+/**
+ * Decide qual backend usar baseado na configuração
+ */
+function escolherBackend(conversationId: string): 'blue' | 'green' {
+  if (AI_BACKEND === 'blue') return 'blue';
+  if (AI_BACKEND === 'green') return 'green';
+  
+  // Modo split: distribui tráfego baseado em hash do conversationId
+  // Isso garante que a mesma conversa sempre vá para o mesmo backend
+  if (AI_BACKEND === 'split') {
+    const hash = conversationId.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    const percent = Math.abs(hash) % 100;
+    return percent < GREEN_TRAFFIC_PERCENT ? 'green' : 'blue';
+  }
+  
+  return 'blue'; // fallback seguro
+}
+
+/**
+ * Processa mensagem com roteamento Blue-Green
+ */
+async function processarMensagemBlueGreen(
+  mensagem: IncomingMessage,
+  conversation: Conversation
+): Promise<AIResponse> {
+  
+  const backend = escolherBackend(conversation.id.toString());
+  
+  console.log(`[BLUE-GREEN] Conversa ${conversation.id} → Backend: ${backend.toUpperCase()}`);
+  
+  if (backend === 'green') {
+    return await chamarVertexAI(mensagem, conversation);
+  } else {
+    return await processarComOpenAI(mensagem, conversation);
+  }
+}
+
+/**
+ * Chama o novo backend ADK no Vertex AI
+ */
+async function chamarVertexAI(
+  mensagem: IncomingMessage,
+  conversation: Conversation
+): Promise<AIResponse> {
+  
+  const startTime = Date.now();
+  
+  try {
+    const response = await fetch(VERTEX_AI_ENDPOINT, {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${process.env.VERTEX_AI_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        query: mensagem.text,
+        session_id: `conv_${conversation.id}`,
+        user_id: conversation.clientPhone,
+        context: {
+          clientName: conversation.clientName,
+          currentAssistant: conversation.currentAssistant,
+          // Passar contexto relevante para o ADK
+        }
+      }),
+      signal: AbortSignal.timeout(30000) // 30s timeout
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Vertex AI error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    const latency = Date.now() - startTime;
+    console.log(`[GREEN] Resposta em ${latency}ms`);
+    
+    // Métricas para comparação
+    await registrarMetricaBlueGreen('green', latency, true);
+    
+    return {
+      text: data.response,
+      assistant: data.current_agent || 'cortex',
+      functionsCalled: data.tools_called || []
+    };
+    
+  } catch (error) {
+    console.error('[GREEN] Erro no Vertex AI:', error);
+    
+    // Métricas de erro
+    await registrarMetricaBlueGreen('green', Date.now() - startTime, false);
+    
+    // FALLBACK AUTOMÁTICO para OpenAI
+    console.log('[GREEN → BLUE] Fallback automático para OpenAI');
+    return await processarComOpenAI(mensagem, conversation);
+  }
+}
+
+/**
+ * Registra métricas para comparação Blue vs Green
+ */
+async function registrarMetricaBlueGreen(
+  backend: 'blue' | 'green',
+  latencyMs: number,
+  success: boolean
+): Promise<void> {
+  // Salvar no Redis para dashboard de comparação
+  const key = `metrics:bluegreen:${backend}:${new Date().toISOString().slice(0, 13)}`;
+  await redis.hincrby(key, success ? 'success' : 'error', 1);
+  await redis.hincrbyfloat(key, 'total_latency', latencyMs);
+  await redis.expire(key, 86400 * 7); // 7 dias
+}
+```
+
+### C.4 Configuração de Ambiente
+
+```bash
+# .env - Configurações Blue-Green
+
+# Modo de operação:
+# - 'blue'  = 100% OpenAI (atual)
+# - 'green' = 100% Vertex AI (novo)
+# - 'split' = Dividir tráfego por porcentagem
+AI_BACKEND=blue
+
+# Porcentagem do tráfego para Green (só funciona com AI_BACKEND=split)
+GREEN_TRAFFIC_PERCENT=0
+
+# Endpoint do Vertex AI Agent Engine
+VERTEX_AI_ENDPOINT=https://southamerica-east1-tr-telecom-lia.cloudfunctions.net/lia-cortex
+
+# Token de autenticação do Vertex AI
+VERTEX_AI_TOKEN=ya29.xxxxx
+```
+
+### C.5 Cronograma de Migração Gradual
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    CRONOGRAMA BLUE-GREEN (6 SEMANAS)                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  SEMANA 1: Preparação                                                       │
+│  ├── AI_BACKEND=blue (100% OpenAI)                                          │
+│  ├── Deploy ADK no Google Cloud                                             │
+│  ├── Testes internos com equipe                                             │
+│  └── Validar conectividade Evolution API → Vertex AI                        │
+│                                                                             │
+│  SEMANA 2: Teste Inicial                                                    │
+│  ├── AI_BACKEND=split, GREEN_TRAFFIC_PERCENT=5                              │
+│  ├── Apenas 5% do tráfego no Vertex AI                                      │
+│  ├── Monitorar: latência, erros, qualidade                                  │
+│  └── Ajustar prompts se necessário                                          │
+│                                                                             │
+│  SEMANA 3: Expansão Controlada                                              │
+│  ├── GREEN_TRAFFIC_PERCENT=25                                               │
+│  ├── 25% do tráfego no Vertex AI                                            │
+│  ├── Comparar custos: OpenAI vs Gemini                                      │
+│  └── Validar function calling (APIs TR Telecom)                             │
+│                                                                             │
+│  SEMANA 4: Teste de Escala                                                  │
+│  ├── GREEN_TRAFFIC_PERCENT=50                                               │
+│  ├── 50% do tráfego no Vertex AI                                            │
+│  ├── Testar horários de pico                                                │
+│  └── Validar auto-scaling do Agent Engine                                   │
+│                                                                             │
+│  SEMANA 5: Preparação Final                                                 │
+│  ├── GREEN_TRAFFIC_PERCENT=75                                               │
+│  ├── 75% do tráfego no Vertex AI                                            │
+│  ├── Documentar runbooks                                                    │
+│  └── Treinar equipe de suporte                                              │
+│                                                                             │
+│  SEMANA 6: Go-Live Completo                                                 │
+│  ├── AI_BACKEND=green (100% Vertex AI)                                      │
+│  ├── Manter OpenAI como fallback automático                                 │
+│  ├── Monitoramento 24/7                                                     │
+│  └── Após 2 semanas estável: desligar OpenAI                                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### C.6 Dashboard de Comparação
+
+Implementar dashboard para visualizar métricas lado a lado:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    DASHBOARD COMPARATIVO BLUE vs GREEN                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  📊 MÉTRICAS ÚLTIMAS 24H                                                    │
+│                                                                             │
+│  ┌─────────────────────────────┐  ┌─────────────────────────────┐          │
+│  │  🔵 BLUE (OpenAI)           │  │  🟢 GREEN (Vertex AI)       │          │
+│  │                             │  │                             │          │
+│  │  Requests: 12,450           │  │  Requests: 3,112            │          │
+│  │  Latência P50: 3.2s         │  │  Latência P50: 2.1s         │          │
+│  │  Latência P95: 8.5s         │  │  Latência P95: 4.8s         │          │
+│  │  Taxa Erro: 0.12%           │  │  Taxa Erro: 0.08%           │          │
+│  │  Custo: $45.20              │  │  Custo: $8.40               │          │
+│  │                             │  │                             │          │
+│  └─────────────────────────────┘  └─────────────────────────────┘          │
+│                                                                             │
+│  📈 COMPARATIVO                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  Latência:  GREEN 34% mais rápido ✅                                │   │
+│  │  Custo:     GREEN 81% mais barato ✅                                │   │
+│  │  Erros:     GREEN 33% menos erros ✅                                │   │
+│  │  Qualidade: Avaliação manual pendente ⏳                            │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  🚨 ALERTAS                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  ✅ Nenhum alerta ativo                                             │   │
+│  │                                                                     │   │
+│  │  Regras configuradas:                                               │   │
+│  │  - GREEN latência P95 > 10s → Alerta                                │   │
+│  │  - GREEN taxa erro > 1% → Rollback automático                       │   │
+│  │  - GREEN indisponível > 30s → Fallback para BLUE                    │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### C.7 Rollback Automático
+
+Implementar circuit breaker para rollback automático:
+
+```typescript
+// ============================================================
+// CIRCUIT BREAKER - Rollback Automático
+// ============================================================
+
+interface CircuitBreakerState {
+  failures: number;
+  lastFailure: number;
+  state: 'closed' | 'open' | 'half-open';
+}
+
+const circuitBreaker: CircuitBreakerState = {
+  failures: 0,
+  lastFailure: 0,
+  state: 'closed'
+};
+
+const FAILURE_THRESHOLD = 5;      // 5 erros consecutivos
+const RESET_TIMEOUT = 60000;      // 1 minuto para tentar novamente
+const ERROR_RATE_THRESHOLD = 0.05; // 5% de erro = rollback
+
+/**
+ * Verifica se deve usar fallback baseado no circuit breaker
+ */
+function deveUsarFallback(): boolean {
+  // Se circuit breaker está aberto, usar Blue (OpenAI)
+  if (circuitBreaker.state === 'open') {
+    // Verificar se já passou tempo suficiente para tentar novamente
+    if (Date.now() - circuitBreaker.lastFailure > RESET_TIMEOUT) {
+      circuitBreaker.state = 'half-open';
+      console.log('[CIRCUIT BREAKER] Estado: HALF-OPEN - Tentando Green novamente');
+      return false;
+    }
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Registra sucesso no circuit breaker
+ */
+function registrarSucesso(): void {
+  if (circuitBreaker.state === 'half-open') {
+    circuitBreaker.state = 'closed';
+    circuitBreaker.failures = 0;
+    console.log('[CIRCUIT BREAKER] Estado: CLOSED - Green recuperado');
+  }
+}
+
+/**
+ * Registra falha no circuit breaker
+ */
+function registrarFalha(): void {
+  circuitBreaker.failures++;
+  circuitBreaker.lastFailure = Date.now();
+  
+  if (circuitBreaker.failures >= FAILURE_THRESHOLD) {
+    circuitBreaker.state = 'open';
+    console.error('[CIRCUIT BREAKER] Estado: OPEN - Rollback para Blue!');
+    
+    // Alerta para equipe
+    enviarAlertaRollback();
+  }
+}
+
+/**
+ * Envia alerta de rollback automático
+ */
+async function enviarAlertaRollback(): Promise<void> {
+  // Notificar via Twilio/WhatsApp para equipe
+  await twilioClient.messages.create({
+    body: `🚨 ALERTA LIA CORTEX: Rollback automático ativado! 
+    Green (Vertex AI) com ${circuitBreaker.failures} falhas consecutivas.
+    Sistema usando Blue (OpenAI) como fallback.
+    Verificar logs imediatamente.`,
+    to: process.env.ALERT_PHONE_NUMBER,
+    from: process.env.TWILIO_PHONE_NUMBER
+  });
+}
+```
+
+### C.8 Vantagens do Blue-Green para TR Telecom
+
+| Benefício | Descrição |
+|-----------|-----------|
+| **Zero Downtime** | Sistema atual continua funcionando 100% durante migração |
+| **Rollback Instantâneo** | Muda variável de ambiente e volta para OpenAI em segundos |
+| **Teste com Clientes Reais** | Valida qualidade com tráfego real, não simulação |
+| **Comparação A/B** | Métricas de latência, custo e qualidade lado a lado |
+| **Fallback Automático** | Se Vertex AI falhar, OpenAI assume automaticamente |
+| **Migração Reversível** | Pode voltar a qualquer momento, mesmo após 100% migrado |
+| **Validação Gradual** | De 5% até 100% em semanas, não de uma vez |
+
+### C.9 Checklist Blue-Green
+
+```
+PREPARAÇÃO
+[ ] Código do roteador implementado
+[ ] Variáveis de ambiente configuradas
+[ ] Endpoint Vertex AI funcionando
+[ ] Fallback automático testado
+[ ] Alertas de rollback configurados
+
+FASE 1: TESTES INTERNOS
+[ ] 0% tráfego real
+[ ] Testes manuais pela equipe
+[ ] Validar todas as funções (APIs TR Telecom)
+[ ] Comparar respostas OpenAI vs Gemini
+
+FASE 2: TRÁFEGO GRADUAL
+[ ] 5% tráfego → validar estabilidade
+[ ] 25% tráfego → validar escala
+[ ] 50% tráfego → validar custos
+[ ] 75% tráfego → validar qualidade
+
+FASE 3: GO-LIVE
+[ ] 100% tráfego no Vertex AI
+[ ] OpenAI como fallback ativo
+[ ] Monitoramento 24/7
+[ ] Equipe de plantão escalada
+
+FASE 4: DESCOMISSIONAMENTO
+[ ] 2 semanas estável em 100%
+[ ] Desativar fallback OpenAI
+[ ] Encerrar conta/reduzir tier OpenAI
+[ ] Documentar lições aprendidas
+```
+
+---
+
 **Documento preparado para avaliação estratégica.**  
 **Próxima revisão recomendada:** Março 2026 (após lançamento ADK 2.0)
