@@ -2534,58 +2534,59 @@ Fonte: ${fonte}`;
         const { consultaBoletoCliente } = await import("../ai-tools");
         const { storage } = await import("../storage");
         const { installationPointManager } = await import("./redis-config");
-        const { extractCPFFromHistory } = await import("./cpf-context-injector");
+        const { extractDocumentoFromHistory } = await import("./cpf-context-injector");
         
         try {
           console.log(`🔍 [AI Tool Handler] Iniciando consulta de boletos para conversação ${conversationId}`);
           
-          // LGPD: Verificar se CPF foi fornecido nos argumentos
-          let cpfFornecido = args.documento || args.cpf || args.cpf_cnpj;
+          // LGPD: Verificar se documento (CPF ou CNPJ) foi fornecido nos argumentos
+          let documentoFornecido = args.documento || args.cpf || args.cpf_cnpj || args.cnpj;
           
-          // Se CPF não veio nos argumentos, tentar extrair do histórico de mensagens
-          if (!cpfFornecido) {
-            console.log(`🔍 [AI Tool] CPF não nos argumentos - tentando extrair do histórico...`);
+          // Se documento não veio nos argumentos, tentar extrair do histórico de mensagens
+          if (!documentoFornecido) {
+            console.log(`🔍 [AI Tool] Documento não nos argumentos - tentando extrair do histórico...`);
             try {
               const mensagensHistorico = await storage.getMessagesByConversationId(conversationId);
               const messagesForExtraction = mensagensHistorico.slice(-50).map((m: { content: string; role: string }) => ({
                 content: m.content,
                 role: m.role as 'user' | 'assistant'
               }));
-              const cpfExtraido = extractCPFFromHistory(messagesForExtraction);
-              if (cpfExtraido) {
-                cpfFornecido = cpfExtraido;
-                console.log(`✅ [AI Tool] CPF extraído do histórico: ${cpfExtraido.slice(0, 3)}...`);
+              // IMPORTANTE: extractDocumentoFromHistory tenta CNPJ primeiro (14 dígitos), depois CPF (11 dígitos)
+              const documentoExtraido = extractDocumentoFromHistory(messagesForExtraction);
+              if (documentoExtraido) {
+                documentoFornecido = documentoExtraido.documento;
+                console.log(`✅ [AI Tool] ${documentoExtraido.tipo} extraído do histórico: ${documentoExtraido.formatado}`);
               }
             } catch (err) {
-              console.warn(`⚠️ [AI Tool] Erro ao extrair CPF do histórico:`, err);
+              console.warn(`⚠️ [AI Tool] Erro ao extrair documento do histórico:`, err);
             }
           }
           
-          if (!cpfFornecido) {
-            // LGPD: SEMPRE solicitar CPF - não usar CPF armazenado
-            console.warn("⚠️ [AI Tool] LGPD: CPF não fornecido e não encontrado no histórico - solicitando ao cliente");
+          if (!documentoFornecido) {
+            // LGPD: SEMPRE solicitar documento - não usar documento armazenado
+            console.warn("⚠️ [AI Tool] LGPD: Documento não fornecido e não encontrado no histórico - solicitando ao cliente");
             return JSON.stringify({
               error: "Para consultar seus boletos, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
             });
           }
           
-          console.log(`🔍 [AI Tool Handler] Chamando consultaBoletoCliente com CPF fornecido (LGPD: sem armazenamento)...`);
+          console.log(`🔍 [AI Tool Handler] Chamando consultaBoletoCliente com documento fornecido (LGPD: sem armazenamento)...`);
           
-          // LGPD: Validar documento fornecido
+          // LGPD: Validar documento fornecido (CPF ou CNPJ)
           const { validarDocumentoFlexivel } = await import("../ai-tools");
-          const validacaoCpf = validarDocumentoFlexivel(cpfFornecido);
+          const validacaoDocumento = validarDocumentoFlexivel(documentoFornecido);
           
-          if (!validacaoCpf.valido) {
+          if (!validacaoDocumento.valido) {
             return JSON.stringify({
-              error: validacaoCpf.motivo || 'Documento inválido'
+              error: validacaoDocumento.motivo || 'Documento inválido'
             });
           }
           
-          const cpfNormalizado = validacaoCpf.documentoNormalizado;
+          const documentoNormalizado = validacaoDocumento.documentoNormalizado;
           
           // Chamar diretamente a API real - pode retornar { boletos, hasMultiplePoints } OU { pontos, hasMultiplePoints }
           const resultadoBoletos = await consultaBoletoCliente(
-            cpfNormalizado,
+            documentoNormalizado,
             { conversationId },
             storage
           );
@@ -2626,10 +2627,10 @@ Fonte: ${fonte}`;
               ]
             }));
             
-            // LGPD: Salvar CPF no Redis temporário (5min) apenas para seleção de ponto
+            // LGPD: Salvar documento no Redis temporário (5min) apenas para seleção de ponto
             await installationPointManager.saveMenu({
               conversationId,
-              cpf: cpfNormalizado,
+              cpf: documentoNormalizado, // Aceita CPF ou CNPJ
               pontos: menuItems,
               createdAt: Date.now()
             });
@@ -2637,7 +2638,7 @@ Fonte: ${fonte}`;
             console.log(`💾 [Boletos] Menu salvo no Redis - aguardando seleção do cliente (TTL: 5min)`);
             
             // Construir menu formatado para a IA apresentar ao cliente
-            let menuFormatado = `📍 *Encontrei ${pontos.length} endereços cadastrados no seu CPF:*\n\n`;
+            let menuFormatado = `📍 *Encontrei ${pontos.length} endereços cadastrados no seu documento:*\n\n`;
             
             pontos.forEach((ponto, index) => {
               const numero = index + 1;
