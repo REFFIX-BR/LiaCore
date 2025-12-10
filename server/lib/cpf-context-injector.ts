@@ -1,11 +1,17 @@
 /**
- * Extrai CPF do histórico de mensagens e injeta no contexto da IA
- * Solução para LGPD: CPF não é armazenado no DB, mas recuperado do histórico quando necessário
+ * Extrai CPF/CNPJ do histórico de mensagens e injeta no contexto da IA
+ * Solução para LGPD: CPF/CNPJ não é armazenado no DB, mas recuperado do histórico quando necessário
  */
 
 interface MessageWithContent {
   content: string;
   role: 'user' | 'assistant';
+}
+
+export interface DocumentoExtraido {
+  documento: string;  // Número limpo (só dígitos)
+  tipo: 'CPF' | 'CNPJ';
+  formatado: string;  // Formato visual (XXX.XXX.XXX-XX ou XX.XXX.XXX/XXXX-XX)
 }
 
 /**
@@ -106,7 +112,79 @@ export function extractCPFFromHistory(messages: MessageWithContent[]): string | 
 }
 
 /**
+ * Extrai CNPJ válido do histórico de mensagens (busca do mais recente para o mais antigo)
+ * CNPJ: XX.XXX.XXX/XXXX-XX ou 14 dígitos seguidos
+ */
+export function extractCNPJFromHistory(messages: MessageWithContent[]): string | null {
+  // Regex para CNPJ: XX.XXX.XXX/XXXX-XX ou XXXXXXXXXXXXXX (14 dígitos)
+  const cnpjRegex = /(\d{2})[\s.\-]?(\d{3})[\s.\-]?(\d{3})[\s.\/\-]?(\d{4})[\s.\-]?(\d{2})/g;
+  
+  // Buscar do MAIS RECENTE para o MAIS ANTIGO
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    
+    // Só buscar em mensagens do usuário (não da IA)
+    if (message.role !== 'user') continue;
+    
+    // Resetar o regex para cada mensagem
+    cnpjRegex.lastIndex = 0;
+    
+    let match;
+    while ((match = cnpjRegex.exec(message.content)) !== null) {
+      const cnpjRaw = match[0];
+      
+      // Remover formatação e validar tamanho
+      const cnpjClean = cnpjRaw.replace(/\D/g, '');
+      
+      if (cnpjClean.length !== 14) continue;
+      
+      // Ignorar CNPJs conhecidos (TR Telecom, PicPay, etc.)
+      if (CNPJ_BLACKLIST.includes(cnpjClean)) {
+        console.log(`⚠️ [CNPJ Injector] Ignorando CNPJ conhecido (blacklist): ${cnpjClean.slice(0, 8)}...`);
+        continue;
+      }
+      
+      // Re-formatar: XX.XXX.XXX/XXXX-XX
+      const formatted = `${cnpjClean.slice(0, 2)}.${cnpjClean.slice(2, 5)}.${cnpjClean.slice(5, 8)}/${cnpjClean.slice(8, 12)}-${cnpjClean.slice(12)}`;
+      console.log(`✅ [CNPJ Injector] CNPJ encontrado no histórico: ${formatted}`);
+      return cnpjClean; // Retornar sem formatação para comparação
+    }
+  }
+  
+  console.log(`⚠️ [CNPJ Injector] Nenhum CNPJ encontrado no histórico`);
+  return null;
+}
+
+/**
+ * Extrai documento (CPF ou CNPJ) do histórico - tenta CNPJ primeiro (mais específico), depois CPF
+ */
+export function extractDocumentoFromHistory(messages: MessageWithContent[]): DocumentoExtraido | null {
+  // Tentar CNPJ primeiro (14 dígitos é mais específico que 11)
+  const cnpj = extractCNPJFromHistory(messages);
+  if (cnpj) {
+    return {
+      documento: cnpj,
+      tipo: 'CNPJ',
+      formatado: `${cnpj.slice(0, 2)}.${cnpj.slice(2, 5)}.${cnpj.slice(5, 8)}/${cnpj.slice(8, 12)}-${cnpj.slice(12)}`
+    };
+  }
+  
+  // Se não encontrou CNPJ, tentar CPF
+  const cpf = extractCPFFromHistory(messages);
+  if (cpf) {
+    return {
+      documento: cpf,
+      tipo: 'CPF',
+      formatado: `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)}`
+    };
+  }
+  
+  return null;
+}
+
+/**
  * Injeta contexto de CPF na mensagem se não estiver explícito
+ * @deprecated Use injectDocumentoContext() para suportar CPF e CNPJ
  */
 export function injectCPFContext(message: string, cpf: string | null, assistantType: string): string {
   if (!cpf) {
@@ -125,6 +203,32 @@ export function injectCPFContext(message: string, cpf: string | null, assistantT
     const contextInjection = `\n\n---\n[CONTEXTO INTERNO]\nCPF do cliente (extraído do histórico): ${cpfFormatted}\n---`;
     
     console.log(`✅ [CPF Injector] Contexto de CPF injetado para ${assistantType}`);
+    return message + contextInjection;
+  }
+  
+  return message;
+}
+
+/**
+ * Injeta contexto de documento (CPF ou CNPJ) na mensagem se não estiver explícito
+ */
+export function injectDocumentoContext(message: string, documento: DocumentoExtraido | null, assistantType: string): string {
+  if (!documento) {
+    return message;
+  }
+  
+  // Verificar se a mensagem já menciona o documento
+  const lowerMessage = message.toLowerCase();
+  if (lowerMessage.includes('cpf') || lowerMessage.includes('cnpj') || message.includes(documento.documento)) {
+    console.log(`ℹ️ [Documento Injector] ${documento.tipo} já mencionado na mensagem, não injeta contexto`);
+    return message;
+  }
+  
+  // Injetar contexto de documento formatado para assistentes financeiro e suporte
+  if (assistantType === 'financeiro' || assistantType === 'suporte') {
+    const contextInjection = `\n\n---\n[CONTEXTO INTERNO]\n${documento.tipo} do cliente (extraído do histórico): ${documento.formatado}\n---`;
+    
+    console.log(`✅ [Documento Injector] Contexto de ${documento.tipo} injetado para ${assistantType}: ${documento.formatado}`);
     return message + contextInjection;
   }
   

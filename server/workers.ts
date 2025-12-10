@@ -17,7 +17,7 @@ import { storage } from './storage';
 import { checkAndNotifyMassiveFailure } from './lib/massive-failure-handler';
 import { ContextMonitor } from './lib/context-monitor';
 import { extractNumberFromChatId } from './lib/phone-utils';
-import { extractCPFFromHistory, injectCPFContext } from './lib/cpf-context-injector';
+import { extractCPFFromHistory, extractDocumentoFromHistory, injectCPFContext, injectDocumentoContext } from './lib/cpf-context-injector';
 
 // Helper function to validate and normalize Evolution API instance
 // Supported instances: "Cobranca", "Principal", "Leads"
@@ -763,25 +763,25 @@ if (redisConnection) {
             
             // Consultar boletos COM filtro de ponto
             const { consultaBoletoCliente } = await import('./ai-tools');
-            const { extractCPFFromHistory } = await import('./lib/cpf-context-injector');
+            const { extractDocumentoFromHistory } = await import('./lib/cpf-context-injector');
             
-            // 🔐 LGPD FIX: Extrair CPF do histórico (não do banco)
+            // 🔐 LGPD FIX: Extrair CPF/CNPJ do histórico (não do banco)
             const conversationMessages = await storage.getMessagesByConversationId(conversationId);
-            const messagesForCpf = conversationMessages.map((m: { content: string; role: string }) => ({
+            const messagesForDocumento = conversationMessages.map((m: { content: string; role: string }) => ({
               content: m.content,
               role: m.role as 'user' | 'assistant'
             }));
-            const extractedCpf = extractCPFFromHistory(messagesForCpf);
+            const documentoExtraido = extractDocumentoFromHistory(messagesForDocumento);
             
-            if (!extractedCpf) {
-              console.error(`❌ [Worker] CPF não encontrado no histórico para seleção de ponto`);
+            if (!documentoExtraido) {
+              console.error(`❌ [Worker] CPF/CNPJ não encontrado no histórico para seleção de ponto`);
               throw new Error('CPF/CNPJ não disponível para consulta');
             }
             
-            console.log(`✅ [Worker] CPF extraído do histórico para seleção de ponto: ${extractedCpf.slice(0, 3)}...`);
+            console.log(`✅ [Worker] ${documentoExtraido.tipo} extraído do histórico para seleção de ponto: ${documentoExtraido.formatado}`);
             
             const boletosResult = await consultaBoletoCliente(
-              extractedCpf,
+              documentoExtraido.documento,
               { conversationId },
               storage,
               selectedPointNumber // 🎯 Filtrar por ponto selecionado
@@ -847,20 +847,20 @@ if (redisConnection) {
         }
       }
 
-      // 8. ✅ INJETAR CONTEXTO DE CPF (LGPD Compliance)
-      // Extrair CPF do histórico e injetar para evitar que IA peça novamente
+      // 8. ✅ INJETAR CONTEXTO DE CPF/CNPJ (LGPD Compliance)
+      // Extrair documento do histórico e injetar para evitar que IA peça novamente
       try {
         const historyMessages = await storage.getMessagesByConversationId(conversationId);
-        const cpfFromHistory = extractCPFFromHistory(
+        const documentoFromHistory = extractDocumentoFromHistory(
           historyMessages.map(m => ({ content: m.content, role: m.role as 'user' | 'assistant' }))
         );
         
-        if (cpfFromHistory) {
-          enhancedMessage = injectCPFContext(enhancedMessage, cpfFromHistory, conversation.assistantType);
-          console.log(`✅ [Worker] CPF injetado no contexto para assistente ${conversation.assistantType}`);
+        if (documentoFromHistory) {
+          enhancedMessage = injectDocumentoContext(enhancedMessage, documentoFromHistory, conversation.assistantType);
+          console.log(`✅ [Worker] ${documentoFromHistory.tipo} injetado no contexto para assistente ${conversation.assistantType}`);
         }
-      } catch (cpfError) {
-        console.warn(`⚠️ [Worker] Erro ao injetar CPF:`, cpfError);
+      } catch (docError) {
+        console.warn(`⚠️ [Worker] Erro ao injetar documento:`, docError);
         // Não falhar o processamento - continuar normalmente
       }
 
