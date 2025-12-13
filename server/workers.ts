@@ -20,23 +20,9 @@ import { extractNumberFromChatId } from './lib/phone-utils';
 import { extractCPFFromHistory, extractDocumentoFromHistory, injectCPFContext, injectDocumentoContext } from './lib/cpf-context-injector';
 
 // Helper function to validate and normalize Evolution API instance
-// Supported instances: "Cobranca", "Principal", "Leads"
+// Only Principal is supported
 function validateEvolutionInstance(instance?: string): string {
-  const allowedInstances = ['Cobranca', 'Principal', 'Leads'];
-  
-  if (!instance) {
-    return 'Principal'; // Default instance
-  }
-  
-  // Normalize case
-  const normalized = instance.charAt(0).toUpperCase() + instance.slice(1).toLowerCase();
-  
-  if (allowedInstances.includes(normalized)) {
-    return normalized;
-  }
-  
-  // If invalid instance, force to Principal
-  console.warn(`⚠️ [Evolution] Invalid instance "${instance}" - forcing to "Principal" (allowed: ${allowedInstances.join(', ')})`);
+  // Only Principal is supported now
   return 'Principal';
 }
 

@@ -19,16 +19,6 @@ export async function validateEvolutionCredentials(): Promise<boolean> {
       apiKey: process.env.EVOLUTION_API_KEY_PRINCIPAL || process.env.EVOLUTION_API_KEY,
       required: true,
     },
-    {
-      name: 'Leads',
-      apiKey: process.env.EVOLUTION_API_KEY_LEADS,
-      required: false, // Optional instance
-    },
-    {
-      name: 'Cobranca',
-      apiKey: process.env.EVOLUTION_API_KEY_COBRANCA,
-      required: true, // CRITICAL for collections module
-    },
   ];
 
   const evolutionApiUrl = process.env.EVOLUTION_API_URL;
@@ -130,8 +120,6 @@ export async function testEvolutionConnectivity(): Promise<void> {
   
   const instances = [
     { name: 'Principal', apiKey: process.env.EVOLUTION_API_KEY_PRINCIPAL || process.env.EVOLUTION_API_KEY },
-    { name: 'Leads', apiKey: process.env.EVOLUTION_API_KEY_LEADS },
-    { name: 'Cobranca', apiKey: process.env.EVOLUTION_API_KEY_COBRANCA },
   ];
 
   const evolutionApiUrl = process.env.EVOLUTION_API_URL;

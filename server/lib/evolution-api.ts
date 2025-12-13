@@ -7,34 +7,23 @@
 
 const EVOLUTION_CONFIG = {
   apiUrl: process.env.EVOLUTION_API_URL || 'https://evolutionapi.trtelecom.net',
-  apiKeys: {
-    Principal: process.env.EVOLUTION_API_KEY_PRINCIPAL || process.env.EVOLUTION_API_KEY || '',
-    Leads: process.env.EVOLUTION_API_KEY_LEADS || '',
-    Cobranca: process.env.EVOLUTION_API_KEY_COBRANCA || '',
-  },
+  apiKey: process.env.EVOLUTION_API_KEY_PRINCIPAL || process.env.EVOLUTION_API_KEY || '',
 };
 
 /**
  * Validate and normalize Evolution API instance name
+ * Only Principal is supported now
  */
-function validateEvolutionInstance(rawInstance: string): 'Principal' | 'Leads' | 'Cobranca' {
-  // Remove accents for comparison - accepts both "Cobrança" and "Cobranca"
-  const removeAccents = (str: string) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const normalized = removeAccents(rawInstance.trim());
-  
-  // IMPORTANT: Always return WITHOUT accents - Evolution API requirement
-  if (normalized === 'Leads') return 'Leads';
-  if (normalized === 'Cobranca') return 'Cobranca'; // Return WITHOUT accent for API
-  if (normalized === 'Principal') return 'Principal';
-  
+function validateEvolutionInstance(rawInstance: string): 'Principal' {
+  // Only Principal is supported
   return 'Principal';
 }
 
 /**
  * Get Evolution API key for a specific instance
  */
-function getEvolutionApiKey(instance: 'Principal' | 'Leads' | 'Cobranca'): string {
-  return EVOLUTION_CONFIG.apiKeys[instance] || '';
+function getEvolutionApiKey(instance: 'Principal'): string {
+  return EVOLUTION_CONFIG.apiKey || '';
 }
 
 interface LocationMessage {

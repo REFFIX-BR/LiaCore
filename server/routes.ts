@@ -32,25 +32,9 @@ function normalizeEvolutionUrl(url?: string): string {
 }
 
 // Helper function to validate and normalize Evolution API instance
-// Supported instances: "Cobranca", "Principal", "Leads"
-// NOTE: Accepts both "Cobranca" and "Cobrança" (accent-insensitive)
+// Only Principal is supported now
 function validateEvolutionInstance(instance?: string | null): string {
-  const allowedInstances = ['Cobranca', 'Principal', 'Leads'];
-  
-  if (!instance) {
-    return 'Principal'; // Default instance
-  }
-  
-  // Normalize case and remove accents (ç -> c, ã -> a, etc.)
-  const removeAccents = (str: string) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const normalized = instance.charAt(0).toUpperCase() + removeAccents(instance.slice(1)).toLowerCase();
-  
-  if (allowedInstances.includes(normalized)) {
-    return normalized;
-  }
-  
-  // If invalid instance, force to Principal
-  console.warn(`⚠️ [Evolution] Invalid instance "${instance}" - forcing to "Principal" (allowed: ${allowedInstances.join(', ')})`);
+  // Only Principal is supported
   return 'Principal';
 }
 
