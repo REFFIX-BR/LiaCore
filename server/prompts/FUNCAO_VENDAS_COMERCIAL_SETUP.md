@@ -2,11 +2,12 @@
 
 ## 📋 **O QUE SÃO ESSAS FUNÇÕES?**
 
-O assistente comercial precisa de **3 ferramentas essenciais** para vender planos autonomamente pelo WhatsApp:
+O assistente comercial precisa de **4 ferramentas essenciais** para atender clientes pelo WhatsApp:
 
 1. **`buscar_cep`** - Busca endereço completo pela API ViaCEP (logradouro, bairro, cidade, estado)
 2. **`consultar_planos`** - Busca planos disponíveis no banco de dados em tempo real
 3. **`enviar_cadastro_venda`** - Submete cadastro de venda após coletar dados completos do cliente
+4. **`consultar_plano_cliente`** - 🆕 Consulta plano de cliente EXISTENTE (CPF) via API TR Telecom
 
 ---
 
@@ -17,7 +18,37 @@ O assistente comercial precisa de **3 ferramentas essenciais** para vender plano
 - Vá em **Assistants**
 - Selecione: **LIA Comercial - TR Telecom** (`asst_KY7AbcYc3VeVk9QPlk8xPYAA`)
 
-### **2. Adicione a Função 1: buscar_cep**
+### **2. Adicione a Função 0: consultar_plano_cliente** 🆕 CRÍTICA!
+
+**USE ESTA FUNÇÃO para clientes EXISTENTES que querem saber seu plano atual!**
+
+Clique em **Add Function** e cole o JSON completo:
+
+```json
+{
+  "type": "function",
+  "function": {
+    "name": "consultar_plano_cliente",
+    "description": "Consulta o plano contratado de um cliente EXISTENTE via API TR Telecom. Retorna: nome do cliente, plano atual, velocidade, endereço e status da conexão. Use quando cliente perguntar sobre SEU plano atual, velocidade contratada, ou quiser verificar seus dados cadastrados. OBRIGATÓRIO ter CPF.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "documento": {
+          "type": "string",
+          "description": "CPF ou CNPJ do cliente (11 ou 14 dígitos)"
+        }
+      },
+      "required": ["documento"]
+    }
+  }
+}
+```
+
+**IMPORTANTE:** Esta função é OBRIGATÓRIA para atender clientes existentes!
+
+---
+
+### **3. Adicione a Função 1: buscar_cep**
 
 Clique em **Add Function** e cole o JSON completo:
 

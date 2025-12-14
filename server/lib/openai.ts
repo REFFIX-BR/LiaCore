@@ -1516,6 +1516,12 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
           });
         }
 
+      case "consultar_plano_cliente":
+        // Alias para verificar_conexao - mesmo retorno, usado pela IA Comercial
+        // Reutiliza a lógica centralizada de verificar_conexao
+        console.log("🔄 [AI Tool] consultar_plano_cliente → Redirecionando para verificar_conexao");
+        return await handleToolCall("verificar_conexao", argsString, chatId, conversationId);
+
       case "consultar_fatura":
         // LGPD: CPF deve ser fornecido a cada consulta - não usar CPF armazenado
         if (!conversationId) {
