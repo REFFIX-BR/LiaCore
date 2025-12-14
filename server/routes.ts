@@ -1092,9 +1092,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Reopen resolved conversation and reset to Apresentacao (fresh start)
         console.log(`🔄 [Reopen] Reabrindo conversa finalizada: ${chatId} - Resetando para Apresentação`);
         
+        // 🔧 FIX: Criar NOVO thread OpenAI para evitar erros com threads antigos/expirados
+        const newThreadId = await createThread();
+        await storeConversationThread(chatId, newThreadId);
+        threadId = newThreadId;
+        console.log(`🆕 [Reopen] Novo thread criado: ${newThreadId} (substituindo thread antigo)`);
+        
         const updateData: any = {
           status: 'active',
           assistantType: 'apresentacao', // SEMPRE volta para apresentação em nova conversa
+          threadId: newThreadId, // Atualizar com novo thread
+          conversationSummary: null, // Reset do resumo para novo contexto
         };
         
         // Se estava transferida, resetar para IA voltar a responder
