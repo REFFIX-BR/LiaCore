@@ -4583,6 +4583,87 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     }
   });
 
+  // ADMIN: Simular mensagem de cliente (para testes)
+  app.post("/api/admin/simulate-incoming-message", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const { conversationId, message } = req.body;
+
+      if (!conversationId || !message) {
+        return res.status(400).json({ error: "conversationId e message são obrigatórios" });
+      }
+
+      const { db } = await import("./db");
+      const { conversations, messages: messagesTable } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+
+      // Get conversation
+      const [conversation] = await db
+        .select()
+        .from(conversations)
+        .where(eq(conversations.id, conversationId))
+        .limit(1);
+
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversa não encontrada" });
+      }
+
+      const chatId = conversation.chatId || `whatsapp_${conversation.clientId}`;
+      const fromNumber = conversation.clientId;
+      const messageId = `simulated_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+      // Create simulated message in database
+      const [newMessage] = await db.insert(messagesTable).values({
+        conversationId: conversation.id,
+        role: 'user',
+        content: message,
+        timestamp: new Date(),
+      }).returning();
+
+      console.log(`📨 [ADMIN SIMULATE] Mensagem simulada criada: ${newMessage.id}`);
+
+      // Add to processing queue
+      const { Queue } = await import("bullmq");
+      const { redisConnection } = await import("./lib/redis-config");
+
+      const queue = new Queue('message-processing', {
+        connection: redisConnection
+      });
+
+      const job = await queue.add('process-message', {
+        chatId: chatId,
+        conversationId: conversation.id,
+        fromNumber: fromNumber,
+        message: message,
+        messageId: messageId,
+        idempotencyKey: `simulate_${conversationId}_${Date.now()}`,
+        evolutionInstance: conversation.evolutionInstance || 'Principal',
+        hasImage: false,
+        timestamp: Date.now(),
+      });
+
+      console.log(`✅ [ADMIN SIMULATE] Mensagem simulada enfileirada para ${conversation.clientName} - Job: ${job.id}`);
+
+      return res.json({
+        success: true,
+        message: `Mensagem simulada enviada para processamento`,
+        jobId: job.id,
+        messageId: newMessage.id,
+        conversation: {
+          id: conversation.id,
+          clientName: conversation.clientName,
+          clientId: conversation.clientId,
+          simulatedMessage: message,
+        }
+      });
+    } catch (error) {
+      console.error("❌ [ADMIN SIMULATE] Erro:", error);
+      return res.status(500).json({ 
+        error: "Erro ao simular mensagem", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+
   // Get latency metrics (P50, P95, P99) - PUBLIC ROUTE
   app.get("/api/monitor/latency", async (req, res) => {
     try {
