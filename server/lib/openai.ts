@@ -1041,7 +1041,7 @@ export async function sendMessageAndGetResponse(
               arguments: toolCall.function.arguments
             });
             
-            const result = await handleToolCall(toolCall.function.name, toolCall.function.arguments, chatId, conversationId);
+            const result = await handleToolCall(toolCall.function.name, toolCall.function.arguments, chatId, conversationId, userMessage);
             
             // Check if this was a transfer call (para HUMANO - bloqueia IA)
             if (toolCall.function.name === "transferir_para_humano") {
@@ -1314,12 +1314,13 @@ export async function sendMessageAndGetResponse(
   }
 }
 
-async function handleToolCall(functionName: string, argsString: string, chatId?: string, conversationId?: string): Promise<string> {
+async function handleToolCall(functionName: string, argsString: string, chatId?: string, conversationId?: string, currentUserMessage?: string): Promise<string> {
   try {
     console.log(`🔧 [AI Tool] Handling function call: ${functionName}`);
     const args = JSON.parse(argsString);
     console.log(`🔧 [AI Tool] Function arguments:`, JSON.stringify(args));
     console.log(`🔧 [AI Tool] Context - chatId: ${chatId || 'undefined'}, conversationId: ${conversationId || 'undefined'}`);
+    console.log(`🔧 [AI Tool] Current message available: ${currentUserMessage ? 'yes' : 'no'}`);
     console.log(`🔧 [AI Tool] Entering switch for function: "${functionName}" (length: ${functionName.length})`);
 
     switch (functionName) {
@@ -1520,7 +1521,7 @@ async function handleToolCall(functionName: string, argsString: string, chatId?:
         // Alias para verificar_conexao - mesmo retorno, usado pela IA Comercial
         // Reutiliza a lógica centralizada de verificar_conexao
         console.log("🔄 [AI Tool] consultar_plano_cliente → Redirecionando para verificar_conexao");
-        return await handleToolCall("verificar_conexao", argsString, chatId, conversationId);
+        return await handleToolCall("verificar_conexao", argsString, chatId, conversationId, currentUserMessage);
 
       case "consultar_fatura":
         // LGPD: CPF deve ser fornecido a cada consulta - não usar CPF armazenado
@@ -2548,9 +2549,21 @@ Fonte: ${fonte}`;
           // LGPD: Verificar se documento (CPF ou CNPJ) foi fornecido nos argumentos
           let documentoFornecido = args.documento || args.cpf || args.cpf_cnpj || args.cnpj;
           
-          // Se documento não veio nos argumentos, tentar extrair do histórico de mensagens
+          // CRÍTICO: Se documento não veio nos argumentos, tentar extrair da MENSAGEM ATUAL primeiro
+          // Isso resolve o bug onde a mensagem atual ainda não está no DB quando a função é chamada
+          if (!documentoFornecido && currentUserMessage) {
+            console.log(`🔍 [AI Tool] Documento não nos argumentos - tentando extrair da MENSAGEM ATUAL...`);
+            const currentMessageAsArray = [{ content: currentUserMessage, role: 'user' as const }];
+            const docFromCurrentMessage = extractDocumentoFromHistory(currentMessageAsArray);
+            if (docFromCurrentMessage) {
+              documentoFornecido = docFromCurrentMessage.documento;
+              console.log(`✅ [AI Tool] ${docFromCurrentMessage.tipo} extraído da MENSAGEM ATUAL: ${docFromCurrentMessage.formatado}`);
+            }
+          }
+          
+          // Se ainda não encontrou, tentar extrair do histórico de mensagens no DB
           if (!documentoFornecido) {
-            console.log(`🔍 [AI Tool] Documento não nos argumentos - tentando extrair do histórico...`);
+            console.log(`🔍 [AI Tool] Documento não na mensagem atual - tentando extrair do histórico DB...`);
             try {
               const mensagensHistorico = await storage.getMessagesByConversationId(conversationId);
               const messagesForExtraction = mensagensHistorico.slice(-50).map((m: { content: string; role: string }) => ({
@@ -2561,7 +2574,7 @@ Fonte: ${fonte}`;
               const documentoExtraido = extractDocumentoFromHistory(messagesForExtraction);
               if (documentoExtraido) {
                 documentoFornecido = documentoExtraido.documento;
-                console.log(`✅ [AI Tool] ${documentoExtraido.tipo} extraído do histórico: ${documentoExtraido.formatado}`);
+                console.log(`✅ [AI Tool] ${documentoExtraido.tipo} extraído do histórico DB: ${documentoExtraido.formatado}`);
               }
             } catch (err) {
               console.warn(`⚠️ [AI Tool] Erro ao extrair documento do histórico:`, err);
@@ -2570,7 +2583,7 @@ Fonte: ${fonte}`;
           
           if (!documentoFornecido) {
             // LGPD: SEMPRE solicitar documento - não usar documento armazenado
-            console.warn("⚠️ [AI Tool] LGPD: Documento não fornecido e não encontrado no histórico - solicitando ao cliente");
+            console.warn("⚠️ [AI Tool] LGPD: Documento não fornecido e não encontrado - solicitando ao cliente");
             return JSON.stringify({
               error: "Para consultar seus boletos, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
             });
