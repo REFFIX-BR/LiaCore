@@ -64,7 +64,9 @@ import {
   type VoiceMessagingSettings,
   type InsertVoiceMessagingSettings,
   type CRMSyncConfig,
-  type InsertCRMSyncConfig
+  type InsertCRMSyncConfig,
+  type ValidationViolation,
+  type InsertValidationViolation
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { localCache } from "./lib/redis-cache";
@@ -545,6 +547,18 @@ export interface IStorage {
   // Voice Messaging Settings
   getVoiceMessagingSettings(): Promise<VoiceMessagingSettings | undefined>;
   updateVoiceMessagingSettings(settings: Partial<InsertVoiceMessagingSettings>): Promise<VoiceMessagingSettings>;
+
+  // Validation Violations (Sistema Anti-Alucinação)
+  createValidationViolation(violation: InsertValidationViolation): Promise<ValidationViolation>;
+  getValidationViolationsMetrics(hours: number): Promise<{
+    total: number;
+    byRule: Record<string, number>;
+    bySeverity: Record<string, number>;
+    byStatus: Record<string, number>;
+    byAssistant: Record<string, number>;
+    recentViolations: ValidationViolation[];
+    hourlyTrend: Array<{ hour: string; count: number }>;
+  }>;
 }
 
 export class MemStorage implements IStorage {
@@ -6257,6 +6271,65 @@ export class DbStorage implements IStorage {
       .returning();
     
     return updated;
+  }
+
+  // ============================================================================
+  // Validation Violations (Sistema Anti-Alucinação)
+  // ============================================================================
+
+  async createValidationViolation(violation: InsertValidationViolation): Promise<ValidationViolation> {
+    const [created] = await db.insert(schema.validationViolations).values(violation).returning();
+    return created;
+  }
+
+  async getValidationViolationsMetrics(hours: number): Promise<{
+    total: number;
+    byRule: Record<string, number>;
+    bySeverity: Record<string, number>;
+    byStatus: Record<string, number>;
+    byAssistant: Record<string, number>;
+    recentViolations: ValidationViolation[];
+    hourlyTrend: Array<{ hour: string; count: number }>;
+  }> {
+    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+    
+    const violations = await db.select()
+      .from(schema.validationViolations)
+      .where(gte(schema.validationViolations.createdAt, since))
+      .orderBy(desc(schema.validationViolations.createdAt));
+    
+    const byRule: Record<string, number> = {};
+    const bySeverity: Record<string, number> = {};
+    const byStatus: Record<string, number> = {};
+    const byAssistant: Record<string, number> = {};
+    const hourlyMap: Record<string, number> = {};
+    
+    for (const v of violations) {
+      byRule[v.rule] = (byRule[v.rule] || 0) + 1;
+      bySeverity[v.severity] = (bySeverity[v.severity] || 0) + 1;
+      byStatus[v.status] = (byStatus[v.status] || 0) + 1;
+      if (v.assistantType) {
+        byAssistant[v.assistantType] = (byAssistant[v.assistantType] || 0) + 1;
+      }
+      if (v.createdAt) {
+        const hourKey = v.createdAt.toISOString().slice(0, 13) + ':00';
+        hourlyMap[hourKey] = (hourlyMap[hourKey] || 0) + 1;
+      }
+    }
+    
+    const hourlyTrend = Object.entries(hourlyMap)
+      .map(([hour, count]) => ({ hour, count }))
+      .sort((a, b) => a.hour.localeCompare(b.hour));
+    
+    return {
+      total: violations.length,
+      byRule,
+      bySeverity,
+      byStatus,
+      byAssistant,
+      recentViolations: violations.slice(0, 10),
+      hourlyTrend,
+    };
   }
 }
 

@@ -1595,3 +1595,33 @@ export type InsertVoicePromise = z.infer<typeof insertVoicePromiseSchema>;
 export type VoiceMessagingSettings = typeof voiceMessagingSettings.$inferSelect;
 export type InsertVoiceMessagingSettings = z.infer<typeof insertVoiceMessagingSettingsSchema>;
 export type UpdateVoiceMessagingSettings = z.infer<typeof updateVoiceMessagingSettingsSchema>;
+
+// ============================================================================
+// VALIDATION VIOLATIONS - Sistema Anti-Alucinação
+// ============================================================================
+export const validationViolations = pgTable("validation_violations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id"),
+  chatId: text("chat_id"),
+  assistantType: text("assistant_type"),
+  rule: text("rule").notNull(),
+  severity: text("severity").notNull(),
+  status: text("status").notNull(),
+  message: text("message").notNull(),
+  originalResponse: text("original_response"),
+  correctedResponse: text("corrected_response"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  ruleIdx: index("validation_violations_rule_idx").on(table.rule),
+  severityIdx: index("validation_violations_severity_idx").on(table.severity),
+  assistantTypeIdx: index("validation_violations_assistant_type_idx").on(table.assistantType),
+  createdAtIdx: index("validation_violations_created_at_idx").on(table.createdAt),
+}));
+
+export const insertValidationViolationSchema = createInsertSchema(validationViolations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type ValidationViolation = typeof validationViolations.$inferSelect;
+export type InsertValidationViolation = z.infer<typeof insertValidationViolationSchema>;

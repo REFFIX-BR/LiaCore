@@ -3110,8 +3110,10 @@ Qualquer coisa, estamos à disposição! 😊
               chatId: chatId,
             });
             
-            // Log métricas de validação
-            logValidationMetrics(validationResult, conversationRef.id, conversationRef.assistantType || undefined);
+            // Log métricas de validação (async - não bloqueia)
+            logValidationMetrics(validationResult, conversationRef.id, conversationRef.assistantType || undefined, chatId).catch(err => 
+              console.error('❌ [Validator] Failed to log metrics:', err)
+            );
             
             // Usar resposta validada/corrigida
             const responseText = validationResult.finalResponse;
@@ -8471,6 +8473,18 @@ A resposta deve:
     } catch (error) {
       console.error("❌ [Dashboard] Error getting admin metrics:", error);
       return res.status(500).json({ error: "Error fetching admin metrics" });
+    }
+  });
+
+  // Validation Violations Metrics (Sistema Anti-Alucinação)
+  app.get("/api/dashboard/validation-metrics", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const hours = parseInt(req.query.hours as string) || 24;
+      const metrics = await storage.getValidationViolationsMetrics(hours);
+      return res.json(metrics);
+    } catch (error) {
+      console.error("❌ [Dashboard] Error getting validation metrics:", error);
+      return res.status(500).json({ error: "Error fetching validation metrics" });
     }
   });
 

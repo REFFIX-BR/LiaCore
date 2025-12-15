@@ -38,6 +38,7 @@ import Regioes from "@/pages/Regioes";
 import Anuncios from "@/pages/Anuncios";
 import PromptManagement from "@/pages/PromptManagement";
 import ContextQuality from "@/pages/ContextQuality";
+import ValidationDashboard from "@/pages/ValidationDashboard";
 import Gamification from "@/pages/Gamification";
 import GamificationSettings from "@/pages/GamificationSettings";
 import GamificationReport from "@/pages/GamificationReport";
@@ -231,6 +232,9 @@ function Router() {
       </Route>
       <Route path="/context-quality">
         {() => <AdminSupervisorRoute component={ContextQuality} />}
+      </Route>
+      <Route path="/validation-dashboard">
+        {() => <AdminSupervisorRoute component={ValidationDashboard} />}
       </Route>
       <Route path="/system-health">
         {() => <AdminSupervisorRoute component={SystemHealth} />}

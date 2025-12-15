@@ -425,18 +425,23 @@ export function validateAIResponse(ctx: ValidationContext): ValidationOutput {
 }
 
 /**
- * Log de violações para analytics
+ * Log e persiste violações para analytics
  */
-export function logValidationMetrics(
+export async function logValidationMetrics(
   output: ValidationOutput,
   conversationId?: string,
-  assistantType?: string
-): void {
+  assistantType?: string,
+  chatId?: string
+): Promise<void> {
   if (output.violations.length === 0) {
     return;
   }
   
+  // Importação dinâmica para evitar dependência circular
+  const { storage } = await import('../storage');
+  
   for (const violation of output.violations) {
+    // Log no console para debugging
     console.log(`📊 [Validator Metrics] ${JSON.stringify({
       timestamp: new Date().toISOString(),
       conversationId,
@@ -446,5 +451,22 @@ export function logValidationMetrics(
       status: output.status,
       message: violation.message.substring(0, 100),
     })}`);
+    
+    // Persistir no banco de dados
+    try {
+      await storage.createValidationViolation({
+        conversationId: conversationId || null,
+        chatId: chatId || null,
+        assistantType: assistantType || null,
+        rule: violation.rule,
+        severity: violation.severity,
+        status: output.status,
+        message: violation.message,
+        originalResponse: violation.originalResponse,
+        correctedResponse: violation.correctedResponse || null,
+      });
+    } catch (err) {
+      console.error(`❌ [Validator] Failed to persist violation:`, err);
+    }
   }
 }
