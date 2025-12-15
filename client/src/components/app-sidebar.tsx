@@ -47,7 +47,8 @@ import {
   Trophy,
   Phone,
   PhoneCall,
-  CheckCircle2
+  CheckCircle2,
+  Shield
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
@@ -134,6 +135,12 @@ const menuCategories: MenuCategory[] = [
         title: "Qualidade de Contexto",
         url: "/context-quality",
         icon: Brain,
+        roles: ["ADMIN", "SUPERVISOR"],
+      },
+      {
+        title: "Validador Anti-Alucinação",
+        url: "/validation-dashboard",
+        icon: Shield,
         roles: ["ADMIN", "SUPERVISOR"],
       },
       {
