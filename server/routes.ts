@@ -14,6 +14,7 @@ import { authenticate, authenticateWithTracking, requireAdmin, requireAdminOrSup
 import { hashPassword, comparePasswords, generateToken, getUserFromUser } from "./lib/auth";
 import { trackSecurityEvent, SecurityEventType } from "./lib/security-events";
 import { extractNumberFromChatId, parseRemoteJid, normalizePhone, buildWhatsAppChatId } from "./lib/phone-utils";
+import { validateAIResponse, logValidationMetrics } from "./validators/response-validator";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -3089,13 +3090,48 @@ Qualquer coisa, estamos à disposição! 😊
               }
             }
             
-            const { response: responseText, transferred, transferredTo, resolved, resolveReason, routed, assistantTarget, routingReason } = await sendMessageAndGetResponse(
+            const { response: rawResponseText, transferred, transferredTo, resolved, resolveReason, routed, assistantTarget, routingReason, functionCalls } = await sendMessageAndGetResponse(
               threadId!,
               assistantId,
               enrichedMessage,  // Usa mensagem enriquecida com boletos se detectado
               chatId,  // CRÍTICO: Passar chatId para processar finalizar_conversa
               conversationRef.id  // CRÍTICO: Passar conversationId para consulta_boleto_cliente
             );
+
+            // 🛡️ VALIDADOR ANTI-ALUCINAÇÃO: Validar resposta antes de enviar ao cliente
+            const validationResult = validateAIResponse({
+              response: rawResponseText,
+              clientName: conversationRef.clientName || undefined,
+              assistantType: conversationRef.assistantType || undefined,
+              functionCalls: functionCalls,
+              transferred: transferred,
+              routed: routed,
+              conversationId: conversationRef.id,
+              chatId: chatId,
+            });
+            
+            // Log métricas de validação
+            logValidationMetrics(validationResult, conversationRef.id, conversationRef.assistantType || undefined);
+            
+            // Usar resposta validada/corrigida
+            const responseText = validationResult.finalResponse;
+            
+            // Se bloqueado, forçar transferência para humano
+            if (validationResult.status === 'blocked') {
+              console.warn(`🚫 [Validator] Resposta bloqueada - forçando transferência para humano`);
+              webhookLogger.warning('VALIDATION_BLOCKED', `Resposta da IA bloqueada por validação`, {
+                conversationId: conversationRef.id,
+                violations: validationResult.violations.map(v => v.rule),
+              });
+              
+              // Marcar conversa para transferência humana
+              await storage.updateConversation(conversationRef.id, {
+                status: 'queued',
+                transferredToHuman: true,
+                transferReason: `Validação anti-alucinação: ${validationResult.violations[0]?.message || 'Resposta inválida'}`,
+                transferredAt: new Date(),
+              });
+            }
 
             // Store assistant response
             await storage.createMessage({
