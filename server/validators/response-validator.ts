@@ -1,15 +1,13 @@
 /**
- * AI Response Validator - Sistema Anti-Alucinação
+ * AI Response Validator - Sistema Anti-Alucinação v1.1
  * 
  * Intercepta respostas da IA ANTES de enviar ao cliente,
  * detectando e corrigindo padrões de alucinação.
  * 
- * Regras:
- * 1. validateNoEmptyPromises - Detecta "vou verificar/consultar" sem function_call
- * 2. validateClientName - Verifica se nome usado = client_name da conversa
- * 3. validateTransferClaims - Detecta "transferi/acionado" sem função real
- * 4. validateScopeViolation - Assistente falando de assunto fora do escopo
- * 5. validateResponseLength - Resposta muito longa (>500 chars)
+ * v1.1 - Ajustes para reduzir falsos positivos:
+ * - Padrões mais específicos com contexto
+ * - Exceções para casos legítimos
+ * - Verificação de resultados na resposta
  */
 
 export type ValidationSeverity = 'block' | 'auto_correct' | 'warn';
@@ -40,95 +38,110 @@ export interface ValidationOutput {
   violations: ValidationResult[];
 }
 
-// Frases que indicam promessas vazias (sem ação real)
+// ============================================================================
+// PADRÕES REFINADOS v1.1 - Mais específicos para evitar falsos positivos
+// ============================================================================
+
+// Frases que indicam promessas VAZIAS (sem ação real)
+// REFINADO: Só bloqueia se terminar com promessa sem resultado
 const EMPTY_PROMISE_PATTERNS = [
-  /vou verificar/i,
-  /vou consultar/i,
-  /vou checar/i,
-  /estou verificando/i,
-  /estou consultando/i,
-  /estou checando/i,
-  /vou confirmar/i,
-  /estou confirmando/i,
-  /vou analisar/i,
-  /estou analisando/i,
-  /deixa eu ver/i,
-  /deixa eu verificar/i,
-  /aguarde enquanto (eu )?(verifico|consulto|analiso)/i,
-  /vou retornar com/i,
-  /retorno com (a )?informação/i,
-  /vou te retornar/i,
-  /já te retorno/i,
-  /um momento que/i,
+  // Promessas futuras sem entrega imediata
+  /vou verificar e (te |lhe )?(retorno|volto|aviso)/i,
+  /vou consultar e (te |lhe )?(retorno|volto|aviso)/i,
+  /aguarde que (vou |eu )?(verifico|consulto|analiso)/i,
+  /já (te )?retorno com (a |as )?(informaç|dado)/i,
+  /vou analisar (isso|aqui|seu caso) e/i,
+  // Promessas de "um momento" que não entregam
+  /um momento que (vou |eu )?ver/i,
+  /deixa eu ver (aqui )?e/i,
 ];
 
-// Frases que indicam transferência falsa (sem função real)
+// Indicadores de que a resposta CONTÉM resultado (não é promessa vazia)
+const RESULT_INDICATORS = [
+  /seu (boleto|fatura|plano|saldo)/i,
+  /o valor (é|está|será)/i,
+  /vencimento/i,
+  /código de barras/i,
+  /pix copia e cola/i,
+  /R\$\s*\d/i, // Valores monetários
+  /\d{2}\/\d{2}\/\d{4}/i, // Datas
+  /status.*(online|offline|ativo|bloqueado)/i,
+  /sua conexão/i,
+  /encontrei (o |a |os |as )?/i,
+  /aqui estão/i,
+  /segue (o |a |os |as )?/i,
+];
+
+// Frases que indicam transferência FALSA (passado sem função)
+// REFINADO: Foco em afirmações no passado/presente que implicam ação já feita
 const FALSE_TRANSFER_PATTERNS = [
-  /transferi para/i,
-  /encaminhei para/i,
-  /acionei (o |a |um |uma )?atendente/i,
-  /acionei (o |a )?supervisor/i,
-  /acionei (o |a |um |uma )?técnico/i,
-  /atendente foi acionado/i,
-  /supervisor foi acionado/i,
-  /técnico foi acionado/i,
-  /foi transferido para/i,
-  /seu atendimento foi encaminhado/i,
-  /estou transferindo/i,
-  /estou encaminhando/i,
-  /vou acionar/i,
+  // PASSADO - afirmando que já fez
+  /já (te )?transferi para/i,
+  /já encaminhei (você |seu caso )?para/i,
+  /atendente (já )?foi acionado/i,
+  /supervisor (já )?foi acionado/i,
+  /técnico (já )?foi (acionado|chamado|agendado)/i,
+  /seu (caso|atendimento) foi (transferido|encaminhado)/i,
+  // AFIRMAÇÕES de ação concluída sem evidência
+  /acionei (o |a )?(atendente|supervisor|técnico)/i,
+  /transferi (você |seu caso )?para/i,
 ];
 
-// Frases que indicam incapacidade (deve transferir em vez de dizer isso)
+// Frases LEGÍTIMAS que mencionam transferência (não são falsas)
+const LEGITIMATE_TRANSFER_PHRASES = [
+  /vou (te )?transferir/i, // Futuro - intenção, não afirmação
+  /preciso (te )?transferir/i,
+  /será (necessário )?transferi/i,
+  /transferindo (você )?para/i, // Gerúndio - ação em curso (OK se routed=true)
+];
+
+// Frases de incapacidade que DEVEM transferir
+// REFINADO: Só bloqueia se não oferecer alternativa
 const INABILITY_PATTERNS = [
-  /estou com dificuldade/i,
-  /não consigo (acessar|consultar|verificar)/i,
-  /não consegui (acessar|consultar|verificar)/i,
-  /sistema (está|parece) indisponível/i,
-  /não estou conseguindo/i,
-  /infelizmente não consigo/i,
+  // Incapacidade sem alternativa
+  /não (consigo|consegui) (acessar|consultar|verificar).{0,30}$/i, // Termina sem alternativa
+  /sistema (está|parece) indisponível.{0,30}$/i,
+  /estou com dificuldade.{0,30}$/i,
 ];
 
-// Mapeamento de escopo por assistente
-const ASSISTANT_SCOPE: Record<string, string[]> = {
-  financeiro: ['boleto', 'fatura', 'pagamento', 'débito', 'crédito', 'cobrança', 'pix', 'segunda via', 'desbloqueio'],
-  suporte: ['internet', 'conexão', 'lenta', 'wifi', 'roteador', 'técnico', 'instável', 'sem sinal', 'caindo'],
-  comercial: ['plano', 'upgrade', 'migração', 'contrato', 'assinatura', 'velocidade', 'novo plano'],
-  cobranca: ['dívida', 'atraso', 'negativação', 'acordo', 'parcelamento', 'quitação'],
-};
+// Indicadores de que ofereceu alternativa (não bloquear)
+const ALTERNATIVE_INDICATORS = [
+  /mas (posso|você pode|podemos)/i,
+  /porém/i,
+  /entretanto/i,
+  /enquanto isso/i,
+  /alternativamente/i,
+  /outra opção/i,
+  /vou transferir/i,
+];
 
-// Tópicos que são de outro escopo
-const SCOPE_VIOLATIONS: Record<string, { patterns: RegExp[]; shouldRouteTo: string }[]> = {
-  financeiro: [
-    { patterns: [/internet (lenta|caindo|instável)/i, /sem (internet|conexão|sinal)/i], shouldRouteTo: 'suporte' },
-    { patterns: [/mudar de plano/i, /upgrade/i, /novo plano/i], shouldRouteTo: 'comercial' },
-  ],
-  suporte: [
-    { patterns: [/boleto/i, /fatura/i, /pagamento/i, /segunda via/i], shouldRouteTo: 'financeiro' },
-    { patterns: [/mudar de plano/i, /upgrade/i, /novo plano/i], shouldRouteTo: 'comercial' },
-  ],
-  comercial: [
-    { patterns: [/boleto/i, /fatura/i, /pagamento/i], shouldRouteTo: 'financeiro' },
-    { patterns: [/internet (lenta|caindo)/i, /sem internet/i], shouldRouteTo: 'suporte' },
-  ],
-  cobranca: [
-    { patterns: [/internet (lenta|caindo)/i, /sem internet/i], shouldRouteTo: 'suporte' },
-    { patterns: [/mudar de plano/i, /novo plano/i], shouldRouteTo: 'comercial' },
-  ],
-};
+// ============================================================================
+// REGRAS DE VALIDAÇÃO
+// ============================================================================
 
 /**
  * Regra 1: Detecta promessas vazias sem function_call correspondente
+ * REFINADO: Verifica se resposta contém resultado antes de bloquear
  */
 function validateNoEmptyPromises(ctx: ValidationContext): ValidationResult | null {
   const { response, functionCalls } = ctx;
   
   // Se chamou alguma função de consulta, está OK
-  const consultaFunctions = ['consultar_boleto', 'consultar_cliente', 'consultar_plano_cliente', 'verificar_status_os', 'check_pppoe_status'];
+  const consultaFunctions = [
+    'consultar_boleto', 'consultar_cliente', 'consultar_plano_cliente', 
+    'verificar_status_os', 'check_pppoe_status', 'buscar_conhecimento',
+    'consultar_faturas', 'consultar_conexao'
+  ];
   const hasConsultaFunction = functionCalls?.some(fc => consultaFunctions.includes(fc.name));
   
   if (hasConsultaFunction) {
     return null; // OK - está de fato consultando
+  }
+  
+  // Verificar se resposta contém resultado (não é promessa vazia)
+  const hasResult = RESULT_INDICATORS.some(pattern => pattern.test(response));
+  if (hasResult) {
+    return null; // OK - resposta contém dados reais
   }
   
   // Verificar se resposta contém promessa vazia
@@ -138,9 +151,8 @@ function validateNoEmptyPromises(ctx: ValidationContext): ValidationResult | nul
         valid: false,
         severity: 'block',
         rule: 'no_empty_promises',
-        message: `Resposta contém promessa vazia "${response.match(pattern)?.[0]}" sem função de consulta`,
+        message: `Promessa vazia detectada: "${response.match(pattern)?.[0]}"`,
         originalResponse: response,
-        correctedResponse: undefined, // Será bloqueada
       };
     }
   }
@@ -168,8 +180,6 @@ function validateClientName(ctx: ValidationContext): ValidationResult | null {
     /certo,?\s+([A-ZÀ-Ú][a-zà-ú]+)/i,
     /entendi,?\s+([A-ZÀ-Ú][a-zà-ú]+)/i,
     /obrigad[oa],?\s+([A-ZÀ-Ú][a-zà-ú]+)/i,
-    /senhor[a]?\s+([A-ZÀ-Ú][a-zà-ú]+)/i,
-    /sr[a]?\.?\s+([A-ZÀ-Ú][a-zà-ú]+)/i,
   ];
   
   for (const pattern of namePatterns) {
@@ -178,12 +188,18 @@ function validateClientName(ctx: ValidationContext): ValidationResult | null {
       const usedName = match[1].toLowerCase();
       const expectedName = clientName.split(' ')[0].toLowerCase();
       
-      if (usedName !== expectedName && usedName !== 'cliente') {
+      // Ignorar nomes genéricos
+      const genericNames = ['cliente', 'senhor', 'senhora', 'você'];
+      if (genericNames.includes(usedName)) {
+        continue;
+      }
+      
+      if (usedName !== expectedName) {
         return {
           valid: false,
           severity: 'auto_correct',
           rule: 'client_name_mismatch',
-          message: `IA usou nome "${match[1]}" mas cliente é "${clientName}"`,
+          message: `Nome errado: "${match[1]}" → "${clientName.split(' ')[0]}"`,
           originalResponse: response,
           correctedResponse: response.replace(match[1], clientName.split(' ')[0]),
         };
@@ -196,6 +212,7 @@ function validateClientName(ctx: ValidationContext): ValidationResult | null {
 
 /**
  * Regra 3: Detecta afirmações de transferência sem função real
+ * REFINADO: Distingue entre intenção futura (OK) e afirmação de ação feita (problema)
  */
 function validateTransferClaims(ctx: ValidationContext): ValidationResult | null {
   const { response, functionCalls, transferred, routed } = ctx;
@@ -206,34 +223,54 @@ function validateTransferClaims(ctx: ValidationContext): ValidationResult | null
   }
   
   // Verificar se chamou função de transferência
-  const transferFunctions = ['transferir_para_humano', 'rotear_para_assistente'];
+  const transferFunctions = ['transferir_para_humano', 'rotear_para_assistente', 'finalizar_conversa'];
   const hasTransferFunction = functionCalls?.some(fc => transferFunctions.includes(fc.name));
   
   if (hasTransferFunction) {
-    return null; // OK - está de fato transferindo
+    return null; // OK - função foi chamada
   }
   
-  // Verificar se resposta afirma ter transferido
+  // Verificar se é frase legítima de intenção (não afirmação)
+  const isLegitimate = LEGITIMATE_TRANSFER_PHRASES.some(p => p.test(response));
+  
+  // Verificar se resposta afirma ter transferido (passado/presente perfeito)
   for (const pattern of FALSE_TRANSFER_PATTERNS) {
     if (pattern.test(response)) {
+      // Se também tem frase legítima, é ambíguo - só avisar
+      if (isLegitimate) {
+        return {
+          valid: false,
+          severity: 'warn',
+          rule: 'ambiguous_transfer_claim',
+          message: `Menção ambígua de transferência: "${response.match(pattern)?.[0]}"`,
+          originalResponse: response,
+        };
+      }
+      
       return {
         valid: false,
         severity: 'block',
         rule: 'false_transfer_claim',
-        message: `IA afirmou "${response.match(pattern)?.[0]}" sem chamar função de transferência`,
+        message: `Afirmou transferência sem função: "${response.match(pattern)?.[0]}"`,
         originalResponse: response,
       };
     }
   }
   
-  // Verificar frases de incapacidade (deve transferir)
+  // Verificar frases de incapacidade (deve transferir ou oferecer alternativa)
   for (const pattern of INABILITY_PATTERNS) {
     if (pattern.test(response)) {
+      // Verificar se ofereceu alternativa
+      const hasAlternative = ALTERNATIVE_INDICATORS.some(p => p.test(response));
+      if (hasAlternative) {
+        return null; // OK - ofereceu alternativa
+      }
+      
       return {
         valid: false,
-        severity: 'block',
-        rule: 'inability_without_transfer',
-        message: `IA disse "${response.match(pattern)?.[0]}" mas não transferiu - deve transferir`,
+        severity: 'warn', // Só warn, não block - pode ser legítimo
+        rule: 'inability_without_alternative',
+        message: `Incapacidade sem alternativa: "${response.match(pattern)?.[0]}"`,
         originalResponse: response,
       };
     }
@@ -244,17 +281,47 @@ function validateTransferClaims(ctx: ValidationContext): ValidationResult | null
 
 /**
  * Regra 4: Detecta assistente falando de assunto fora do escopo
+ * REFINADO: Só avisa se está EXPLICANDO sobre o assunto (não apenas mencionando)
  */
 function validateScopeViolation(ctx: ValidationContext): ValidationResult | null {
   const { response, assistantType, routed } = ctx;
   
   if (!assistantType || routed) {
-    return null; // Sem tipo de assistente ou já roteou
+    return null;
   }
   
-  const violations = SCOPE_VIOLATIONS[assistantType];
+  // Mapeamento de escopo - padrões que indicam EXPLICAÇÃO fora do escopo
+  const scopeViolations: Record<string, { patterns: RegExp[]; shouldRouteTo: string }[]> = {
+    financeiro: [
+      // Só viola se está explicando sobre conexão (não apenas mencionando)
+      { patterns: [/sua (internet|conexão) (está|parece|continua)/i], shouldRouteTo: 'suporte' },
+    ],
+    suporte: [
+      // Só viola se está explicando sobre pagamento (não apenas mencionando)
+      { patterns: [/seu (boleto|fatura) (está|vence|no valor)/i], shouldRouteTo: 'financeiro' },
+    ],
+    comercial: [
+      // Comercial pode mencionar boleto/fatura ao falar de planos
+      { patterns: [/sua (fatura|dívida) (está|vence|em atraso)/i], shouldRouteTo: 'financeiro' },
+    ],
+  };
+  
+  const violations = scopeViolations[assistantType];
   if (!violations) {
     return null;
+  }
+  
+  // Frases que indicam redirecionamento legítimo (não violação)
+  const redirectPhrases = [
+    /para (isso|esse assunto)/i,
+    /vou (te )?transferir/i,
+    /precisa falar com/i,
+    /departamento de/i,
+  ];
+  
+  const isRedirecting = redirectPhrases.some(p => p.test(response));
+  if (isRedirecting) {
+    return null; // OK - está redirecionando
   }
   
   for (const violation of violations) {
@@ -264,7 +331,7 @@ function validateScopeViolation(ctx: ValidationContext): ValidationResult | null
           valid: false,
           severity: 'warn',
           rule: 'scope_violation',
-          message: `Assistente ${assistantType} respondendo sobre assunto de ${violation.shouldRouteTo}: "${response.match(pattern)?.[0]}"`,
+          message: `${assistantType} explicando assunto de ${violation.shouldRouteTo}`,
           originalResponse: response,
         };
       }
@@ -276,17 +343,18 @@ function validateScopeViolation(ctx: ValidationContext): ValidationResult | null
 
 /**
  * Regra 5: Detecta respostas muito longas
+ * REFINADO: Limite aumentado, só warn
  */
 function validateResponseLength(ctx: ValidationContext): ValidationResult | null {
   const { response } = ctx;
-  const MAX_LENGTH = 500;
+  const MAX_LENGTH = 800; // Aumentado de 500 para 800
   
   if (response.length > MAX_LENGTH) {
     return {
       valid: false,
       severity: 'warn',
       rule: 'response_too_long',
-      message: `Resposta muito longa (${response.length} chars, máximo recomendado: ${MAX_LENGTH})`,
+      message: `Resposta longa: ${response.length} chars (recomendado: ${MAX_LENGTH})`,
       originalResponse: response,
     };
   }
@@ -321,8 +389,8 @@ export function validateAIResponse(ctx: ValidationContext): ValidationOutput {
   const hasAutoCorrect = violations.some(v => v.severity === 'auto_correct');
   
   if (hasBlock) {
-    // Resposta bloqueada - usar fallback genérico ou forçar transferência
-    console.error(`🚫 [Validator] BLOCKED: ${violations.find(v => v.severity === 'block')?.message}`);
+    const blockViolation = violations.find(v => v.severity === 'block');
+    console.error(`🚫 [Validator] BLOCKED: ${blockViolation?.message}`);
     
     return {
       status: 'blocked',
@@ -332,7 +400,6 @@ export function validateAIResponse(ctx: ValidationContext): ValidationOutput {
   }
   
   if (hasAutoCorrect) {
-    // Corrigir automaticamente
     const correction = violations.find(v => v.severity === 'auto_correct' && v.correctedResponse);
     const finalResponse = correction?.correctedResponse || ctx.response;
     
