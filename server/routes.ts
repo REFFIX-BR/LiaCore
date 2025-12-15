@@ -5098,16 +5098,28 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
         'Suporte Geral': 'support',
       };
       
+      // Map department codes to assistantType (FIX: Atualiza assistantType junto com department)
+      const departmentToAssistant: Record<string, string> = {
+        'support': 'suporte',
+        'commercial': 'comercial',
+        'financial': 'financeiro',
+        'cancellation': 'cancelamento',
+        'general': 'apresentacao',
+      };
+      
       const mappedDepartment = department 
         ? (departmentMapping[department] || 'support')
         : 'support';
+      
+      const mappedAssistantType = departmentToAssistant[mappedDepartment] || 'suporte';
 
       // Transferência manual vai para a aba "Conversas" (transferredToHuman = true)
-      // Atualiza department para que a conversa apareça corretamente na lista de transferidas
+      // Atualiza department E assistantType para que a conversa apareça corretamente na lista de transferidas
       await storage.updateConversation(conversationId, {
         status: "active",
         transferredToHuman: true,
         department: mappedDepartment,
+        assistantType: mappedAssistantType,
         transferReason: `Transferência manual: ${notes}`,
         transferredAt: new Date(),
         metadata: {
@@ -5119,7 +5131,7 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
         },
       });
 
-      console.log(`👤 [Manual Transfer] Conversa ${conversationId} transferida para humanos (aba Conversas) - departamento: ${department}`);
+      console.log(`👤 [Manual Transfer] Conversa ${conversationId} transferida para humanos (aba Conversas) - department: ${mappedDepartment}, assistantType: ${mappedAssistantType}`);
 
       // Create learning event for AI failure (transfer needed)
       if (conversation) {
