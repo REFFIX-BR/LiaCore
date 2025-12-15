@@ -363,6 +363,121 @@ function validateResponseLength(ctx: ValidationContext): ValidationResult | null
 }
 
 /**
+ * Regra 6: Detecta confirmações de agendamento/protocolo SEM chamada de API
+ * v1.0 - Nova regra anti-alucinação para detectar IA inventando agendamentos
+ * 
+ * PROBLEMA: IA disse "agendamento confirmado para 15/12, protocolo #123456"
+ * sem ter chamado nenhuma função para verificar/criar agendamento.
+ */
+function validateAppointmentConfirmations(ctx: ValidationContext): ValidationResult | null {
+  const { response, functionCalls } = ctx;
+  
+  // Padrões que indicam CONFIRMAÇÃO de agendamento/visita/protocolo
+  const APPOINTMENT_CONFIRMATION_PATTERNS = [
+    // Agendamento confirmado
+    /agendamento.{0,20}(confirmado|marcado|registrado)/i,
+    /visita.{0,20}(agendada|confirmada|marcada)/i,
+    /técnico.{0,20}(agendado|confirmado|irá|vai)/i,
+    /equipe.{0,20}(irá|vai|estará).{0,20}(no local|endereço|casa)/i,
+    
+    // Afirmações de data específica de visita
+    /confirmado para (o dia |amanhã|hoje|segunda|terça|quarta|quinta|sexta|sábado|domingo|\d{1,2}\/\d{1,2})/i,
+    /agendado para (o dia |amanhã|hoje|segunda|terça|quarta|quinta|sexta|sábado|domingo|\d{1,2}\/\d{1,2})/i,
+    /a (equipe|técnico|visita).{0,30}(amanhã|hoje|\d{1,2}\/\d{1,2})/i,
+    
+    // Protocolo gerado (formato comum: #123456 ou protocolo: 123456)
+    /protocolo[:\s#]+\d{6,}/i,
+    /número do protocolo[:\s]+\d+/i,
+    /seu protocolo (é|foi)[:\s]+/i,
+    
+    // Ordem de serviço criada
+    /ordem de serviço.{0,20}(criada|aberta|registrada|gerada)/i,
+    /OS.{0,10}(criada|aberta|registrada|número)/i,
+    
+    // Confirmações genéricas de serviço agendado
+    /seu (serviço|atendimento).{0,20}(agendado|confirmado)/i,
+    /troca.{0,20}(agendada|confirmada|marcada)/i,
+    /instalação.{0,20}(agendada|confirmada|marcada)/i,
+  ];
+  
+  // Funções que LEGITIMAM confirmações de agendamento
+  const SCHEDULING_FUNCTIONS = [
+    'agendar_visita',
+    'verificar_status_os',
+    'criar_ordem_servico',
+    'consultar_agendamento',
+    'registrar_protocolo',
+    'abrir_ticket',
+    'criar_ticket',
+    'check_pppoe_status', // Pode retornar info de OS existente
+    'consultar_cliente', // Pode retornar agendamentos existentes
+  ];
+  
+  // Verificar se chamou alguma função de agendamento/OS
+  const hasSchedulingFunction = functionCalls?.some(fc => 
+    SCHEDULING_FUNCTIONS.includes(fc.name)
+  );
+  
+  if (hasSchedulingFunction) {
+    return null; // OK - chamou função que pode ter retornado agendamento real
+  }
+  
+  // Frases que indicam que está PERGUNTANDO sobre agendamento (não confirmando)
+  const ASKING_PATTERNS = [
+    /gostaria de agendar/i,
+    /quer (agendar|marcar)/i,
+    /posso agendar/i,
+    /vou (agendar|transferir para agendar)/i,
+    /para agendar/i,
+    /você.{0,20}(agendar|marcar)/i,
+  ];
+  
+  const isAsking = ASKING_PATTERNS.some(p => p.test(response));
+  if (isAsking) {
+    return null; // OK - está perguntando, não confirmando
+  }
+  
+  // Frases que indicam referência a agendamento do PASSADO (feito por humano)
+  const PAST_REFERENCE_PATTERNS = [
+    /conforme.{0,20}(agendado|combinado)/i,
+    /como (você |o cliente )?(solicitou|pediu)/i,
+    /de acordo com.{0,20}(agendamento|protocolo)/i,
+  ];
+  
+  const isPastReference = PAST_REFERENCE_PATTERNS.some(p => p.test(response));
+  // Mesmo referência ao passado pode ser alucinação - verificar com cuidado
+  
+  // Verificar se resposta contém confirmação de agendamento
+  for (const pattern of APPOINTMENT_CONFIRMATION_PATTERNS) {
+    if (pattern.test(response)) {
+      const match = response.match(pattern)?.[0] || '';
+      
+      // Se é referência ao passado, só warn (pode ser legítimo)
+      if (isPastReference) {
+        return {
+          valid: false,
+          severity: 'warn',
+          rule: 'appointment_confirmation_without_api',
+          message: `Referência a agendamento sem verificação de API: "${match}"`,
+          originalResponse: response,
+        };
+      }
+      
+      // Se não chamou função E não é referência ao passado, BLOCK
+      return {
+        valid: false,
+        severity: 'block',
+        rule: 'appointment_confirmation_without_api',
+        message: `🚨 ALUCINAÇÃO: Confirmou agendamento/protocolo sem chamar API: "${match}"`,
+        originalResponse: response,
+      };
+    }
+  }
+  
+  return null;
+}
+
+/**
  * Executa todas as validações e retorna resultado consolidado
  */
 export function validateAIResponse(ctx: ValidationContext): ValidationOutput {
@@ -375,6 +490,7 @@ export function validateAIResponse(ctx: ValidationContext): ValidationOutput {
     validateTransferClaims,
     validateScopeViolation,
     validateResponseLength,
+    validateAppointmentConfirmations, // v1.0 - Anti-alucinação para agendamentos
   ];
   
   for (const rule of rules) {
