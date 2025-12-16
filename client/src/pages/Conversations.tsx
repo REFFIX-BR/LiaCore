@@ -8,21 +8,33 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth-context";
-import { Circle, CheckCircle2, Search, X, LayoutGrid, Columns2 } from "lucide-react";
+import { CheckCircle2, Search, X, LayoutGrid, Columns2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 // Função para calcular cor do indicador baseado no tempo de espera
-function getWaitTimeIndicator(lastMessageTime: Date): { color: string; label: string } {
+function getWaitTimeIndicator(lastMessageTime: Date): { color: string; bgColor: string; label: string } {
   const now = new Date();
   const minutesWaiting = Math.floor((now.getTime() - lastMessageTime.getTime()) / (1000 * 60));
   
   if (minutesWaiting < 10) {
-    return { color: "text-green-500", label: "Recente" };
+    return { 
+      color: "text-green-500", 
+      bgColor: "bg-green-600 hover:bg-green-600", 
+      label: "Recente" 
+    };
   } else if (minutesWaiting < 20) {
-    return { color: "text-yellow-500", label: "Aguardando" };
+    return { 
+      color: "text-yellow-500", 
+      bgColor: "bg-yellow-500 hover:bg-yellow-500 text-black", 
+      label: "Aguardando" 
+    };
   } else {
-    return { color: "text-red-500", label: "Crítico" };
+    return { 
+      color: "text-red-500", 
+      bgColor: "bg-red-600 hover:bg-red-600", 
+      label: "Crítico" 
+    };
   }
 }
 
@@ -313,16 +325,13 @@ export default function Conversations() {
                         <div className="flex items-start justify-between gap-3 w-full">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 min-w-0">
-                              <Circle className={`h-3 w-3 fill-current flex-shrink-0 ${waitTimeIndicator.color}`} data-testid="wait-indicator" />
-                              {conv.unreadCount && conv.unreadCount > 0 && (
-                                <Badge 
-                                  variant="default" 
-                                  className="h-5 min-w-5 px-1.5 text-xs flex-shrink-0 bg-green-600 hover:bg-green-600"
-                                  data-testid={`badge-unread-${conv.id}`}
-                                >
-                                  {conv.unreadCount > 99 ? "99+" : conv.unreadCount}
-                                </Badge>
-                              )}
+                              <Badge 
+                                variant="default" 
+                                className={`h-5 min-w-5 px-1.5 text-xs flex-shrink-0 ${waitTimeIndicator.bgColor}`}
+                                data-testid={`badge-status-${conv.id}`}
+                              >
+                                {(conv.unreadCount ?? 0) > 99 ? "99+" : (conv.unreadCount ?? 0)}
+                              </Badge>
                               <div className="font-medium truncate min-w-0">{conv.clientName}</div>
                               {conv.verifiedAt && (
                                 <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" data-testid="verified-indicator" />
@@ -383,16 +392,13 @@ export default function Conversations() {
                         <div className="flex items-start justify-between gap-3 w-full">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 min-w-0">
-                              <Circle className={`h-3 w-3 fill-current flex-shrink-0 ${waitTimeIndicator.color}`} data-testid="wait-indicator" />
-                              {conv.unreadCount && conv.unreadCount > 0 && (
-                                <Badge 
-                                  variant="default" 
-                                  className="h-5 min-w-5 px-1.5 text-xs flex-shrink-0 bg-green-600 hover:bg-green-600"
-                                  data-testid={`badge-unread-${conv.id}`}
-                                >
-                                  {conv.unreadCount > 99 ? "99+" : conv.unreadCount}
-                                </Badge>
-                              )}
+                              <Badge 
+                                variant="default" 
+                                className={`h-5 min-w-5 px-1.5 text-xs flex-shrink-0 ${waitTimeIndicator.bgColor}`}
+                                data-testid={`badge-status-${conv.id}`}
+                              >
+                                {(conv.unreadCount ?? 0) > 99 ? "99+" : (conv.unreadCount ?? 0)}
+                              </Badge>
                               <div className="font-medium truncate min-w-0">{conv.clientName}</div>
                               {conv.verifiedAt && (
                                 <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" data-testid="verified-indicator" />
