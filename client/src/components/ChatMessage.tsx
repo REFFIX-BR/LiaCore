@@ -440,10 +440,11 @@ export function ChatMessage({ message, canEdit = false, onDelete, onReply, showI
           {/* Badge de mensagem excluída */}
           {message.deletedAt && (
             <Badge 
-              variant="outline" 
-              className="mb-2 text-xs bg-destructive/10 text-destructive border-destructive/30"
+              variant="destructive" 
+              className="mb-2 text-xs"
+              data-testid={`badge-deleted-${message.id}`}
             >
-              🗑️ Mensagem excluída
+              🗑️ Excluída por {(message as any).deletedBy || 'supervisor'}
             </Badge>
           )}
 
