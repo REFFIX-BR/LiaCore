@@ -6683,21 +6683,36 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
       
       const conversations = await storage.getTransferredConversations(userId, role);
       
-      // Enriquecer com última mensagem do cliente
+      // Enriquecer com última mensagem do cliente e contagem de não lidas
       const enriched = await Promise.all(
         conversations.map(async (conv) => {
-          const messages = await storage.getRecentMessagesByConversationId(conv.id, 20);
-          const lastClientMessage = messages
-            .filter(m => m.role === 'user')
-            .sort((a, b) => {
-              const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-              const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-              return timeB - timeA;
-            })[0];
+          const messages = await storage.getRecentMessagesByConversationId(conv.id, 50);
+          
+          // Ordenar mensagens por timestamp (mais recente primeiro)
+          const sortedMessages = messages.sort((a, b) => {
+            const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+            const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+            return timeB - timeA;
+          });
+          
+          const lastClientMessage = sortedMessages.find(m => m.role === 'user');
+          
+          // Calcular mensagens não lidas (mensagens do cliente após a última resposta do agente/assistente)
+          const lastAgentMessageIndex = sortedMessages.findIndex(m => m.role === 'assistant' || m.role === 'agent');
+          let unreadCount = 0;
+          
+          if (lastAgentMessageIndex === -1) {
+            // Nenhuma resposta ainda - todas as mensagens do cliente são não lidas
+            unreadCount = sortedMessages.filter(m => m.role === 'user').length;
+          } else {
+            // Contar mensagens do cliente antes da última resposta (pois está ordenado desc)
+            unreadCount = sortedMessages.slice(0, lastAgentMessageIndex).filter(m => m.role === 'user').length;
+          }
           
           return {
             ...conv,
             lastMessage: lastClientMessage?.content || conv.lastMessage || 'Sem mensagens',
+            unreadCount,
           };
         })
       );
@@ -6757,17 +6772,31 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
         });
       }
       
-      // Enriquecer com última mensagem do cliente e nome do usuário atribuído
+      // Enriquecer com última mensagem do cliente, nome do usuário atribuído e contagem de não lidas
       const enriched = await Promise.all(
         assignedConversations.map(async (conv) => {
-          const messages = await storage.getRecentMessagesByConversationId(conv.id, 20);
-          const lastClientMessage = messages
-            .filter(m => m.role === 'user')
-            .sort((a, b) => {
-              const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-              const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-              return timeB - timeA;
-            })[0];
+          const messages = await storage.getRecentMessagesByConversationId(conv.id, 50);
+          
+          // Ordenar mensagens por timestamp (mais recente primeiro)
+          const sortedMessages = messages.sort((a, b) => {
+            const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+            const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+            return timeB - timeA;
+          });
+          
+          const lastClientMessage = sortedMessages.find(m => m.role === 'user');
+          
+          // Calcular mensagens não lidas (mensagens do cliente após a última resposta do agente/assistente)
+          const lastAgentMessageIndex = sortedMessages.findIndex(m => m.role === 'assistant' || m.role === 'agent');
+          let unreadCount = 0;
+          
+          if (lastAgentMessageIndex === -1) {
+            // Nenhuma resposta ainda - todas as mensagens do cliente são não lidas
+            unreadCount = sortedMessages.filter(m => m.role === 'user').length;
+          } else {
+            // Contar mensagens do cliente antes da última resposta (pois está ordenado desc)
+            unreadCount = sortedMessages.slice(0, lastAgentMessageIndex).filter(m => m.role === 'user').length;
+          }
           
           // Buscar nome do usuário atribuído do mapa
           const assignedToName = conv.assignedTo ? assignedUsersMap.get(conv.assignedTo) || null : null;
@@ -6776,6 +6805,7 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
             ...conv,
             lastMessage: lastClientMessage?.content || conv.lastMessage || 'Sem mensagens',
             assignedToName,
+            unreadCount,
           };
         })
       );

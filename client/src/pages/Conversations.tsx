@@ -74,6 +74,7 @@ interface Conversation {
   assignedToName?: string | null;
   verifiedAt: Date | null;
   verifiedBy: string | null;
+  unreadCount?: number;
 }
 
 export default function Conversations() {
@@ -313,6 +314,15 @@ export default function Conversations() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 min-w-0">
                               <Circle className={`h-3 w-3 fill-current flex-shrink-0 ${waitTimeIndicator.color}`} data-testid="wait-indicator" />
+                              {conv.unreadCount && conv.unreadCount > 0 && (
+                                <Badge 
+                                  variant="default" 
+                                  className="h-5 min-w-5 px-1.5 text-xs flex-shrink-0 bg-green-600 hover:bg-green-600"
+                                  data-testid={`badge-unread-${conv.id}`}
+                                >
+                                  {conv.unreadCount > 99 ? "99+" : conv.unreadCount}
+                                </Badge>
+                              )}
                               <div className="font-medium truncate min-w-0">{conv.clientName}</div>
                               {conv.verifiedAt && (
                                 <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" data-testid="verified-indicator" />
@@ -374,6 +384,15 @@ export default function Conversations() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 min-w-0">
                               <Circle className={`h-3 w-3 fill-current flex-shrink-0 ${waitTimeIndicator.color}`} data-testid="wait-indicator" />
+                              {conv.unreadCount && conv.unreadCount > 0 && (
+                                <Badge 
+                                  variant="default" 
+                                  className="h-5 min-w-5 px-1.5 text-xs flex-shrink-0 bg-green-600 hover:bg-green-600"
+                                  data-testid={`badge-unread-${conv.id}`}
+                                >
+                                  {conv.unreadCount > 99 ? "99+" : conv.unreadCount}
+                                </Badge>
+                              )}
                               <div className="font-medium truncate min-w-0">{conv.clientName}</div>
                               {conv.verifiedAt && (
                                 <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" data-testid="verified-indicator" />
