@@ -962,7 +962,7 @@ if (redisConnection) {
             const messageSent = await sendWhatsAppMessage(fromNumber, newAssistantResult.response, evolutionInstance);
             
             if (messageSent.success) {
-              // Armazenar resposta do novo assistente
+              // Armazenar resposta do novo assistente (com IDs para permitir exclusão)
               await storage.createMessage({
                 conversationId,
                 role: 'assistant',
@@ -970,6 +970,8 @@ if (redisConnection) {
                 functionCall: newAssistantResult.functionCalls && newAssistantResult.functionCalls.length > 0 
                   ? newAssistantResult.functionCalls[0]
                   : undefined,
+                whatsappMessageId: messageSent.whatsappMessageId,
+                remoteJid: messageSent.remoteJid || `${fromNumber}@s.whatsapp.net`,
               });
               
               console.log(`✅ [Worker] Novo assistente ${result.assistantTarget} processou e respondeu com sucesso`);
@@ -1045,13 +1047,15 @@ if (redisConnection) {
             
             // Enviar mensagem limpa ao cliente
             const cleanMessage = "Entendi! Estou encaminhando você para o setor correto que vai te ajudar melhor. Aguarde um instante! 😊";
-            await sendWhatsAppMessage(fromNumber, cleanMessage, evolutionInstance);
+            const emergencyMsgSent = await sendWhatsAppMessage(fromNumber, cleanMessage, evolutionInstance);
             
             await storage.createMessage({
               conversationId,
               role: 'assistant',
               content: cleanMessage,
               functionCall: undefined,
+              whatsappMessageId: emergencyMsgSent.whatsappMessageId,
+              remoteJid: emergencyMsgSent.remoteJid || `${fromNumber}@s.whatsapp.net`,
             });
             
             console.error(`✅ [EMERGENCY FIX] Mensagem de debug bloqueada e roteamento forçado`);
@@ -1059,13 +1063,15 @@ if (redisConnection) {
             // Se não conseguiu extrair destino, enviar mensagem de erro genérica
             console.error(`❌ [EMERGENCY FIX] Não conseguiu extrair assistente de destino - enviando mensagem de erro`);
             const errorMessage = "Desculpe, houve um probleminha técnico. Vou te transferir para um atendente humano, tudo bem? 😊";
-            await sendWhatsAppMessage(fromNumber, errorMessage, evolutionInstance);
+            const errorMsgSent = await sendWhatsAppMessage(fromNumber, errorMessage, evolutionInstance);
             
             await storage.createMessage({
               conversationId,
               role: 'assistant',
               content: errorMessage,
               functionCall: undefined,
+              whatsappMessageId: errorMsgSent.whatsappMessageId,
+              remoteJid: errorMsgSent.remoteJid || `${fromNumber}@s.whatsapp.net`,
             });
             
             // Transferir para humano
@@ -1090,6 +1096,7 @@ if (redisConnection) {
           await persistLatencyReport(latencyReport, latencyTracker);
 
           // 10. Store AI response (only if message was sent successfully)
+          // Incluir whatsappMessageId e remoteJid para permitir exclusão de mensagens
           await storage.createMessage({
             conversationId,
             role: 'assistant',
@@ -1097,6 +1104,8 @@ if (redisConnection) {
             functionCall: result.functionCalls && result.functionCalls.length > 0 
               ? result.functionCalls[0] // Store first function call (most relevant)
               : undefined,
+            whatsappMessageId: messageSent.whatsappMessageId,
+            remoteJid: messageSent.remoteJid || `${fromNumber}@s.whatsapp.net`,
           });
           
           // 🔍 MONITORAR QUALIDADE DE CONTEXTO (resposta normal)
@@ -1646,11 +1655,13 @@ Por favor, responda apenas com um número de 0 a 10.
           throw new Error('Failed to send inactivity follow-up - Evolution API error');
         }
 
-        // 6. Store the follow-up message in conversation
+        // 6. Store the follow-up message in conversation (com IDs para permitir exclusão)
         await storage.createMessage({
           conversationId,
           role: 'assistant',
           content: followupMessage,
+          whatsappMessageId: messageSent.whatsappMessageId,
+          remoteJid: messageSent.remoteJid || `${clientId}@s.whatsapp.net`,
         });
 
         console.log(`✅ [Inactivity Worker] Follow-up enviado com sucesso para ${clientName}`);
@@ -1766,11 +1777,13 @@ Por favor, responda apenas com um número de 0 a 10.
           throw new Error('Failed to send auto-closure message - Evolution API error');
         }
 
-        // 7. Store the closure message in conversation
+        // 7. Store the closure message in conversation (com IDs para permitir exclusão)
         await storage.createMessage({
           conversationId,
           role: 'assistant',
           content: closureMessage,
+          whatsappMessageId: messageSent.whatsappMessageId,
+          remoteJid: messageSent.remoteJid || `${clientId}@s.whatsapp.net`,
         });
 
         // ✅ BUG FIX: Usar método transacional atômico
