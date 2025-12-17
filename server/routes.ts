@@ -5087,7 +5087,17 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
       const conversation = await storage.getConversation(conversationId);
 
       // Map department names to conversation department codes
+      // Inclui valores capitalizados (legado) E lowercase (frontend atual)
       const departmentMapping: Record<string, string> = {
+        // Valores do frontend (lowercase)
+        'suporte-n2': 'support',
+        'suporte': 'support',
+        'financeiro': 'financial',
+        'comercial': 'commercial',
+        'tecnico': 'support', // Técnico mapeia para suporte
+        'ouvidoria': 'cancellation',
+        'cancelamento': 'cancellation',
+        // Valores legado (capitalizados)
         'Suporte Técnico': 'support',
         'Suporte': 'support',
         'Comercial': 'commercial',

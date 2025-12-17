@@ -902,9 +902,14 @@ if (redisConnection) {
       if (result.routed && result.assistantTarget) {
         console.log(`🎭 [Worker] Routed to assistant: ${result.assistantTarget}`);
         
-        await storage.updateConversation(conversationId, {
+        // 🔧 DEBUG: Log antes e depois do update para rastrear bug de tagging
+        console.log(`🔧 [TAG DEBUG] Atualizando assistantType: ${conversation.assistantType} → ${result.assistantTarget}`);
+        
+        const updatedConv = await storage.updateConversation(conversationId, {
           assistantType: result.assistantTarget,
         });
+        
+        console.log(`🔧 [TAG DEBUG] Update concluído - assistantType agora: ${updatedConv?.assistantType || 'FALHOU'}`);
 
         // 🆕 BLOQUEIO: Não enviar mensagem da Apresentação ao rotear
         shouldSendPresentationMessage = false;
