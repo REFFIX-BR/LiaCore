@@ -696,10 +696,33 @@ export async function consultaNotaFiscal(
 
     console.log(`📄 [AI Tool] Consultando notas fiscais (conversação: ${conversationContext.conversationId})`);
     
-    const url = `https://webhook.trtelecom.net/webhook/coleta-nota-fiscal?cod_cliente=${documentoNormalizado}`;
-    console.log(`🌐 [AI Tool] Endpoint: ${url}`);
+    // PASSO 1: Buscar cod_cliente através do check_pppoe_status usando o CPF
+    console.log(`🔍 [AI Tool] Passo 1: Buscando cod_cliente via check_pppoe_status...`);
+    
+    const statusResponse = await fetchWithRetry<StatusConexaoResult[]>(
+      "https://webhook.trtelecom.net/webhook/check_pppoe_status",
+      { documento: documentoNormalizado },
+      { operationName: "busca de cod_cliente" }
+    );
+    
+    if (!statusResponse || statusResponse.length === 0) {
+      console.warn(`⚠️ [AI Tool] Nenhum cliente encontrado para o documento informado`);
+      return {
+        sucesso: false,
+        totalNotas: 0,
+        notas: [],
+        mensagem: "Cliente não encontrado no sistema. Verifique se o CPF/CNPJ está correto."
+      };
+    }
+    
+    // Usar o primeiro resultado (ou poderia iterar para múltiplos pontos)
+    const codCliente = statusResponse[0].COD_CLIENTE;
+    console.log(`✅ [AI Tool] cod_cliente encontrado: ${codCliente}`);
+    
+    // PASSO 2: Consultar notas fiscais com o cod_cliente
+    const url = `https://webhook.trtelecom.net/webhook/coleta-nota-fiscal?cod_cliente=${codCliente}`;
+    console.log(`🌐 [AI Tool] Passo 2: Consultando notas fiscais - ${url}`);
 
-    // Usar GET com query parameter
     const response = await fetch(url, {
       method: "GET",
       headers: {
