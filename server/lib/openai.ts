@@ -2760,6 +2760,120 @@ Fonte: ${fonte}`;
           });
         }
 
+      case "consultar_nota_fiscal":
+        console.log(`📄 [AI Tool Handler] Iniciando consulta de nota fiscal - conversationId: ${conversationId || 'UNDEFINED'}`);
+        if (!conversationId) {
+          console.error(`❌ [AI Tool] consultar_nota_fiscal chamada sem conversationId`);
+          return JSON.stringify({
+            error: "Contexto de conversa não disponível para consulta de notas fiscais"
+          });
+        }
+        
+        const { consultaNotaFiscal } = await import("../ai-tools");
+        const { storage: storageNF } = await import("../storage");
+        const { extractDocumentoFromHistory: extractDocNF } = await import("./cpf-context-injector");
+        
+        try {
+          // LGPD: Verificar se documento (CPF ou CNPJ) foi fornecido nos argumentos
+          let documentoNF = args.documento || args.cpf || args.cpf_cnpj || args.cnpj;
+          
+          // Se documento não veio nos argumentos, tentar extrair da mensagem atual
+          if (!documentoNF && currentUserMessage) {
+            console.log(`🔍 [AI Tool] NF - Documento não nos argumentos - tentando extrair da mensagem atual...`);
+            const currentMsgArrayNF = [{ content: currentUserMessage, role: 'user' as const }];
+            const docFromCurrentNF = extractDocNF(currentMsgArrayNF);
+            if (docFromCurrentNF) {
+              documentoNF = docFromCurrentNF.documento;
+              console.log(`✅ [AI Tool] NF - ${docFromCurrentNF.tipo} extraído da mensagem atual: ${docFromCurrentNF.formatado}`);
+            }
+          }
+          
+          // Se ainda não encontrou, tentar extrair do histórico de mensagens
+          if (!documentoNF) {
+            console.log(`🔍 [AI Tool] NF - Documento não na mensagem atual - tentando extrair do histórico...`);
+            try {
+              const mensagensHistoricoNF = await storageNF.getMessagesByConversationId(conversationId);
+              const messagesForExtractionNF = mensagensHistoricoNF.slice(-50).map((m: { content: string; role: string }) => ({
+                content: m.content,
+                role: m.role as 'user' | 'assistant'
+              }));
+              const documentoExtraidoNF = extractDocNF(messagesForExtractionNF);
+              if (documentoExtraidoNF) {
+                documentoNF = documentoExtraidoNF.documento;
+                console.log(`✅ [AI Tool] NF - ${documentoExtraidoNF.tipo} extraído do histórico: ${documentoExtraidoNF.formatado}`);
+              }
+            } catch (err) {
+              console.warn(`⚠️ [AI Tool] NF - Erro ao extrair documento do histórico:`, err);
+            }
+          }
+          
+          if (!documentoNF) {
+            console.warn("⚠️ [AI Tool] NF - LGPD: Documento não fornecido - solicitando ao cliente");
+            return JSON.stringify({
+              error: "Para consultar suas notas fiscais, preciso do seu CPF ou CNPJ. Por favor, me informe seu documento."
+            });
+          }
+          
+          // Validar documento
+          const { validarDocumentoFlexivel: validarDocNF } = await import("../ai-tools");
+          const validacaoNF = validarDocNF(documentoNF);
+          
+          if (!validacaoNF.valido) {
+            return JSON.stringify({
+              error: validacaoNF.motivo || 'Documento inválido'
+            });
+          }
+          
+          console.log(`📄 [AI Tool Handler] Chamando consultaNotaFiscal...`);
+          
+          const resultadoNF = await consultaNotaFiscal(
+            validacaoNF.documentoNormalizado,
+            { conversationId },
+            storageNF
+          );
+          
+          if (!resultadoNF.sucesso) {
+            return JSON.stringify({
+              status: "ERRO_API",
+              error: resultadoNF.mensagem || "Erro ao consultar notas fiscais",
+              instrucao_ia: "ATENÇÃO: A consulta de notas fiscais FALHOU. NÃO invente dados. Informe ao cliente que houve um problema técnico temporário."
+            });
+          }
+          
+          if (resultadoNF.totalNotas === 0) {
+            return JSON.stringify({
+              status: "SEM_NOTAS",
+              mensagem: "Não foram encontradas notas fiscais para este documento.",
+              notas: []
+            });
+          }
+          
+          // Formatar notas para apresentação
+          const notasFormatadas = resultadoNF.notas.map(nf => ({
+            numero: nf.numero_nf,
+            data_emissao: nf.data_emissao,
+            mes_referencia: nf.mes_referencia,
+            link_download: nf.link_download
+          }));
+          
+          console.log(`✅ [AI Tool Handler] ${resultadoNF.totalNotas} nota(s) fiscal(is) encontrada(s)`);
+          
+          return JSON.stringify({
+            status: "success",
+            total: resultadoNF.totalNotas,
+            notas: notasFormatadas,
+            instrucao_ia: "Apresente as notas fiscais ao cliente com os links para download. Cada nota tem número, data de emissão, mês de referência e link para baixar/imprimir."
+          });
+          
+        } catch (error) {
+          console.error("❌ [AI Tool Handler] Erro ao consultar notas fiscais:", error);
+          return JSON.stringify({
+            status: "ERRO_API",
+            error: error instanceof Error ? error.message : "Erro ao consultar notas fiscais",
+            instrucao_ia: "ATENÇÃO: A consulta de notas fiscais FALHOU. NÃO invente dados. Informe ao cliente que houve um problema técnico temporário."
+          });
+        }
+
       case "solicitarDesbloqueio":
         if (!conversationId) {
           console.error("❌ [AI Tool] solicitarDesbloqueio chamada sem conversationId");
