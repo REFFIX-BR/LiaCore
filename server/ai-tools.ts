@@ -290,6 +290,24 @@ interface ConsultaBoletoResponse {
   boletos?: ConsultaBoletoResult[];
 }
 
+// ===================================
+// NOTA FISCAL INTERFACES
+// ===================================
+
+interface NotaFiscalResult {
+  numero_nf: number;
+  data_emissao: string;
+  mes_referencia: string;
+  link_download: string;
+}
+
+interface ConsultaNotaFiscalResponse {
+  sucesso: boolean;
+  totalNotas: number;
+  notas: NotaFiscalResult[];
+  mensagem?: string;
+}
+
 interface StatusConexaoResult {
   COD_CLIENTE: string;
   nomeCliente: string;
@@ -638,6 +656,87 @@ export async function consultaBoletoCliente(
   } catch (error) {
     console.error("❌ [AI Tool] Erro ao consultar boletos:", error);
     throw error;
+  }
+}
+
+/**
+ * Consulta notas fiscais emitidas para o cliente
+ * @param documento CPF ou CNPJ do cliente
+ * @param conversationContext Contexto OBRIGATÓRIO da conversa para validação de segurança
+ * @param storage Interface de storage para validação da conversa
+ * @returns Lista de notas fiscais com links de download
+ */
+export async function consultaNotaFiscal(
+  documento: string,
+  conversationContext: { conversationId: string },
+  storage: IStorage
+): Promise<ConsultaNotaFiscalResponse> {
+  try {
+    // Validação de segurança OBRIGATÓRIA
+    if (!conversationContext || !conversationContext.conversationId) {
+      console.error(`❌ [AI Tool Security] Tentativa de consulta NF sem contexto de conversa`);
+      throw new Error("Contexto de segurança é obrigatório para consulta de nota fiscal");
+    }
+
+    // Validação: conversa deve existir no banco
+    const conversation = await storage.getConversation(conversationContext.conversationId);
+    if (!conversation) {
+      console.error(`❌ [AI Tool Security] Tentativa de consulta NF com conversationId inválido`);
+      throw new Error("Conversa não encontrada - contexto de segurança inválido");
+    }
+
+    // Validação de documento (normalizar antes de comparar)
+    const documentoNormalizado = documento.replace(/\D/g, '');
+    const clientDocumentNormalizado = conversation.clientDocument?.replace(/\D/g, '');
+    
+    // AUDITORIA: Logar quando cliente consulta CPF diferente do seu (ex: familiar)
+    if (clientDocumentNormalizado && clientDocumentNormalizado !== documentoNormalizado) {
+      console.warn(`⚠️  [AUDIT] Cliente consultando NF de CPF diferente - Conversa: ${conversationContext.conversationId}, CPF próprio: ***${clientDocumentNormalizado.slice(-4)}, CPF consultado: ***${documentoNormalizado.slice(-4)}`);
+    }
+
+    console.log(`📄 [AI Tool] Consultando notas fiscais (conversação: ${conversationContext.conversationId})`);
+    console.log(`🌐 [AI Tool] Endpoint: https://webhook.trtelecom.net/webhook/consulta_nota_fiscal`);
+
+    const notas = await fetchWithRetry<NotaFiscalResult[]>(
+      "https://webhook.trtelecom.net/webhook/consulta_nota_fiscal",
+      { documento: documentoNormalizado },
+      { operationName: "consulta de notas fiscais" }
+    );
+
+    console.log(`📄 [AI Tool] ${notas?.length || 0} nota(s) fiscal(is) encontrada(s)`);
+
+    if (!notas || notas.length === 0) {
+      return {
+        sucesso: true,
+        totalNotas: 0,
+        notas: [],
+        mensagem: "Nenhuma nota fiscal encontrada para este documento."
+      };
+    }
+
+    // Ordenar por data de emissão (mais recente primeiro)
+    const notasOrdenadas = notas.sort((a, b) => {
+      const dataA = new Date(a.data_emissao);
+      const dataB = new Date(b.data_emissao);
+      return dataB.getTime() - dataA.getTime();
+    });
+
+    return {
+      sucesso: true,
+      totalNotas: notasOrdenadas.length,
+      notas: notasOrdenadas
+    };
+
+  } catch (error) {
+    console.error("❌ [AI Tool] Erro ao consultar notas fiscais:", error);
+    
+    // Retornar erro estruturado ao invés de lançar exceção
+    return {
+      sucesso: false,
+      totalNotas: 0,
+      notas: [],
+      mensagem: "Não foi possível consultar as notas fiscais no momento. Por favor, tente novamente mais tarde."
+    };
   }
 }
 
