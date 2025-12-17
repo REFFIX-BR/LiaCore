@@ -696,7 +696,7 @@ export async function consultaNotaFiscal(
 
     console.log(`📄 [AI Tool] Consultando notas fiscais (conversação: ${conversationContext.conversationId})`);
     
-    const url = `https://webhook.trtelecom.net/webhook/consulta_nota_fiscal?documento=${documentoNormalizado}`;
+    const url = `https://webhook.trtelecom.net/webhook/coleta-nota-fiscal?documento=${documentoNormalizado}`;
     console.log(`🌐 [AI Tool] Endpoint: ${url}`);
 
     // Usar GET com query parameter
