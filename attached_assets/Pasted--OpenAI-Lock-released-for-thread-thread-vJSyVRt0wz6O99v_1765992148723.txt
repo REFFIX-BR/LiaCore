@@ -1,0 +1,59 @@
+🔓 [OpenAI] Lock released for thread thread_vJSyVRt0wz6O99vfmd2HGZFJ
+📱 [Extract Number] Raw phone number detected (no lid_ prefix): "5524993099792" - returning as-is (bare phone)
+⚠️  [WhatsApp] URL sem protocolo detectada, adicionando https://: https://evolutionapi.trtelecom.net
+📤 [WhatsApp] Sending message to: 5524993099792 via https://evolutionapi.trtelecom.net/message/sendText/Principal
+⏱️  [Latency] Total: 8.82s | OpenAI: 5629ms | Queue: 0ms {
+  messageId: 'recovery_4a321bf3-7cb2-4899-9aea-9b0124859648_1765992002380',
+  conversationId: '4a321bf3-7cb2-4899-9aea-9b0124859648',
+  breakdown: {
+    worker_to_openai: 1915,
+    openai_processing: 5629,
+    openai_to_whatsapp: 1276
+  }
+}
+🔍 [Context Monitor] Monitoring interaction - Assistant: comercial, Conversation: 4a321bf3...
+🔍 [Context Monitor] Analyzing 11 messages for potential issues...
+✅ [Context Monitor] No issues detected - conversation quality is good
+⏰ [Worker] Follow-up de inatividade agendado para daqui a 10 minutos (após resposta da IA)
+✅ [Worker] Message processed successfully
+🔓 [Worker] Chat lock released for whatsapp_5524993099792
+✅ [Worker] Message completed: { jobId: '48141', duration: 11561 }
+📦 [Cache] Admin metrics HIT - returning cached data
+2:20:38 PM [express] GET /api/dashboard/admin 304 in 3ms :: {"systemStatus":{"api":true,"database":t…
+2:20:41 PM [express] GET /api/announcements/active 304 in 184ms :: []
+2:20:41 PM [express] GET /api/failures 304 in 70ms :: [{"id":"92f4e755-12e4-455a-a930-47e66aa88a64",…
+📊 [AI Metrics] apresentacao: { total: 2, transferred: 0, resolvedByAI: 1, pending: 1 }
+📊 [AI Metrics] cancelamento: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] suporte: { total: 19, transferred: 12, resolvedByAI: 6, pending: 1 }
+📊 [AI Metrics] ouvidoria: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] comercial: { total: 14, transferred: 6, resolvedByAI: 6, pending: 2 }
+📊 [AI Metrics] financeiro: { total: 7, transferred: 2, resolvedByAI: 4, pending: 1 }
+2:20:43 PM [express] GET /api/dashboard/ai-performance 304 in 450ms :: [{"assistantType":"apresentac…
+🔄 [Cache] Admin metrics MISS - calculating fresh data
+2:21:11 PM [express] GET /api/announcements/active 304 in 54ms :: []
+2:21:11 PM [express] GET /api/failures 304 in 66ms :: [{"id":"92f4e755-12e4-455a-a930-47e66aa88a64",…
+📊 [AI Metrics] apresentacao: { total: 2, transferred: 0, resolvedByAI: 1, pending: 1 }
+📊 [AI Metrics] ouvidoria: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] financeiro: { total: 7, transferred: 2, resolvedByAI: 4, pending: 1 }
+📊 [AI Metrics] cancelamento: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] comercial: { total: 14, transferred: 6, resolvedByAI: 6, pending: 2 }
+📊 [AI Metrics] suporte: { total: 19, transferred: 12, resolvedByAI: 6, pending: 1 }
+2:21:13 PM [express] GET /api/dashboard/ai-performance 304 in 375ms :: [{"assistantType":"apresentac…
+💾 [Cache] Admin metrics cached for 60s
+2:21:31 PM [express] GET /api/dashboard/admin 200 in 22243ms :: {"systemStatus":{"api":true,"databas…
+2:21:41 PM [express] GET /api/announcements/active 304 in 151ms :: []
+2:21:41 PM [express] GET /api/failures 304 in 65ms :: [{"id":"92f4e755-12e4-455a-a930-47e66aa88a64",…
+📊 [AI Metrics] apresentacao: { total: 2, transferred: 0, resolvedByAI: 1, pending: 1 }
+📊 [AI Metrics] financeiro: { total: 7, transferred: 2, resolvedByAI: 4, pending: 1 }
+📊 [AI Metrics] comercial: { total: 14, transferred: 6, resolvedByAI: 6, pending: 2 }
+📊 [AI Metrics] suporte: { total: 19, transferred: 12, resolvedByAI: 6, pending: 1 }
+📊 [AI Metrics] cancelamento: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] ouvidoria: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+2:21:44 PM [express] GET /api/dashboard/ai-performance 304 in 370ms :: [{"assistantType":"apresentac…
+^C🔴 Closing queues...
+🔴 Closing workers...
+✅ Queues closed successfully
+🔌 [Redis] Connection closed
+/home/runner/workspace/node_modules/ioredis/built/redis/event_handler.js:189
+        self.flushQueue(new Error(utils_1.CONNECTION_CLOSED_ERROR_MSG));
+                        ^
