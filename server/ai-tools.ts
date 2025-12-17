@@ -695,13 +695,23 @@ export async function consultaNotaFiscal(
     }
 
     console.log(`📄 [AI Tool] Consultando notas fiscais (conversação: ${conversationContext.conversationId})`);
-    console.log(`🌐 [AI Tool] Endpoint: https://webhook.trtelecom.net/webhook/consulta_nota_fiscal`);
+    
+    const url = `https://webhook.trtelecom.net/webhook/consulta_nota_fiscal?documento=${documentoNormalizado}`;
+    console.log(`🌐 [AI Tool] Endpoint: ${url}`);
 
-    const notas = await fetchWithRetry<NotaFiscalResult[]>(
-      "https://webhook.trtelecom.net/webhook/consulta_nota_fiscal",
-      { documento: documentoNormalizado },
-      { operationName: "consulta de notas fiscais" }
-    );
+    // Usar GET com query parameter
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Erro na consulta: ${response.status} ${response.statusText}`);
+    }
+
+    const notas = await response.json() as NotaFiscalResult[];
 
     console.log(`📄 [AI Tool] ${notas?.length || 0} nota(s) fiscal(is) encontrada(s)`);
 
