@@ -2998,15 +2998,23 @@ export class DbStorage implements IStorage {
       );
       
       if (conversationsWithTime.length > 0) {
-        const totalTime = conversationsWithTime.reduce((sum, c) => {
-          // FIX: Usar transferredAt (quando agente assumiu) ao invés de createdAt
-          // Se transferredAt não existir, usa createdAt como fallback
-          const startTime = new Date(c.transferredAt || c.createdAt!).getTime();
-          const endTime = new Date(c.resolvedAt!).getTime();
-          const diffInSeconds = Math.floor((endTime - startTime) / 1000);
-          return sum + diffInSeconds;
-        }, 0);
-        avgResponseTime = Math.floor(totalTime / conversationsWithTime.length);
+        // Calcular tempos individuais e filtrar outliers extremos
+        const MAX_TMA_SECONDS = 8 * 60 * 60; // 8 horas máximo - conversas além disso são outliers
+        
+        const validTimes = conversationsWithTime
+          .map(c => {
+            // FIX: Usar transferredAt (quando agente assumiu) ao invés de createdAt
+            // Se transferredAt não existir, usa createdAt como fallback
+            const startTime = new Date(c.transferredAt || c.createdAt!).getTime();
+            const endTime = new Date(c.resolvedAt!).getTime();
+            return Math.floor((endTime - startTime) / 1000);
+          })
+          .filter(seconds => seconds > 0 && seconds <= MAX_TMA_SECONDS); // Excluir outliers
+        
+        if (validTimes.length > 0) {
+          const totalTime = validTimes.reduce((sum, t) => sum + t, 0);
+          avgResponseTime = Math.floor(totalTime / validTimes.length);
+        }
       }
     }
 
