@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Inbox, CheckCircle2, Clock, Star, TrendingUp, Calendar, Trophy, Target, Zap, Crown, TrendingDown, AlertCircle, Calculator } from "lucide-react";
-import { Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { Inbox, CheckCircle2, Clock, Star, TrendingUp, Calendar, Trophy, Target, Zap, Crown, TrendingDown, AlertCircle, Calculator, Info } from "lucide-react";
+import { Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 import { Progress } from "@/components/ui/progress";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface GamificationScore {
   agentId: string;
@@ -199,7 +200,7 @@ export function AgentDashboard() {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="date" className="text-xs" tick={{ fill: 'currentColor' }} />
                 <YAxis className="text-xs" tick={{ fill: 'currentColor' }} />
-                <Tooltip 
+                <RechartsTooltip 
                   contentStyle={{ 
                     backgroundColor: 'hsl(var(--card))',
                     border: '1px solid hsl(var(--border))',
@@ -328,6 +329,17 @@ export function AgentDashboard() {
                 <CardTitle className="flex items-center gap-2 text-green-600">
                   <TrendingUp className="h-5 w-5" />
                   Seus Pontos Fortes
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p className="font-semibold mb-1">Como funciona:</p>
+                      <p className="text-xs mb-2">Métricas com score acima de 70 pontos aparecem aqui. Os scores são calculados comparando seu desempenho com as metas do mês.</p>
+                      <p className="font-semibold mb-1">Atualização:</p>
+                      <p className="text-xs">Dados atualizados a cada nova conversa finalizada (tempo real).</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </CardTitle>
                 <CardDescription>Áreas onde você se destaca (Score ≥ 70)</CardDescription>
               </CardHeader>
@@ -415,6 +427,22 @@ export function AgentDashboard() {
                 <CardTitle className="flex items-center gap-2 text-orange-600">
                   <AlertCircle className="h-5 w-5" />
                   Áreas para Melhorar
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p className="font-semibold mb-1">Como funciona:</p>
+                      <p className="text-xs mb-2">Métricas com score abaixo de 50 pontos aparecem aqui com dicas de como melhorar.</p>
+                      <p className="font-semibold mb-1">Métricas avaliadas:</p>
+                      <p className="text-xs mb-1">• NPS: Nota média dos clientes (0-10)</p>
+                      <p className="text-xs mb-1">• Volume: Quantidade de atendimentos no mês</p>
+                      <p className="text-xs mb-1">• Resolução: % de conversas finalizadas com sucesso</p>
+                      <p className="text-xs mb-2">• Velocidade: Tempo médio de atendimento</p>
+                      <p className="font-semibold mb-1">Atualização:</p>
+                      <p className="text-xs">Dados atualizados a cada nova conversa finalizada.</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </CardTitle>
                 <CardDescription>Onde você pode crescer ainda mais (Score &lt; 50)</CardDescription>
               </CardHeader>
