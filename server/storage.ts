@@ -2938,15 +2938,16 @@ export class DbStorage implements IStorage {
     // Buscar nomes dos atendentes
     const agentIds = new Set<string>();
     conversations.forEach(c => {
-      if (c.firstResolvedBy) agentIds.add(c.firstResolvedBy);
-      else if (c.resolvedBy) agentIds.add(c.resolvedBy);
+      const agentId = c.firstResolvedBy || c.resolvedBy;
+      if (agentId) agentIds.add(agentId);
     });
     
     const agentMap = new Map<string, string>();
-    if (agentIds.size > 0) {
+    const agentIdsArray = [...agentIds].filter(id => id && id.length > 0);
+    if (agentIdsArray.length > 0) {
       const agents = await db.select({ id: schema.users.id, name: schema.users.name })
         .from(schema.users)
-        .where(sql`${schema.users.id} IN (${sql.join([...agentIds].map(id => sql`${id}`), sql`, `)})`);
+        .where(inArray(schema.users.id, agentIdsArray));
       agents.forEach(a => agentMap.set(a.id, a.name));
     }
     
