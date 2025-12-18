@@ -6535,7 +6535,8 @@ Após adicionar os Secrets, reinicie o servidor para aplicar as mudanças.
   // Get all satisfaction feedback with conversation data
   app.get("/api/satisfaction-feedback", authenticate, async (req, res) => {
     try {
-      const feedbackWithConversations = await storage.getSatisfactionFeedbackWithConversations();
+      const period = req.query.period as 'daily' | 'weekly' | 'monthly' | undefined;
+      const feedbackWithConversations = await storage.getSatisfactionFeedbackWithConversations(period || 'daily');
       return res.json(feedbackWithConversations);
     } catch (error) {
       console.error("Get satisfaction feedback error:", error);

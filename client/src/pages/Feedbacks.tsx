@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star, MessageSquare, ExternalLink, Filter, X, User, Bot, ClipboardCheck, AlertCircle } from "lucide-react";
+import { Star, MessageSquare, ExternalLink, Filter, X, User, Bot, ClipboardCheck, AlertCircle, Calendar } from "lucide-react";
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -18,11 +18,13 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { SatisfactionFeedback, Conversation, Message } from "@shared/schema";
 
 type FeedbackWithConversation = SatisfactionFeedback & { conversation?: Conversation };
+type PeriodFilter = 'daily' | 'weekly' | 'monthly';
 
 export default function Feedbacks() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("daily");
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [showHandlingDialog, setShowHandlingDialog] = useState(false);
   const [selectedFeedback, setSelectedFeedback] = useState<FeedbackWithConversation | null>(null);
@@ -31,7 +33,14 @@ export default function Feedbacks() {
   const [handlingNotes, setHandlingNotes] = useState<string>("");
 
   const { data: feedbacks, isLoading, error } = useQuery<FeedbackWithConversation[]>({
-    queryKey: ["/api/satisfaction-feedback"],
+    queryKey: ["/api/satisfaction-feedback", periodFilter],
+    queryFn: async () => {
+      const response = await fetch(`/api/satisfaction-feedback?period=${periodFilter}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch feedbacks');
+      return response.json();
+    },
     refetchInterval: 10000,
   });
 
@@ -173,11 +182,50 @@ export default function Feedbacks() {
     }
   };
 
+  const getPeriodLabel = (period: PeriodFilter) => {
+    switch (period) {
+      case 'daily': return 'Hoje';
+      case 'weekly': return 'Últimos 7 dias';
+      case 'monthly': return 'Este mês';
+    }
+  };
+
   return (
     <div className="h-full overflow-auto p-6 space-y-6" data-testid="page-feedbacks">
-      <div>
-        <h1 className="text-3xl font-bold mb-2" data-testid="heading-feedbacks">Feedbacks NPS</h1>
-        <p className="text-muted-foreground">Visualize e analise as avaliações dos clientes</p>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-3xl font-bold mb-2" data-testid="heading-feedbacks">Feedbacks NPS</h1>
+          <p className="text-muted-foreground">Visualize e analise as avaliações dos clientes</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <div className="flex gap-1">
+            <Button
+              variant={periodFilter === 'daily' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setPeriodFilter('daily')}
+              data-testid="filter-daily"
+            >
+              Hoje
+            </Button>
+            <Button
+              variant={periodFilter === 'weekly' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setPeriodFilter('weekly')}
+              data-testid="filter-weekly"
+            >
+              Semanal
+            </Button>
+            <Button
+              variant={periodFilter === 'monthly' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setPeriodFilter('monthly')}
+              data-testid="filter-monthly"
+            >
+              Mensal
+            </Button>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

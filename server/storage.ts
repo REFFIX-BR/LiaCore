@@ -180,7 +180,7 @@ export interface IStorage {
   getAllSatisfactionFeedback(): Promise<SatisfactionFeedback[]>;
   getSatisfactionFeedbackByConversationId(conversationId: string): Promise<SatisfactionFeedback | undefined>;
   getSatisfactionFeedbackByAssistantType(assistantType: string): Promise<SatisfactionFeedback[]>;
-  getSatisfactionFeedbackWithConversations(): Promise<Array<SatisfactionFeedback & { conversation?: Conversation }>>;
+  getSatisfactionFeedbackWithConversations(period?: 'daily' | 'weekly' | 'monthly'): Promise<Array<SatisfactionFeedback & { conversation?: Conversation }>>;
   updateSatisfactionFeedback(id: string, updates: Partial<SatisfactionFeedback>): Promise<SatisfactionFeedback | undefined>;
   updateSatisfactionFeedbackHandling(id: string, updates: {
     handlingScore?: number;
@@ -1283,8 +1283,27 @@ export class MemStorage implements IStorage {
     ).sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
   }
 
-  async getSatisfactionFeedbackWithConversations(): Promise<Array<SatisfactionFeedback & { conversation?: Conversation }>> {
-    const feedbacks = await this.getAllSatisfactionFeedback();
+  async getSatisfactionFeedbackWithConversations(period?: 'daily' | 'weekly' | 'monthly'): Promise<Array<SatisfactionFeedback & { conversation?: Conversation }>> {
+    const now = new Date();
+    let startDate: Date;
+    
+    switch (period) {
+      case 'daily':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case 'weekly':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'monthly':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      default:
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    }
+
+    const feedbacks = (await this.getAllSatisfactionFeedback())
+      .filter(f => f.createdAt && f.createdAt >= startDate);
+    
     return feedbacks.map(feedback => ({
       ...feedback,
       conversation: this.conversations.get(feedback.conversationId)
@@ -2880,22 +2899,40 @@ export class DbStorage implements IStorage {
       .orderBy(desc(schema.satisfactionFeedback.createdAt));
   }
 
-  async getSatisfactionFeedbackWithConversations(): Promise<Array<SatisfactionFeedback & { conversation?: Conversation }>> {
+  async getSatisfactionFeedbackWithConversations(period?: 'daily' | 'weekly' | 'monthly'): Promise<Array<SatisfactionFeedback & { conversation?: Conversation }>> {
+    const now = new Date();
+    let startDate: Date;
+    
+    switch (period) {
+      case 'daily':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case 'weekly':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'monthly':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      default:
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    }
+
     const feedbacks = await db.select().from(schema.satisfactionFeedback)
+      .where(gte(schema.satisfactionFeedback.createdAt, startDate))
       .orderBy(desc(schema.satisfactionFeedback.createdAt));
     
-    const results = [];
-    for (const feedback of feedbacks) {
-      const [conversation] = await db.select().from(schema.conversations)
-        .where(eq(schema.conversations.id, feedback.conversationId));
-      
-      results.push({
-        ...feedback,
-        conversation
-      });
-    }
+    if (feedbacks.length === 0) return [];
+
+    const conversationIds = feedbacks.map(f => f.conversationId);
+    const conversations = await db.select().from(schema.conversations)
+      .where(sql`${schema.conversations.id} IN (${sql.join(conversationIds.map(id => sql`${id}`), sql`, `)})`);
     
-    return results;
+    const conversationMap = new Map(conversations.map(c => [c.id, c]));
+    
+    return feedbacks.map(feedback => ({
+      ...feedback,
+      conversation: conversationMap.get(feedback.conversationId)
+    }));
   }
 
   async updateSatisfactionFeedback(id: string, updates: Partial<SatisfactionFeedback>): Promise<SatisfactionFeedback | undefined> {
