@@ -4728,6 +4728,18 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     try {
       const conversations = await storage.getMonitorConversations();
       
+      // DEBUG: Log conversation queue data
+      const debugConv = conversations.find(c => c.chatId === 'whatsapp_5524992741672');
+      if (debugConv) {
+        console.log('🔍 [DEBUG QUEUE] Tulio Fracta conversation:', {
+          chatId: debugConv.chatId,
+          transferredToHuman: debugConv.transferredToHuman,
+          assignedTo: debugConv.assignedTo,
+          status: debugConv.status,
+          assistantType: debugConv.assistantType,
+        });
+      }
+      
       const conversationsWithMessages = await Promise.all(
         conversations.map(async (conv) => {
           // Optimized: Get only the last 10 messages from database (DESC order - newest first)
