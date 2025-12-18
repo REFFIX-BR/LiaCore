@@ -3376,8 +3376,10 @@ export class DbStorage implements IStorage {
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
       
+      // FIX: Usar resolvedAt (data de resolução) ao invés de createdAt
+      // O gráfico deve mostrar sentimento das conversas RESOLVIDAS por dia
       const dayConvs = conversations.filter(c => 
-        c.createdAt && c.createdAt.toISOString().split('T')[0] === dateStr
+        c.resolvedAt && c.resolvedAt.toISOString().split('T')[0] === dateStr
       );
 
       last7Days.push({
