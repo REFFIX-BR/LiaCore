@@ -180,7 +180,7 @@ export interface IStorage {
   getAllSatisfactionFeedback(): Promise<SatisfactionFeedback[]>;
   getSatisfactionFeedbackByConversationId(conversationId: string): Promise<SatisfactionFeedback | undefined>;
   getSatisfactionFeedbackByAssistantType(assistantType: string): Promise<SatisfactionFeedback[]>;
-  getSatisfactionFeedbackWithConversations(period?: 'daily' | 'weekly' | 'monthly'): Promise<Array<SatisfactionFeedback & { conversation?: Conversation }>>;
+  getSatisfactionFeedbackWithConversations(period?: 'daily' | 'weekly' | 'monthly'): Promise<Array<SatisfactionFeedback & { conversation?: Conversation; agentName?: string }>>;
   updateSatisfactionFeedback(id: string, updates: Partial<SatisfactionFeedback>): Promise<SatisfactionFeedback | undefined>;
   updateSatisfactionFeedbackHandling(id: string, updates: {
     handlingScore?: number;
@@ -1283,7 +1283,7 @@ export class MemStorage implements IStorage {
     ).sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
   }
 
-  async getSatisfactionFeedbackWithConversations(period?: 'daily' | 'weekly' | 'monthly'): Promise<Array<SatisfactionFeedback & { conversation?: Conversation }>> {
+  async getSatisfactionFeedbackWithConversations(period?: 'daily' | 'weekly' | 'monthly'): Promise<Array<SatisfactionFeedback & { conversation?: Conversation; agentName?: string }>> {
     const now = new Date();
     let startDate: Date;
     
@@ -1304,10 +1304,16 @@ export class MemStorage implements IStorage {
     const feedbacks = (await this.getAllSatisfactionFeedback())
       .filter(f => f.createdAt && f.createdAt >= startDate);
     
-    return feedbacks.map(feedback => ({
-      ...feedback,
-      conversation: this.conversations.get(feedback.conversationId)
-    }));
+    return feedbacks.map(feedback => {
+      const conversation = this.conversations.get(feedback.conversationId);
+      const agentId = conversation?.firstResolvedBy || conversation?.resolvedBy;
+      const agent = agentId ? this.users.get(agentId) : undefined;
+      return {
+        ...feedback,
+        conversation,
+        agentName: agent?.name
+      };
+    });
   }
 
   async updateSatisfactionFeedback(id: string, updates: Partial<SatisfactionFeedback>): Promise<SatisfactionFeedback | undefined> {
@@ -2899,7 +2905,7 @@ export class DbStorage implements IStorage {
       .orderBy(desc(schema.satisfactionFeedback.createdAt));
   }
 
-  async getSatisfactionFeedbackWithConversations(period?: 'daily' | 'weekly' | 'monthly'): Promise<Array<SatisfactionFeedback & { conversation?: Conversation }>> {
+  async getSatisfactionFeedbackWithConversations(period?: 'daily' | 'weekly' | 'monthly'): Promise<Array<SatisfactionFeedback & { conversation?: Conversation; agentName?: string }>> {
     const now = new Date();
     let startDate: Date;
     
@@ -2929,10 +2935,30 @@ export class DbStorage implements IStorage {
     
     const conversationMap = new Map(conversations.map(c => [c.id, c]));
     
-    return feedbacks.map(feedback => ({
-      ...feedback,
-      conversation: conversationMap.get(feedback.conversationId)
-    }));
+    // Buscar nomes dos atendentes
+    const agentIds = new Set<string>();
+    conversations.forEach(c => {
+      if (c.firstResolvedBy) agentIds.add(c.firstResolvedBy);
+      else if (c.resolvedBy) agentIds.add(c.resolvedBy);
+    });
+    
+    const agentMap = new Map<string, string>();
+    if (agentIds.size > 0) {
+      const agents = await db.select({ id: schema.users.id, name: schema.users.name })
+        .from(schema.users)
+        .where(sql`${schema.users.id} IN (${sql.join([...agentIds].map(id => sql`${id}`), sql`, `)})`);
+      agents.forEach(a => agentMap.set(a.id, a.name));
+    }
+    
+    return feedbacks.map(feedback => {
+      const conversation = conversationMap.get(feedback.conversationId);
+      const agentId = conversation?.firstResolvedBy || conversation?.resolvedBy;
+      return {
+        ...feedback,
+        conversation,
+        agentName: agentId ? agentMap.get(agentId) : undefined
+      };
+    });
   }
 
   async updateSatisfactionFeedback(id: string, updates: Partial<SatisfactionFeedback>): Promise<SatisfactionFeedback | undefined> {

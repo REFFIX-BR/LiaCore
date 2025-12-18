@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star, MessageSquare, ExternalLink, Filter, X, User, Bot, ClipboardCheck, AlertCircle, Calendar } from "lucide-react";
+import { Star, MessageSquare, ExternalLink, Filter, X, User, Bot, ClipboardCheck, AlertCircle, Calendar, Headphones } from "lucide-react";
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { SatisfactionFeedback, Conversation, Message } from "@shared/schema";
 
-type FeedbackWithConversation = SatisfactionFeedback & { conversation?: Conversation };
+type FeedbackWithConversation = SatisfactionFeedback & { conversation?: Conversation; agentName?: string };
 type PeriodFilter = 'daily' | 'weekly' | 'monthly';
 
 export default function Feedbacks() {
@@ -322,6 +322,12 @@ export default function Feedbacks() {
                             <p className="text-xs text-muted-foreground" data-testid="text-contact">
                               {feedback.conversation.chatId.replace('whatsapp_', '')}
                             </p>
+                          )}
+                          {feedback.agentName && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground" data-testid="text-agent-name">
+                              <Headphones className="h-3 w-3" />
+                              <span>Atendido por: <span className="font-medium">{feedback.agentName}</span></span>
+                            </div>
                           )}
                           {feedback.comment && (
                             <p className="text-sm text-muted-foreground" data-testid="text-comment">
