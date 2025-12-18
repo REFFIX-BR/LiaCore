@@ -1,13 +1,59 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Inbox, CheckCircle2, Clock, Star, TrendingUp, Calendar, Trophy, Target, Zap, Crown, TrendingDown, AlertCircle, Calculator, Info } from "lucide-react";
-import { Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from "recharts";
+import { Inbox, CheckCircle2, Clock, Star, TrendingUp, Calendar, Trophy, Target, Zap, Crown, TrendingDown, AlertCircle, Calculator, Info, Flame, Users, Heart, Lightbulb, BarChart3 } from "lucide-react";
+import { Line, LineChart, Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+interface AgentInsights {
+  badgeProgress: {
+    [key: string]: {
+      name: string;
+      current: number;
+      target: number;
+      progress: number;
+      remaining: number;
+      unlocked: boolean;
+    };
+  };
+  teamComparison: {
+    volumePercentile: number;
+    npsPercentile: number;
+    volumeRank: number;
+    npsRank: number;
+    teamSize: number;
+    volumeMessage: string;
+    npsMessage: string;
+  };
+  streakData: {
+    currentStreak: number;
+    minDailyGoal: number;
+    message: string;
+  };
+  weeklyEvolution: Array<{
+    week: string;
+    volume: number;
+    nps: number;
+    startDate: string;
+  }>;
+  dailyProgress: {
+    current: number;
+    goal: number;
+    progress: number;
+    remaining: number;
+    completed: boolean;
+  };
+  tipOfTheDay: {
+    category: string;
+    title: string;
+    tip: string;
+    icon: string;
+  };
+}
 
 interface GamificationScore {
   agentId: string;
@@ -79,6 +125,17 @@ export function AgentDashboard() {
       const params = new URLSearchParams({ period: currentPeriod });
       const res = await fetch(`/api/gamification/ranking?${params}`);
       if (!res.ok) throw new Error("Erro ao buscar ranking");
+      return res.json();
+    },
+    refetchInterval: 60000, // 1 minuto
+  });
+
+  // Buscar insights avançados (badges, streak, comparativo, etc)
+  const { data: insights } = useQuery<AgentInsights>({
+    queryKey: ["/api/dashboard/agent/insights"],
+    queryFn: async () => {
+      const res = await fetch("/api/dashboard/agent/insights", { credentials: "include" });
+      if (!res.ok) throw new Error("Erro ao buscar insights");
       return res.json();
     },
     refetchInterval: 60000, // 1 minuto
@@ -184,6 +241,208 @@ export function AgentDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ===== NOVOS INSIGHTS ===== */}
+      {insights && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Meta Diária */}
+          <Card className="hover-elevate" data-testid="card-daily-goal">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Meta do Dia</CardTitle>
+              <Target className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-2xl font-bold" data-testid="text-daily-current">
+                  {insights.dailyProgress.current}
+                </span>
+                <span className="text-lg text-muted-foreground">/ {insights.dailyProgress.goal}</span>
+                {insights.dailyProgress.completed && (
+                  <Badge variant="default" className="bg-green-600">Meta batida!</Badge>
+                )}
+              </div>
+              <Progress value={insights.dailyProgress.progress} className="h-2" />
+              <p className="text-xs text-muted-foreground mt-2">
+                {insights.dailyProgress.completed 
+                  ? 'Parabéns! Continue o bom trabalho!' 
+                  : `Faltam ${insights.dailyProgress.remaining} para bater a meta`}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Streak */}
+          <Card className="hover-elevate" data-testid="card-streak">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Sequência</CardTitle>
+              <Flame className={`h-4 w-4 ${insights.streakData.currentStreak > 0 ? 'text-orange-500' : 'text-muted-foreground'}`} />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold" data-testid="text-streak">
+                  {insights.streakData.currentStreak}
+                </span>
+                <span className="text-sm text-muted-foreground">dias</span>
+                {insights.streakData.currentStreak >= 5 && (
+                  <Flame className="h-5 w-5 text-orange-500" />
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {insights.streakData.message}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                (Min. {insights.streakData.minDailyGoal} atendimentos/dia)
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Comparativo Volume */}
+          <Card className="hover-elevate" data-testid="card-team-volume">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Ranking Volume</CardTitle>
+              <Users className="h-4 w-4 text-purple-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-2xl font-bold text-purple-600" data-testid="text-volume-rank">
+                  #{insights.teamComparison.volumeRank}
+                </span>
+                <span className="text-sm text-muted-foreground">de {insights.teamComparison.teamSize}</span>
+              </div>
+              <Progress value={insights.teamComparison.volumePercentile} className="h-2 mb-1" />
+              <p className="text-xs text-muted-foreground">
+                {insights.teamComparison.volumeMessage}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Comparativo NPS */}
+          <Card className="hover-elevate" data-testid="card-team-nps">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Ranking NPS</CardTitle>
+              <Heart className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-2xl font-bold text-red-500" data-testid="text-nps-rank">
+                  #{insights.teamComparison.npsRank}
+                </span>
+                <span className="text-sm text-muted-foreground">de {insights.teamComparison.teamSize}</span>
+              </div>
+              <Progress value={insights.teamComparison.npsPercentile} className="h-2 mb-1" />
+              <p className="text-xs text-muted-foreground">
+                {insights.teamComparison.npsMessage}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Dica do Dia + Progresso de Badges */}
+      {insights && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Dica do Dia */}
+          <Card className="lg:col-span-1 border-l-4 border-l-yellow-500" data-testid="card-tip">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-yellow-600">
+                <Lightbulb className="h-5 w-5" />
+                Dica do Dia
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <h4 className="font-semibold mb-2">{insights.tipOfTheDay.title}</h4>
+              <p className="text-sm text-muted-foreground">{insights.tipOfTheDay.tip}</p>
+            </CardContent>
+          </Card>
+
+          {/* Progresso para Badges */}
+          <Card className="lg:col-span-2" data-testid="card-badge-progress">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-yellow-600" />
+                Progresso para Badges
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs">
+                    <p className="text-xs">Complete os objetivos para desbloquear badges e subir no ranking!</p>
+                  </TooltipContent>
+                </Tooltip>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {Object.entries(insights.badgeProgress).map(([key, badge]) => {
+                  const icons = {
+                    campeao_volume: Crown,
+                    velocista: Zap,
+                    solucionador: Target
+                  };
+                  const colors = {
+                    campeao_volume: 'text-purple-600',
+                    velocista: 'text-yellow-600',
+                    solucionador: 'text-blue-600'
+                  };
+                  const BadgeIcon = icons[key as keyof typeof icons] || Trophy;
+                  const color = colors[key as keyof typeof colors] || 'text-gray-600';
+                  
+                  return (
+                    <div key={key} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <BadgeIcon className={`h-4 w-4 ${color}`} />
+                          <span className="text-sm font-medium">{badge.name}</span>
+                          {badge.unlocked && <Badge variant="default" className="text-xs">Conquistado!</Badge>}
+                        </div>
+                        <span className="text-sm text-muted-foreground">
+                          {badge.current} / {badge.target}
+                        </span>
+                      </div>
+                      <Progress value={badge.progress} className="h-2" />
+                      {!badge.unlocked && badge.remaining > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Faltam {badge.remaining} para desbloquear
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Gráfico de Evolução Semanal */}
+      {insights && insights.weeklyEvolution.length > 0 && (
+        <Card data-testid="card-weekly-evolution">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Evolução Semanal (Últimas 4 semanas)
+            </CardTitle>
+            <CardDescription>Acompanhe seu progresso ao longo do tempo</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={insights.weeklyEvolution}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="week" className="text-xs" tick={{ fill: 'currentColor' }} />
+                <YAxis className="text-xs" tick={{ fill: 'currentColor' }} />
+                <RechartsTooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px'
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="volume" fill="#8b5cf6" name="Atendimentos" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Gráfico de Sentimento */}

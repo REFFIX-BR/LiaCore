@@ -8487,6 +8487,18 @@ A resposta deve:
     }
   });
 
+  // Agent Dashboard Insights (Progresso badges, streak, comparativo, metas)
+  app.get("/api/dashboard/agent/insights", authenticate, async (req, res) => {
+    try {
+      const userId = req.user!.userId;
+      const insights = await storage.getAgentInsights(userId);
+      return res.json(insights);
+    } catch (error) {
+      console.error("❌ [Dashboard] Error getting agent insights:", error);
+      return res.status(500).json({ error: "Error fetching agent insights" });
+    }
+  });
+
   // Supervisor Dashboard Metrics
   const dashboardCache = new RedisCache('dashboard');
   app.get("/api/dashboard/supervisor", authenticate, requireAdminOrSupervisor, async (req, res) => {

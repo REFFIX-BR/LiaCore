@@ -3058,6 +3058,252 @@ export class DbStorage implements IStorage {
     };
   }
 
+  /**
+   * Obtém insights avançados para o dashboard do atendente
+   * Inclui: progresso para badges, comparativo com equipe, streak, evolução mensal, meta diária, dica do dia
+   * OTIMIZADO: Usa queries agregadas para evitar N+1
+   */
+  async getAgentInsights(userId: string) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
+    const sixtyDaysAgo = new Date(today.getTime() - 60 * 24 * 60 * 60 * 1000);
+    const fourWeeksAgo = new Date(today.getTime() - 28 * 24 * 60 * 60 * 1000);
+
+    // 1. QUERY ÚNICA: Estatísticas agregadas de TODOS os agentes no mês (evita N+1)
+    const teamStatsQuery = await db.execute(sql`
+      WITH agent_stats AS (
+        SELECT 
+          COALESCE(c.first_resolved_by, c.resolved_by) as agent_id,
+          COUNT(*) as volume,
+          COUNT(*) FILTER (WHERE c.sentiment IN ('positive', 'neutral')) as successful,
+          COALESCE(AVG(sf.nps_score), 0) as avg_nps
+        FROM conversations c
+        LEFT JOIN satisfaction_feedback sf ON sf.conversation_id = c.id
+        WHERE c.status = 'resolved'
+          AND c.resolved_at >= ${startOfMonth}
+          AND c.resolved_at <= ${endOfMonth}
+          AND COALESCE(c.first_resolved_by, c.resolved_by) IS NOT NULL
+        GROUP BY COALESCE(c.first_resolved_by, c.resolved_by)
+      )
+      SELECT 
+        agent_id,
+        volume::int,
+        successful::int,
+        avg_nps::float,
+        CASE WHEN volume > 0 THEN (successful::float / volume * 100) ELSE 0 END as success_rate
+      FROM agent_stats
+      ORDER BY volume DESC
+    `);
+
+    const teamStats = (teamStatsQuery.rows || []) as Array<{
+      agent_id: string;
+      volume: number;
+      successful: number;
+      avg_nps: number;
+      success_rate: number;
+    }>;
+
+    // Encontrar dados do usuário atual
+    const myStats = teamStats.find(s => s.agent_id === userId) || {
+      agent_id: userId,
+      volume: 0,
+      successful: 0,
+      avg_nps: 0,
+      success_rate: 0
+    };
+
+    const maxVolume = Math.max(...teamStats.map(s => s.volume), 1);
+    const teamSize = teamStats.length || 1;
+
+    // Progresso para cada badge
+    const badgeProgress = {
+      campeao_volume: {
+        name: "Campeão do Volume",
+        current: myStats.volume,
+        target: maxVolume,
+        progress: Math.min(100, Math.round((myStats.volume / maxVolume) * 100)),
+        remaining: Math.max(0, maxVolume - myStats.volume),
+        unlocked: myStats.volume >= maxVolume && myStats.volume > 0
+      },
+      velocista: {
+        name: "Velocista",
+        current: myStats.volume,
+        target: 50,
+        progress: Math.min(100, Math.round((myStats.volume / 50) * 100)),
+        remaining: Math.max(0, 50 - myStats.volume),
+        unlocked: myStats.volume >= 50
+      },
+      solucionador: {
+        name: "Solucionador",
+        current: Math.round(myStats.avg_nps * 10),
+        target: 80,
+        progress: Math.min(100, Math.round((myStats.avg_nps * 10 / 80) * 100)),
+        remaining: Math.max(0, 80 - Math.round(myStats.avg_nps * 10)),
+        unlocked: myStats.avg_nps >= 8 && myStats.success_rate >= 70
+      }
+    };
+
+    // 2. COMPARATIVO ANÔNIMO COM A EQUIPE (usando dados já buscados)
+    const volumeRank = teamStats.filter(s => s.volume > myStats.volume).length + 1;
+    const npsRank = teamStats.filter(s => s.avg_nps > myStats.avg_nps).length + 1;
+    
+    const teamComparison = {
+      volumePercentile: Math.round(((teamSize - volumeRank + 1) / teamSize) * 100),
+      npsPercentile: Math.round(((teamSize - npsRank + 1) / teamSize) * 100),
+      volumeRank,
+      npsRank,
+      teamSize,
+      volumeMessage: volumeRank <= 3 
+        ? `Você está no TOP ${volumeRank} em volume!`
+        : `Você está à frente de ${Math.round(((teamSize - volumeRank) / teamSize) * 100)}% da equipe`,
+      npsMessage: npsRank <= 3 
+        ? `Você está no TOP ${npsRank} em satisfação!`
+        : `Você está à frente de ${Math.round(((teamSize - npsRank) / teamSize) * 100)}% da equipe`
+    };
+
+    // 3. STREAK: Query única para contagem por dia dos últimos 60 dias
+    const MIN_DAILY_CONVERSATIONS = 5;
+    const dailyCountsQuery = await db.execute(sql`
+      SELECT 
+        DATE(resolved_at) as day,
+        COUNT(*) as count
+      FROM conversations
+      WHERE COALESCE(first_resolved_by, resolved_by) = ${userId}
+        AND status = 'resolved'
+        AND resolved_at >= ${sixtyDaysAgo}
+      GROUP BY DATE(resolved_at)
+      ORDER BY day DESC
+    `);
+
+    const dailyCounts = new Map<string, number>();
+    for (const row of (dailyCountsQuery.rows || []) as Array<{ day: string; count: number }>) {
+      dailyCounts.set(row.day, Number(row.count));
+    }
+
+    // Calcular streak a partir dos dados agregados
+    let streak = 0;
+    const checkDate = new Date(today);
+    for (let i = 0; i < 60; i++) {
+      const dateStr = checkDate.toISOString().split('T')[0];
+      const count = dailyCounts.get(dateStr) || 0;
+      
+      if (count >= MIN_DAILY_CONVERSATIONS) {
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else if (i === 0) {
+        checkDate.setDate(checkDate.getDate() - 1);
+        continue;
+      } else {
+        break;
+      }
+    }
+
+    const streakData = {
+      currentStreak: streak,
+      minDailyGoal: MIN_DAILY_CONVERSATIONS,
+      message: streak === 0 
+        ? "Comece sua sequência hoje!"
+        : streak < 5 
+          ? `${streak} dias seguidos - continue assim!`
+          : `${streak} dias consecutivos - incrível!`
+    };
+
+    // 4. EVOLUÇÃO SEMANAL: Query única para últimas 4 semanas
+    const weeklyQuery = await db.execute(sql`
+      SELECT 
+        DATE_TRUNC('week', resolved_at) as week_start,
+        COUNT(*) as volume,
+        COALESCE(AVG(sf.nps_score), 0) as avg_nps
+      FROM conversations c
+      LEFT JOIN satisfaction_feedback sf ON sf.conversation_id = c.id
+      WHERE COALESCE(c.first_resolved_by, c.resolved_by) = ${userId}
+        AND c.status = 'resolved'
+        AND c.resolved_at >= ${fourWeeksAgo}
+      GROUP BY DATE_TRUNC('week', resolved_at)
+      ORDER BY week_start ASC
+    `);
+
+    const weeklyEvolution = [];
+    const weekRows = (weeklyQuery.rows || []) as Array<{ week_start: string; volume: number; avg_nps: number }>;
+    for (let i = 0; i < 4; i++) {
+      const weekData = weekRows[i];
+      weeklyEvolution.push({
+        week: `Sem ${i + 1}`,
+        volume: weekData ? Number(weekData.volume) : 0,
+        nps: weekData ? Math.round(Number(weekData.avg_nps) * 10) / 10 : 0,
+        startDate: weekData?.week_start || ''
+      });
+    }
+
+    // 5. META DIÁRIA (usa dados do dailyCounts)
+    const dailyGoal = 10;
+    const todayStr = today.toISOString().split('T')[0];
+    const todayCount = dailyCounts.get(todayStr) || 0;
+
+    const dailyProgress = {
+      current: todayCount,
+      goal: dailyGoal,
+      progress: Math.min(100, Math.round((todayCount / dailyGoal) * 100)),
+      remaining: Math.max(0, dailyGoal - todayCount),
+      completed: todayCount >= dailyGoal
+    };
+
+    // 6. DICA DO DIA (baseada na área mais fraca)
+    let tipOfTheDay = {
+      category: 'geral',
+      title: 'Continue o bom trabalho!',
+      tip: 'Mantenha a qualidade do atendimento e busque sempre entender completamente a necessidade do cliente.',
+      icon: 'star'
+    };
+
+    const scores = {
+      volume: myStats.volume > 0 ? Math.min(100, (myStats.volume / 50) * 100) : 0,
+      nps: myStats.avg_nps * 10,
+      resolution: myStats.success_rate
+    };
+
+    const weakestArea = Object.entries(scores).reduce((min, [key, value]) => 
+      value < min.value ? { key, value } : min, 
+      { key: 'volume', value: scores.volume }
+    );
+
+    const tips = {
+      volume: {
+        category: 'volume',
+        title: 'Aumente sua produtividade',
+        tip: 'Use respostas rápidas e templates. Organize seu fluxo de trabalho priorizando as conversas mais simples primeiro.',
+        icon: 'zap'
+      },
+      nps: {
+        category: 'satisfacao',
+        title: 'Melhore a satisfação do cliente',
+        tip: 'Seja empático e certifique-se de resolver completamente o problema. Pergunte se o cliente precisa de mais algo antes de finalizar.',
+        icon: 'heart'
+      },
+      resolution: {
+        category: 'resolucao',
+        title: 'Foque na resolução efetiva',
+        tip: 'Entenda o problema antes de propor soluções. Acompanhe até ter certeza que o cliente está satisfeito.',
+        icon: 'target'
+      }
+    };
+
+    if (weakestArea.value < 60) {
+      tipOfTheDay = tips[weakestArea.key as keyof typeof tips];
+    }
+
+    return {
+      badgeProgress,
+      teamComparison,
+      streakData,
+      weeklyEvolution,
+      dailyProgress,
+      tipOfTheDay
+    };
+  }
+
   async getSupervisorMetrics() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
