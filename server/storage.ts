@@ -2949,7 +2949,7 @@ export class DbStorage implements IStorage {
     const agentMap = new Map<string, string>();
     const agentIdsArray = [...agentIds].filter(id => id && id.length > 0);
     if (agentIdsArray.length > 0) {
-      const agents = await db.select({ id: schema.users.id, name: schema.users.name })
+      const agents = await db.select()
         .from(schema.users)
         .where(inArray(schema.users.id, agentIdsArray));
       agents.forEach(a => agentMap.set(a.id, a.name));
