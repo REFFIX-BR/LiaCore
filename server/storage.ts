@@ -2929,9 +2929,13 @@ export class DbStorage implements IStorage {
     
     if (feedbacks.length === 0) return [];
 
-    const conversationIds = feedbacks.map(f => f.conversationId);
-    const conversations = await db.select().from(schema.conversations)
-      .where(sql`${schema.conversations.id} IN (${sql.join(conversationIds.map(id => sql`${id}`), sql`, `)})`);
+    const conversationIds = feedbacks.map(f => f.conversationId).filter(id => id && id.length > 0);
+    
+    let conversations: Conversation[] = [];
+    if (conversationIds.length > 0) {
+      conversations = await db.select().from(schema.conversations)
+        .where(inArray(schema.conversations.id, conversationIds));
+    }
     
     const conversationMap = new Map(conversations.map(c => [c.id, c]));
     
