@@ -2999,7 +2999,9 @@ export class DbStorage implements IStorage {
       
       if (conversationsWithTime.length > 0) {
         const totalTime = conversationsWithTime.reduce((sum, c) => {
-          const startTime = new Date(c.createdAt!).getTime();
+          // FIX: Usar transferredAt (quando agente assumiu) ao invés de createdAt
+          // Se transferredAt não existir, usa createdAt como fallback
+          const startTime = new Date(c.transferredAt || c.createdAt!).getTime();
           const endTime = new Date(c.resolvedAt!).getTime();
           const diffInSeconds = Math.floor((endTime - startTime) / 1000);
           return sum + diffInSeconds;
