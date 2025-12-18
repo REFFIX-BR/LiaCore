@@ -3920,6 +3920,22 @@ export class DbStorage implements IStorage {
       // transferredToHuman representa se a IA transferiu para humano, o que é relevante para atendentes
       const transfersToHuman = convs.filter(c => c.transferredToHuman).length;
 
+      // ✅ FIX: Calcular TMA usando transferredAt (quando agente assumiu) ao invés de createdAt
+      // Excluir outliers > 8 horas para ter métricas realistas
+      const MAX_TMA_SECONDS = 8 * 60 * 60; // 8 horas máximo
+      const validTimes = convs
+        .filter(c => c.resolvedAt)
+        .map(c => {
+          const startTime = new Date(c.transferredAt || c.createdAt!).getTime();
+          const endTime = new Date(c.resolvedAt!).getTime();
+          return Math.floor((endTime - startTime) / 1000);
+        })
+        .filter(seconds => seconds > 0 && seconds <= MAX_TMA_SECONDS);
+      
+      const avgResponseTime = validTimes.length > 0
+        ? Math.floor(validTimes.reduce((sum, t) => sum + t, 0) / validTimes.length)
+        : 0;
+
       return {
         period,
         agentId: data.agentId,
@@ -3927,7 +3943,7 @@ export class DbStorage implements IStorage {
         totalConversations,
         resolvedConversations,
         successRate,
-        avgResponseTime: 0, // TODO: Calculate from message timestamps
+        avgResponseTime,
         avgSentiment,
         npsScore,
         transfersToHuman
