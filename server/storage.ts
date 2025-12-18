@@ -3018,12 +3018,14 @@ export class DbStorage implements IStorage {
       }
     }
 
-    // NPS pessoal (últimas 30 conversas resolvidas pelo agente)
+    // NPS pessoal - filtrado pelo período selecionado
     const personalFeedbacks = await db.select().from(schema.satisfactionFeedback)
       .innerJoin(schema.conversations, eq(schema.satisfactionFeedback.conversationId, schema.conversations.id))
-      .where(eq(schema.conversations.resolvedBy, userId))
-      .orderBy(desc(schema.satisfactionFeedback.createdAt))
-      .limit(30);
+      .where(and(
+        eq(schema.conversations.resolvedBy, userId),
+        gte(schema.satisfactionFeedback.createdAt, periodStart) // Respeitar filtro de período
+      ))
+      .orderBy(desc(schema.satisfactionFeedback.createdAt));
 
     const avgNPS = personalFeedbacks.length > 0
       ? personalFeedbacks.reduce((sum, f) => sum + f.satisfaction_feedback.npsScore, 0) / personalFeedbacks.length
