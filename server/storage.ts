@@ -2952,7 +2952,7 @@ export class DbStorage implements IStorage {
       const agents = await db.select()
         .from(schema.users)
         .where(inArray(schema.users.id, agentIdsArray));
-      agents.forEach(a => agentMap.set(a.id, a.name));
+      agents.forEach(a => agentMap.set(a.id, a.fullName || a.username));
     }
     
     return feedbacks.map(feedback => {
