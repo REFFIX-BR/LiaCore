@@ -33,9 +33,16 @@ function normalizeEvolutionUrl(url?: string): string {
 }
 
 // Helper function to validate and normalize Evolution API instance
-// Only Principal is supported now
-function validateEvolutionInstance(instance?: string | null): string {
-  // Only Principal is supported
+// Supported instances: Principal (default), abertura (for reopenings and groups)
+type EvolutionInstance = 'Principal' | 'abertura';
+
+function validateEvolutionInstance(instance?: string | null): EvolutionInstance {
+  if (!instance) return 'Principal';
+  
+  const normalized = instance.toLowerCase();
+  if (normalized === 'abertura') {
+    return 'abertura';
+  }
   return 'Principal';
 }
 
