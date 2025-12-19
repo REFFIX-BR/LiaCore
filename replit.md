@@ -41,7 +41,7 @@ Advanced features include an automatic retry and rate limiting system for WhatsA
 - **Webhook Replay Protection System**: Dual-layer protection against Evolution API webhook replays: (1) Redis-based deduplication by WhatsApp messageId with 24h TTL, marking as processed only AFTER successful enqueue to prevent retry loss; (2) Stale message flagging for messages >1 hour old (logged but not rejected) with `isStaleMessage` flag to prevent lastMessageTime corruption from historical replays.
 - **Admin Bulk Close Protection System**: Four-layer protection for administratively closed conversations:
   1. **Storage Layer Protection (DEFINITIVE)**: `storage.updateConversation` blocks any status change to `active`/`queued` for conversations with `admin_bulk_close` flag - this is the final guard that cannot be bypassed
-  2. **Worker Protection**: BullMQ message processing jobs check `metadata.npsSkipReason` before sending AI responses - if it starts with `admin_bulk_close`, the job is aborted
+  2. **Worker Protection with Auto-Close (DEFINITIVE)**: BullMQ message processing jobs check `metadata.npsSkipReason` REGARDLESS of current status - if it starts with `admin_bulk_close`, the conversation is auto-closed via `storage.resolveConversation()` with reason `worker_admin_close_guard` and processing is aborted. This handles race conditions where conversation was reopened before worker processed.
   3. **Main Webhook Protection**: Evolution API webhook handler blocks reopening for resolved conversations with admin_bulk_close flag
   4. **Alternate Webhook Protection**: Secondary reopen path also protected against admin-closed conversations
   - All blocked attempts are logged to activity_logs with action `blocked_reopen_admin_closed` for audit trail
