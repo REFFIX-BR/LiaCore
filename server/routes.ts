@@ -4462,6 +4462,106 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     }
   });
 
+  // Close inactive conversations WITHOUT sending NPS survey
+  app.post("/api/admin/close-without-nps", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const { minMinutesInactive = 30 } = req.body;
+
+      // Buscar TODAS conversas não-finalizadas (todos status exceto 'resolved')
+      const allConversations = await storage.getAllActiveConversations();
+      
+      const abandonedConversations = allConversations.filter(conv => {
+        // Não fechar se já está finalizada
+        if (conv.status === 'resolved') return false;
+        
+        // Verificar tempo de inatividade
+        const lastActivity = conv.lastMessageTime || conv.createdAt;
+        if (!lastActivity) return false;
+        
+        const timeSinceLastActivity = Date.now() - lastActivity.getTime();
+        const minutesInactive = timeSinceLastActivity / (1000 * 60);
+        
+        return minutesInactive >= minMinutesInactive;
+      });
+
+      if (abandonedConversations.length === 0) {
+        return res.json({
+          success: true,
+          message: `Nenhuma conversa com mais de ${minMinutesInactive} minutos de inatividade encontrada`,
+          closed: 0,
+          conversations: []
+        });
+      }
+
+      const { db } = await import("./db");
+      const { conversations } = await import("@shared/schema");
+      const { eq, sql } = await import("drizzle-orm");
+
+      // Fechar cada conversa SEM enviar NPS
+      const results = await Promise.all(
+        abandonedConversations.map(async (conv) => {
+          try {
+            const minutesInactive = conv.lastMessageTime 
+              ? Math.round((Date.now() - conv.lastMessageTime.getTime()) / (1000 * 60))
+              : 9999;
+
+            // Marcar conversa como resolvida SEM NPS
+            const newMetadata = {
+              autoClosed: true,
+              autoClosedReason: 'inactivity_no_nps',
+              autoClosedAt: new Date().toISOString(),
+              minutesInactiveWhenClosed: minutesInactive,
+              npsSent: false,
+              npsSkipped: true,
+              npsSkipReason: 'admin_close_without_nps',
+            };
+
+            await db.update(conversations)
+              .set({
+                status: 'resolved',
+                resolvedAt: new Date(),
+                autoClosed: true,
+                autoClosedReason: 'inactivity_no_nps',
+                autoClosedAt: new Date(),
+                metadata: sql`COALESCE(metadata, '{}'::jsonb) || ${JSON.stringify(newMetadata)}::jsonb`,
+              })
+              .where(eq(conversations.id, conv.id));
+
+            console.log(`✅ [ADMIN] Conversa fechada SEM NPS: ${conv.clientName} (${minutesInactive}min inativa)`);
+
+            return {
+              id: conv.id,
+              chatId: conv.chatId,
+              clientName: conv.clientName,
+              assistantType: conv.assistantType,
+              minutesInactive,
+              npsSent: false,
+            };
+          } catch (error) {
+            console.error(`❌ [ADMIN] Erro ao fechar conversa ${conv.id}:`, error);
+            return null;
+          }
+        })
+      );
+
+      const successfullyClosed = results.filter((item): item is NonNullable<typeof item> => item !== null);
+
+      return res.json({
+        success: true,
+        message: `${successfullyClosed.length} conversa(s) fechada(s) SEM enviar NPS`,
+        closed: successfullyClosed.length,
+        total: abandonedConversations.length,
+        conversations: successfullyClosed,
+      });
+    } catch (error) {
+      console.error("❌ [ADMIN] Erro ao fechar conversas sem NPS:", error);
+      return res.status(500).json({ 
+        error: "Erro ao fechar conversas sem NPS", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+
   // Auto-resolve old stuck conversations (admin tool)
   app.post("/api/admin/auto-resolve-old-conversations", authenticate, requireAdmin, async (req, res) => {
     try {
