@@ -2375,15 +2375,31 @@ export class DbStorage implements IStorage {
   async updateConversation(id: string, updates: Partial<Conversation>): Promise<Conversation | undefined> {
     // 🛡️ ADMIN BULK CLOSE PROTECTION: Block reopening of administratively closed conversations
     // This is the DEFINITIVE guard at the storage layer - no way to bypass
+    // NOTE: Check flag REGARDLESS of current status to handle race conditions
     if (updates.status === 'active' || updates.status === 'queued') {
       const current = await this.getConversation(id);
       const metadata = current?.metadata as any;
       const npsSkipReason = metadata?.npsSkipReason;
       
-      if (current?.status === 'resolved' && npsSkipReason?.startsWith('admin_bulk_close')) {
-        console.warn(`🛑 [Storage] BLOCKED: Attempted to reopen admin-closed conversation ${id} (flag: ${npsSkipReason})`);
-        console.warn(`   Attempted status change: resolved → ${updates.status}`);
-        console.warn(`   Caller stack trace:`, new Error().stack?.split('\n').slice(0, 5).join('\n'));
+      if (npsSkipReason?.startsWith('admin_bulk_close')) {
+        console.warn(`🛑 [Storage] BLOCKED: Attempted to change status of admin-closed conversation ${id} (flag: ${npsSkipReason})`);
+        console.warn(`   Current status: ${current?.status} → Attempted: ${updates.status}`);
+        
+        // If conversation is not resolved, auto-close it
+        if (current?.status !== 'resolved') {
+          console.warn(`   Auto-closing conversation to resolved status`);
+          const [closed] = await db.update(schema.conversations)
+            .set({
+              status: 'resolved',
+              resolvedAt: new Date(),
+              autoClosed: true,
+              autoClosedReason: 'storage_admin_close_guard',
+              autoClosedAt: new Date(),
+            })
+            .where(eq(schema.conversations.id, id))
+            .returning();
+          return closed;
+        }
         
         // Log para auditoria (não bloqueia se falhar)
         try {
@@ -2393,6 +2409,7 @@ export class DbStorage implements IStorage {
             action: 'blocked_reopen_admin_closed',
             conversationId: id,
             details: {
+              currentStatus: current?.status,
               attemptedStatus: updates.status,
               npsSkipReason,
               blockedAt: new Date().toISOString(),
