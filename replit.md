@@ -35,6 +35,7 @@ Advanced features include an automatic retry and rate limiting system for WhatsA
 - **Conversation Management**: Includes automatic reopening of resolved conversations, intelligent farewell detection with auto-resolution and NPS surveys, payment proof auto-resolution, and a comprehensive auto-closure system.
 - **Thread ID Protection System**: Defensive persistence guards prevent conversation `threadId` from being overwritten.
 - **Date/Time Awareness**: All new OpenAI threads automatically receive current date/time context in Brazilian Portuguese (pt-BR).
+- **Fidelity Compliance Rule**: All TR Telecom plans require mandatory 12-month fidelity. The commercial assistant prompt explicitly prohibits stating no-commitment offers and enforces accurate fidelity disclosure.
 - **LGPD CPF Compliance**: CPF is no longer stored in the database. The system now requests CPF from the customer for each API query (e.g., for boleto) without persisting it, using Redis with 5-minute TTL for temporary storage during multi-point selection flows only.
 - **Message Archiving System**: A two-table architecture automatically archives messages older than 30 days to `messages_archive` while remaining fully queryable, optimizing performance for the main `messages` table.
 
