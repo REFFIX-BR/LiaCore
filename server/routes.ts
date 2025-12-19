@@ -2793,9 +2793,32 @@ Qualquer coisa, estamos à disposição! 😊
         // ⏱️ IMPORTANTE: Atualizar lastMessageTime quando CLIENTE envia mensagem
         // Isso garante que a conversa vai ao topo da lista quando o cliente responde
         // 🔄 RESETAR VERIFICAÇÃO: Quando cliente envia nova mensagem, resetar verificação do supervisor
+        // 🛡️ CRITICAL FIX: Use message timestamp from Evolution API to prevent historical messages
+        // from pushing old conversations to "today" when Evolution reconnects/replays events
+        const messageDate = messageTimestamp 
+          ? new Date(typeof messageTimestamp === 'number' 
+              ? (messageTimestamp > 1e12 ? messageTimestamp : messageTimestamp * 1000) // Handle seconds vs milliseconds
+              : messageTimestamp)
+          : new Date();
+        
+        // Only update lastMessageTime if the message is actually newer than the current one
+        const currentLastMessageTime = conversation.lastMessageTime 
+          ? new Date(conversation.lastMessageTime) 
+          : new Date(0);
+        
+        const shouldUpdateTimestamp = messageDate > currentLastMessageTime;
+        
+        if (!shouldUpdateTimestamp) {
+          console.log(`⏭️ [Timestamp Guard] Skipping timestamp update - message is older than current`, {
+            conversationId: conversation.id,
+            messageDate: messageDate.toISOString(),
+            currentLastMessageTime: currentLastMessageTime.toISOString(),
+          });
+        }
+        
         await storage.updateConversation(conversation.id, {
           lastMessage: messageText,
-          lastMessageTime: new Date(),
+          ...(shouldUpdateTimestamp && { lastMessageTime: messageDate }),
           verifiedAt: null,
           verifiedBy: null,
         });
@@ -8779,6 +8802,72 @@ A resposta deve:
     } catch (error) {
       console.error("❌ [Backfill] Error:", error);
       return res.status(500).json({ error: "Error during backfill" });
+    }
+  });
+
+  // 🔧 FIX: Backfill lastMessageTime from actual message timestamps
+  // This fixes conversations that had their timestamps corrupted by historical message replays
+  app.post("/api/admin/fix-conversation-timestamps", authenticate, requireAdmin, async (req, res) => {
+    try {
+      console.log("🔧 [Fix Timestamps] Starting lastMessageTime backfill from message timestamps...");
+      
+      const allConversations = await storage.getAllConversations();
+      let updated = 0;
+      let skipped = 0;
+      let errors = 0;
+      
+      for (const conv of allConversations) {
+        try {
+          // Get last message for this conversation
+          const messages = await storage.getMessagesByConversationId(conv.id);
+          
+          if (messages.length === 0) {
+            skipped++;
+            continue;
+          }
+          
+          // Find the latest message timestamp
+          const lastMessage = messages[messages.length - 1];
+          const correctTimestamp = lastMessage.timestamp 
+            ? new Date(lastMessage.timestamp) 
+            : conv.createdAt 
+              ? new Date(conv.createdAt) 
+              : new Date();
+          
+          // Only update if different (to avoid unnecessary writes)
+          const currentTimestamp = conv.lastMessageTime ? new Date(conv.lastMessageTime) : null;
+          
+          if (currentTimestamp && Math.abs(currentTimestamp.getTime() - correctTimestamp.getTime()) < 1000) {
+            skipped++;
+            continue;
+          }
+          
+          await storage.updateConversation(conv.id, {
+            lastMessageTime: correctTimestamp,
+          });
+          
+          updated++;
+          
+          // Log progress every 100 conversations
+          if (updated % 100 === 0) {
+            console.log(`🔧 [Fix Timestamps] Progress: ${updated} updated, ${skipped} skipped, ${errors} errors`);
+          }
+        } catch (error) {
+          errors++;
+          console.error(`❌ [Fix Timestamps] Error updating conversation ${conv.id}:`, error);
+        }
+      }
+      
+      console.log(`✅ [Fix Timestamps] Completed: ${updated} updated, ${skipped} skipped, ${errors} errors`);
+      
+      return res.json({
+        success: true,
+        message: `Timestamp fix completed: ${updated} conversations updated`,
+        details: { updated, skipped, errors, total: allConversations.length }
+      });
+    } catch (error) {
+      console.error("❌ [Fix Timestamps] Error:", error);
+      return res.status(500).json({ error: "Error during timestamp fix" });
     }
   });
 
