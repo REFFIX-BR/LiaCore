@@ -27,6 +27,7 @@ interface GamificationSettings {
   targetResolution: number | null;
   targetResponseTime: number | null;
   targetVolume: number | null;
+  targetDailyVolume: number | null;
   calculationPeriod: string;
   autoCalculate: boolean;
   calculationFrequency: string;
@@ -62,6 +63,7 @@ export default function GamificationSettings() {
     targetResolution: 85,
     targetResponseTime: 120,
     targetVolume: 500,
+    targetDailyVolume: 20,
   });
 
   const [automation, setAutomation] = useState({
@@ -99,6 +101,7 @@ export default function GamificationSettings() {
         targetResolution: settings.targetResolution || 85,
         targetResponseTime: settings.targetResponseTime || 120,
         targetVolume: settings.targetVolume || 500,
+        targetDailyVolume: settings.targetDailyVolume || 20,
       });
       setAutomation({
         calculationPeriod: settings.calculationPeriod,
@@ -200,6 +203,7 @@ export default function GamificationSettings() {
       targetResolution: goals.targetResolution,
       targetResponseTime: goals.targetResponseTime,
       targetVolume: goals.targetVolume,
+      targetDailyVolume: goals.targetDailyVolume,
       calculationPeriod: automation.calculationPeriod,
       autoCalculate: automation.autoCalculate,
       calculationFrequency: automation.calculationFrequency,
@@ -519,7 +523,7 @@ export default function GamificationSettings() {
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="goal-vol">Volume Total Alvo</Label>
+              <Label htmlFor="goal-vol">Volume Mensal Alvo</Label>
               <Input
                 id="goal-vol"
                 data-testid="input-goal-volume"
@@ -527,6 +531,18 @@ export default function GamificationSettings() {
                 min={0}
                 value={goals.targetVolume}
                 onChange={(e) => setGoals(prev => ({ ...prev, targetVolume: Number(e.target.value) }))}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="goal-daily-vol">Meta Diária de Atendimentos</Label>
+              <Input
+                id="goal-daily-vol"
+                data-testid="input-goal-daily-volume"
+                type="number"
+                min={0}
+                value={goals.targetDailyVolume}
+                onChange={(e) => setGoals(prev => ({ ...prev, targetDailyVolume: Number(e.target.value) }))}
               />
             </div>
           </CardContent>

@@ -1176,7 +1176,8 @@ export const gamificationSettings = pgTable("gamification_settings", {
   targetNps: integer("target_nps").default(8), // Meta de NPS médio da equipe
   targetResolution: integer("target_resolution").default(85), // Meta de % de resolução
   targetResponseTime: integer("target_response_time").default(120), // Meta de tempo médio em segundos
-  targetVolume: integer("target_volume").default(500), // Meta de volume total de conversas
+  targetVolume: integer("target_volume").default(500), // Meta de volume mensal de conversas
+  targetDailyVolume: integer("target_daily_volume").default(20), // Meta diária de atendimentos por atendente
   
   // Período de Cálculo
   calculationPeriod: text("calculation_period").notNull().default("monthly"), // 'weekly', 'monthly', 'quarterly', 'custom'
