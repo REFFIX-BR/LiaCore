@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShoppingCart, Package, UserPlus } from "lucide-react";
+import { ShoppingCart, Package, UserPlus, BarChart3 } from "lucide-react";
 import SalesTab from "@/components/sales/SalesTab";
 import PlansTab from "@/components/sales/PlansTab";
 import LeadsTab from "@/components/sales/LeadsTab";
+import SalesDashboard from "@/components/sales/SalesDashboard";
 
 export default function Vendas() {
-  const [activeTab, setActiveTab] = useState("sales");
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -21,6 +22,14 @@ export default function Vendas() {
           </div>
           
           <TabsList className="w-full justify-start h-auto p-0 bg-transparent gap-4">
+            <TabsTrigger 
+              value="dashboard" 
+              className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 py-2"
+              data-testid="tab-dashboard"
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Dashboard
+            </TabsTrigger>
             <TabsTrigger 
               value="sales" 
               className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 py-2"
@@ -50,6 +59,10 @@ export default function Vendas() {
 
         {/* Tab Contents */}
         <div className="flex-1 overflow-auto">
+          <TabsContent value="dashboard" className="h-full m-0">
+            <SalesDashboard />
+          </TabsContent>
+
           <TabsContent value="sales" className="h-full m-0">
             <SalesTab />
           </TabsContent>

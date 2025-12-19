@@ -397,6 +397,22 @@ export interface IStorage {
   addSale(sale: any): Promise<any>; // Creates a new sale/lead
   updateSaleStatus(id: string, status: string, observations?: string): Promise<any>; // Updates sale status
   updateSaleNotes(id: string, notes: string): Promise<any>; // Updates sale notes
+  getSalesDashboardMetrics(): Promise<{
+    totals: {
+      total: number;
+      installed: number;
+      pending: number;
+      cancelled: number;
+      prospection: number;
+    };
+    byStatus: Array<{ status: string; count: number }>;
+    byNeighborhood: Array<{ neighborhood: string; city: string; count: number }>;
+    byPlan: Array<{ planId: string; planName: string; count: number }>;
+    bySource: Array<{ source: string; count: number }>;
+    byHowDidYouKnow: Array<{ howDidYouKnow: string; count: number }>;
+    byMonth: Array<{ month: string; count: number }>;
+    conversionRate: number;
+  }>; // Returns aggregated dashboard metrics
 
   // Massive Failures Module
   // Regions
@@ -1973,6 +1989,29 @@ export class MemStorage implements IStorage {
   async updateSaleNotes(id: string, notes: string): Promise<any> {
     // MemStorage stub - just return the sale
     return { id, notes };
+  }
+
+  async getSalesDashboardMetrics(): Promise<{
+    totals: { total: number; installed: number; pending: number; cancelled: number; prospection: number };
+    byStatus: Array<{ status: string; count: number }>;
+    byNeighborhood: Array<{ neighborhood: string; city: string; count: number }>;
+    byPlan: Array<{ planId: string; planName: string; count: number }>;
+    bySource: Array<{ source: string; count: number }>;
+    byHowDidYouKnow: Array<{ howDidYouKnow: string; count: number }>;
+    byMonth: Array<{ month: string; count: number }>;
+    conversionRate: number;
+  }> {
+    // MemStorage stub - return empty metrics
+    return {
+      totals: { total: 0, installed: 0, pending: 0, cancelled: 0, prospection: 0 },
+      byStatus: [],
+      byNeighborhood: [],
+      byPlan: [],
+      bySource: [],
+      byHowDidYouKnow: [],
+      byMonth: [],
+      conversionRate: 0,
+    };
   }
 
   // Massive Failures Module - MemStorage Stubs
@@ -4955,6 +4994,139 @@ export class DbStorage implements IStorage {
       .returning();
     
     return updated;
+  }
+
+  async getSalesDashboardMetrics(): Promise<{
+    totals: { total: number; installed: number; pending: number; cancelled: number; prospection: number };
+    byStatus: Array<{ status: string; count: number }>;
+    byNeighborhood: Array<{ neighborhood: string; city: string; count: number }>;
+    byPlan: Array<{ planId: string; planName: string; count: number }>;
+    bySource: Array<{ source: string; count: number }>;
+    byHowDidYouKnow: Array<{ howDidYouKnow: string; count: number }>;
+    byMonth: Array<{ month: string; count: number }>;
+    conversionRate: number;
+  }> {
+    // Get all sales
+    const allSales = await db.select().from(schema.sales);
+    const allPlans = await db.select().from(schema.plans);
+    
+    // Create plan lookup map
+    const planMap = new Map(allPlans.map(p => [p.id, p.name]));
+    
+    // Calculate totals
+    const totals = {
+      total: allSales.length,
+      installed: allSales.filter(s => s.status === 'Instalado').length,
+      pending: allSales.filter(s => ['Aguardando Análise', 'Aprovado', 'Agendado para Instalação'].includes(s.status)).length,
+      cancelled: allSales.filter(s => s.status === 'Cancelado').length,
+      prospection: allSales.filter(s => s.status === 'Prospecção').length,
+    };
+    
+    // By Status
+    const statusCounts = new Map<string, number>();
+    allSales.forEach(s => {
+      statusCounts.set(s.status, (statusCounts.get(s.status) || 0) + 1);
+    });
+    const byStatus = Array.from(statusCounts.entries())
+      .map(([status, count]) => ({ status, count }))
+      .sort((a, b) => b.count - a.count);
+    
+    // By Neighborhood (top 10)
+    const neighborhoodCounts = new Map<string, { city: string; count: number }>();
+    allSales.forEach(s => {
+      if (s.neighborhood) {
+        const key = `${s.neighborhood}|${s.city || ''}`;
+        const existing = neighborhoodCounts.get(key);
+        if (existing) {
+          existing.count++;
+        } else {
+          neighborhoodCounts.set(key, { city: s.city || '', count: 1 });
+        }
+      }
+    });
+    const byNeighborhood = Array.from(neighborhoodCounts.entries())
+      .map(([key, data]) => ({
+        neighborhood: key.split('|')[0],
+        city: data.city,
+        count: data.count,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+    
+    // By Plan (top 10)
+    const planCounts = new Map<string, number>();
+    allSales.forEach(s => {
+      if (s.planId) {
+        planCounts.set(s.planId, (planCounts.get(s.planId) || 0) + 1);
+      }
+    });
+    const byPlan = Array.from(planCounts.entries())
+      .map(([planId, count]) => ({
+        planId,
+        planName: planMap.get(planId) || 'Plano Desconhecido',
+        count,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+    
+    // By Source
+    const sourceCounts = new Map<string, number>();
+    allSales.forEach(s => {
+      const source = s.source || 'Não informado';
+      sourceCounts.set(source, (sourceCounts.get(source) || 0) + 1);
+    });
+    const bySource = Array.from(sourceCounts.entries())
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count);
+    
+    // By How Did You Know
+    const howKnowCounts = new Map<string, number>();
+    allSales.forEach(s => {
+      const howKnow = s.howDidYouKnow || 'Não informado';
+      howKnowCounts.set(howKnow, (howKnowCounts.get(howKnow) || 0) + 1);
+    });
+    const byHowDidYouKnow = Array.from(howKnowCounts.entries())
+      .map(([howDidYouKnow, count]) => ({ howDidYouKnow, count }))
+      .sort((a, b) => b.count - a.count);
+    
+    // By Month (last 12 months)
+    const monthCounts = new Map<string, number>();
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      monthCounts.set(monthKey, 0);
+    }
+    allSales.forEach(s => {
+      if (s.createdAt) {
+        const date = new Date(s.createdAt);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        if (monthCounts.has(monthKey)) {
+          monthCounts.set(monthKey, (monthCounts.get(monthKey) || 0) + 1);
+        }
+      }
+    });
+    const byMonth = Array.from(monthCounts.entries())
+      .map(([month, count]) => ({ month, count }));
+    
+    // Conversion Rate (Installed / Total with valid status)
+    const validForConversion = allSales.filter(s => 
+      !['Prospecção'].includes(s.status)
+    ).length;
+    const conversionRate = validForConversion > 0 
+      ? Math.round((totals.installed / validForConversion) * 100) 
+      : 0;
+    
+    return {
+      totals,
+      byStatus,
+      byNeighborhood,
+      byPlan,
+      bySource,
+      byHowDidYouKnow,
+      byMonth,
+      conversionRate,
+    };
   }
 
   // ==================== MASSIVE FAILURES MODULE ====================

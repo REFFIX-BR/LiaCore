@@ -9829,6 +9829,17 @@ A resposta deve:
     }
   });
 
+  // GET /api/sales/dashboard - Retorna métricas agregadas do dashboard de vendas
+  app.get("/api/sales/dashboard", authenticate, requireSalesAccess, async (req, res) => {
+    try {
+      const metrics = await storage.getSalesDashboardMetrics();
+      return res.json(metrics);
+    } catch (error) {
+      console.error("❌ [Sales Dashboard] Error fetching metrics:", error);
+      return res.status(500).json({ error: "Erro ao buscar métricas do dashboard" });
+    }
+  });
+
   // GET /api/sales - Retorna todas as vendas/leads
   app.get("/api/sales", authenticate, requireSalesAccess, async (req, res) => {
     try {
