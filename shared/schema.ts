@@ -1075,6 +1075,12 @@ export const BadgeType = {
   SOLUCIONADOR: "solucionador", // Alto NPS + alta taxa de resolução
   VELOCISTA: "velocista", // Tempo médio de resposta rápido mantendo NPS >7
   CAMPEAO_VOLUME: "campeao_volume", // Maior número de atendimentos finalizados
+  ENCANTADOR: "encantador", // NPS 10 consecutivo (3+ vezes seguidas)
+  ZERO_RECLAMACAO: "zero_reclamacao", // Sem feedback negativo no período
+  ESPECIALISTA: "especialista", // Especialista em departamento específico
+  MARATONISTA: "maratonista", // Streak de dias consecutivos trabalhando
+  PONTUALIDADE: "pontualidade", // Tempo de resposta consistentemente rápido
+  REGULARIDADE: "regularidade", // 3 meses consecutivos com bom desempenho
 } as const;
 
 // Gamification Scores - Pontuação mensal dos atendentes
@@ -1141,7 +1147,7 @@ export const insertGamificationBadgeSchema = createInsertSchema(gamificationBadg
   id: true,
   awardedAt: true,
 }).extend({
-  badgeType: z.enum(["solucionador", "velocista", "campeao_volume"]),
+  badgeType: z.enum(["solucionador", "velocista", "campeao_volume", "encantador", "zero_reclamacao", "especialista", "maratonista", "pontualidade", "regularidade"]),
 });
 
 export const insertGamificationHistorySchema = createInsertSchema(gamificationHistory).omit({
