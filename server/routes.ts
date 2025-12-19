@@ -1097,6 +1097,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
           threadId,
         });
       } else if (conversation.status === 'resolved') {
+        // 🛑 CRITICAL: Check if conversation was administratively closed (bulk close)
+        const convMeta = conversation.metadata as any || {};
+        const npsSkipReason = convMeta?.npsSkipReason;
+        
+        if (npsSkipReason?.startsWith('admin_bulk_close')) {
+          console.log(`🛑 [Reopen] Conversa ${conversation.id} foi fechada administrativamente (${npsSkipReason}) - NÃO reabrindo`);
+          console.log(`📝 [Reopen] Cliente ${conversation.clientName} tentou enviar mensagem para conversa fechada`);
+          
+          // Log para auditoria
+          try {
+            await storage.createActivityLog({
+              conversationId: conversation.id,
+              userId: 'system',
+              action: 'blocked_reopen_admin_closed',
+              details: {
+                clientName: conversation.clientName,
+                messageText: message.substring(0, 100),
+                npsSkipReason,
+                blockedAt: new Date().toISOString(),
+                path: 'reopen_simulator',
+              },
+            });
+          } catch (logError) {
+            console.error(`❌ [Reopen] Erro ao criar log de bloqueio:`, logError);
+          }
+          
+          return res.status(200).json({
+            success: true,
+            processed: false,
+            reason: 'conversation_admin_closed',
+            npsSkipReason,
+            message: 'Conversa foi fechada administrativamente e não será reaberta',
+          });
+        }
+        
         // Reopen resolved conversation and reset to Apresentacao (fresh start)
         console.log(`🔄 [Reopen] Reabrindo conversa finalizada: ${chatId} - Resetando para Apresentação`);
         
@@ -2417,6 +2452,42 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
 
         // Reopen conversation if it was resolved
         if (conversation.status === 'resolved') {
+          // 🛑 CRITICAL: Check if conversation was administratively closed (bulk close)
+          // If so, DO NOT reopen - just log and skip
+          const convMetadata = conversation.metadata as any || {};
+          const npsSkipReason = convMetadata?.npsSkipReason;
+          
+          if (npsSkipReason?.startsWith('admin_bulk_close')) {
+            console.log(`🛑 [Conversation Reopen] Conversa ${conversation.id} foi fechada administrativamente (${npsSkipReason}) - NÃO reabrindo`);
+            console.log(`📝 [Conversation Reopen] Cliente ${clientName} tentou enviar mensagem para conversa fechada - mensagem será ignorada`);
+            
+            // Log para auditoria
+            try {
+              await storage.createActivityLog({
+                conversationId: conversation.id,
+                userId: 'system',
+                action: 'blocked_reopen_admin_closed',
+                details: {
+                  clientName,
+                  messageText: messageText.substring(0, 100),
+                  npsSkipReason,
+                  blockedAt: new Date().toISOString(),
+                  path: 'conversation_reopen_main',
+                },
+              });
+            } catch (logError) {
+              console.error(`❌ [Conversation Reopen] Erro ao criar log de bloqueio:`, logError);
+            }
+            
+            return res.json({
+              success: true,
+              processed: false,
+              reason: 'conversation_admin_closed',
+              npsSkipReason,
+              message: 'Conversa foi fechada administrativamente e não será reaberta',
+            });
+          }
+          
           console.log(`🔄 [Conversation Reopen] Reabrindo conversa resolvida para ${clientName}`);
           
           // CRITICAL FIX: Preserve existing evolutionInstance when webhook lacks instance field
@@ -2677,6 +2748,39 @@ Qualquer coisa, estamos à disposição! 😊
         // 1. Resolved conversation without awaiting NPS - reopen normally
         // 2. Resolved conversation awaiting NPS but client sent non-NPS message - clear flag and reopen
         if (conversation.status === 'resolved') {
+          // 🛑 CRITICAL: Check if conversation was administratively closed (bulk close)
+          // If so, DO NOT reopen - create activity log and skip
+          const npsSkipReason = metadata?.npsSkipReason;
+          if (npsSkipReason?.startsWith('admin_bulk_close')) {
+            console.log(`🛑 [Evolution] Conversa ${conversation.id} foi fechada administrativamente (${npsSkipReason}) - NÃO reabrindo`);
+            console.log(`📝 [Evolution] Cliente ${clientName} tentou enviar mensagem para conversa fechada - mensagem será ignorada`);
+            
+            // Log para auditoria
+            try {
+              await storage.createActivityLog({
+                conversationId: conversation.id,
+                userId: 'system',
+                action: 'blocked_reopen_admin_closed',
+                details: {
+                  clientName,
+                  messageText: messageText.substring(0, 100),
+                  npsSkipReason,
+                  blockedAt: new Date().toISOString(),
+                },
+              });
+            } catch (logError) {
+              console.error(`❌ [Evolution] Erro ao criar log de bloqueio:`, logError);
+            }
+            
+            return res.json({
+              success: true,
+              processed: false,
+              reason: 'conversation_admin_closed',
+              npsSkipReason,
+              message: 'Conversa foi fechada administrativamente e não será reaberta',
+            });
+          }
+          
           // CAMPAIGN CONVERSATIONS: Manter assistente original (financeiro para cobranças)
           // NORMAL CONVERSATIONS: Resetar para recepcionista
           const isCampaignConversation = conversation.conversationSource === 'whatsapp_campaign' || 

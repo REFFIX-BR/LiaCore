@@ -39,6 +39,12 @@ Advanced features include an automatic retry and rate limiting system for WhatsA
 - **LGPD CPF Compliance**: CPF is no longer stored in the database. The system now requests CPF from the customer for each API query (e.g., for boleto) without persisting it, using Redis with 5-minute TTL for temporary storage during multi-point selection flows only.
 - **Message Archiving System**: A two-table architecture automatically archives messages older than 30 days to `messages_archive` while remaining fully queryable, optimizing performance for the main `messages` table.
 - **Webhook Replay Protection System**: Dual-layer protection against Evolution API webhook replays: (1) Redis-based deduplication by WhatsApp messageId with 24h TTL, marking as processed only AFTER successful enqueue to prevent retry loss; (2) Stale message flagging for messages >1 hour old (logged but not rejected) with `isStaleMessage` flag to prevent lastMessageTime corruption from historical replays.
+- **Admin Bulk Close Protection System**: Triple-layer protection for administratively closed conversations:
+  1. **Worker Protection**: BullMQ message processing jobs check `metadata.npsSkipReason` before sending AI responses - if it starts with `admin_bulk_close`, the job is aborted
+  2. **Main Webhook Protection**: Evolution API webhook handler blocks reopening for resolved conversations with admin_bulk_close flag
+  3. **Alternate Webhook Protection**: Secondary reopen path also protected against admin-closed conversations
+  - All blocked attempts are logged to activity_logs with action `blocked_reopen_admin_closed` for audit trail
+  - Flag format: `admin_bulk_close_<reason>` (e.g., `admin_bulk_close_10min`, `admin_bulk_close_30min`)
 
 ## External Dependencies
 - **OpenAI**: AI Assistants API.

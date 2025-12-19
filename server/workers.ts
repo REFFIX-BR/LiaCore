@@ -445,6 +445,29 @@ if (redisConnection) {
         hasImage,
       });
 
+      // 1.5 CRITICAL: Check if conversation was administratively closed (bulk close)
+      // If so, abort processing to prevent reopening
+      const npsSkipReason = (conversation.metadata as any)?.npsSkipReason;
+      if (conversation.status === 'resolved' && npsSkipReason?.startsWith('admin_bulk_close')) {
+        console.log(`🛑 [Worker] Conversa ${conversationId} foi fechada administrativamente (${npsSkipReason}) - abortando processamento`);
+        
+        // Mark job as processed to prevent retry
+        await markJobProcessed(idempotencyKey!);
+        
+        prodLogger.info('worker', 'Skipped - conversation administratively closed', {
+          conversationId,
+          npsSkipReason,
+          jobId: job.id,
+        });
+        
+        return {
+          success: true,
+          skipped: true,
+          reason: 'conversation_admin_closed',
+          npsSkipReason,
+        };
+      }
+
       // 2. Cancelar follow-up de inatividade e auto-closure (cliente respondeu)
       try {
         const { cancelInactivityFollowup, cancelAutoClosure } = await import('./lib/queue');
