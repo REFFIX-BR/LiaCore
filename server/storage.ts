@@ -5886,7 +5886,25 @@ export class DbStorage implements IStorage {
       });
     }
 
-    console.log(`[Gamification] Badges atribuídos para ${period} (${solucionadorCandidates.length} Solucionador, ${velocistas.length} Velocista, ${campeoes.length} Campeão)`);
+    // 4. Badge "Encantador" - NPS 10 consecutivo (3+ feedbacks com nota 10)
+    await this.awardEncantadorBadges(period);
+
+    // 5. Badge "Zero Reclamação" - Sem feedback negativo no período
+    await this.awardZeroReclamacaoBadges(period);
+
+    // 6. Badge "Especialista" - Especialista em departamento específico
+    await this.awardEspecialistaBadges(period);
+
+    // 7. Badge "Maratonista" - Streak de dias consecutivos trabalhando
+    await this.awardMaratonistaBadges(period);
+
+    // 8. Badge "Pontualidade" - Tempo de resposta consistentemente rápido
+    await this.awardPontualidadeBadges(period);
+
+    // 9. Badge "Regularidade" - 3 meses consecutivos com bom desempenho
+    await this.awardRegularidadeBadges(period);
+
+    console.log(`[Gamification] Badges atribuídos para ${period}`);
   }
 
   /**
@@ -5913,6 +5931,264 @@ export class DbStorage implements IStorage {
         .where(eq(schema.gamificationBadges.id, existing.id));
     } else {
       await db.insert(schema.gamificationBadges).values(badge);
+    }
+  }
+
+  /**
+   * Badge "Encantador" - Agentes com 3+ NPS 10 consecutivos no período
+   */
+  private async awardEncantadorBadges(period: string): Promise<void> {
+    const [year, month] = period.split('-').map(Number);
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+
+    // Busca feedbacks com NPS no período
+    const feedbacks = await db.select()
+      .from(schema.satisfactionFeedback)
+      .where(and(
+        gte(schema.satisfactionFeedback.createdAt, startDate),
+        lte(schema.satisfactionFeedback.createdAt, endDate)
+      ))
+      .orderBy(asc(schema.satisfactionFeedback.createdAt));
+
+    // Busca conversations para pegar os agentIds
+    const conversationIds = feedbacks.map(f => f.conversationId).filter(id => id && id.length > 0);
+    if (conversationIds.length === 0) return;
+
+    const conversations = await db.select().from(schema.conversations)
+      .where(inArray(schema.conversations.id, conversationIds));
+    const convMap = new Map(conversations.map(c => [c.id, c]));
+
+    // Agrupa por agente e verifica sequências de NPS 10
+    // Skip feedbacks sem conversa correspondente (null check)
+    const agentFeedbacks = new Map<string, number[]>();
+    for (const f of feedbacks) {
+      const conv = convMap.get(f.conversationId);
+      if (!conv) continue; // Skip if conversation not found
+      const agentId = conv.firstResolvedBy || conv.resolvedBy;
+      if (agentId && f.npsScore !== null) {
+        if (!agentFeedbacks.has(agentId)) agentFeedbacks.set(agentId, []);
+        agentFeedbacks.get(agentId)!.push(f.npsScore);
+      }
+    }
+
+    // Verifica quem tem 3+ NPS 10 consecutivos
+    for (const [agentId, ratings] of agentFeedbacks) {
+      let maxStreak = 0, currentStreak = 0;
+      for (const r of ratings) {
+        if (r === 10) { currentStreak++; maxStreak = Math.max(maxStreak, currentStreak); }
+        else { currentStreak = 0; }
+      }
+      if (maxStreak >= 3) {
+        await this.upsertBadge({ agentId, badgeType: 'encantador', period, metric: maxStreak });
+      }
+    }
+  }
+
+  /**
+   * Badge "Zero Reclamação" - Sem feedback negativo (NPS <= 6) no período
+   */
+  private async awardZeroReclamacaoBadges(period: string): Promise<void> {
+    const [year, month] = period.split('-').map(Number);
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+
+    // Busca todos os agentes com feedbacks no período
+    const feedbacks = await db.select()
+      .from(schema.satisfactionFeedback)
+      .where(and(
+        gte(schema.satisfactionFeedback.createdAt, startDate),
+        lte(schema.satisfactionFeedback.createdAt, endDate)
+      ));
+
+    const conversationIds = feedbacks.map(f => f.conversationId).filter(id => id && id.length > 0);
+    if (conversationIds.length === 0) return;
+
+    const conversations = await db.select().from(schema.conversations)
+      .where(inArray(schema.conversations.id, conversationIds));
+    const convMap = new Map(conversations.map(c => [c.id, c]));
+
+    // Agrupa por agente
+    // Skip feedbacks sem conversa correspondente (null check)
+    const agentRatings = new Map<string, { total: number; hasNegative: boolean }>();
+    for (const f of feedbacks) {
+      const conv = convMap.get(f.conversationId);
+      if (!conv) continue; // Skip if conversation not found
+      const agentId = conv.firstResolvedBy || conv.resolvedBy;
+      if (agentId && f.npsScore !== null) {
+        if (!agentRatings.has(agentId)) agentRatings.set(agentId, { total: 0, hasNegative: false });
+        const data = agentRatings.get(agentId)!;
+        data.total++;
+        if (f.npsScore <= 6) data.hasNegative = true;
+      }
+    }
+
+    // Atribui badge para quem tem 5+ feedbacks e nenhum negativo
+    for (const [agentId, data] of agentRatings) {
+      if (data.total >= 5 && !data.hasNegative) {
+        await this.upsertBadge({ agentId, badgeType: 'zero_reclamacao', period, metric: data.total });
+      }
+    }
+  }
+
+  /**
+   * Badge "Especialista" - Maior número de atendimentos em um departamento específico
+   */
+  private async awardEspecialistaBadges(period: string): Promise<void> {
+    const [year, month] = period.split('-').map(Number);
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+
+    // Busca conversas resolvidas no período com departamento
+    const conversations = await db.select().from(schema.conversations)
+      .where(and(
+        eq(schema.conversations.status, 'resolved'),
+        gte(schema.conversations.resolvedAt, startDate),
+        lte(schema.conversations.resolvedAt, endDate)
+      ));
+
+    // Conta por agente e departamento
+    const agentDeptCount = new Map<string, Map<string, number>>();
+    for (const c of conversations) {
+      const agentId = c.firstResolvedBy || c.resolvedBy;
+      const dept = c.assistantType || 'geral';
+      if (agentId) {
+        if (!agentDeptCount.has(agentId)) agentDeptCount.set(agentId, new Map());
+        const deptMap = agentDeptCount.get(agentId)!;
+        deptMap.set(dept, (deptMap.get(dept) || 0) + 1);
+      }
+    }
+
+    // Para cada departamento, encontra o especialista (quem mais atendeu)
+    const deptLeaders = new Map<string, { agentId: string; count: number }>();
+    for (const [agentId, deptMap] of agentDeptCount) {
+      for (const [dept, count] of deptMap) {
+        if (!deptLeaders.has(dept) || deptLeaders.get(dept)!.count < count) {
+          deptLeaders.set(dept, { agentId, count });
+        }
+      }
+    }
+
+    // Atribui badge para líderes de cada departamento (mínimo 10 atendimentos)
+    for (const [dept, leader] of deptLeaders) {
+      if (leader.count >= 10) {
+        await this.upsertBadge({ 
+          agentId: leader.agentId, 
+          badgeType: 'especialista', 
+          period, 
+          metric: leader.count 
+        });
+      }
+    }
+  }
+
+  /**
+   * Badge "Maratonista" - Streak de 10+ dias consecutivos trabalhando
+   * Usa conversas com interação humana (assignedTo ou resolvedBy) para identificar dias ativos
+   */
+  private async awardMaratonistaBadges(period: string): Promise<void> {
+    const [year, month] = period.split('-').map(Number);
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+
+    // Busca conversas que tiveram interação humana no período (transferidas ou atendidas)
+    const conversations = await db.select().from(schema.conversations)
+      .where(and(
+        gte(schema.conversations.lastMessageTime, startDate),
+        lte(schema.conversations.lastMessageTime, endDate)
+      ));
+
+    // Agrupa dias trabalhados por agente
+    // Prioridade: firstResolvedBy > resolvedBy > assignedTo
+    const agentDays = new Map<string, Set<string>>();
+    for (const c of conversations) {
+      const agentId = c.firstResolvedBy || c.resolvedBy || c.assignedTo;
+      const dateRef = c.resolvedAt || c.lastMessageTime;
+      if (agentId && dateRef) {
+        if (!agentDays.has(agentId)) agentDays.set(agentId, new Set());
+        const dayKey = dateRef.toISOString().slice(0, 10);
+        agentDays.get(agentId)!.add(dayKey);
+      }
+    }
+
+    // Calcula streak máximo de dias consecutivos
+    for (const [agentId, daysSet] of agentDays) {
+      const days = [...daysSet].sort();
+      if (days.length === 0) continue;
+      let maxStreak = 1, currentStreak = 1;
+      for (let i = 1; i < days.length; i++) {
+        const prev = new Date(days[i - 1]);
+        const curr = new Date(days[i]);
+        const diffDays = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
+        if (diffDays === 1) { currentStreak++; maxStreak = Math.max(maxStreak, currentStreak); }
+        else { currentStreak = 1; }
+      }
+      if (maxStreak >= 10) {
+        await this.upsertBadge({ agentId, badgeType: 'maratonista', period, metric: maxStreak });
+      }
+    }
+  }
+
+  /**
+   * Badge "Pontualidade" - Tempo de resposta consistentemente rápido (< 2 min em 90%+ das respostas)
+   */
+  private async awardPontualidadeBadges(period: string): Promise<void> {
+    const scores = await db.select()
+      .from(schema.gamificationScores)
+      .where(eq(schema.gamificationScores.period, period));
+
+    // Atribui para quem tem tempo médio < 120s e pelo menos 20 conversas
+    for (const score of scores) {
+      if ((score.avgResponseTime || 999) < 120 && (score.totalConversations || 0) >= 20) {
+        await this.upsertBadge({ 
+          agentId: score.agentId, 
+          badgeType: 'pontualidade', 
+          period, 
+          metric: score.avgResponseTime || 0 
+        });
+      }
+    }
+  }
+
+  /**
+   * Badge "Regularidade" - 3 meses consecutivos com bom desempenho (NPS >= 7, 20+ conversas)
+   */
+  private async awardRegularidadeBadges(period: string): Promise<void> {
+    const [year, month] = period.split('-').map(Number);
+    
+    // Gera os 3 últimos períodos (incluindo atual)
+    const periods: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      let m = month - i;
+      let y = year;
+      if (m <= 0) { m += 12; y--; }
+      periods.push(`${y}-${String(m).padStart(2, '0')}`);
+    }
+
+    // Busca scores dos 3 períodos
+    const scores = await db.select()
+      .from(schema.gamificationScores)
+      .where(inArray(schema.gamificationScores.period, periods));
+
+    // Agrupa por agente
+    const agentScores = new Map<string, Map<string, { nps: number; convs: number }>>();
+    for (const s of scores) {
+      if (!agentScores.has(s.agentId)) agentScores.set(s.agentId, new Map());
+      agentScores.get(s.agentId)!.set(s.period, { 
+        nps: s.avgNps || 0, 
+        convs: s.totalConversations || 0 
+      });
+    }
+
+    // Verifica quem tem bom desempenho nos 3 meses
+    for (const [agentId, monthlyScores] of agentScores) {
+      if (monthlyScores.size === 3) {
+        const allGood = [...monthlyScores.values()].every(s => s.nps >= 7 && s.convs >= 20);
+        if (allGood) {
+          const avgNps = Math.round([...monthlyScores.values()].reduce((acc, s) => acc + s.nps, 0) / 3);
+          await this.upsertBadge({ agentId, badgeType: 'regularidade', period, metric: avgNps });
+        }
+      }
     }
   }
 

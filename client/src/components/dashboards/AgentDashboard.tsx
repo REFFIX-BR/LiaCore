@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Inbox, CheckCircle2, Clock, Star, TrendingUp, Calendar, Trophy, Target, Zap, Crown, TrendingDown, AlertCircle, Calculator, Info, Flame, Users, Heart, Lightbulb, BarChart3 } from "lucide-react";
+import { Inbox, CheckCircle2, Clock, Star, TrendingUp, Calendar, Trophy, Target, Zap, Crown, TrendingDown, AlertCircle, Calculator, Info, Flame, Users, Heart, Lightbulb, BarChart3, ShieldCheck, GraduationCap } from "lucide-react";
 import { Line, LineChart, Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -96,6 +96,48 @@ const BADGE_INFO = {
     color: "text-purple-600",
     bgColor: "bg-purple-100 dark:bg-purple-900",
     description: "Maior Número de Atendimentos"
+  },
+  encantador: {
+    name: "Encantador",
+    icon: Heart,
+    color: "text-pink-600",
+    bgColor: "bg-pink-100 dark:bg-pink-900",
+    description: "NPS 10 consecutivo (3+ vezes)"
+  },
+  zero_reclamacao: {
+    name: "Zero Reclamação",
+    icon: ShieldCheck,
+    color: "text-green-600",
+    bgColor: "bg-green-100 dark:bg-green-900",
+    description: "Sem feedback negativo no período"
+  },
+  especialista: {
+    name: "Especialista",
+    icon: GraduationCap,
+    color: "text-indigo-600",
+    bgColor: "bg-indigo-100 dark:bg-indigo-900",
+    description: "Líder em departamento específico"
+  },
+  maratonista: {
+    name: "Maratonista",
+    icon: Flame,
+    color: "text-orange-600",
+    bgColor: "bg-orange-100 dark:bg-orange-900",
+    description: "10+ dias consecutivos trabalhando"
+  },
+  pontualidade: {
+    name: "Pontualidade",
+    icon: Clock,
+    color: "text-cyan-600",
+    bgColor: "bg-cyan-100 dark:bg-cyan-900",
+    description: "Tempo de resposta < 2 min"
+  },
+  regularidade: {
+    name: "Regularidade",
+    icon: Calendar,
+    color: "text-teal-600",
+    bgColor: "bg-teal-100 dark:bg-teal-900",
+    description: "3 meses consecutivos com bom desempenho"
   }
 };
 
@@ -373,18 +415,9 @@ export function AgentDashboard() {
             <CardContent>
               <div className="space-y-4">
                 {Object.entries(insights.badgeProgress).map(([key, badge]) => {
-                  const icons = {
-                    campeao_volume: Crown,
-                    velocista: Zap,
-                    solucionador: Target
-                  };
-                  const colors = {
-                    campeao_volume: 'text-purple-600',
-                    velocista: 'text-yellow-600',
-                    solucionador: 'text-blue-600'
-                  };
-                  const BadgeIcon = icons[key as keyof typeof icons] || Trophy;
-                  const color = colors[key as keyof typeof colors] || 'text-gray-600';
+                  const badgeInfo = BADGE_INFO[key as keyof typeof BADGE_INFO];
+                  const BadgeIcon = badgeInfo?.icon || Trophy;
+                  const color = badgeInfo?.color || 'text-gray-600';
                   
                   return (
                     <div key={key} className="space-y-1">
