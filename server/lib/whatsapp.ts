@@ -7,16 +7,25 @@
 // Evolution API Configuration
 const EVOLUTION_CONFIG = {
   apiUrl: process.env.EVOLUTION_API_URL || '',
-  instance: 'Principal', // Only Principal is supported
+  instance: 'Principal', // Default instance
   apiKey: process.env.EVOLUTION_API_KEY_PRINCIPAL || process.env.EVOLUTION_API_KEY || '',
 };
 
-function validateEvolutionInstance(rawInstance: string): 'Principal' {
-  // Only Principal is supported
+// Supported Evolution API instances
+type EvolutionInstance = 'Principal' | 'Abertura';
+
+function validateEvolutionInstance(rawInstance: string): EvolutionInstance {
+  const normalized = rawInstance.toLowerCase();
+  if (normalized === 'abertura') {
+    return 'Abertura';
+  }
   return 'Principal';
 }
 
-function getEvolutionApiKey(instance: 'Principal'): string {
+function getEvolutionApiKey(instance: EvolutionInstance): string {
+  if (instance === 'Abertura') {
+    return process.env.EVOLUTION_API_KEY_ABERTURA || '';
+  }
   return EVOLUTION_CONFIG.apiKey || '';
 }
 
