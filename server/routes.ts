@@ -1104,10 +1104,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           assistantType: 'apresentacao', // SEMPRE volta para apresentação em nova conversa
           threadId: newThreadId, // Atualizar com novo thread
           conversationSummary: null, // Reset do resumo para novo contexto
-          evolutionInstance: 'Abertura', // Reaberturas usam instância Abertura
+          evolutionInstance: 'abertura', // Reaberturas usam instância abertura
         };
         
-        console.log(`📱 [Reopen] Usando instância Abertura para reabertura de conversa`);
+        console.log(`📱 [Reopen] Usando instância abertura para reabertura de conversa`);
         
         // Se estava transferida, resetar para IA voltar a responder
         if (conversation.transferredToHuman) {
@@ -2268,14 +2268,14 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
             
             console.log(`➕ [Groups] Importando novo grupo: ${groupName}`);
             
-            // Grupos usam instância Abertura
-            console.log(`📱 [Groups] Usando instância Abertura para novo grupo`);
+            // Grupos usam instância abertura
+            console.log(`📱 [Groups] Usando instância abertura para novo grupo`);
             
             group = await storage.createGroup({
               groupId,
               name: groupName,
               avatar: groupAvatar,
-              evolutionInstance: 'Abertura', // Grupos usam instância Abertura
+              evolutionInstance: 'abertura', // Grupos usam instância abertura
               aiEnabled: false, // New groups start with AI disabled by default
               lastMessageTime: new Date(),
               lastMessage: messageText.substring(0, 100),
@@ -2654,10 +2654,10 @@ Qualquer coisa, estamos à disposição! 😊
           const updateData: any = {
             status: 'active',
             assistantType: targetAssistant,
-            evolutionInstance: 'Abertura', // Reaberturas usam instância Abertura
+            evolutionInstance: 'abertura', // Reaberturas usam instância abertura
           };
           
-          console.log(`📱 [Evolution Reopen] Usando instância Abertura para reabertura`);
+          console.log(`📱 [Evolution Reopen] Usando instância abertura para reabertura`);
           
           // Se estava aguardando NPS mas cliente enviou outra mensagem, limpar flag
           if (metadata.awaitingNPS) {
@@ -8293,14 +8293,14 @@ A resposta deve:
         return res.status(400).json({ error: "Conversa já está ativa" });
       }
 
-      // Reativar conversa - usar instância Abertura
-      console.log(`📱 [Reopen] Usando instância Abertura para reabertura manual`);
+      // Reativar conversa - usar instância abertura
+      console.log(`📱 [Reopen] Usando instância abertura para reabertura manual`);
       await storage.updateConversation(id, {
         status: 'active',
         lastMessageTime: new Date(),
         verifiedAt: null,
         verifiedBy: null,
-        evolutionInstance: 'Abertura', // Reaberturas usam instância Abertura
+        evolutionInstance: 'abertura', // Reaberturas usam instância abertura
       });
 
       // Registrar ação de supervisor
@@ -9140,9 +9140,9 @@ A resposta deve:
       let conversation = await storage.getConversationByChatId(chatId);
 
       if (!conversation) {
-        // Reaberturas de contato usam instância Abertura
-        let evolutionInstance = 'Abertura'; // Reaberturas usam instância Abertura
-        console.log(`📱 [Contacts] Usando instância Abertura para reabertura de contato`);
+        // Reaberturas de contato usam instância abertura
+        let evolutionInstance = 'abertura'; // Reaberturas usam instância abertura
+        console.log(`📱 [Contacts] Usando instância abertura para reabertura de contato`);
         let department = 'support'; // Default: support instead of general (so it appears in Transferidas)
         let assistantType = 'suporte'; // Default: suporte assistant
         
@@ -9150,7 +9150,7 @@ A resposta deve:
           try {
             const lastConversation = await storage.getConversation(contact.lastConversationId);
             if (lastConversation) {
-              // NÃO reutilizar evolutionInstance - sempre usar Abertura para reaberturas
+              // NÃO reutilizar evolutionInstance - sempre usar abertura para reaberturas
               // Preserve department and assistantType from last conversation (even if general)
               if (lastConversation.department) {
                 department = lastConversation.department === 'general' ? 'support' : lastConversation.department;
@@ -9187,13 +9187,13 @@ A resposta deve:
         console.log(`✅ [Contacts] Created new conversation with evolutionInstance=${evolutionInstance}, department=${department} and moved to Transferidas: ${conversation.id}`);
       } else {
         // Reactivate existing conversation and transfer to human (not assigned - goes to "Transferidas")
-        // Reaberturas usam instância Abertura
-        console.log(`📱 [Contacts] Usando instância Abertura para reabertura de conversa existente`);
+        // Reaberturas usam instância abertura
+        console.log(`📱 [Contacts] Usando instância abertura para reabertura de conversa existente`);
         await storage.updateConversation(conversation.id, {
           status: 'active',
           transferredToHuman: true,
           transferReason: 'Conversa reaberta pelo atendente via painel de Contatos',
-          evolutionInstance: 'Abertura', // Reaberturas usam instância Abertura
+          evolutionInstance: 'abertura', // Reaberturas usam instância abertura
           transferredAt: new Date(),
           assignedTo: null, // Not assigned - available for any agent in "Transferidas"
           lastMessageTime: new Date(),
@@ -9205,7 +9205,7 @@ A resposta deve:
           },
         });
 
-        console.log(`✅ [Contacts] Reactivated existing conversation with evolutionInstance=Abertura and moved to Transferidas: ${conversation.id}`);
+        console.log(`✅ [Contacts] Reactivated existing conversation with evolutionInstance=abertura and moved to Transferidas: ${conversation.id}`);
       }
 
       // Update contact's last conversation
@@ -9341,9 +9341,9 @@ A resposta deve:
 
       // Get Evolution API configuration
       const evolutionUrl = process.env.EVOLUTION_API_URL;
-      // Grupos SEMPRE usam instância Abertura
-      const instance = 'Abertura';
-      console.log(`📱 [Groups] Usando instância Abertura para envio de mensagem ao grupo`);
+      // Grupos SEMPRE usam instância abertura
+      const instance = 'abertura';
+      console.log(`📱 [Groups] Usando instância abertura para envio de mensagem ao grupo`);
 
       if (!evolutionUrl) {
         return res.status(500).json({ error: "Evolution API not configured" });

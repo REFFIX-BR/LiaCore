@@ -12,18 +12,18 @@ const EVOLUTION_CONFIG = {
 };
 
 // Supported Evolution API instances
-type EvolutionInstance = 'Principal' | 'Abertura';
+type EvolutionInstance = 'Principal' | 'abertura';
 
 function validateEvolutionInstance(rawInstance: string): EvolutionInstance {
   const normalized = rawInstance.toLowerCase();
   if (normalized === 'abertura') {
-    return 'Abertura';
+    return 'abertura';
   }
   return 'Principal';
 }
 
 function getEvolutionApiKey(instance: EvolutionInstance): string {
-  if (instance === 'Abertura') {
+  if (instance === 'abertura') {
     return process.env.EVOLUTION_API_KEY_ABERTURA || '';
   }
   return EVOLUTION_CONFIG.apiKey || '';
