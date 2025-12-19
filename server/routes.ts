@@ -1938,6 +1938,36 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
           return res.json({ success: true, processed: false, reason: "fromMe" });
         }
 
+        // 🛡️ WEBHOOK REPLAY PROTECTION: Prevent duplicate processing
+        // Check 1: Deduplicate by WhatsApp messageId using Redis (check only, mark after success)
+        const { redisConnection } = await import("./lib/redis-config");
+        
+        const dedupeKey = `webhook:processed:${messageId}`;
+        const alreadyProcessed = await redisConnection.get(dedupeKey);
+        
+        if (alreadyProcessed) {
+          console.log(`🔄 [Webhook Replay] Mensagem ${messageId} já processada - ignorando replay`);
+          return res.json({ 
+            success: true, 
+            processed: false, 
+            reason: "duplicate_webhook",
+            messageId 
+          });
+        }
+        
+        // Check 2: Flag stale messages (>1 hour old) but don't reject - may be legitimate delayed webhooks
+        const messageTs = messageTimestamp ? Number(messageTimestamp) * 1000 : Date.now();
+        const now = Date.now();
+        const ageMs = now - messageTs;
+        const ONE_HOUR_MS = 60 * 60 * 1000;
+        const isStaleMessage = ageMs > ONE_HOUR_MS;
+        
+        if (isStaleMessage) {
+          console.log(`⏰ [Webhook Stale] Mensagem ${messageId} tem ${Math.round(ageMs / 60000)} minutos de idade - processando com flag de stale`);
+        } else {
+          console.log(`✅ [Webhook] Mensagem ${messageId} validada (idade: ${Math.round(ageMs / 1000)}s)`);
+        }
+
         // DEBUG: Log complete message structure (ENHANCED FOR LOCATION DEBUGGING)
         console.log(`🔍 [DEBUG Webhook] Estrutura completa da mensagem:`, {
           messageType: data?.messageType, // Evolution API sends this field
@@ -2899,6 +2929,7 @@ Qualquer coisa, estamos à disposição! 😊
             locationLatitude: locationLatitude,
             locationLongitude: locationLongitude,
             receivedAt: Date.now(),
+            isStaleMessage, // Flag for delayed webhook - prevents lastMessageTime corruption
           };
           
           console.log(`🔄 [Webhook] Chamando addToBatch()...`);
@@ -2938,6 +2969,9 @@ Qualquer coisa, estamos à disposição! 😊
               messagePreview: messageText.substring(0, 50),
             });
 
+            // 🛡️ Mark as processed AFTER successful enqueue (prevents retry loss on transient failures)
+            await redisConnection.set(dedupeKey, Date.now().toString(), 'EX', 86400);
+
             return res.json({ 
               success: true, 
               processed: true,
@@ -2959,6 +2993,9 @@ Qualquer coisa, estamos à disposição! 😊
           });
 
           console.log(`📦 [Evolution] Message added to batch: ${conversation.id}`);
+
+          // 🛡️ Mark as processed AFTER successful batch add (prevents retry loss on transient failures)
+          await redisConnection.set(dedupeKey, Date.now().toString(), 'EX', 86400);
 
           return res.json({ 
             success: true, 

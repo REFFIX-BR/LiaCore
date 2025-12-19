@@ -38,6 +38,7 @@ Advanced features include an automatic retry and rate limiting system for WhatsA
 - **Fidelity Compliance Rule**: All TR Telecom plans require mandatory 12-month fidelity. The commercial assistant prompt explicitly prohibits stating no-commitment offers and enforces accurate fidelity disclosure.
 - **LGPD CPF Compliance**: CPF is no longer stored in the database. The system now requests CPF from the customer for each API query (e.g., for boleto) without persisting it, using Redis with 5-minute TTL for temporary storage during multi-point selection flows only.
 - **Message Archiving System**: A two-table architecture automatically archives messages older than 30 days to `messages_archive` while remaining fully queryable, optimizing performance for the main `messages` table.
+- **Webhook Replay Protection System**: Dual-layer protection against Evolution API webhook replays: (1) Redis-based deduplication by WhatsApp messageId with 24h TTL, marking as processed only AFTER successful enqueue to prevent retry loss; (2) Stale message flagging for messages >1 hour old (logged but not rejected) with `isStaleMessage` flag to prevent lastMessageTime corruption from historical replays.
 
 ## External Dependencies
 - **OpenAI**: AI Assistants API.
