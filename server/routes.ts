@@ -9341,8 +9341,9 @@ A resposta deve:
 
       // Get Evolution API configuration
       const evolutionUrl = process.env.EVOLUTION_API_URL;
-      // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
-      const instance = validateEvolutionInstance(group.evolutionInstance || 'Principal');
+      // Grupos SEMPRE usam instância Abertura
+      const instance = 'Abertura';
+      console.log(`📱 [Groups] Usando instância Abertura para envio de mensagem ao grupo`);
 
       if (!evolutionUrl) {
         return res.status(500).json({ error: "Evolution API not configured" });
