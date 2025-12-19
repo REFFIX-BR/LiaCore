@@ -2373,6 +2373,42 @@ export class DbStorage implements IStorage {
   }
 
   async updateConversation(id: string, updates: Partial<Conversation>): Promise<Conversation | undefined> {
+    // 🛡️ ADMIN BULK CLOSE PROTECTION: Block reopening of administratively closed conversations
+    // This is the DEFINITIVE guard at the storage layer - no way to bypass
+    if (updates.status === 'active' || updates.status === 'queued') {
+      const current = await this.getConversation(id);
+      const metadata = current?.metadata as any;
+      const npsSkipReason = metadata?.npsSkipReason;
+      
+      if (current?.status === 'resolved' && npsSkipReason?.startsWith('admin_bulk_close')) {
+        console.warn(`🛑 [Storage] BLOCKED: Attempted to reopen admin-closed conversation ${id} (flag: ${npsSkipReason})`);
+        console.warn(`   Attempted status change: resolved → ${updates.status}`);
+        console.warn(`   Caller stack trace:`, new Error().stack?.split('\n').slice(0, 5).join('\n'));
+        
+        // Log para auditoria (não bloqueia se falhar)
+        try {
+          await db.insert(schema.activityLogs).values({
+            id: randomUUID(),
+            userId: 'system',
+            action: 'blocked_reopen_admin_closed',
+            conversationId: id,
+            details: {
+              attemptedStatus: updates.status,
+              npsSkipReason,
+              blockedAt: new Date().toISOString(),
+              layer: 'storage',
+            },
+            createdAt: new Date(),
+          });
+        } catch (logError) {
+          console.error(`❌ [Storage] Error logging blocked reopen:`, logError);
+        }
+        
+        // Return current conversation without changes
+        return current;
+      }
+    }
+    
     // 🛡️ CRITICAL PROTECTION: NEVER overwrite threadId with null/undefined
     // Thread IDs link to OpenAI state - losing them forces thread recreation and context loss
     if (updates.threadId === null || updates.threadId === undefined) {
