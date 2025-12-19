@@ -472,10 +472,10 @@ export default function GamificationSettings() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="w-5 h-5" />
-              Metas Mensais da Equipe
+              Metas Mensais Individuais
             </CardTitle>
             <CardDescription>
-              Objetivos coletivos para o período
+              Objetivos individuais para cada atendente
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
