@@ -6342,6 +6342,12 @@ export class DbStorage implements IStorage {
       solucionador: 0,
       velocista: 0,
       campeao_volume: 0,
+      encantador: 0,
+      zero_reclamacao: 0,
+      especialista: 0,
+      maratonista: 0,
+      pontualidade: 0,
+      regularidade: 0,
     } as Record<string, number>);
 
     return {

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Award, Star, TrendingUp, Users, Calculator, Crown, Zap, Target, Printer } from "lucide-react";
+import { Trophy, Award, Star, TrendingUp, Users, Calculator, Crown, Zap, Target, Printer, Heart, ShieldCheck, GraduationCap, Flame, Clock, Calendar } from "lucide-react";
 import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +33,12 @@ interface GamificationStats {
     solucionador: number;
     velocista: number;
     campeao_volume: number;
+    encantador: number;
+    zero_reclamacao: number;
+    especialista: number;
+    maratonista: number;
+    pontualidade: number;
+    regularidade: number;
   };
 }
 
@@ -57,6 +63,48 @@ const BADGE_INFO = {
     color: "text-purple-600",
     bgColor: "bg-purple-100 dark:bg-purple-900",
     description: "Maior Número de Atendimentos"
+  },
+  encantador: {
+    name: "Encantador",
+    icon: Heart,
+    color: "text-pink-600",
+    bgColor: "bg-pink-100 dark:bg-pink-900",
+    description: "3+ NPS 10 consecutivos"
+  },
+  zero_reclamacao: {
+    name: "Zero Reclamação",
+    icon: ShieldCheck,
+    color: "text-green-600",
+    bgColor: "bg-green-100 dark:bg-green-900",
+    description: "Sem feedback negativo"
+  },
+  especialista: {
+    name: "Especialista",
+    icon: GraduationCap,
+    color: "text-indigo-600",
+    bgColor: "bg-indigo-100 dark:bg-indigo-900",
+    description: "Líder em departamento"
+  },
+  maratonista: {
+    name: "Maratonista",
+    icon: Flame,
+    color: "text-orange-600",
+    bgColor: "bg-orange-100 dark:bg-orange-900",
+    description: "10+ dias consecutivos"
+  },
+  pontualidade: {
+    name: "Pontualidade",
+    icon: Clock,
+    color: "text-cyan-600",
+    bgColor: "bg-cyan-100 dark:bg-cyan-900",
+    description: "Resposta rápida (< 2 min)"
+  },
+  regularidade: {
+    name: "Regularidade",
+    icon: Calendar,
+    color: "text-teal-600",
+    bgColor: "bg-teal-100 dark:bg-teal-900",
+    description: "3 meses consistente"
   }
 };
 

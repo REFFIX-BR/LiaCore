@@ -434,6 +434,36 @@ export default function GamificationSettings() {
                 </div>
               </div>
             </div>
+
+            <div className="pt-3 border-t">
+              <h4 className="text-sm font-semibold text-muted-foreground mb-3">Badges Automáticos</h4>
+              <div className="grid gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <span className="text-pink-500">💖</span>
+                  <span><strong>Encantador:</strong> 3+ NPS 10 consecutivos</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-green-500">🛡️</span>
+                  <span><strong>Zero Reclamação:</strong> 5+ feedbacks sem NPS negativo</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-indigo-500">🎓</span>
+                  <span><strong>Especialista:</strong> Líder em departamento (10+ atendimentos)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-orange-500">🔥</span>
+                  <span><strong>Maratonista:</strong> 10+ dias consecutivos trabalhando</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-cyan-500">⏱️</span>
+                  <span><strong>Pontualidade:</strong> Resposta média &lt; 2 min (20+ conversas)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-teal-500">📅</span>
+                  <span><strong>Regularidade:</strong> 3 meses consecutivos com NPS &gt;= 7</span>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
