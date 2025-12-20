@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, jsonb, boolean, index, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, jsonb, boolean, index, uniqueIndex, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -149,6 +149,10 @@ export const messages = pgTable("messages", {
   whatsappStatusIdx: index("messages_whatsapp_status_idx").on(table.whatsappStatus, table.whatsappStatusUpdatedAt),
   // Índice para lookup por WhatsApp message ID (usado pelo webhook messages.update)
   whatsappMessageIdIdx: index("messages_whatsapp_message_id_idx").on(table.whatsappMessageId),
+  // UNIQUE index para deduplicação de mensagens (previne duplicatas quando Evolution API envia webhook 2x)
+  whatsappMessageIdUnique: uniqueIndex("messages_whatsapp_message_id_unique")
+    .on(table.whatsappMessageId)
+    .where(sql`whatsapp_message_id IS NOT NULL`),
 }));
 
 // Conversation Threads - Context Window Optimization (Thread Rotation)

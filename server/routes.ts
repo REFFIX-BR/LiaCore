@@ -2937,8 +2937,26 @@ Qualquer coisa, estamos à disposição! 😊
           console.log(`🧠 [Intelligence] ${summary}`);
         }
 
+        // 🛡️ DEDUPLICATION: Check if message already exists by WhatsApp message ID
+        // This prevents duplicate saves when Evolution API sends the same webhook twice
+        if (messageId) {
+          const existingMessage = await storage.getMessageByWhatsAppId(messageId);
+          if (existingMessage) {
+            console.log(`⏭️ [Dedup] Mensagem já existe (whatsappMessageId: ${messageId}) - ignorando duplicata`);
+            // Return success without processing again - message was already saved
+            return res.json({ 
+              success: true, 
+              processed: false, 
+              reason: "duplicate_message",
+              existingMessageId: existingMessage.id,
+              conversationId: conversation.id 
+            });
+          }
+        }
+
         // Store user message
         console.log(`💾 [DEBUG] Salvando mensagem com mídia:`, {
+          whatsappMessageId: messageId,
           hasImage: !!imageBase64,
           imageLength: imageBase64?.length || 0,
           hasPdf: !!pdfBase64,

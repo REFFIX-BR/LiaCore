@@ -2640,8 +2640,24 @@ export class DbStorage implements IStorage {
   }
 
   async createMessage(insertMsg: InsertMessage): Promise<Message> {
-    const [message] = await db.insert(schema.messages).values(insertMsg).returning();
-    return message;
+    try {
+      const [message] = await db.insert(schema.messages).values(insertMsg).returning();
+      return message;
+    } catch (error: any) {
+      // Handle unique constraint violation on whatsapp_message_id (concurrent duplicate webhook)
+      if (error?.code === '23505' && error?.constraint?.includes('whatsapp_message_id')) {
+        console.log(`⏭️ [Dedup DB] Mensagem duplicada detectada pelo índice UNIQUE (whatsappMessageId: ${insertMsg.whatsappMessageId}) - retornando mensagem existente`);
+        // Return the existing message instead of failing
+        if (insertMsg.whatsappMessageId) {
+          const existing = await this.getMessageByWhatsAppId(insertMsg.whatsappMessageId);
+          if (existing) return existing;
+        }
+        // Fallback: create a pseudo-message to avoid breaking the flow
+        console.error(`❌ [Dedup DB] Não foi possível encontrar mensagem existente após violação de constraint`);
+        throw error;
+      }
+      throw error;
+    }
   }
 
   async getMessage(id: string): Promise<Message | undefined> {
