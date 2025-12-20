@@ -2260,6 +2260,9 @@ export class DbStorage implements IStorage {
   } = {}): Promise<{ conversations: Conversation[]; total: number }> {
     const { limit = 50, offset = 0, search } = options;
     
+    // Base condition: only resolved conversations
+    const baseCondition = eq(schema.conversations.status, 'resolved');
+    
     let query = db.select({
       conversation: schema.conversations,
       resolvedByUser: schema.users,
@@ -2269,19 +2272,24 @@ export class DbStorage implements IStorage {
       .leftJoin(schema.users, eq(schema.conversations.resolvedBy, schema.users.id))
       .$dynamic();
     
-    // Add search filter if provided
+    // Add search filter if provided, combined with base condition
     if (search && search.trim()) {
       const searchPattern = `%${search}%`;
       query = query.where(
-        or(
-          ilike(schema.conversations.chatId, searchPattern),
-          ilike(schema.conversations.clientName, searchPattern),
-          ilike(schema.conversations.clientId, searchPattern)
+        and(
+          baseCondition,
+          or(
+            ilike(schema.conversations.chatId, searchPattern),
+            ilike(schema.conversations.clientName, searchPattern),
+            ilike(schema.conversations.clientId, searchPattern)
+          )
         )
       );
+    } else {
+      query = query.where(baseCondition);
     }
     
-    // Get total count
+    // Get total count - also filter by resolved status
     let countQuery = db.select({ count: sql<number>`count(*)` })
       .from(schema.conversations)
       .$dynamic();
@@ -2289,12 +2297,17 @@ export class DbStorage implements IStorage {
     if (search && search.trim()) {
       const searchPattern = `%${search}%`;
       countQuery = countQuery.where(
-        or(
-          ilike(schema.conversations.chatId, searchPattern),
-          ilike(schema.conversations.clientName, searchPattern),
-          ilike(schema.conversations.clientId, searchPattern)
+        and(
+          baseCondition,
+          or(
+            ilike(schema.conversations.chatId, searchPattern),
+            ilike(schema.conversations.clientName, searchPattern),
+            ilike(schema.conversations.clientId, searchPattern)
+          )
         )
       );
+    } else {
+      countQuery = countQuery.where(baseCondition);
     }
     
     const [{ count: total }] = await countQuery;
