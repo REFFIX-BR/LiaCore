@@ -8645,14 +8645,25 @@ A resposta deve:
         await storage.updateConversation(id, { metadata: updatedMetadata });
       }
 
-      // Reativar conversa - usar instância abertura
-      console.log(`📱 [Reopen] Usando instância abertura para reabertura manual`);
+      // Reativar conversa - colocar na fila de atribuição (transferidas)
+      console.log(`📱 [Reopen] Reabrindo conversa para fila de atribuição - instância abertura`);
       await storage.updateConversation(id, {
-        status: 'active',
+        status: 'queued',
+        transferredToHuman: true,
+        assignedTo: null,
         lastMessageTime: new Date(),
         verifiedAt: null,
         verifiedBy: null,
-        evolutionInstance: 'abertura', // Reaberturas usam instância abertura
+        resolvedAt: null,
+        resolvedBy: null,
+        evolutionInstance: 'abertura',
+        metadata: {
+          ...metadata,
+          reopened: true,
+          reopenedBy: currentUser.userId,
+          reopenedAt: new Date().toISOString(),
+          reopenedFrom: 'finalizadas_manual',
+        },
       });
 
       // Registrar ação de supervisor
