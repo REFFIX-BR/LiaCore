@@ -8630,6 +8630,21 @@ A resposta deve:
         return res.status(400).json({ error: "Conversa já está ativa" });
       }
 
+      // Check for admin_bulk_close flag and clear it for manual supervisor reopen
+      const metadata = conversation.metadata as any || {};
+      const npsSkipReason = metadata.npsSkipReason || '';
+      if (npsSkipReason.startsWith('admin_bulk_close')) {
+        console.log(`🔓 [Reopen] Supervisor override: Clearing admin_bulk_close flag for conversation ${id}`);
+        // Clear the admin_bulk_close flag to allow reopening
+        const updatedMetadata = {
+          ...metadata,
+          npsSkipReason: `supervisor_reopen_${new Date().toISOString()}`,
+          adminCloseOverriddenBy: currentUser.fullName || currentUser.username,
+          adminCloseOverriddenAt: new Date().toISOString(),
+        };
+        await storage.updateConversation(id, { metadata: updatedMetadata });
+      }
+
       // Reativar conversa - usar instância abertura
       console.log(`📱 [Reopen] Usando instância abertura para reabertura manual`);
       await storage.updateConversation(id, {
