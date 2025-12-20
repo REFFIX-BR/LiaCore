@@ -2493,6 +2493,13 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
         const convMetadata = conversation.metadata as any || {};
         const npsSkipReasonEvol = convMetadata?.npsSkipReason;
         
+        console.log(`🔍 [Admin Close Check] Conversa ${conversation.id}:`, {
+          status: conversation.status,
+          npsSkipReason: npsSkipReasonEvol,
+          hasFlag: !!npsSkipReasonEvol?.startsWith('admin_bulk_close'),
+          fullMetadata: JSON.stringify(convMetadata).substring(0, 200)
+        });
+        
         if (npsSkipReasonEvol?.startsWith('admin_bulk_close')) {
           console.log(`🆕 [New Session] Conversa ${conversation.id} foi fechada administrativamente (${npsSkipReasonEvol}) - criando NOVA conversa`);
           console.log(`📝 [New Session] Cliente ${clientName} receberá atendimento em nova sessão (status atual: ${conversation.status})`);
