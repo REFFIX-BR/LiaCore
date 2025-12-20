@@ -1,0 +1,75 @@
+  - Auto-Closure: 2 workers
+✅ [Workers] Queue workers initialized with Redis
+✅ [Batch Worker] Worker pronto - aguardando jobs de batch processing
+📝 [Prompts Init] Found 7 templates in database
+⏭️  [Prompts Init] Skipping apresentacao - already has content (18918 chars)
+⏭️  [Prompts Init] Skipping comercial - already has content (7616 chars)
+⏭️  [Prompts Init] Skipping financeiro - already has content (20716 chars)
+⏭️  [Prompts Init] Skipping suporte - already has content (8113 chars)
+⏭️  [Prompts Init] Skipping ouvidoria - already has content (9130 chars)
+⏭️  [Prompts Init] Skipping cancelamento - already has content (10670 chars)
+✅ [Prompts Init] All prompts initialized successfully
+
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+🔄 [Message Recovery] Executando primeira verificação...
+
+🔄 [Message Recovery] Iniciando verificação de mensagens travadas...
+📊 [Message Recovery] Analisando 7 conversas ativas...
+✅ [Message Recovery] Nenhuma mensagem travada encontrada
+
+❌ [Auth] No token for GET /api/auth/me
+11:06:06 PM [express] GET /api/auth/me 401 in 3ms :: {"error":"Não autenticado"}
+11:06:06 PM [express] GET /api/auth/me 304 in 38ms :: {"user":{"id":"f8071e6d-446b-4c84-b175-6ff7f547…
+🔄 [Cache] Admin metrics MISS - calculating fresh data
+📊 [AI Metrics] apresentacao: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] comercial: { total: 10, transferred: 4, resolvedByAI: 6, pending: 0 }
+11:06:07 PM [express] GET /api/announcements/active 304 in 245ms :: []
+📊 [AI Metrics] cancelamento: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] ouvidoria: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] financeiro: { total: 14, transferred: 6, resolvedByAI: 8, pending: 0 }
+📊 [AI Metrics] suporte: { total: 16, transferred: 9, resolvedByAI: 7, pending: 0 }
+11:06:07 PM [express] GET /api/failures 304 in 277ms :: [{"id":"3846f012-5fdc-41e0-b1bb-e6677dacf9b4"…
+11:06:07 PM [express] GET /api/dashboard/ai-performance 304 in 408ms :: [{"assistantType":"apresentac…
+
+🔄 [Batch Worker] Job disparado para whatsapp_5524981545896
+   Timer esperado: 1766196393070
+   Job ID: batch-whatsapp_5524981545896-1766196393070
+🔍 [Batch Worker] Timer atual: 1766196393070
+📭 [Batch Worker] Batch vazio para whatsapp_5524981545896 - nada a processar
+11:06:37 PM [express] GET /api/announcements/active 304 in 255ms :: []
+📊 [AI Metrics] apresentacao: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+11:06:37 PM [express] GET /api/failures 304 in 303ms :: [{"id":"3846f012-5fdc-41e0-b1bb-e6677dacf9b4"…
+📊 [AI Metrics] cancelamento: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] ouvidoria: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] suporte: { total: 16, transferred: 9, resolvedByAI: 7, pending: 0 }
+📊 [AI Metrics] comercial: { total: 10, transferred: 4, resolvedByAI: 6, pending: 0 }
+📊 [AI Metrics] financeiro: { total: 14, transferred: 6, resolvedByAI: 8, pending: 0 }
+11:06:38 PM [express] GET /api/dashboard/ai-performance 304 in 770ms :: [{"assistantType":"apresentac…
+🔄 [Worker] Processing message from 5522997074180 {
+  jobId: '59408',
+  idempotencyKey: 'wamid.HBgNNTUyMjk5NzA3NDE4MBUCABIYFDNGQ0YwRTAzQzA5MkUxNjZEOEYyAA==',
+  conversationId: '51d5c853-c508-4453-86bb-a0ea399508c9',
+  hasImage: false,
+  evolutionInstance: 'Principal'
+}
+🔒 [Worker] Chat lock acquired for whatsapp_5522997074180
+⚙️ [INFO] [worker] Processing message | {"conversationId":"51d5c853-c508-4453-86bb-a0ea399508c9","fromNumber":"5522997074180","jobId":"59408","hasImage":false}
+🛑 [Worker] Conversa 51d5c853-c508-4453-86bb-a0ea399508c9 tem flag admin_bulk_close (admin_bulk_close_15min) - abortando processamento
+   Status atual: active - fechando automaticamente
+✅ [Worker] Conversa 51d5c853-c508-4453-86bb-a0ea399508c9 fechada automaticamente pelo guard
+⚙️ [INFO] [worker] Skipped - conversation administratively closed | {"conversationId":"51d5c853-c508-4453-86bb-a0ea399508c9","npsSkipReason":"admin_bulk_close_15min","jobId":"59408","autoClosedByGuard":true}
+🔓 [Worker] Chat lock released for whatsapp_5522997074180
+✅ [Worker] Message completed: { jobId: '59408', duration: 1230 }
+💾 [Cache] Admin metrics cached for 60s
+11:06:50 PM [express] GET /api/dashboard/admin 200 in 43409ms :: {"systemStatus":{"api":true,"databas…
+11:07:08 PM [express] GET /api/announcements/active 304 in 225ms :: []
+11:07:08 PM [express] GET /api/failures 304 in 282ms :: [{"id":"3846f012-5fdc-41e0-b1bb-e6677dacf9b4"…
+📊 [AI Metrics] apresentacao: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] comercial: { total: 10, transferred: 4, resolvedByAI: 6, pending: 0 }
+📊 [AI Metrics] ouvidoria: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] suporte: { total: 16, transferred: 9, resolvedByAI: 7, pending: 0 }
+📊 [AI Metrics] cancelamento: { total: 0, transferred: 0, resolvedByAI: 0, pending: 0 }
+📊 [AI Metrics] financeiro: { total: 14, transferred: 6, resolvedByAI: 8, pending: 0 }
+11:07:09 PM [express] GET /api/dashboard/ai-performance 304 in 522ms :: [{"assistantType":"apresentac…
+📦 [Cache] Admin metrics HIT - returning cached data
+11:07:20 PM [express] GET /api/dashboard/admin 304 in 1ms :: {"systemStatus":{"api":true,"database":t…
