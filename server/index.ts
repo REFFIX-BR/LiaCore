@@ -10,6 +10,19 @@ import { startComercialSyncWorker } from "./workers/comercial-sync-worker";
 // Configurar timezone para horário de Brasília (UTC-3)
 process.env.TZ = 'America/Sao_Paulo';
 
+// Global error handlers to prevent silent crashes in production
+process.on('uncaughtException', (error) => {
+  console.error('💥 [FATAL] Uncaught Exception:', error);
+  console.error('Stack:', error.stack);
+  // Log but don't exit - let the process continue if possible
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 [FATAL] Unhandled Promise Rejection:', reason);
+  console.error('Promise:', promise);
+  // Log but don't exit - let the process continue if possible
+});
+
 const app = express();
 app.use(express.json({ limit: '50mb' })); // Support large base64 images/audio
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
