@@ -725,7 +725,7 @@ export default function SalesTab({ startDate, endDate }: SalesTabProps) {
                 <SelectContent>
                   {plans.map((plan) => (
                     <SelectItem key={plan.id} value={plan.id}>
-                      {plan.name} - {plan.type} - R$ {plan.price.toFixed(2)}
+                      {plan.name} - {plan.type} - R$ {(plan.price / 100).toFixed(2)}
                     </SelectItem>
                   ))}
                 </SelectContent>
