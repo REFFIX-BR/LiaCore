@@ -1949,11 +1949,14 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     try {
       const { event: rawEvent, instance: rawInstance, data } = req.body;
       
+      // 🔍 DEBUG: Log da instância que está chegando do webhook
+      console.log(`📡 [Webhook Instance] Instância bruta recebida: "${rawInstance}" → normalizada: "${validateEvolutionInstance(rawInstance)}"`);
+      
       // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
       const instance = validateEvolutionInstance(rawInstance);
 
-      // DEBUG: Log completo do payload recebido
-      console.log(`🔍 [Evolution DEBUG] Payload completo:`, JSON.stringify(req.body, null, 2));
+      // DEBUG: Log completo do payload recebido (descomentado para debug intenso)
+      // console.log(`🔍 [Evolution DEBUG] Payload completo:`, JSON.stringify(req.body, null, 2));
 
       // Normalize event to string (handle malformed payloads)
       let event = typeof rawEvent === 'string' ? rawEvent : '';
