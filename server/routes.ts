@@ -3083,17 +3083,27 @@ Qualquer coisa, estamos à disposição! 😊
           const { addToBatch } = await import("./lib/message-batching");
           const { addMessageToQueue } = await import("./lib/queue");
           
-          // CRITICAL: ALWAYS use the instance from which the message CAME IN
-          // If client sends message via Principal, response MUST go out via Principal
-          const finalEvolutionInstance = instance; // Use current webhook instance
+          // CRITICAL FIX: Use conversation's stored instance (source of truth)
+          // The webhook may always send "Principal" due to Evolution API configuration
+          // So we trust the database value if it's already set to a non-Principal instance
+          let finalEvolutionInstance = instance;
           
-          // Update conversation's evolutionInstance if it changed
-          if (conversation.evolutionInstance !== instance) {
-            console.log(`📱 [Instance Update] Cliente ${clientName} mudou de instância: "${conversation.evolutionInstance}" → "${instance}"`);
+          // Only update if conversation has NO instance set yet
+          // DO NOT overwrite if conversation already has a specific instance (e.g., Cobranca)
+          // because the webhook might be incorrectly reporting "Principal" for all messages
+          if (!conversation.evolutionInstance) {
+            console.log(`📱 [Instance Init] Nova instância para ${clientName}: "${instance}"`);
             await storage.updateConversation(conversation.id, {
               evolutionInstance: instance
             });
-            conversation.evolutionInstance = instance; // Update local copy
+            conversation.evolutionInstance = instance;
+            finalEvolutionInstance = instance;
+          } else {
+            // Use the conversation's stored instance (database is the source of truth)
+            finalEvolutionInstance = conversation.evolutionInstance;
+            if (conversation.evolutionInstance !== instance) {
+              console.log(`⚠️  [Instance Mismatch] Webhook enviou "${instance}" mas conversa tem "${conversation.evolutionInstance}" - usando instância da conversa`);
+            }
           }
           
           // Prepara dados da mensagem
