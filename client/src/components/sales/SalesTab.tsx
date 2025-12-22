@@ -74,6 +74,7 @@ type Sale = {
 
 const STATUS_OPTIONS = [
   "Aguardando Análise",
+  "Em Negociação",
   "Aprovado",
   "Agendado para Instalação",
   "Instalado",
@@ -84,6 +85,7 @@ const STATUS_OPTIONS = [
 
 const STATUS_COLORS: Record<string, string> = {
   "Aguardando Análise": "bg-yellow-500",
+  "Em Negociação": "bg-purple-500",
   "Aprovado": "bg-green-500",
   "Agendado para Instalação": "bg-blue-500",
   "Instalado": "bg-emerald-600",
