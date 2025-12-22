@@ -397,6 +397,7 @@ export interface IStorage {
   addSale(sale: any): Promise<any>; // Creates a new sale/lead
   updateSaleStatus(id: string, status: string, observations?: string): Promise<any>; // Updates sale status
   updateSaleNotes(id: string, notes: string): Promise<any>; // Updates sale notes
+  updateSalePlan(id: string, planId: string): Promise<any>; // Updates sale plan
   getSalesDashboardMetrics(options?: { startDate?: string; endDate?: string }): Promise<{
     totals: {
       total: number;
@@ -3505,6 +3506,18 @@ export class DbStorage implements IStorage {
     const [updated] = await db.update(schema.sales)
       .set({
         notes,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.sales.id, id))
+      .returning();
+    
+    return updated;
+  }
+
+  async updateSalePlan(id: string, planId: string): Promise<any> {
+    const [updated] = await db.update(schema.sales)
+      .set({
+        planId,
         updatedAt: new Date(),
       })
       .where(eq(schema.sales.id, id))

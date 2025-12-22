@@ -42,7 +42,8 @@ import {
   FileText,
   Filter,
   Eye,
-  StickyNote
+  StickyNote,
+  RefreshCw
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -77,7 +78,8 @@ const STATUS_OPTIONS = [
   "Agendado para Instalação",
   "Instalado",
   "Cancelado",
-  "Inadimplente"
+  "Inadimplente",
+  "Sem Contato"
 ];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -87,6 +89,7 @@ const STATUS_COLORS: Record<string, string> = {
   "Instalado": "bg-emerald-600",
   "Cancelado": "bg-red-500",
   "Inadimplente": "bg-orange-500",
+  "Sem Contato": "bg-gray-500",
 };
 
 type SalesTabProps = {
@@ -104,6 +107,13 @@ export default function SalesTab({ startDate, endDate }: SalesTabProps) {
   const [statusObservations, setStatusObservations] = useState("");
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [notes, setNotes] = useState("");
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
+  const [newPlanId, setNewPlanId] = useState("");
+
+  // Buscar planos disponíveis
+  const { data: plans = [] } = useQuery<Array<{ id: string; name: string; type: string; price: number }>>({
+    queryKey: ["/api/plans"],
+  });
 
   // Buscar vendas
   const { data: allSales = [], isLoading } = useQuery<Sale[]>({
@@ -221,6 +231,44 @@ export default function SalesTab({ startDate, endDate }: SalesTabProps) {
     updateNotesMutation.mutate({
       id: selectedSale.id,
       notes: notes,
+    });
+  };
+
+  // Mutation para atualizar plano
+  const updatePlanMutation = useMutation({
+    mutationFn: async ({ id, planId }: { id: string; planId: string }) => {
+      return await apiRequest(`/api/sales/${id}/plan`, "PATCH", { planId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
+      setPlanDialogOpen(false);
+      setSelectedSale(null);
+      setNewPlanId("");
+      toast({
+        title: "Plano atualizado",
+        description: "O plano foi alterado com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o plano.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleChangePlan = (sale: Sale) => {
+    setSelectedSale(sale);
+    setNewPlanId(sale.plan?.id || "");
+    setPlanDialogOpen(true);
+  };
+
+  const handleUpdatePlan = () => {
+    if (!selectedSale || !newPlanId) return;
+    updatePlanMutation.mutate({
+      id: selectedSale.id,
+      planId: newPlanId,
     });
   };
 
@@ -404,6 +452,15 @@ export default function SalesTab({ startDate, endDate }: SalesTabProps) {
                             data-testid={`button-view-details-${sale.id}`}
                           >
                             <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleChangePlan(sale)}
+                            data-testid={`button-change-plan-${sale.id}`}
+                            title="Trocar Plano"
+                          >
+                            <RefreshCw className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="outline"
@@ -636,6 +693,58 @@ export default function SalesTab({ startDate, endDate }: SalesTabProps) {
               data-testid="button-save-notes"
             >
               {updateNotesMutation.isPending ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Trocar Plano */}
+      <Dialog open={planDialogOpen} onOpenChange={setPlanDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Trocar Plano</DialogTitle>
+            <DialogDescription>
+              Cliente: {selectedSale?.customerName}
+              {selectedSale?.plan && (
+                <span className="block text-xs mt-1">
+                  Plano atual: {selectedSale.plan.name} - R$ {selectedSale.plan.price.toFixed(2)}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Novo Plano</label>
+              <Select value={newPlanId} onValueChange={setNewPlanId}>
+                <SelectTrigger data-testid="select-new-plan">
+                  <SelectValue placeholder="Selecione o plano" />
+                </SelectTrigger>
+                <SelectContent>
+                  {plans.map((plan) => (
+                    <SelectItem key={plan.id} value={plan.id}>
+                      {plan.name} - {plan.type} - R$ {(plan.price / 100).toFixed(2)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPlanDialogOpen(false)}
+              data-testid="button-cancel-plan"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleUpdatePlan}
+              disabled={updatePlanMutation.isPending || !newPlanId}
+              data-testid="button-confirm-plan"
+            >
+              {updatePlanMutation.isPending ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -10345,6 +10345,27 @@ A resposta deve:
     }
   });
 
+  // PATCH /api/sales/:id/plan - Atualiza plano de uma venda
+  app.patch("/api/sales/:id/plan", authenticate, requireSalesAccess, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { planId } = req.body;
+
+      if (!planId) {
+        return res.status(400).json({ error: "ID do plano é obrigatório" });
+      }
+
+      const updated = await storage.updateSalePlan(id, planId);
+
+      console.log(`✅ [Sales] Plano atualizado - ID: ${id}, PlanId: ${planId}`);
+
+      return res.json(updated);
+    } catch (error) {
+      console.error("❌ [Sales] Error updating sale plan:", error);
+      return res.status(500).json({ error: "Erro ao atualizar plano da venda" });
+    }
+  });
+
   // POST /api/site-lead - Recebe cadastro de venda do site ou chat
   app.post("/api/site-lead", async (req, res) => {
     try {
