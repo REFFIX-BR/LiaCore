@@ -111,10 +111,11 @@ export default function SalesTab({ startDate, endDate }: SalesTabProps) {
   const [newPlanId, setNewPlanId] = useState("");
 
   // Buscar planos disponíveis
-  const { data: plansData = [] } = useQuery<Array<{ id: string; name: string; type: string; price: number }>>({
+  type PlanResponse = { plans: Array<{ id: string; name: string; type: string; price: number }> };
+  const { data: plansResponse } = useQuery<PlanResponse>({
     queryKey: ["/api/plans"],
   });
-  const plans = Array.isArray(plansData) ? plansData : [];
+  const plans = plansResponse?.plans || [];
 
   // Buscar vendas
   const { data: allSales = [], isLoading } = useQuery<Sale[]>({
