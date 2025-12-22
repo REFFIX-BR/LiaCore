@@ -91,7 +91,12 @@ const SOURCE_LABELS: Record<string, string> = {
   "manual": "Manual",
 };
 
-export default function LeadsTab() {
+type LeadsTabProps = {
+  startDate?: string;
+  endDate?: string;
+};
+
+export default function LeadsTab({ startDate, endDate }: LeadsTabProps) {
   const { toast } = useToast();
   const [filterStatus, setFilterStatus] = useState<string>("todos");
   const [filterSource, setFilterSource] = useState<string>("todos");
@@ -102,8 +107,25 @@ export default function LeadsTab() {
   const [statusObservations, setStatusObservations] = useState("");
 
   // Buscar todas as vendas
-  const { data: allSales = [], isLoading } = useQuery<Lead[]>({
+  const { data: allSalesRaw = [], isLoading } = useQuery<Lead[]>({
     queryKey: ["/api/sales"],
+  });
+
+  // Filtrar por data primeiro
+  const allSales = allSalesRaw.filter((sale) => {
+    if (!startDate && !endDate) return true;
+    const saleDate = new Date(sale.createdAt);
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      if (saleDate < start) return false;
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      if (saleDate > end) return false;
+    }
+    return true;
   });
 
   // Leads = apenas clientes com interesse inicial que NÃO completaram a contratação

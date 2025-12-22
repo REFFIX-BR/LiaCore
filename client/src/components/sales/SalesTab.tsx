@@ -89,7 +89,12 @@ const STATUS_COLORS: Record<string, string> = {
   "Inadimplente": "bg-orange-500",
 };
 
-export default function SalesTab() {
+type SalesTabProps = {
+  startDate?: string;
+  endDate?: string;
+};
+
+export default function SalesTab({ startDate, endDate }: SalesTabProps) {
   const { toast } = useToast();
   const [filterStatus, setFilterStatus] = useState<string>("todos");
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
@@ -101,8 +106,25 @@ export default function SalesTab() {
   const [notes, setNotes] = useState("");
 
   // Buscar vendas
-  const { data: sales = [], isLoading } = useQuery<Sale[]>({
+  const { data: allSales = [], isLoading } = useQuery<Sale[]>({
     queryKey: ["/api/sales"],
+  });
+
+  // Filtrar por data
+  const sales = allSales.filter((sale) => {
+    if (!startDate && !endDate) return true;
+    const saleDate = new Date(sale.createdAt);
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      if (saleDate < start) return false;
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      if (saleDate > end) return false;
+    }
+    return true;
   });
 
   // Mutation para atualizar status

@@ -397,7 +397,7 @@ export interface IStorage {
   addSale(sale: any): Promise<any>; // Creates a new sale/lead
   updateSaleStatus(id: string, status: string, observations?: string): Promise<any>; // Updates sale status
   updateSaleNotes(id: string, notes: string): Promise<any>; // Updates sale notes
-  getSalesDashboardMetrics(): Promise<{
+  getSalesDashboardMetrics(options?: { startDate?: string; endDate?: string }): Promise<{
     totals: {
       total: number;
       installed: number;
@@ -3513,7 +3513,7 @@ export class DbStorage implements IStorage {
     return updated;
   }
 
-  async getSalesDashboardMetrics(): Promise<{
+  async getSalesDashboardMetrics(options?: { startDate?: string; endDate?: string }): Promise<{
     totals: { total: number; installed: number; pending: number; cancelled: number; prospection: number };
     byStatus: Array<{ status: string; count: number }>;
     byNeighborhood: Array<{ neighborhood: string; city: string; count: number }>;
@@ -3524,8 +3524,26 @@ export class DbStorage implements IStorage {
     conversionRate: number;
   }> {
     // Get all sales
-    const allSales = await db.select().from(schema.sales);
+    let allSalesRaw = await db.select().from(schema.sales);
     const allPlans = await db.select().from(schema.plans);
+    
+    // Apply date filter if provided
+    const allSales = allSalesRaw.filter(s => {
+      if (!options?.startDate && !options?.endDate) return true;
+      if (!s.createdAt) return true;
+      const saleDate = new Date(s.createdAt);
+      if (options?.startDate) {
+        const start = new Date(options.startDate);
+        start.setHours(0, 0, 0, 0);
+        if (saleDate < start) return false;
+      }
+      if (options?.endDate) {
+        const end = new Date(options.endDate);
+        end.setHours(23, 59, 59, 999);
+        if (saleDate > end) return false;
+      }
+      return true;
+    });
     
     // Create plan lookup map
     const planMap = new Map(allPlans.map(p => [p.id, p.name]));

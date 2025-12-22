@@ -10254,7 +10254,8 @@ A resposta deve:
   // GET /api/sales/dashboard - Retorna métricas agregadas do dashboard de vendas
   app.get("/api/sales/dashboard", authenticate, requireSalesAccess, async (req, res) => {
     try {
-      const metrics = await storage.getSalesDashboardMetrics();
+      const { startDate, endDate } = req.query as { startDate?: string; endDate?: string };
+      const metrics = await storage.getSalesDashboardMetrics({ startDate, endDate });
       return res.json(metrics);
     } catch (error) {
       console.error("❌ [Sales Dashboard] Error fetching metrics:", error);

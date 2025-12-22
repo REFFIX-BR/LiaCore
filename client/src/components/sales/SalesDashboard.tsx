@@ -64,9 +64,25 @@ const SOURCE_LABELS: Record<string, string> = {
   "Não informado": "Não informado",
 };
 
-export default function SalesDashboard() {
+type SalesDashboardProps = {
+  startDate?: string;
+  endDate?: string;
+};
+
+export default function SalesDashboard({ startDate, endDate }: SalesDashboardProps) {
+  const queryParams = new URLSearchParams();
+  if (startDate) queryParams.append("startDate", startDate);
+  if (endDate) queryParams.append("endDate", endDate);
+  const queryString = queryParams.toString();
+  
   const { data: metrics, isLoading } = useQuery<DashboardMetrics>({
-    queryKey: ["/api/sales/dashboard"],
+    queryKey: ["/api/sales/dashboard", startDate, endDate],
+    queryFn: async () => {
+      const url = queryString ? `/api/sales/dashboard?${queryString}` : "/api/sales/dashboard";
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
   });
 
   if (isLoading) {
