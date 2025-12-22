@@ -2712,38 +2712,20 @@ Fonte: ${fonte}`;
             status: boleto.STATUS || 'DESCONHECIDO'
           }));
           
-          // CRITICAL FIX: Detect malformed boleto data from TR Telecom API
-          // If boleto exists but has undefined/empty vencimento AND valor, the API returned incomplete data
-          const boletosComDadosValidos = boletosFormatados.filter(b => 
-            b.vencimento !== 'Não disponível' || b.valor !== '0.00'
-          );
-          
+          // Log para debug - boletos com dados parciais
           const boletosComDadosIncompletos = boletosFormatados.filter(b => 
             b.vencimento === 'Não disponível' && b.valor === '0.00'
           );
           
           if (boletosComDadosIncompletos.length > 0) {
-            console.warn(`⚠️ [AI Tool Handler] ${boletosComDadosIncompletos.length} boleto(s) com dados INCOMPLETOS detectados!`);
-            console.warn(`   - Status recebido: ${boletosComDadosIncompletos.map(b => b.status).join(', ')}`);
-            
-            // If ALL boletos have incomplete data, return error status
-            if (boletosComDadosValidos.length === 0) {
-              console.error(`❌ [AI Tool Handler] TODOS os boletos têm dados incompletos - problema na API TR Telecom`);
-              return JSON.stringify({
-                status: "DADOS_INCOMPLETOS",
-                mensagem: "A API do sistema financeiro retornou boleto(s) mas com dados incompletos (vencimento e valor não disponíveis). Isso indica um problema temporário no sistema financeiro da TR Telecom.",
-                boletos_detectados: boletos.length,
-                instrucao_ia: "IMPORTANTE: Existe(m) boleto(s) no sistema, mas os dados estão incompletos no momento. Informe ao cliente que foi identificado boleto em aberto, mas que há uma instabilidade temporária no sistema que impede a visualização completa dos dados. Ofereça TRANSFERIR para um atendente humano para resolver a situação ou peça para o cliente tentar novamente em alguns minutos."
-              });
-            }
-            
-            // If some boletos have data and some don't, return valid ones with warning
-            console.warn(`⚠️ [AI Tool Handler] Retornando apenas ${boletosComDadosValidos.length} boleto(s) com dados válidos`);
+            console.log(`📋 [AI Tool Handler] ${boletosComDadosIncompletos.length} boleto(s) com dados parciais - enviando mesmo assim`);
           }
           
+          // SEMPRE retornar todos os boletos - mesmo com dados parciais
+          // O cliente pode usar link, PIX ou código de barras mesmo sem vencimento/valor
           return JSON.stringify({
             status: "success",
-            boletos: boletosComDadosValidos.length > 0 ? boletosComDadosValidos : boletosFormatados
+            boletos: boletosFormatados
           });
         } catch (error) {
           console.error("❌ [AI Tool Handler] Erro ao consultar boletos:", error);
