@@ -33,35 +33,49 @@ function normalizeEvolutionUrl(url?: string): string {
 }
 
 // Helper function to validate and normalize Evolution API instance
-// Supported instances: Principal (default), abertura (for reopenings and groups)
-type EvolutionInstance = 'Principal' | 'abertura';
+// Supported instances: Principal, Leads, Cobranca, abertura
+type EvolutionInstance = 'Principal' | 'Leads' | 'Cobranca' | 'abertura' | string;
 
-function validateEvolutionInstance(instance?: string | null): EvolutionInstance {
+function validateEvolutionInstance(instance?: string | null): string {
   if (!instance) return 'Principal';
   
-  const normalized = instance.toLowerCase();
-  if (normalized === 'abertura') {
-    return 'abertura';
+  const normalized = instance.toLowerCase().trim();
+  
+  // Map to correct casing for each instance
+  const instanceMap: Record<string, string> = {
+    'principal': 'Principal',
+    'leads': 'Leads',
+    'cobranca': 'Cobranca',
+    'cobrança': 'Cobranca',
+    'abertura': 'abertura',
+  };
+  
+  const validInstance = instanceMap[normalized];
+  if (validInstance) {
+    return validInstance;
   }
-  return 'Principal';
+  
+  // If not recognized, return as-is (allows new instances without code changes)
+  console.log(`⚠️ [Instance] Instância desconhecida "${instance}", usando como está`);
+  return instance;
 }
 
 // Helper function to get effective Evolution instance, preserving existing conversation instance
-// Priority: existingInstance > payloadInstance > default 'Leads'
+// Priority: existingInstance > payloadInstance > default 'Principal'
 // This prevents webhook handlers from overwriting conversation evolutionInstance
 function getEffectiveEvolutionInstance(
   existingInstance?: string | null,
   payloadInstance?: string | null
 ): string {
-  // PRIORITY 1: Preserve existing conversation evolutionInstance
-  if (existingInstance) {
+  // PRIORITY 1: Preserve existing conversation evolutionInstance (if valid)
+  if (existingInstance && existingInstance.trim()) {
     const validated = validateEvolutionInstance(existingInstance);
     console.log(`✅ [Instance] Preserving existing instance: ${validated}`);
     return validated;
   }
   
   // PRIORITY 2: Use payload instance if no existing instance
-  if (payloadInstance) {
+  if (payloadInstance && payloadInstance.trim()) {
     const validated = validateEvolutionInstance(payloadInstance);
     console.log(`✅ [Instance] Using payload instance: ${validated}`);
     return validated;
