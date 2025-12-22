@@ -20,10 +20,32 @@ import { extractNumberFromChatId } from './lib/phone-utils';
 import { extractCPFFromHistory, extractDocumentoFromHistory, injectCPFContext, injectDocumentoContext } from './lib/cpf-context-injector';
 
 // Helper function to validate and normalize Evolution API instance
-// Only Principal is supported
+// Supports: Principal, Leads, Cobranca, abertura
 function validateEvolutionInstance(instance?: string): string {
-  // Only Principal is supported now
-  return 'Principal';
+  if (!instance) {
+    return 'Principal'; // Default fallback
+  }
+  
+  // Normalize and validate known instances
+  const normalized = instance.toLowerCase().trim();
+  
+  // Map to correct casing for each instance
+  const instanceMap: Record<string, string> = {
+    'principal': 'Principal',
+    'leads': 'Leads',
+    'cobranca': 'Cobranca',
+    'cobrança': 'Cobranca',
+    'abertura': 'abertura',
+  };
+  
+  const validInstance = instanceMap[normalized];
+  if (validInstance) {
+    return validInstance;
+  }
+  
+  // If not recognized, return as-is (allows new instances without code changes)
+  console.log(`⚠️ [Evolution] Instância desconhecida "${instance}", usando como está`);
+  return instance;
 }
 
 // Helper function to send WhatsApp message

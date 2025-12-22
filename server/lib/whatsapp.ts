@@ -12,19 +12,40 @@ const EVOLUTION_CONFIG = {
 };
 
 // Supported Evolution API instances
-type EvolutionInstance = 'Principal' | 'abertura';
+type EvolutionInstance = 'Principal' | 'Leads' | 'Cobranca' | 'abertura' | string;
 
-function validateEvolutionInstance(rawInstance: string): EvolutionInstance {
-  const normalized = rawInstance.toLowerCase();
-  if (normalized === 'abertura') {
-    return 'abertura';
+function validateEvolutionInstance(rawInstance: string): string {
+  if (!rawInstance) {
+    return 'Principal'; // Default fallback
   }
-  return 'Principal';
+  
+  const normalized = rawInstance.toLowerCase().trim();
+  
+  // Map to correct casing for each instance
+  const instanceMap: Record<string, string> = {
+    'principal': 'Principal',
+    'leads': 'Leads',
+    'cobranca': 'Cobranca',
+    'cobrança': 'Cobranca',
+    'abertura': 'abertura',
+  };
+  
+  const validInstance = instanceMap[normalized];
+  if (validInstance) {
+    return validInstance;
+  }
+  
+  // If not recognized, return as-is (allows new instances without code changes)
+  console.log(`⚠️ [WhatsApp] Instância desconhecida "${rawInstance}", usando como está`);
+  return rawInstance;
 }
 
 function getEvolutionApiKey(instance: EvolutionInstance): string {
-  if (instance === 'abertura') {
-    return process.env.EVOLUTION_API_KEY_ABERTURA || '';
+  // Try instance-specific key first, then fallback to global
+  const instanceUpper = String(instance).toUpperCase();
+  const specificKey = process.env[`EVOLUTION_API_KEY_${instanceUpper}`];
+  if (specificKey) {
+    return specificKey;
   }
   return EVOLUTION_CONFIG.apiKey || '';
 }
