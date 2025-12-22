@@ -356,8 +356,9 @@ if (redisConnection) {
     async (job: Job<MessageProcessingJob>) => {
       const { chatId, conversationId, message, fromNumber, hasImage, imageUrl, evolutionInstance: rawEvolutionInstance, clientName, messageId, locationLatitude, locationLongitude } = job.data;
       
-      // Validate and normalize Evolution instance (Leads, Cobranca, or Principal)
-      const evolutionInstance = validateEvolutionInstance(rawEvolutionInstance);
+      // NOTE: evolutionInstance will be re-evaluated AFTER loading conversation from database
+      // The conversation's evolutionInstance (from DB) takes priority over the job's value
+      let evolutionInstance = validateEvolutionInstance(rawEvolutionInstance);
 
       // Check idempotency
       const idempotencyKey = messageId || job.id;
@@ -466,6 +467,15 @@ if (redisConnection) {
         jobId: job.id,
         hasImage,
       });
+
+      // 1.1 CRITICAL FIX: Use conversation's evolutionInstance from DB (source of truth)
+      // The conversation's instance takes priority over the job's value from webhook
+      // This ensures responses go through the correct Evolution API instance
+      const conversationInstance = (conversation as any).evolutionInstance;
+      if (conversationInstance && conversationInstance !== evolutionInstance) {
+        console.log(`🔄 [Instance Override] Job tinha "${evolutionInstance}" mas conversa tem "${conversationInstance}" - usando instância da conversa`);
+        evolutionInstance = validateEvolutionInstance(conversationInstance);
+      }
 
       // 1.5 CRITICAL: Check if conversation was administratively closed (bulk close)
       // If so, abort processing to prevent reopening OR continued AI interaction
