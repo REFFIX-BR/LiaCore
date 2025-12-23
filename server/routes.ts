@@ -1112,12 +1112,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // NOTE: admin_bulk_close check REMOVED
-      // Individual customer messages should always reopen conversations normally
-      // The previous logic was creating new conversations instead of reopening,
-      // which caused confusion and blocked legitimate customer messages
-      
+      // MASS REOPEN DETECTION: Only block if many conversations reopen in a short time
+      // This protects against Evolution API webhook replays/history dumps
       if (conversation.status === 'resolved') {
+        const { handleConversationReopen } = await import('./lib/mass-reopen-detector');
+        const reopenCheck = await handleConversationReopen(conversation.id, chatId);
+        
+        if (reopenCheck.shouldBlock) {
+          console.warn(`🛑 [Mass Reopen Test] Bloqueando reabertura em massa: ${chatId}`);
+          return res.json({ 
+            success: true, 
+            processed: false, 
+            blocked: true,
+            reason: 'mass_reopen_detected' 
+          });
+        }
+        
         // Normal reopen for non-admin-closed conversations
         // Reopen resolved conversation and reset to Apresentacao (fresh start)
         console.log(`🔄 [Reopen] Reabrindo conversa finalizada: ${chatId} - Resetando para Apresentação`);
@@ -2440,13 +2450,44 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
           });
         }
 
-        // NOTE: admin_bulk_close check REMOVED
-        // Individual customer messages should always reopen conversations normally
-        // The previous logic was creating new conversations instead of reopening,
-        // which caused confusion and blocked legitimate customer messages
-        
+        // MASS REOPEN DETECTION: Only block if many conversations reopen in a short time
+        // This protects against Evolution API webhook replays/history dumps
         if (conversation.status === 'resolved') {
-          // Normal reopen for non-admin-closed conversations
+          const { handleConversationReopen } = await import('./lib/mass-reopen-detector');
+          const reopenCheck = await handleConversationReopen(conversation.id, chatId);
+          
+          if (reopenCheck.shouldBlock) {
+            console.warn(`🛑 [Mass Reopen] Bloqueando reabertura em massa para ${clientName} (${chatId})`);
+            console.warn(`   Motivo: ${reopenCheck.reason}`);
+            
+            // Log para auditoria
+            try {
+              await storage.createActivityLog({
+                conversationId: conversation.id,
+                userId: 'system',
+                action: 'blocked_mass_reopen',
+                details: {
+                  clientName,
+                  chatId,
+                  reason: reopenCheck.reason,
+                  messageText: messageText.substring(0, 100),
+                  blockedAt: new Date().toISOString(),
+                },
+              });
+            } catch (logError) {
+              console.error(`❌ [Mass Reopen] Erro ao criar log:`, logError);
+            }
+            
+            // Return success but don't process further
+            return res.json({ 
+              success: true, 
+              processed: false, 
+              blocked: true,
+              reason: 'mass_reopen_detected' 
+            });
+          }
+          
+          // Normal reopen - passed mass detection check
           console.log(`🔄 [Conversation Reopen] Reabrindo conversa resolvida para ${clientName}`);
           
           // CRITICAL FIX: Preserve existing evolutionInstance when webhook lacks instance field
@@ -2702,8 +2743,22 @@ Qualquer coisa, estamos à disposição! 😊
           }
         }
 
-        // Handle resolved conversations that need reopening (no admin_bulk_close check needed)
+        // Handle resolved conversations that need reopening (fallback after NPS check)
         if (conversation.status === 'resolved') {
+          // MASS REOPEN DETECTION: Only block if many conversations reopen in a short time
+          const { handleConversationReopen } = await import('./lib/mass-reopen-detector');
+          const reopenCheck = await handleConversationReopen(conversation.id, chatId);
+          
+          if (reopenCheck.shouldBlock) {
+            console.warn(`🛑 [Mass Reopen NPS] Bloqueando reabertura em massa para ${clientName}`);
+            return res.json({ 
+              success: true, 
+              processed: false, 
+              blocked: true,
+              reason: 'mass_reopen_detected' 
+            });
+          }
+          
           // Normal reopen for non-admin-closed conversations
           // CAMPAIGN CONVERSATIONS: Manter assistente original (financeiro para cobranças)
           // NORMAL CONVERSATIONS: Resetar para recepcionista
