@@ -1112,77 +1112,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // 🛑 CRITICAL: Check if conversation was administratively closed (bulk close)
-      // This check happens REGARDLESS of status - if flag exists, create new conversation
-      const convMeta = conversation.metadata as any || {};
-      const npsSkipReason = convMeta?.npsSkipReason;
+      // NOTE: admin_bulk_close check REMOVED
+      // Individual customer messages should always reopen conversations normally
+      // The previous logic was creating new conversations instead of reopening,
+      // which caused confusion and blocked legitimate customer messages
       
-      if (npsSkipReason?.startsWith('admin_bulk_close')) {
-        console.log(`🆕 [Reopen New Session] Conversa ${conversation.id} foi fechada administrativamente (${npsSkipReason}) - criando NOVA conversa`);
-        console.log(`📝 [Reopen New Session] Cliente ${conversation.clientName} receberá atendimento em nova sessão (status atual: ${conversation.status})`);
-        
-        const oldConversationId = conversation.id;
-        
-        // Log para auditoria
-        try {
-          await storage.createActivityLog({
-            conversationId: oldConversationId,
-            userId: 'system',
-            action: 'new_session_after_admin_close',
-            details: {
-              clientName: conversation.clientName,
-              messageText: message.substring(0, 100),
-              npsSkipReason,
-              previousStatus: conversation.status,
-              createdAt: new Date().toISOString(),
-              reason: 'Cliente enviou mensagem após fechamento administrativo - nova sessão criada',
-            },
-          });
-        } catch (logError) {
-          console.error(`❌ [Reopen New Session] Erro ao criar log:`, logError);
-        }
-        
-        // Create NEW thread for fresh conversation
-        threadId = await createThread();
-        await storeConversationThread(chatId, threadId);
-        
-        // Create NEW conversation - old one stays closed/protected
-        const { ASSISTANT_IDS, ASSISTANT_TO_DEPARTMENT } = await import("./lib/openai");
-        conversation = await storage.createConversation({
-          chatId,
-          clientName: conversation.clientName,
-          clientId: conversation.clientId,
-          threadId,
-          assistantType: "apresentacao",
-          department: ASSISTANT_TO_DEPARTMENT["apresentacao"] || "general",
-          status: "active",
-          sentiment: "neutral",
-          urgency: "normal",
-          duration: 0,
-          lastMessage: message,
-          evolutionInstance: conversation.evolutionInstance || 'abertura',
-          metadata: { 
-            routing: {
-              assistantType: "apresentacao",
-              assistantId: ASSISTANT_IDS.apresentacao,
-              confidence: 1.0
-            },
-            source: 'reopen_after_admin_close',
-            previousConversationId: oldConversationId,
-            createdAfterAdminClose: true,
-          },
-        });
-        
-        console.log(`✅ [Reopen New Session] Nova conversa ${conversation.id} criada para ${conversation.clientName} (anterior: ${oldConversationId})`);
-        
-        prodLogger.info('conversation', 'Nova conversa criada após fechamento administrativo', {
-          conversationId: conversation.id,
-          previousConversationId: oldConversationId,
-          clientName: conversation.clientName,
-          chatId,
-          assistantType: 'apresentacao',
-        });
-      } else if (conversation.status === 'resolved') {
+      if (conversation.status === 'resolved') {
         // Normal reopen for non-admin-closed conversations
         // Reopen resolved conversation and reset to Apresentacao (fresh start)
         console.log(`🔄 [Reopen] Reabrindo conversa finalizada: ${chatId} - Resetando para Apresentação`);
@@ -2505,87 +2440,12 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
           });
         }
 
-        // 🛑 CRITICAL: Check if conversation was administratively closed (bulk close)
-        // This check happens REGARDLESS of status - if flag exists, create new conversation
-        const convMetadata = conversation.metadata as any || {};
-        const npsSkipReasonEvol = convMetadata?.npsSkipReason;
+        // NOTE: admin_bulk_close check REMOVED
+        // Individual customer messages should always reopen conversations normally
+        // The previous logic was creating new conversations instead of reopening,
+        // which caused confusion and blocked legitimate customer messages
         
-        console.log(`🔍 [Admin Close Check] Conversa ${conversation.id}:`, {
-          status: conversation.status,
-          npsSkipReason: npsSkipReasonEvol,
-          hasFlag: !!npsSkipReasonEvol?.startsWith('admin_bulk_close'),
-          fullMetadata: JSON.stringify(convMetadata).substring(0, 200)
-        });
-        
-        if (npsSkipReasonEvol?.startsWith('admin_bulk_close')) {
-          console.log(`🆕 [New Session] Conversa ${conversation.id} foi fechada administrativamente (${npsSkipReasonEvol}) - criando NOVA conversa`);
-          console.log(`📝 [New Session] Cliente ${clientName} receberá atendimento em nova sessão (status atual: ${conversation.status})`);
-          
-          const oldConversationId = conversation.id;
-          
-          // Log para auditoria
-          try {
-            await storage.createActivityLog({
-              conversationId: oldConversationId,
-              userId: 'system',
-              action: 'new_session_after_admin_close',
-              details: {
-                clientName,
-                messageText: messageText.substring(0, 100),
-                npsSkipReason: npsSkipReasonEvol,
-                previousStatus: conversation.status,
-                createdAt: new Date().toISOString(),
-                reason: 'Cliente enviou mensagem após fechamento administrativo - nova sessão criada via Evolution',
-              },
-            });
-          } catch (logError) {
-            console.error(`❌ [New Session] Erro ao criar log:`, logError);
-          }
-          
-          // Create NEW thread for fresh conversation
-          threadId = await createThread();
-          await storeConversationThread(chatId, threadId);
-          
-          // Create NEW conversation - old one stays closed/protected
-          const { ASSISTANT_IDS, ASSISTANT_TO_DEPARTMENT } = await import("./lib/openai");
-          conversation = await storage.createConversation({
-            chatId,
-            clientName,
-            clientId: phoneNumber,
-            threadId,
-            assistantType: "apresentacao",
-            department: ASSISTANT_TO_DEPARTMENT["apresentacao"] || "general",
-            status: "active",
-            sentiment: "neutral",
-            urgency: "normal",
-            duration: 0,
-            lastMessage: messageText,
-            evolutionInstance: instance,
-            metadata: { 
-              routing: {
-                assistantType: "apresentacao",
-                assistantId: ASSISTANT_IDS.apresentacao,
-                confidence: 1.0
-              },
-              source: 'evolution_api',
-              instance,
-              remoteJid,
-              previousConversationId: oldConversationId,
-              createdAfterAdminClose: true,
-            },
-          });
-          
-          console.log(`✅ [New Session] Nova conversa ${conversation.id} criada para ${clientName} (anterior: ${oldConversationId})`);
-          
-          prodLogger.info('conversation', 'Nova conversa criada após fechamento administrativo', {
-            conversationId: conversation.id,
-            previousConversationId: oldConversationId,
-            phoneNumber,
-            clientName,
-            chatId,
-            assistantType: 'apresentacao',
-          });
-        } else if (conversation.status === 'resolved') {
+        if (conversation.status === 'resolved') {
           // Normal reopen for non-admin-closed conversations
           console.log(`🔄 [Conversation Reopen] Reabrindo conversa resolvida para ${clientName}`);
           
@@ -2842,9 +2702,8 @@ Qualquer coisa, estamos à disposição! 😊
           }
         }
 
-        // Note: admin_bulk_close check already handled earlier in this function
-        // This block only handles normal resolved conversations that need reopening
-        if (conversation.status === 'resolved' && !npsSkipReasonEvol?.startsWith('admin_bulk_close')) {
+        // Handle resolved conversations that need reopening (no admin_bulk_close check needed)
+        if (conversation.status === 'resolved') {
           // Normal reopen for non-admin-closed conversations
           // CAMPAIGN CONVERSATIONS: Manter assistente original (financeiro para cobranças)
           // NORMAL CONVERSATIONS: Resetar para recepcionista

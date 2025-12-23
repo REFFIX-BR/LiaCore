@@ -477,47 +477,11 @@ if (redisConnection) {
         evolutionInstance = validateEvolutionInstance(conversationInstance);
       }
 
-      // 1.5 CRITICAL: Check if conversation was administratively closed (bulk close)
-      // If so, abort processing to prevent reopening OR continued AI interaction
-      // NOTE: Check flag regardless of current status - conversation may have been reopened by race condition
-      const npsSkipReason = (conversation.metadata as any)?.npsSkipReason;
-      if (npsSkipReason?.startsWith('admin_bulk_close')) {
-        console.log(`🛑 [Worker] Conversa ${conversationId} tem flag admin_bulk_close (${npsSkipReason}) - abortando processamento`);
-        console.log(`   Status atual: ${conversation.status} - fechando automaticamente`);
-        
-        // Auto-close the conversation if it was reopened by race condition
-        if (conversation.status !== 'resolved') {
-          try {
-            await storage.resolveConversation({
-              conversationId,
-              resolvedBy: null,
-              autoClosed: true,
-              autoClosedReason: 'worker_admin_close_guard',
-              autoClosedAt: new Date(),
-            });
-            console.log(`✅ [Worker] Conversa ${conversationId} fechada automaticamente pelo guard`);
-          } catch (closeError) {
-            console.error(`❌ [Worker] Erro ao fechar conversa:`, closeError);
-          }
-        }
-        
-        // Mark job as processed to prevent retry
-        await markJobProcessed(idempotencyKey!);
-        
-        prodLogger.info('worker', 'Skipped - conversation administratively closed', {
-          conversationId,
-          npsSkipReason,
-          jobId: job.id,
-          autoClosedByGuard: conversation.status !== 'resolved',
-        });
-        
-        return {
-          success: true,
-          skipped: true,
-          reason: 'conversation_admin_closed',
-          npsSkipReason,
-        };
-      }
+      // 1.5 NOTE: admin_bulk_close protection REMOVED
+      // Individual customer messages should always be processed normally
+      // The flag was causing legitimate customer messages to be blocked
+      // If mass reopen detection is needed in the future, it should be implemented
+      // at the webhook level with proper rate limiting, not by blocking messages
 
       // 2. Cancelar follow-up de inatividade e auto-closure (cliente respondeu)
       try {
