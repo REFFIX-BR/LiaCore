@@ -1112,23 +1112,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // MASS REOPEN DETECTION: Only block if many conversations reopen in a short time
-      // This protects against Evolution API webhook replays/history dumps
       if (conversation.status === 'resolved') {
-        const { handleConversationReopen } = await import('./lib/mass-reopen-detector');
-        const reopenCheck = await handleConversationReopen(conversation.id, chatId);
-        
-        if (reopenCheck.shouldBlock) {
-          console.warn(`🛑 [Mass Reopen Test] Bloqueando reabertura em massa: ${chatId}`);
-          return res.json({ 
-            success: true, 
-            processed: false, 
-            blocked: true,
-            reason: 'mass_reopen_detected' 
-          });
-        }
-        
-        // Normal reopen for non-admin-closed conversations
+        // Normal reopen for resolved conversations
         // Reopen resolved conversation and reset to Apresentacao (fresh start)
         console.log(`🔄 [Reopen] Reabrindo conversa finalizada: ${chatId} - Resetando para Apresentação`);
         
@@ -2450,44 +2435,8 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
           });
         }
 
-        // MASS REOPEN DETECTION: Only block if many conversations reopen in a short time
-        // This protects against Evolution API webhook replays/history dumps
         if (conversation.status === 'resolved') {
-          const { handleConversationReopen } = await import('./lib/mass-reopen-detector');
-          const reopenCheck = await handleConversationReopen(conversation.id, chatId);
-          
-          if (reopenCheck.shouldBlock) {
-            console.warn(`🛑 [Mass Reopen] Bloqueando reabertura em massa para ${clientName} (${chatId})`);
-            console.warn(`   Motivo: ${reopenCheck.reason}`);
-            
-            // Log para auditoria
-            try {
-              await storage.createActivityLog({
-                conversationId: conversation.id,
-                userId: 'system',
-                action: 'blocked_mass_reopen',
-                details: {
-                  clientName,
-                  chatId,
-                  reason: reopenCheck.reason,
-                  messageText: messageText.substring(0, 100),
-                  blockedAt: new Date().toISOString(),
-                },
-              });
-            } catch (logError) {
-              console.error(`❌ [Mass Reopen] Erro ao criar log:`, logError);
-            }
-            
-            // Return success but don't process further
-            return res.json({ 
-              success: true, 
-              processed: false, 
-              blocked: true,
-              reason: 'mass_reopen_detected' 
-            });
-          }
-          
-          // Normal reopen - passed mass detection check
+          // Normal reopen - always process customer messages
           console.log(`🔄 [Conversation Reopen] Reabrindo conversa resolvida para ${clientName}`);
           
           // CRITICAL FIX: Preserve existing evolutionInstance when webhook lacks instance field
@@ -2523,6 +2472,17 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
             clientName,
             chatId,
           });
+          
+          // MASS REOPEN MONITORING: Track reopen rate per instance (logging only, never blocks)
+          try {
+            const { handleConversationReopen } = await import('./lib/mass-reopen-detector');
+            const reopenCheck = await handleConversationReopen(conversation.id, chatId, instance);
+            if (reopenCheck.shouldAlert) {
+              console.warn(`📊 [Mass Reopen Monitor] Alta taxa de reaberturas na instância "${instance}": ${reopenCheck.count} (motivo: ${reopenCheck.reason})`);
+            }
+          } catch (monitorError) {
+            console.error(`❌ [Mass Reopen Monitor] Erro ao monitorar:`, monitorError);
+          }
         }
 
         // Check if this is NPS feedback BEFORE reopening conversation
@@ -2745,21 +2705,7 @@ Qualquer coisa, estamos à disposição! 😊
 
         // Handle resolved conversations that need reopening (fallback after NPS check)
         if (conversation.status === 'resolved') {
-          // MASS REOPEN DETECTION: Only block if many conversations reopen in a short time
-          const { handleConversationReopen } = await import('./lib/mass-reopen-detector');
-          const reopenCheck = await handleConversationReopen(conversation.id, chatId);
-          
-          if (reopenCheck.shouldBlock) {
-            console.warn(`🛑 [Mass Reopen NPS] Bloqueando reabertura em massa para ${clientName}`);
-            return res.json({ 
-              success: true, 
-              processed: false, 
-              blocked: true,
-              reason: 'mass_reopen_detected' 
-            });
-          }
-          
-          // Normal reopen for non-admin-closed conversations
+          // Normal reopen for all resolved conversations - always process customer messages
           // CAMPAIGN CONVERSATIONS: Manter assistente original (financeiro para cobranças)
           // NORMAL CONVERSATIONS: Resetar para recepcionista
           const isCampaignConversation = conversation.conversationSource === 'whatsapp_campaign' || 
@@ -4789,6 +4735,27 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
       console.error("❌ [ADMIN] Erro ao resolver conversas antigas:", error);
       return res.status(500).json({ 
         error: "Erro ao resolver conversas antigas", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+
+  // ADMIN: Get mass reopen detection statistics
+  app.get("/api/admin/mass-reopen-stats", authenticate, requireAdmin, async (req, res) => {
+    try {
+      const { getReopenStats } = await import('./lib/mass-reopen-detector');
+      const stats = await getReopenStats();
+      
+      return res.json({
+        success: true,
+        ...stats,
+        message: `${stats.count} reaberturas nos últimos ${stats.windowSeconds}s (limite: ${stats.threshold})`,
+        isBlocking: stats.count >= stats.threshold,
+      });
+    } catch (error) {
+      console.error("❌ [ADMIN] Erro ao buscar estatísticas de reabertura:", error);
+      return res.status(500).json({ 
+        error: "Erro ao buscar estatísticas", 
         details: error instanceof Error ? error.message : String(error) 
       });
     }

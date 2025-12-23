@@ -1,8 +1,9 @@
 import { redis } from './redis-config';
 
-const MASS_REOPEN_KEY = 'cortex:mass_reopen:counter';
+const MASS_REOPEN_KEY_PREFIX = 'cortex:mass_reopen:';
 const MASS_REOPEN_WINDOW_SECONDS = 60;
-const MASS_REOPEN_THRESHOLD = 10;
+const MASS_REOPEN_THRESHOLD = 15;
+const MASS_REOPEN_ALERT_THRESHOLD = 8;
 
 interface MassReopenCheck {
   isMassReopen: boolean;
@@ -11,13 +12,14 @@ interface MassReopenCheck {
   windowSeconds: number;
 }
 
-export async function checkMassReopen(): Promise<MassReopenCheck> {
+export async function checkMassReopen(instance: string = 'global'): Promise<MassReopenCheck> {
   try {
     if (!redis) {
       return { isMassReopen: false, currentCount: 0, threshold: MASS_REOPEN_THRESHOLD, windowSeconds: MASS_REOPEN_WINDOW_SECONDS };
     }
 
-    const currentCount = await redis.get<string>(MASS_REOPEN_KEY);
+    const key = `${MASS_REOPEN_KEY_PREFIX}${instance}`;
+    const currentCount = await redis.get<string>(key);
     const count = parseInt(currentCount || '0', 10);
 
     return {
@@ -32,13 +34,13 @@ export async function checkMassReopen(): Promise<MassReopenCheck> {
   }
 }
 
-export async function incrementReopenCounter(): Promise<number> {
+export async function incrementReopenCounter(instance: string = 'global'): Promise<number> {
   try {
     if (!redis) {
       return 0;
     }
 
-    const key = MASS_REOPEN_KEY;
+    const key = `${MASS_REOPEN_KEY_PREFIX}${instance}`;
     const count = await redis.incr(key);
     
     if (count === 1) {
@@ -52,25 +54,38 @@ export async function incrementReopenCounter(): Promise<number> {
   }
 }
 
-export async function handleConversationReopen(conversationId: string, chatId: string): Promise<{ shouldBlock: boolean; reason?: string }> {
-  const count = await incrementReopenCounter();
-  const check = await checkMassReopen();
+export async function handleConversationReopen(
+  conversationId: string, 
+  chatId: string,
+  instance: string = 'global'
+): Promise<{ shouldBlock: boolean; shouldAlert: boolean; reason?: string; count: number }> {
+  const count = await incrementReopenCounter(instance);
+  const check = await checkMassReopen(instance);
 
   if (check.isMassReopen) {
-    console.warn(`🛑 [MassReopen] BLOQUEADO: Detectada reabertura em massa (${count}/${check.threshold} em ${check.windowSeconds}s)`);
+    console.warn(`🛑 [MassReopen] ALERTA CRÍTICO: Detectada reabertura em massa na instância "${instance}" (${count}/${check.threshold} em ${check.windowSeconds}s)`);
     console.warn(`   Conversa: ${conversationId}, ChatId: ${chatId}`);
+    console.warn(`   ⚠️ Mensagem será processada mas marcada como suspeita`);
     
     return {
-      shouldBlock: true,
+      shouldBlock: false,
+      shouldAlert: true,
       reason: `mass_reopen_detected_${count}_in_${check.windowSeconds}s`,
+      count,
     };
   }
 
-  if (count >= 5) {
-    console.log(`⚠️ [MassReopen] Alerta: ${count} reaberturas nos últimos ${check.windowSeconds}s (limite: ${check.threshold})`);
+  if (count >= MASS_REOPEN_ALERT_THRESHOLD) {
+    console.log(`⚠️ [MassReopen] Alerta: ${count} reaberturas na instância "${instance}" nos últimos ${check.windowSeconds}s (limite: ${check.threshold})`);
+    return {
+      shouldBlock: false,
+      shouldAlert: true,
+      reason: `approaching_threshold_${count}`,
+      count,
+    };
   }
 
-  return { shouldBlock: false };
+  return { shouldBlock: false, shouldAlert: false, count };
 }
 
 export async function getReopenStats(): Promise<{ count: number; threshold: number; windowSeconds: number }> {
