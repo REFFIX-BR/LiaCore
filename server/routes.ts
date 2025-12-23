@@ -9724,6 +9724,7 @@ A resposta deve:
       const sendUrl = `${finalUrl}/message/sendText/${instance}`;
       
       console.log(`📤 [Groups] Sending message to group ${group.name} via ${sendUrl}`);
+      console.log(`📤 [Groups] GroupId: ${group.groupId}, Instance: ${instance}, HasApiKey: ${!!apiKey}`);
 
       const response = await fetch(sendUrl, {
         method: 'POST',
@@ -9739,8 +9740,9 @@ A resposta deve:
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`❌ [Groups] Error sending message to Evolution API:`, errorText);
-        return res.status(500).json({ error: "Failed to send message to WhatsApp" });
+        console.error(`❌ [Groups] Error sending message to Evolution API (${response.status}):`, errorText);
+        console.error(`❌ [Groups] Request details: { groupId: ${group.groupId}, instance: ${instance}, url: ${sendUrl} }`);
+        return res.status(500).json({ error: "Failed to send message to WhatsApp", details: errorText });
       }
 
       const result = await response.json();
