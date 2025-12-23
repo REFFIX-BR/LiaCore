@@ -2693,6 +2693,12 @@ Fonte: ${fonte}`;
           
           // Formatar resposta com mensagem clara para a IA
           if (!boletos || boletos.length === 0) {
+            // CRITICAL DEBUG: Log when API returns 0 boletos to help diagnose issues
+            console.warn(`⚠️ [Boletos DEBUG] API retornou ZERO boletos para conversa ${conversationId}`);
+            console.warn(`⚠️ [Boletos DEBUG] Documento utilizado: ${documentoNormalizado.slice(0, 3)}***${documentoNormalizado.slice(-2)} (mascarado)`);
+            console.warn(`⚠️ [Boletos DEBUG] Tipo documento: ${documentoNormalizado.length === 11 ? 'CPF' : documentoNormalizado.length === 14 ? 'CNPJ' : 'DESCONHECIDO'}`);
+            console.warn(`⚠️ [Boletos DEBUG] Isso pode indicar: (1) Cliente realmente em dia, (2) Problema temporário na API, (3) CPF incorreto`);
+            
             return JSON.stringify({
               status: "EM_DIA",
               mensagem: "Cliente está EM DIA - sem boletos pendentes, vencidos ou em aberto.",
