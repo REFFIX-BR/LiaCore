@@ -88,9 +88,10 @@ export async function handleConversationReopen(
   return { shouldBlock: false, shouldAlert: false, count };
 }
 
-export async function getReopenStats(): Promise<{ count: number; threshold: number; windowSeconds: number }> {
-  const check = await checkMassReopen();
+export async function getReopenStats(instance: string = 'global'): Promise<{ count: number; threshold: number; windowSeconds: number; instance: string }> {
+  const check = await checkMassReopen(instance);
   return {
+    instance,
     count: check.currentCount,
     threshold: check.threshold,
     windowSeconds: check.windowSeconds,

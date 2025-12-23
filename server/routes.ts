@@ -2476,9 +2476,9 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
           // MASS REOPEN MONITORING: Track reopen rate per instance (logging only, never blocks)
           try {
             const { handleConversationReopen } = await import('./lib/mass-reopen-detector');
-            const reopenCheck = await handleConversationReopen(conversation.id, chatId, instance);
+            const reopenCheck = await handleConversationReopen(conversation.id, chatId, effectiveInstance);
             if (reopenCheck.shouldAlert) {
-              console.warn(`📊 [Mass Reopen Monitor] Alta taxa de reaberturas na instância "${instance}": ${reopenCheck.count} (motivo: ${reopenCheck.reason})`);
+              console.warn(`📊 [Mass Reopen Monitor] Alta taxa de reaberturas na instância "${effectiveInstance}": ${reopenCheck.count} (motivo: ${reopenCheck.reason})`);
             }
           } catch (monitorError) {
             console.error(`❌ [Mass Reopen Monitor] Erro ao monitorar:`, monitorError);
@@ -4740,17 +4740,39 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
     }
   });
 
-  // ADMIN: Get mass reopen detection statistics
+  // ADMIN: Get mass reopen detection statistics (per instance)
   app.get("/api/admin/mass-reopen-stats", authenticate, requireAdmin, async (req, res) => {
     try {
       const { getReopenStats } = await import('./lib/mass-reopen-detector');
-      const stats = await getReopenStats();
+      const instances = ['Principal', 'Leads', 'Cobrança', 'Abertura'];
+      
+      // Get stats for all Evolution instances
+      const statsPromises = instances.map(instance => getReopenStats(instance));
+      const allStats = await Promise.all(statsPromises);
+      
+      // Create a map of instance stats
+      const instanceStats = allStats.reduce((acc, stat) => {
+        acc[stat.instance] = {
+          count: stat.count,
+          threshold: stat.threshold,
+          windowSeconds: stat.windowSeconds,
+          isAlert: stat.count >= 8,
+          isCritical: stat.count >= stat.threshold,
+        };
+        return acc;
+      }, {} as Record<string, any>);
+      
+      // Calculate totals
+      const totalReopens = allStats.reduce((sum, s) => sum + s.count, 0);
       
       return res.json({
         success: true,
-        ...stats,
-        message: `${stats.count} reaberturas nos últimos ${stats.windowSeconds}s (limite: ${stats.threshold})`,
-        isBlocking: stats.count >= stats.threshold,
+        instances: instanceStats,
+        total: totalReopens,
+        threshold: allStats[0]?.threshold || 15,
+        windowSeconds: allStats[0]?.windowSeconds || 60,
+        message: `${totalReopens} reaberturas totais (por instância nos últimos 60s)`,
+        note: 'Sistema não bloqueia mensagens - apenas monitora e alerta',
       });
     } catch (error) {
       console.error("❌ [ADMIN] Erro ao buscar estatísticas de reabertura:", error);
