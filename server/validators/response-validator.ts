@@ -478,6 +478,144 @@ function validateAppointmentConfirmations(ctx: ValidationContext): ValidationRes
 }
 
 /**
+ * Regra 7: Detecta afirmações sobre status de boletos SEM ter chamado consultar_boleto_cliente
+ * v1.1 - CRÍTICA: Casos reais de alucinação (Lohaine, Carla)
+ * 
+ * PROBLEMA: IA disse "não há boletos pendentes" ou "está em dia" sem chamar a API
+ */
+function validateBoletoStatusClaims(ctx: ValidationContext): ValidationResult | null {
+  const { response, functionCalls, assistantType } = ctx;
+  
+  // Só aplica para assistentes que lidam com boletos
+  if (assistantType && !['financeiro', 'recepcao', 'recepcionista'].includes(assistantType)) {
+    return null;
+  }
+  
+  // Padrões que indicam AFIRMAÇÃO sobre status de pagamento/boleto
+  const BOLETO_STATUS_CLAIMS = [
+    // Afirmações de que está em dia
+    /você está em dia/i,
+    /sua conta está em dia/i,
+    /está tudo (em dia|regularizado|ok|certo)/i,
+    /situação (está )?regularizada/i,
+    /não há (nenhuma? )?(pendência|débito|boleto)/i,
+    /sem (pendência|débito|boleto)/i,
+    
+    // Afirmações de que não encontrou boletos
+    /não (há|existe|tem|encontrei|localizei) boleto/i,
+    /não (há|existe|tem|encontrei) (nenhum |nenhuma )?(fatura|conta|cobrança)/i,
+    /verifiquei (aqui |e )?não (há|tem|encontrei)/i,
+    /consultei e não (há|tem|encontrei)/i,
+    
+    // Afirmações sobre pagamento identificado (sem ter verificado)
+    /pagamento (já )?(foi )?(identificado|confirmado|processado)/i,
+    /seu pagamento (já )?consta/i,
+    
+    // Confirmações de "tudo certo" com cobrança
+    /não há (nada|nenhuma cobrança) (pendente|em aberto)/i,
+  ];
+  
+  // Frases que LEGITIMAM a afirmação (mencionam resultado da API)
+  const LEGITIMATE_RESULT_INDICATORS = [
+    /boleto.{0,30}(vencimento|valor|R\$)/i,
+    /fatura.{0,30}(vencimento|valor|R\$)/i,
+    /código de barras/i,
+    /pix copia e cola/i,
+    /link.{0,20}boleto/i,
+    /R\$\s*\d+[.,]\d{2}/i, // Valor monetário específico
+  ];
+  
+  // Verificar se chamou função de consulta de boleto
+  const BOLETO_FUNCTIONS = [
+    'consultar_boleto_cliente',
+    'consultar_boleto',
+    'consultar_faturas',
+    'verificar_pagamento',
+  ];
+  
+  const hasBoletoFunction = functionCalls?.some(fc => 
+    BOLETO_FUNCTIONS.includes(fc.name)
+  );
+  
+  if (hasBoletoFunction) {
+    return null; // OK - chamou função de boleto
+  }
+  
+  // Verificar se resposta tem dados reais de boleto (resultado de consulta anterior)
+  const hasLegitimateResult = LEGITIMATE_RESULT_INDICATORS.some(p => p.test(response));
+  if (hasLegitimateResult) {
+    return null; // OK - resposta contém dados reais
+  }
+  
+  // Verificar se está fazendo afirmação sobre status sem ter consultado
+  for (const pattern of BOLETO_STATUS_CLAIMS) {
+    if (pattern.test(response)) {
+      const match = response.match(pattern)?.[0] || '';
+      
+      return {
+        valid: false,
+        severity: 'block',
+        rule: 'boleto_status_without_api',
+        message: `🚨 ALUCINAÇÃO: Afirmou status de boleto sem chamar consultar_boleto_cliente(): "${match}"`,
+        originalResponse: response,
+      };
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Regra 8: Detecta afirmações sobre endereço não encontrado SEM ter consultado pontos
+ * v1.1 - Caso real: Carla (cliente com 1 ponto, IA disse "não encontrei endereço")
+ */
+function validateAddressNotFoundClaims(ctx: ValidationContext): ValidationResult | null {
+  const { response, functionCalls } = ctx;
+  
+  // Padrões que indicam "não encontrei endereço"
+  const ADDRESS_NOT_FOUND_CLAIMS = [
+    /não (encontrei|localizei|identifiquei).{0,30}endereço/i,
+    /não (encontrei|localizei).{0,30}ponto/i,
+    /endereço.{0,20}não (encontrado|localizado|identificado)/i,
+    /não (há|existe|tem).{0,20}(esse|este) endereço/i,
+    /não (consigo|consegui) (identificar|localizar).{0,20}endereço/i,
+  ];
+  
+  // Funções que consultam pontos/endereços
+  const ADDRESS_FUNCTIONS = [
+    'consultar_boleto_cliente', // Retorna hasMultiplePoints
+    'consultar_cliente',
+    'check_pppoe_status',
+    'buscar_pontos_instalacao',
+  ];
+  
+  const hasAddressFunction = functionCalls?.some(fc => 
+    ADDRESS_FUNCTIONS.includes(fc.name)
+  );
+  
+  if (hasAddressFunction) {
+    return null; // OK - consultou pontos
+  }
+  
+  // Verificar se está fazendo afirmação sobre endereço não encontrado
+  for (const pattern of ADDRESS_NOT_FOUND_CLAIMS) {
+    if (pattern.test(response)) {
+      const match = response.match(pattern)?.[0] || '';
+      
+      return {
+        valid: false,
+        severity: 'block',
+        rule: 'address_not_found_without_api',
+        message: `🚨 ALUCINAÇÃO: Afirmou "não encontrei endereço" sem consultar pontos: "${match}"`,
+        originalResponse: response,
+      };
+    }
+  }
+  
+  return null;
+}
+
+/**
  * Executa todas as validações e retorna resultado consolidado
  */
 export function validateAIResponse(ctx: ValidationContext): ValidationOutput {
@@ -491,6 +629,8 @@ export function validateAIResponse(ctx: ValidationContext): ValidationOutput {
     validateScopeViolation,
     validateResponseLength,
     validateAppointmentConfirmations, // v1.0 - Anti-alucinação para agendamentos
+    validateBoletoStatusClaims,       // v1.1 - Anti-alucinação para boletos
+    validateAddressNotFoundClaims,    // v1.1 - Anti-alucinação para endereços
   ];
   
   for (const rule of rules) {
