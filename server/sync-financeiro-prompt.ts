@@ -15,7 +15,7 @@ async function syncFinanceiroPrompt() {
     throw new Error("OPENAI_FINANCEIRO_ASSISTANT_ID not found");
   }
   
-  const promptPath = path.join(__dirname, "prompts", "financeiro-assistant-prompt-v1.1-melhorado.md");
+  const promptPath = path.join(__dirname, "prompts", "financeiro-assistant-prompt-v2.md");
   const newInstructions = fs.readFileSync(promptPath, "utf-8");
   
   console.log(`📝 Syncing financeiro prompt (${newInstructions.length} chars)...`);
