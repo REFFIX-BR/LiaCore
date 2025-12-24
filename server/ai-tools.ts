@@ -383,10 +383,27 @@ export async function consultaBoletoCliente(
       throw new Error("Conversa não encontrada - contexto de segurança inválido");
     }
 
-    // CRÍTICO: Validação de documento usando valor do BANCO DE DADOS (fonte confiável)
-    // Não confiar em parâmetros do caller - usar apenas dados persistidos
-    // Normalizar documentos (remover formatação) antes de comparar
-    const documentoNormalizado = documento.replace(/\D/g, '');
+    // ============================================================
+    // 🚨 VALIDAÇÃO FATAL: CPF/CNPJ É OBRIGATÓRIO PARA CONSULTA
+    // ============================================================
+    // Se o documento não foi fornecido, a função DEVE FALHAR com erro explícito.
+    // NÃO retornar array vazio - isso faz a IA alucinar "não há boletos".
+    // A IA deve receber um ERRO claro para pedir o CPF ao cliente.
+    
+    const documentoNormalizado = documento?.replace(/\D/g, '') || '';
+    
+    if (!documentoNormalizado || documentoNormalizado.length < 11) {
+      console.error(`❌ [AI Tool FATAL] Tentativa de consulta de boletos SEM CPF válido`);
+      console.error(`❌ [AI Tool FATAL] Documento recebido: "${documento || '(vazio)'}" -> normalizado: "${documentoNormalizado || '(vazio)'}"`);
+      console.error(`❌ [AI Tool FATAL] ConversationId: ${conversationContext.conversationId}`);
+      
+      // ERRO FATAL com mensagem clara para a IA
+      throw new Error(
+        "ERRO: Não foi possível consultar boletos porque o CPF não foi fornecido. " +
+        "Por favor, PEÇA O CPF ao cliente antes de tentar consultar boletos. " +
+        "NUNCA afirme que 'não há boletos' sem ter o CPF e fazer a consulta."
+      );
+    }
     const clientDocumentNormalizado = conversation.clientDocument?.replace(/\D/g, '');
     
     // AUDITORIA: Logar quando cliente consulta CPF diferente do seu (ex: familiar)
