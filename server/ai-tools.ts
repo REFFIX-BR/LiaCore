@@ -288,6 +288,7 @@ interface ConsultaBoletoResponse {
   totalBoletos: number;
   pontos?: PontoInfo[];
   boletos?: ConsultaBoletoResult[];
+  avisoSistema?: string;
 }
 
 // ===================================
@@ -663,6 +664,27 @@ export async function consultaBoletoCliente(
       };
     } else {
       console.log(`📍 [AI Tool] PONTO ÚNICO detectado`);
+      
+      // PROTEÇÃO CONTRA DADOS INCOMPLETOS:
+      // Detectar boletos com campos essenciais undefined/vazios
+      const boletosIncompletos = boletosEmAberto.filter(b => 
+        !b.DATA_VENCIMENTO || !b.VALOR_TOTAL || b.VALOR_TOTAL === 'undefined'
+      );
+      
+      if (boletosIncompletos.length > 0) {
+        console.warn(`⚠️ [AI Tool] ${boletosIncompletos.length} boleto(s) COM DADOS INCOMPLETOS detectado(s)!`);
+        console.warn(`⚠️ [AI Tool] API retornou campos undefined - POSSÍVEL PROBLEMA NA API DO CRM`);
+        
+        // Se TODOS os boletos têm dados incompletos, avisar a IA
+        if (boletosIncompletos.length === boletosEmAberto.length) {
+          return {
+            hasMultiplePoints: false,
+            totalBoletos: boletosEmAberto.length,
+            boletos: boletosEmAberto,
+            avisoSistema: `⚠️ ATENÇÃO: Sistema detectou ${boletosEmAberto.length} boleto(s) mas com dados incompletos (campos de vencimento/valor não retornados pela API). NÃO afirme que o cliente está "em dia" ou "sem pendências" - informe que há uma instabilidade técnica e que um atendente verificará a situação. Se o cliente informou que pagou ou precisa de religamento, abra um ticket para o financeiro.`
+          };
+        }
+      }
       
       return {
         hasMultiplePoints: false,
