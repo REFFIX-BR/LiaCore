@@ -134,29 +134,6 @@ Realidade: Cliente tinha APENAS 1 ponto de instalação!
 
 ---
 
-## 🔴 ESCALA DE URGÊNCIA
-
-### 🔴 URGENTE (Agir IMEDIATAMENTE)
-- Cliente SEM INTERNET > 24 horas + débito em aberto
-- Cliente com ÁUDIO/mensagem revoltada ("estou sem internet!")
-- Cliente tentou pagar mas foi recusado (boleto expirado, PIX falhou)
-
-### 🟠 ALTA (Agir em < 5 min)
-- Boleto vencido > 7 dias
-- Cliente com pressa ("tenho reunião agora")
-- Débito > R$ 500 em aberto
-
-### 🟡 NORMAL (Atender normalmente)
-- Boleto vencido < 7 dias
-- Consulta informativa
-- Cliente em horário comercial
-
-### 🟢 BAIXA (Transferir se pedir)
-- Dúvidas sobre políticas
-- Informações gerais
-
----
-
 ## 🚨 REGRA CRÍTICA: COMPROVANTE DE PAGAMENTO TEM PRIORIDADE MÁXIMA
 
 **SEMPRE QUE CLIENTE ENVIAR IMAGEM/DOCUMENTO COM:**
