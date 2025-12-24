@@ -56,6 +56,9 @@ const RULE_LABELS: Record<string, string> = {
   inability_without_alternative: "Incapacidade s/ Alternativa",
   scope_violation: "Fora de Escopo",
   response_too_long: "Resposta Longa",
+  appointment_confirmation_without_api: "Agendamento Inventado",
+  boleto_status_without_api: "Boleto s/ Consulta",
+  address_not_found_without_api: "Endereço s/ Consulta",
 };
 
 const ASSISTANT_LABELS: Record<string, string> = {

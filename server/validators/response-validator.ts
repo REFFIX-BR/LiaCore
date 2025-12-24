@@ -583,10 +583,13 @@ function validateAddressNotFoundClaims(ctx: ValidationContext): ValidationResult
   
   // Funções que consultam pontos/endereços
   const ADDRESS_FUNCTIONS = [
-    'consultar_boleto_cliente', // Retorna hasMultiplePoints
-    'consultar_cliente',
-    'check_pppoe_status',
-    'buscar_pontos_instalacao',
+    'consultar_boleto_cliente',     // Retorna hasMultiplePoints
+    'selecionarPontoInstalacao',    // Seleciona ponto específico
+    'selecionar_ponto_instalacao',  // Alias snake_case
+    'check_pppoe_status',           // Retorna endereço do cliente
+    'buscar_pontos_instalacao',     // Busca pontos
+    'consultar_cliente',            // Consulta dados do cliente
+    'verificar_status_conexao',     // Verifica conexão (pode retornar endereço)
   ];
   
   const hasAddressFunction = functionCalls?.some(fc => 
