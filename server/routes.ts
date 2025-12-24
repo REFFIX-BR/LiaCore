@@ -8664,8 +8664,8 @@ A resposta deve:
   });
 
   // Endpoint to clear agent logs
-  app.post("/api/agent-logs/clear", authenticate, requireAdmin, (req, res) => {
-    agentLogger.clearLogs();
+  app.post("/api/agent-logs/clear", authenticate, requireAdmin, async (req, res) => {
+    await agentLogger.clearLogs();
     return res.json({ success: true, message: "Agent logs cleared" });
   });
 

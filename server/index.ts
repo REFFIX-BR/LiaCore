@@ -167,6 +167,17 @@ app.use((req, res, next) => {
         }
       })();
       
+      // Initialize agent logger with Redis persistence
+      (async () => {
+        try {
+          const { agentLogger } = await import('./lib/agent-logger');
+          await agentLogger.initialize();
+          console.log('✅ [Startup] Agent logger initialized with Redis persistence');
+        } catch (error) {
+          console.error('❌ [Startup] Failed to initialize agent logger:', error);
+        }
+      })();
+      
       // Start learning scheduler for automatic analysis
       try {
         startLearningScheduler();
