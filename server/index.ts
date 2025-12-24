@@ -64,6 +64,15 @@ app.use((req, res, next) => {
     console.log(`📍 [Startup] Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`📍 [Startup] Port: ${process.env.PORT || '5000'}`);
     
+    // Initialize agent logger with Redis persistence BEFORE routes
+    try {
+      const { agentLogger } = await import('./lib/agent-logger');
+      await agentLogger.initialize();
+      console.log('✅ [Startup] Agent logger initialized with Redis persistence');
+    } catch (error) {
+      console.error('❌ [Startup] Failed to initialize agent logger:', error);
+    }
+    
     const server = await registerRoutes(app);
     console.log('✅ [Startup] Routes registered successfully');
 
@@ -164,17 +173,6 @@ app.use((req, res, next) => {
           console.log('✅ [Prompts Init] All prompts initialized successfully');
         } catch (error) {
           console.error('❌ [Prompts Init] Failed to initialize prompts:', error);
-        }
-      })();
-      
-      // Initialize agent logger with Redis persistence
-      (async () => {
-        try {
-          const { agentLogger } = await import('./lib/agent-logger');
-          await agentLogger.initialize();
-          console.log('✅ [Startup] Agent logger initialized with Redis persistence');
-        } catch (error) {
-          console.error('❌ [Startup] Failed to initialize agent logger:', error);
         }
       })();
       
