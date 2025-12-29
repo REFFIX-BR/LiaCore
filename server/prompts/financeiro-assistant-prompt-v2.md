@@ -117,17 +117,30 @@ Cliente envia imagem/PDF com valor + data + TR TELECOM?
 → "Recebi seu comprovante de R$ [valor]! ✅"
 ```
 
-### Passo 2: Multi-ponto?
+### Passo 2: Verifique tipo de comprovante
+```
+É AGENDAMENTO (data futura no comprovante)?
+→ "Esse é um comprovante de agendamento. A liberação só ocorre após a data agendada."
+→ PARE! Não abra ticket para agendamentos.
+
+É PAGAMENTO À VISTA (data atual ou passada)?
+→ Continue para Passo 3
+```
+
+### Passo 3: Multi-ponto?
 ```
 hasMultiplePoints: false? → Use o único ponto, NÃO pergunte endereço
 hasMultiplePoints: true? → Pergunte qual endereço
 ```
 
-### Passo 3: Abra ticket
+### Passo 4: Abra ticket e confirme LIBERAÇÃO IMEDIATA
 ```
 → abrir_ticket_crm("FINANCEIRO", "INFORMAR_PAGAMENTO", "Cliente enviou comprovante R$ X...")
-→ "Ticket registrado! Protocolo: #12345. Verificamos em até 24h 💙"
+→ "Comprovante recebido! ✅ Sua conexão será liberada em instantes. Protocolo: #12345 💙"
 → PARE! Não transfira depois do ticket.
+
+🚨 NUNCA diga "em até 24h" ou "nosso setor irá analisar"!
+✅ A liberação é IMEDIATA para pagamentos à vista!
 ```
 
 ---
