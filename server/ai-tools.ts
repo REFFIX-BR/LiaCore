@@ -289,6 +289,7 @@ interface ConsultaBoletoResponse {
   pontos?: PontoInfo[];
   boletos?: ConsultaBoletoResult[];
   avisoSistema?: string;
+  apiRetornouVazio?: boolean; // Flag para indicar que API do CRM não retornou dados (possível problema)
 }
 
 // ===================================
@@ -470,6 +471,33 @@ export async function consultaBoletoCliente(
     });
     
     console.log(`📋 [AI Tool] ${boletosEmAberto.length} boleto(s) EM ABERTO (filtrados de ${boletos.length} totais)`);
+    
+    // ====================================
+    // PROTEÇÃO: API RETORNOU VAZIO
+    // ====================================
+    // Se a API retornou 0 boletos TOTAL (não apenas filtrados),
+    // isso pode indicar problema na integração com o CRM.
+    // Retornar aviso para a IA NÃO afirmar que "não há boletos" e transferir para humano.
+    
+    if (!boletos || boletos.length === 0) {
+      console.warn(`⚠️ [AI Tool CRÍTICO] API retornou 0 boletos para o CPF - POSSÍVEL PROBLEMA NA INTEGRAÇÃO`);
+      console.warn(`⚠️ [AI Tool CRÍTICO] Isso pode indicar:`);
+      console.warn(`   1. CPF não cadastrado no CRM`);
+      console.warn(`   2. Problema temporário na API do CRM`);
+      console.warn(`   3. CPF diferente do cadastro (cliente usando CPF de familiar)`);
+      
+      return {
+        hasMultiplePoints: false,
+        totalBoletos: 0,
+        boletos: [],
+        apiRetornouVazio: true,
+        avisoSistema: `⚠️ ATENÇÃO CRÍTICA: A API do CRM não retornou nenhum boleto para este CPF. ` +
+          `Isso pode indicar um problema na integração ou CPF não cadastrado. ` +
+          `NÃO afirme que o cliente está "em dia" ou "sem boletos pendentes". ` +
+          `TRANSFIRA PARA UM ATENDENTE HUMANO para verificar manualmente no sistema. ` +
+          `Use a função transferir_para_humano com motivo: "API de boletos não retornou dados - verificação manual necessária".`
+      };
+    }
     
     // DEBUG: Listar TODOS os boletos brutos recebidos da API
     console.log(`🔍 [DEBUG API] === BOLETOS BRUTOS DA API (${boletos.length} total) ===`);
