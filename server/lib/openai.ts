@@ -2687,21 +2687,38 @@ Fonte: ${fonte}`;
           // ====================================
           // PONTO ÚNICO (FLUXO NORMAL)
           // ====================================
-          const { boletos } = resultadoBoletos;
+          const { boletos, apiRetornouVazio, avisoSistema } = resultadoBoletos;
           
           console.log(`✅ [AI Tool Handler] Boletos consultados com sucesso: ${boletos?.length || 0} boleto(s) EM ABERTO`);
+          
+          // ====================================
+          // PROTEÇÃO: API RETORNOU VAZIO (POSSÍVEL PROBLEMA)
+          // ====================================
+          // Se a flag apiRetornouVazio estiver true, NÃO dizer "EM DIA" - transferir para humano
+          if (apiRetornouVazio) {
+            console.error(`🚨 [Boletos CRÍTICO] API retornou VAZIO - NÃO afirmar "em dia", transferir para humano`);
+            console.error(`🚨 [Boletos CRÍTICO] Documento utilizado: ${documentoNormalizado.slice(0, 3)}***${documentoNormalizado.slice(-2)} (mascarado)`);
+            
+            return JSON.stringify({
+              status: "ERRO_API_VAZIA",
+              error: "API do CRM não retornou boletos - possível problema na integração",
+              instrucao_ia: avisoSistema || "ATENÇÃO CRÍTICA: A API não retornou dados. NÃO afirme que o cliente está 'em dia'. TRANSFIRA PARA ATENDENTE HUMANO para verificação manual.",
+              transferir_para_humano: true,
+              motivo_transferencia: "API de boletos não retornou dados - verificação manual necessária"
+            });
+          }
           
           // Formatar resposta com mensagem clara para a IA
           if (!boletos || boletos.length === 0) {
             // CRITICAL DEBUG: Log when API returns 0 boletos to help diagnose issues
-            console.warn(`⚠️ [Boletos DEBUG] API retornou ZERO boletos para conversa ${conversationId}`);
+            console.warn(`⚠️ [Boletos DEBUG] Boletos filtrados = ZERO para conversa ${conversationId}`);
             console.warn(`⚠️ [Boletos DEBUG] Documento utilizado: ${documentoNormalizado.slice(0, 3)}***${documentoNormalizado.slice(-2)} (mascarado)`);
             console.warn(`⚠️ [Boletos DEBUG] Tipo documento: ${documentoNormalizado.length === 11 ? 'CPF' : documentoNormalizado.length === 14 ? 'CNPJ' : 'DESCONHECIDO'}`);
-            console.warn(`⚠️ [Boletos DEBUG] Isso pode indicar: (1) Cliente realmente em dia, (2) Problema temporário na API, (3) CPF incorreto`);
+            console.warn(`⚠️ [Boletos DEBUG] API retornou boletos mas todos foram filtrados como PAGOS - cliente realmente em dia`);
             
             return JSON.stringify({
               status: "EM_DIA",
-              mensagem: "Cliente está EM DIA - sem boletos pendentes, vencidos ou em aberto.",
+              mensagem: "Cliente está EM DIA - sem boletos pendentes, vencidos ou em aberto. (API retornou boletos mas todos estão PAGOS/QUITADOS)",
               boletos: []
             });
           }
