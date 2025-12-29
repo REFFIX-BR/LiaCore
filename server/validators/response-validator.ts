@@ -492,20 +492,26 @@ function validateBoletoStatusClaims(ctx: ValidationContext): ValidationResult | 
   }
   
   // Padrões que indicam AFIRMAÇÃO sobre status de pagamento/boleto
+  // IMPORTANTE: Usar plurais e variações que a IA usa na prática!
   const BOLETO_STATUS_CLAIMS = [
     // Afirmações de que está em dia
     /você está em dia/i,
     /sua conta está em dia/i,
+    /conta está regularizada/i,
     /está tudo (em dia|regularizado|ok|certo)/i,
-    /situação (está )?regularizada/i,
-    /não há (nenhuma? )?(pendência|débito|boleto)/i,
-    /sem (pendência|débito|boleto)/i,
+    /situação (está |financeira )?(regularizada|em dia)/i,
+    
+    // Afirmações de que não há boletos (SINGULAR E PLURAL!)
+    /não há (nenhuma? )?(pendência|débito|boletos?)/i,
+    /não há boletos? (pendentes?|em aberto)/i,
+    /sem (pendência|débito|boletos?)/i,
+    /sem boletos? pendentes?/i,
     
     // Afirmações de que não encontrou boletos
-    /não (há|existe|tem|encontrei|localizei) boleto/i,
+    /não (há|existe|tem|encontrei|localizei) boletos?/i,
     /não (há|existe|tem|encontrei) (nenhum |nenhuma )?(fatura|conta|cobrança)/i,
-    /verifiquei (aqui |e )?não (há|tem|encontrei)/i,
-    /consultei e não (há|tem|encontrei)/i,
+    /verifiquei.{0,30}não (há|tem|encontrei)/i,
+    /consultei.{0,30}não (há|tem|encontrei)/i,
     
     // Afirmações sobre pagamento identificado (sem ter verificado)
     /pagamento (já )?(foi )?(identificado|confirmado|processado)/i,
@@ -513,6 +519,9 @@ function validateBoletoStatusClaims(ctx: ValidationContext): ValidationResult | 
     
     // Confirmações de "tudo certo" com cobrança
     /não há (nada|nenhuma cobrança) (pendente|em aberto)/i,
+    
+    // Caso Zélia: "no momento, não há boletos pendentes"
+    /no momento.{0,10}não há/i,
   ];
   
   // Frases que LEGITIMAM a afirmação (mencionam resultado da API)
