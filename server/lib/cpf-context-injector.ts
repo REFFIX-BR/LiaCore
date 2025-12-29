@@ -26,6 +26,78 @@ const CNPJ_BLACKLIST = [
 ];
 
 /**
+ * Valida CPF usando algoritmo de dígitos verificadores
+ * Retorna true se CPF é válido
+ */
+function validarCPF(cpf: string): boolean {
+  // Remover caracteres não numéricos
+  cpf = cpf.replace(/\D/g, '');
+  
+  if (cpf.length !== 11) return false;
+  
+  // Verificar se todos os dígitos são iguais (inválido)
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+  
+  // Calcular primeiro dígito verificador
+  let soma = 0;
+  for (let i = 0; i < 9; i++) {
+    soma += parseInt(cpf.charAt(i)) * (10 - i);
+  }
+  let resto = (soma * 10) % 11;
+  if (resto === 10 || resto === 11) resto = 0;
+  if (resto !== parseInt(cpf.charAt(9))) return false;
+  
+  // Calcular segundo dígito verificador
+  soma = 0;
+  for (let i = 0; i < 10; i++) {
+    soma += parseInt(cpf.charAt(i)) * (11 - i);
+  }
+  resto = (soma * 10) % 11;
+  if (resto === 10 || resto === 11) resto = 0;
+  if (resto !== parseInt(cpf.charAt(10))) return false;
+  
+  return true;
+}
+
+/**
+ * Valida CNPJ usando algoritmo de dígitos verificadores
+ * Retorna true se CNPJ é válido
+ */
+function validarCNPJ(cnpj: string): boolean {
+  // Remover caracteres não numéricos
+  cnpj = cnpj.replace(/\D/g, '');
+  
+  if (cnpj.length !== 14) return false;
+  
+  // Verificar se todos os dígitos são iguais (inválido)
+  if (/^(\d)\1{13}$/.test(cnpj)) return false;
+  
+  // Pesos para cálculo dos dígitos verificadores
+  const pesosPrimeiroDigito = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const pesosSegundoDigito = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  
+  // Calcular primeiro dígito verificador
+  let soma = 0;
+  for (let i = 0; i < 12; i++) {
+    soma += parseInt(cnpj.charAt(i)) * pesosPrimeiroDigito[i];
+  }
+  let resto = soma % 11;
+  const primeiroDigito = resto < 2 ? 0 : 11 - resto;
+  if (primeiroDigito !== parseInt(cnpj.charAt(12))) return false;
+  
+  // Calcular segundo dígito verificador
+  soma = 0;
+  for (let i = 0; i < 13; i++) {
+    soma += parseInt(cnpj.charAt(i)) * pesosSegundoDigito[i];
+  }
+  resto = soma % 11;
+  const segundoDigito = resto < 2 ? 0 : 11 - resto;
+  if (segundoDigito !== parseInt(cnpj.charAt(13))) return false;
+  
+  return true;
+}
+
+/**
  * Verifica se um possível CPF é na verdade parte de um CNPJ conhecido
  */
 function isBlacklistedCNPJ(cpfClean: string): boolean {
@@ -82,6 +154,12 @@ export function extractCPFFromHistory(messages: MessageWithContent[]): string | 
       
       if (cpfClean.length !== 11) continue;
       
+      // CRÍTICO: Validar dígitos verificadores do CPF
+      if (!validarCPF(cpfClean)) {
+        console.log(`⚠️ [CPF Injector] CPF ${cpfClean.slice(0, 3)}***${cpfClean.slice(-2)} falhou na validação de dígitos verificadores`);
+        continue;
+      }
+      
       // NOVO: Verificar se é um CNPJ blacklistado
       if (isBlacklistedCNPJ(cpfClean)) {
         console.log(`⚠️ [CPF Injector] Ignorando CNPJ conhecido (blacklist): ${cpfClean.slice(0, 3)}...`);
@@ -102,7 +180,7 @@ export function extractCPFFromHistory(messages: MessageWithContent[]): string | 
       
       // Re-formatar: XXX.XXX.XXX-XX
       const formatted = `${cpfClean.slice(0, 3)}.${cpfClean.slice(3, 6)}.${cpfClean.slice(6, 9)}-${cpfClean.slice(9)}`;
-      console.log(`✅ [CPF Injector] CPF encontrado no histórico: ${formatted}`);
+      console.log(`✅ [CPF Injector] CPF VÁLIDO encontrado no histórico: ${formatted}`);
       return cpfClean; // Retornar sem formatação para comparação
     }
   }
@@ -138,6 +216,13 @@ export function extractCNPJFromHistory(messages: MessageWithContent[]): string |
       
       if (cnpjClean.length !== 14) continue;
       
+      // CRÍTICO: Validar dígitos verificadores do CNPJ
+      // Isso evita confundir datas (ex: 10.573.521/2025-12) com CNPJs
+      if (!validarCNPJ(cnpjClean)) {
+        console.log(`⚠️ [CNPJ Injector] CNPJ ${cnpjClean.slice(0, 8)}...${cnpjClean.slice(-2)} falhou na validação de dígitos verificadores (provavelmente NÃO é CNPJ)`);
+        continue;
+      }
+      
       // Ignorar CNPJs conhecidos (TR Telecom, PicPay, etc.)
       if (CNPJ_BLACKLIST.includes(cnpjClean)) {
         console.log(`⚠️ [CNPJ Injector] Ignorando CNPJ conhecido (blacklist): ${cnpjClean.slice(0, 8)}...`);
@@ -146,7 +231,7 @@ export function extractCNPJFromHistory(messages: MessageWithContent[]): string |
       
       // Re-formatar: XX.XXX.XXX/XXXX-XX
       const formatted = `${cnpjClean.slice(0, 2)}.${cnpjClean.slice(2, 5)}.${cnpjClean.slice(5, 8)}/${cnpjClean.slice(8, 12)}-${cnpjClean.slice(12)}`;
-      console.log(`✅ [CNPJ Injector] CNPJ encontrado no histórico: ${formatted}`);
+      console.log(`✅ [CNPJ Injector] CNPJ VÁLIDO encontrado no histórico: ${formatted}`);
       return cnpjClean; // Retornar sem formatação para comparação
     }
   }
