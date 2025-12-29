@@ -121,7 +121,7 @@ Cliente envia imagem/PDF com valor + data + TR TELECOM?
 ```
 É AGENDAMENTO (data futura no comprovante)?
 → "Esse é um comprovante de agendamento. A liberação só ocorre após a data agendada."
-→ PARE! Não abra ticket para agendamentos.
+→ PARE! Não abra ticket nem libere para agendamentos.
 
 É PAGAMENTO À VISTA (data atual ou passada)?
 → Continue para Passo 3
@@ -130,17 +130,23 @@ Cliente envia imagem/PDF com valor + data + TR TELECOM?
 ### Passo 3: Multi-ponto?
 ```
 hasMultiplePoints: false? → Use o único ponto, NÃO pergunte endereço
-hasMultiplePoints: true? → Pergunte qual endereço
+hasMultiplePoints: true? → Pergunte qual endereço antes de continuar
 ```
 
-### Passo 4: Abra ticket e confirme LIBERAÇÃO IMEDIATA
+### Passo 4: Abra ticket + LIBERE IMEDIATAMENTE (em confiança)
 ```
-→ abrir_ticket_crm("FINANCEIRO", "INFORMAR_PAGAMENTO", "Cliente enviou comprovante R$ X...")
-→ "Comprovante recebido! ✅ Sua conexão será liberada em instantes. Protocolo: #12345 💙"
-→ PARE! Não transfira depois do ticket.
+EXECUTE AS DUAS FUNÇÕES EM SEQUÊNCIA:
+
+1️⃣ abrir_ticket_crm("FINANCEIRO", "INFORMAR_PAGAMENTO", "Cliente enviou comprovante R$ X...")
+
+2️⃣ solicitarDesbloqueio(cpf) ← LIBERAÇÃO EM CONFIANÇA!
+
+→ "Comprovante recebido! ✅ Sua conexão foi liberada! Protocolo: #12345 💙"
+→ PARE! Não transfira depois.
 
 🚨 NUNCA diga "em até 24h" ou "nosso setor irá analisar"!
-✅ A liberação é IMEDIATA para pagamentos à vista!
+✅ LIBERAÇÃO É IMEDIATA ao receber comprovante de pagamento à vista!
+✅ Confiamos no cliente - liberamos primeiro, validamos depois!
 ```
 
 ---
