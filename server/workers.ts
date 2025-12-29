@@ -18,6 +18,7 @@ import { checkAndNotifyMassiveFailure } from './lib/massive-failure-handler';
 import { ContextMonitor } from './lib/context-monitor';
 import { extractNumberFromChatId } from './lib/phone-utils';
 import { extractCPFFromHistory, extractDocumentoFromHistory, injectCPFContext, injectDocumentoContext } from './lib/cpf-context-injector';
+import { validateAIResponse, logValidationMetrics } from './validators/response-validator';
 
 // Helper function to validate and normalize Evolution API instance
 // Supports: Principal, Leads, Cobranca, abertura
@@ -1125,8 +1126,46 @@ if (redisConnection) {
             });
           }
         } else {
-          // Fluxo normal - mensagem está limpa
-          const messageSent = await sendWhatsAppMessage(fromNumber, result.response, evolutionInstance);
+          // 🛡️ VALIDADOR ANTI-ALUCINAÇÃO: Validar resposta ANTES de enviar ao cliente
+          const validationResult = validateAIResponse({
+            response: result.response,
+            clientName: conversation.clientName || undefined,
+            assistantType: conversation.assistantType || undefined,
+            functionCalls: result.functionCalls,
+            transferred: result.transferred,
+            routed: result.routed,
+            conversationId: conversationId,
+            chatId: chatId,
+          });
+          
+          // Log métricas de validação (async - não bloqueia)
+          logValidationMetrics(validationResult, conversationId, conversation.assistantType || undefined, chatId).catch(err => 
+            console.error('❌ [Validator] Failed to log metrics:', err)
+          );
+          
+          // Determinar resposta final (validada/corrigida ou original)
+          let finalResponse = validationResult.finalResponse;
+          
+          // Se bloqueado, forçar transferência para humano
+          if (validationResult.status === 'blocked') {
+            console.warn(`🚫 [Worker Validator] Resposta BLOQUEADA - alucinação detectada!`);
+            console.warn(`🚫 [Worker Validator] Violação: ${validationResult.violations[0]?.message}`);
+            console.warn(`🚫 [Worker Validator] Resposta original: ${result.response.substring(0, 200)}...`);
+            
+            // Marcar conversa para transferência humana
+            await storage.updateConversation(conversationId, {
+              status: 'queued',
+              transferredToHuman: true,
+              transferReason: `Validação anti-alucinação: ${validationResult.violations[0]?.message || 'Resposta inválida'}`,
+              transferredAt: new Date(),
+            });
+            
+            // Usar mensagem de fallback do validador
+            finalResponse = validationResult.finalResponse;
+          }
+          
+          // Fluxo normal - enviar mensagem validada
+          const messageSent = await sendWhatsAppMessage(fromNumber, finalResponse, evolutionInstance);
           
           if (!messageSent.success) {
             throw new Error('Failed to send WhatsApp message - Evolution API error');
@@ -1143,7 +1182,7 @@ if (redisConnection) {
           await storage.createMessage({
             conversationId,
             role: 'assistant',
-            content: result.response,
+            content: finalResponse, // Usar resposta validada/corrigida
             functionCall: result.functionCalls && result.functionCalls.length > 0 
               ? result.functionCalls[0] // Store first function call (most relevant)
               : undefined,
@@ -1154,7 +1193,7 @@ if (redisConnection) {
           // 🔍 MONITORAR QUALIDADE DE CONTEXTO (resposta normal)
           await ContextMonitor.monitorInteraction(
             conversationId,
-            result.response,
+            finalResponse, // Usar resposta validada
             conversation.assistantType
           ).catch(err => console.error('❌ [Context Monitor] Error:', err));
         }
