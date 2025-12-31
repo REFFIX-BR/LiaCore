@@ -11576,11 +11576,26 @@ A resposta deve:
       // Salva histórico Top 5
       await storage.saveTop5History(period);
       
+      // Busca estatísticas e ranking finais
+      const stats = await storage.getGamificationStats(period);
+      const ranking = await storage.getGamificationRanking(period);
+      
+      // Conta badges do período
+      const badgeCount = ranking.reduce((sum, agent) => sum + (agent.badges?.length || 0), 0);
+      const totalConversations = ranking.reduce((sum, agent) => sum + (agent.totalConversations || 0), 0);
+      
       console.log(`✅ [Gamification] Calculation completed for period: ${period}`);
       
       return res.json({ 
         success: true, 
-        message: `Gamificação calculada com sucesso para ${period}` 
+        message: `Gamificação calculada com sucesso para ${period}`,
+        results: {
+          agentsProcessed: stats?.totalAgents || ranking.length,
+          totalConversations,
+          badgesAwarded: badgeCount,
+          topScore: stats?.topScore || 0,
+          avgScore: stats?.avgTotalScore || 0
+        }
       });
     } catch (error) {
       console.error("❌ [Gamification] Error calculating gamification:", error);

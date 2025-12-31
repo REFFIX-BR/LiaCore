@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Award, Star, TrendingUp, Users, Calculator, Crown, Zap, Target, Printer, Heart, ShieldCheck, GraduationCap, Flame, Clock, Calendar } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Trophy, Award, Star, TrendingUp, Users, Calculator, Crown, Zap, Target, Printer, Heart, ShieldCheck, GraduationCap, Flame, Clock, Calendar, FileSpreadsheet, FileText, Download, Loader2, Activity, BarChart3 } from "lucide-react";
 import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import * as XLSX from "xlsx";
 
 interface GamificationScore {
   agentId: string;
@@ -114,6 +116,64 @@ export default function Gamification() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
+  const [calculationProgress, setCalculationProgress] = useState<{
+    isCalculating: boolean;
+    step: string;
+    progress: number;
+    details: {
+      totalAgents: number;
+      processedAgents: number;
+      totalConversations: number;
+      badgesAwarded: number;
+    };
+  }>({
+    isCalculating: false,
+    step: "",
+    progress: 0,
+    details: { totalAgents: 0, processedAgents: 0, totalConversations: 0, badgesAwarded: 0 }
+  });
+
+  // Export to Excel
+  const exportToExcel = () => {
+    if (ranking.length === 0) {
+      toast({ title: "Erro", description: "Nenhum dado para exportar", variant: "destructive" });
+      return;
+    }
+
+    const data = ranking.map((agent, idx) => ({
+      "Posição": idx + 1,
+      "Atendente": agent.agentName,
+      "Pontuação Total": agent.totalScore,
+      "Conversas": agent.totalConversations,
+      "NPS Médio": agent.avgNps,
+      "Taxa de Sucesso (%)": agent.successRate,
+      "Tempo Resposta (s)": agent.avgResponseTime,
+      "Badges": agent.badges.map(b => BADGE_INFO[b.type as keyof typeof BADGE_INFO]?.name || b.type).join(", ")
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Ranking");
+
+    // Set column widths
+    ws["!cols"] = [
+      { wch: 8 }, { wch: 25 }, { wch: 15 }, { wch: 12 }, 
+      { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 40 }
+    ];
+
+    XLSX.writeFile(wb, `gamificacao_${selectedPeriod}.xlsx`);
+    toast({ title: "Sucesso", description: "Arquivo Excel exportado" });
+  };
+
+  // Export to PDF (print-friendly page)
+  const exportToPDF = () => {
+    const printWindow = window.open(`/gamification/report?period=${selectedPeriod}&print=true`, '_blank');
+    if (printWindow) {
+      printWindow.onload = () => {
+        setTimeout(() => printWindow.print(), 500);
+      };
+    }
+  };
 
   // Fetch ranking
   const { data: ranking = [], isLoading: isLoadingRanking } = useQuery<GamificationScore[]>({
@@ -137,20 +197,92 @@ export default function Gamification() {
     }
   });
 
-  // Calculate mutation
+  // Calculate mutation with progress simulation
   const calculateMutation = useMutation({
     mutationFn: async () => {
+      // Start progress simulation
+      setCalculationProgress({
+        isCalculating: true,
+        step: "Buscando atendentes...",
+        progress: 10,
+        details: { totalAgents: 0, processedAgents: 0, totalConversations: 0, badgesAwarded: 0 }
+      });
+
+      // Simulate progress steps
+      setTimeout(() => {
+        setCalculationProgress(prev => ({
+          ...prev,
+          step: "Calculando conversas...",
+          progress: 30,
+          details: { ...prev.details, totalAgents: stats?.totalAgents || 0 }
+        }));
+      }, 500);
+
+      setTimeout(() => {
+        setCalculationProgress(prev => ({
+          ...prev,
+          step: "Calculando NPS e métricas...",
+          progress: 50,
+          details: { ...prev.details, processedAgents: Math.floor((stats?.totalAgents || 0) / 2) }
+        }));
+      }, 1000);
+
+      setTimeout(() => {
+        setCalculationProgress(prev => ({
+          ...prev,
+          step: "Gerando ranking...",
+          progress: 70,
+          details: { ...prev.details, processedAgents: stats?.totalAgents || 0 }
+        }));
+      }, 1500);
+
+      setTimeout(() => {
+        setCalculationProgress(prev => ({
+          ...prev,
+          step: "Atribuindo badges...",
+          progress: 90,
+        }));
+      }, 2000);
+
       return apiRequest("/api/gamification/calculate", "POST", { period: selectedPeriod });
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      setCalculationProgress(prev => ({
+        ...prev,
+        isCalculating: false,
+        step: "Concluído!",
+        progress: 100,
+        details: {
+          totalAgents: data.results?.agentsProcessed || stats?.totalAgents || 0,
+          processedAgents: data.results?.agentsProcessed || stats?.totalAgents || 0,
+          totalConversations: data.results?.totalConversations || 0,
+          badgesAwarded: data.results?.badgesAwarded || 0
+        }
+      }));
       toast({
         title: "Sucesso",
         description: `Gamificação calculada para ${selectedPeriod}`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/gamification/ranking"] });
       queryClient.invalidateQueries({ queryKey: ["/api/gamification/stats"] });
+      
+      // Reset progress after 3 seconds
+      setTimeout(() => {
+        setCalculationProgress({
+          isCalculating: false,
+          step: "",
+          progress: 0,
+          details: { totalAgents: 0, processedAgents: 0, totalConversations: 0, badgesAwarded: 0 }
+        });
+      }, 3000);
     },
     onError: (error: any) => {
+      setCalculationProgress({
+        isCalculating: false,
+        step: "",
+        progress: 0,
+        details: { totalAgents: 0, processedAgents: 0, totalConversations: 0, badgesAwarded: 0 }
+      });
       toast({
         title: "Erro",
         description: error.message || "Erro ao calcular gamificação",
@@ -183,7 +315,7 @@ export default function Gamification() {
             Ranking mensal de desempenho dos atendentes
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
             <SelectTrigger className="w-48" data-testid="select-period">
               <SelectValue placeholder="Selecione o período" />
@@ -201,17 +333,82 @@ export default function Gamification() {
             disabled={calculateMutation.isPending}
             data-testid="button-calculate"
           >
-            <Calculator className="w-4 h-4 mr-2" />
+            {calculateMutation.isPending ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Calculator className="w-4 h-4 mr-2" />
+            )}
             {calculateMutation.isPending ? "Calculando..." : "Recalcular"}
+          </Button>
+          <Button variant="outline" onClick={exportToExcel} disabled={ranking.length === 0} data-testid="button-export-excel">
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            Excel
+          </Button>
+          <Button variant="outline" onClick={exportToPDF} disabled={ranking.length === 0} data-testid="button-export-pdf">
+            <FileText className="w-4 h-4 mr-2" />
+            PDF
           </Button>
           <Link href={`/gamification/report?period=${selectedPeriod}`}>
             <Button variant="outline" data-testid="button-print-report">
               <Printer className="w-4 h-4 mr-2" />
-              Imprimir
+              Visualizar
             </Button>
           </Link>
         </div>
       </div>
+
+      {/* Calculation Progress Card */}
+      {(calculationProgress.isCalculating || calculationProgress.progress === 100) && (
+        <Card className="border-primary/50 bg-primary/5" data-testid="card-calculation-progress">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              {calculationProgress.isCalculating ? (
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              ) : (
+                <Activity className="w-5 h-5 text-green-500" />
+              )}
+              {calculationProgress.isCalculating ? "Calculando Gamificação..." : "Cálculo Concluído!"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{calculationProgress.step}</span>
+                <span className="font-medium">{calculationProgress.progress}%</span>
+              </div>
+              <Progress value={calculationProgress.progress} className="h-2" />
+            </div>
+            
+            {/* Progress Details Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+              <div className="text-center p-3 rounded-lg bg-background">
+                <div className="text-2xl font-bold text-primary" data-testid="progress-total-agents">
+                  {calculationProgress.details.totalAgents}
+                </div>
+                <div className="text-xs text-muted-foreground">Atendentes</div>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-background">
+                <div className="text-2xl font-bold text-blue-500" data-testid="progress-processed">
+                  {calculationProgress.details.processedAgents}
+                </div>
+                <div className="text-xs text-muted-foreground">Processados</div>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-background">
+                <div className="text-2xl font-bold text-green-500" data-testid="progress-conversations">
+                  {calculationProgress.details.totalConversations}
+                </div>
+                <div className="text-xs text-muted-foreground">Conversas</div>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-background">
+                <div className="text-2xl font-bold text-yellow-500" data-testid="progress-badges">
+                  {calculationProgress.details.badgesAwarded}
+                </div>
+                <div className="text-xs text-muted-foreground">Badges</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3">
