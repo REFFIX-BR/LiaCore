@@ -60,8 +60,12 @@ function formatPeriodName(period: string): string {
 function formatResponseTime(seconds: number): string {
   if (seconds < 60) return `${Math.round(seconds)}s`;
   const mins = Math.floor(seconds / 60);
-  const secs = Math.round(seconds % 60);
-  return `${mins}m ${secs}s`;
+  if (mins >= 60) {
+    const hours = Math.floor(mins / 60);
+    const remainingMins = mins % 60;
+    return `${hours}h ${remainingMins}min`;
+  }
+  return `${mins}min`;
 }
 
 export default function GamificationReport() {
@@ -202,17 +206,26 @@ export default function GamificationReport() {
                   <h3 className="text-3xl font-bold mb-2 print:text-2xl" data-testid="champion-name">
                     {top5[0].agentName}
                   </h3>
-                  <div className="text-4xl font-black text-white mb-4 print:text-3xl" data-testid="champion-score">
+                  <div className="text-4xl font-black text-white mb-6 print:text-3xl" data-testid="champion-score">
                     {top5[0].totalScore} pontos
                   </div>
-                  <div className="flex items-center justify-center gap-4 text-sm opacity-90">
-                    <span>{top5[0].totalConversations} atendimentos</span>
-                    <span className="opacity-60">|</span>
-                    <span>NPS {top5[0].avgNps.toFixed(1)}</span>
-                    <span className="opacity-60">|</span>
-                    <span>{top5[0].successRate.toFixed(0)}% resolução</span>
-                    <span className="opacity-60">|</span>
-                    <span>{formatResponseTime(top5[0].avgResponseTime)} resposta</span>
+                  <div className="grid grid-cols-4 gap-4 mb-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">{top5[0].totalConversations}</div>
+                      <div className="text-xs uppercase opacity-80">Conversas</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">{top5[0].avgNps.toFixed(1)}</div>
+                      <div className="text-xs uppercase opacity-80">NPS Médio</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">{top5[0].successRate.toFixed(0)}%</div>
+                      <div className="text-xs uppercase opacity-80">Taxa Sucesso</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">{formatResponseTime(top5[0].avgResponseTime)}</div>
+                      <div className="text-xs uppercase opacity-80">Tempo Resposta</div>
+                    </div>
                   </div>
                   {top5[0].badges.length > 0 && (
                     <div className="flex items-center justify-center gap-3 mt-4">

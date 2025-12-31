@@ -133,6 +133,18 @@ export default function Gamification() {
     details: { totalAgents: 0, processedAgents: 0, totalConversations: 0, badgesAwarded: 0 }
   });
 
+  // Format response time to minutes
+  const formatResponseTime = (seconds: number): string => {
+    if (seconds < 60) return `${Math.round(seconds)}s`;
+    const mins = Math.floor(seconds / 60);
+    if (mins >= 60) {
+      const hours = Math.floor(mins / 60);
+      const remainingMins = mins % 60;
+      return `${hours}h ${remainingMins}min`;
+    }
+    return `${mins}min`;
+  };
+
   // Export to Excel
   const exportToExcel = () => {
     if (ranking.length === 0) {
@@ -147,7 +159,7 @@ export default function Gamification() {
       "Conversas": agent.totalConversations,
       "NPS Médio": agent.avgNps,
       "Taxa de Sucesso (%)": agent.successRate,
-      "Tempo Resposta (s)": agent.avgResponseTime,
+      "Tempo Resposta": formatResponseTime(agent.avgResponseTime),
       "Badges": agent.badges.map(b => BADGE_INFO[b.type as keyof typeof BADGE_INFO]?.name || b.type).join(", ")
     }));
 
