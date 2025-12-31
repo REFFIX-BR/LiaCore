@@ -4365,38 +4365,41 @@ export class DbStorage implements IStorage {
 
       // Calcula dois indicadores de tempo:
       // 1. Tempo de Primeira Resposta: da transferência até primeira mensagem do agente humano
-      // 2. Tempo de Atendimento: usa o campo resolutionTime já calculado na conversa
+      // 2. Tempo de Atendimento: da transferência até resolução
       let totalResponseTime = 0;
       let countWithResponseTime = 0;
       let totalServiceTime = 0;
       let countWithServiceTime = 0;
 
       for (const conv of conversations) {
-        // 1. Tempo de Primeira Resposta: primeira mensagem humana (sendBy='supervisor')
-        // Busca a primeira mensagem humana da conversa
-        const firstHumanMessage = await db.select()
-          .from(schema.messages)
-          .where(and(
-            eq(schema.messages.conversationId, conv.id),
-            eq(schema.messages.sendBy, 'supervisor')
-          ))
-          .orderBy(schema.messages.timestamp)
-          .limit(1);
+        // 1. Tempo de Primeira Resposta: primeira mensagem humana (sendBy='supervisor') após transferência
+        if (conv.transferredAt) {
+          const firstHumanMessage = await db.select()
+            .from(schema.messages)
+            .where(and(
+              eq(schema.messages.conversationId, conv.id),
+              eq(schema.messages.sendBy, 'supervisor'),
+              gte(schema.messages.timestamp, conv.transferredAt)
+            ))
+            .orderBy(schema.messages.timestamp)
+            .limit(1);
 
-        if (firstHumanMessage.length > 0 && firstHumanMessage[0].timestamp && conv.transferredAt) {
-          const responseTime = firstHumanMessage[0].timestamp.getTime() - conv.transferredAt.getTime();
-          // Só conta se for positivo (mensagem após transferência) e menor que 24h
-          if (responseTime > 0 && responseTime < 24 * 60 * 60 * 1000) {
-            totalResponseTime += responseTime;
-            countWithResponseTime++;
+          if (firstHumanMessage.length > 0 && firstHumanMessage[0].timestamp) {
+            const responseTime = firstHumanMessage[0].timestamp.getTime() - conv.transferredAt.getTime();
+            if (responseTime > 0) {
+              totalResponseTime += responseTime;
+              countWithResponseTime++;
+            }
           }
-        }
 
-        // 2. Tempo de Atendimento: usa o campo resolutionTime já existente (em segundos)
-        // Este campo é calculado no momento da resolução e representa o tempo real de atendimento
-        if (conv.resolutionTime && conv.resolutionTime > 0 && conv.resolutionTime < 24 * 60 * 60) {
-          totalServiceTime += conv.resolutionTime * 1000; // converte para ms
-          countWithServiceTime++;
+          // 2. Tempo de Atendimento: da transferência até resolução
+          if (conv.resolvedAt) {
+            const serviceTime = conv.resolvedAt.getTime() - conv.transferredAt.getTime();
+            if (serviceTime > 0) {
+              totalServiceTime += serviceTime;
+              countWithServiceTime++;
+            }
+          }
         }
       }
 
