@@ -12,7 +12,8 @@ interface GamificationScore {
   totalConversations: number;
   avgNps: number;
   successRate: number;
-  avgResponseTime: number;
+  avgResponseTime: number; // Tempo da primeira resposta após atribuição
+  avgServiceTime: number; // Tempo total de atendimento (atribuição até finalização)
   badges: {
     type: string;
     earnedAt: string;
@@ -209,22 +210,26 @@ export default function GamificationReport() {
                   <div className="text-4xl font-black text-white mb-6 print:text-3xl" data-testid="champion-score">
                     {top5[0].totalScore} pontos
                   </div>
-                  <div className="grid grid-cols-4 gap-4 mb-4">
+                  <div className="grid grid-cols-5 gap-3 mb-4">
                     <div className="text-center">
-                      <div className="text-2xl font-bold">{top5[0].totalConversations}</div>
+                      <div className="text-xl font-bold">{top5[0].totalConversations}</div>
                       <div className="text-xs uppercase opacity-80">Conversas</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold">{top5[0].avgNps.toFixed(1)}</div>
+                      <div className="text-xl font-bold">{top5[0].avgNps.toFixed(1)}</div>
                       <div className="text-xs uppercase opacity-80">NPS Médio</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold">{top5[0].successRate.toFixed(0)}%</div>
+                      <div className="text-xl font-bold">{top5[0].successRate.toFixed(0)}%</div>
                       <div className="text-xs uppercase opacity-80">Taxa Sucesso</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold">{formatResponseTime(top5[0].avgResponseTime)}</div>
-                      <div className="text-xs uppercase opacity-80">Tempo Resposta</div>
+                      <div className="text-xl font-bold">{formatResponseTime(top5[0].avgResponseTime)}</div>
+                      <div className="text-xs uppercase opacity-80">1ª Resposta</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xl font-bold">{formatResponseTime(top5[0].avgServiceTime || 0)}</div>
+                      <div className="text-xs uppercase opacity-80">Atendimento</div>
                     </div>
                   </div>
                   {top5[0].badges.length > 0 && (

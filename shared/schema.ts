@@ -1095,7 +1095,8 @@ export const gamificationScores = pgTable("gamification_scores", {
   totalConversations: integer("total_conversations").default(0), // Total de conversas resolvidas
   avgNps: integer("avg_nps").default(0), // NPS médio (0-10)
   successRate: integer("success_rate").default(0), // Taxa de sucesso baseada em sentimento (0-100)
-  avgResponseTime: integer("avg_response_time").default(0), // Tempo médio de resposta em segundos
+  avgResponseTime: integer("avg_response_time").default(0), // Tempo médio da primeira resposta após atribuição (segundos)
+  avgServiceTime: integer("avg_service_time").default(0), // Tempo médio de atendimento: da atribuição até finalização (segundos)
   volumeScore: integer("volume_score").default(0), // Pontuação de volume (normalizada 0-100)
   npsScore: integer("nps_score").default(0), // Pontuação de NPS (normalizada 0-100)
   resolutionScore: integer("resolution_score").default(0), // Pontuação de resolução (0-100)

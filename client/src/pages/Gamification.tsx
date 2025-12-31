@@ -18,7 +18,8 @@ interface GamificationScore {
   totalConversations: number;
   avgNps: number;
   successRate: number;
-  avgResponseTime: number;
+  avgResponseTime: number; // Tempo da primeira resposta após atribuição
+  avgServiceTime: number; // Tempo total de atendimento (atribuição até finalização)
   badges: {
     type: string;
     earnedAt: string;
@@ -159,7 +160,8 @@ export default function Gamification() {
       "Conversas": agent.totalConversations,
       "NPS Médio": agent.avgNps,
       "Taxa de Sucesso (%)": agent.successRate,
-      "Tempo Resposta": formatResponseTime(agent.avgResponseTime),
+      "1ª Resposta": formatResponseTime(agent.avgResponseTime),
+      "Tempo Atendimento": formatResponseTime(agent.avgServiceTime || 0),
       "Badges": agent.badges.map(b => BADGE_INFO[b.type as keyof typeof BADGE_INFO]?.name || b.type).join(", ")
     }));
 
@@ -170,7 +172,7 @@ export default function Gamification() {
     // Set column widths
     ws["!cols"] = [
       { wch: 8 }, { wch: 25 }, { wch: 15 }, { wch: 12 }, 
-      { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 40 }
+      { wch: 12 }, { wch: 18 }, { wch: 15 }, { wch: 18 }, { wch: 40 }
     ];
 
     XLSX.writeFile(wb, `gamificacao_${selectedPeriod}.xlsx`);
@@ -586,7 +588,7 @@ export default function Gamification() {
                     <div>
                       <div className="font-semibold">{agent.agentName}</div>
                       <div className="text-sm text-muted-foreground">
-                        {agent.totalConversations} conversas • NPS {agent.avgNps.toFixed(1)}
+                        {agent.totalConversations} conversas • {formatResponseTime(agent.avgResponseTime)} 1ª resp • {formatResponseTime(agent.avgServiceTime || 0)} atend
                       </div>
                     </div>
                   </div>
@@ -673,7 +675,7 @@ export default function Gamification() {
                     <div>
                       <div className="font-medium">{agent.agentName}</div>
                       <div className="text-sm text-muted-foreground">
-                        {agent.totalConversations} conversas • Taxa de sucesso {agent.successRate.toFixed(1)}%
+                        {agent.totalConversations} conversas • {formatResponseTime(agent.avgResponseTime)} 1ª resp • {formatResponseTime(agent.avgServiceTime || 0)} atend
                       </div>
                     </div>
                   </div>

@@ -4363,31 +4363,54 @@ export class DbStorage implements IStorage {
       ).length;
       const successRate = Math.round((successfulConversations / totalConversations) * 100);
 
-      // Calcula tempo médio de resposta (primeira resposta do agente após atribuição)
+      // Calcula dois indicadores de tempo:
+      // 1. Tempo de Primeira Resposta: da atribuição até primeira mensagem do agente
+      // 2. Tempo de Atendimento: da atribuição até finalização da conversa
       let totalResponseTime = 0;
       let countWithResponseTime = 0;
-      for (const conv of conversations) {
-        if (!conv.transferredAt) continue;
+      let totalServiceTime = 0;
+      let countWithServiceTime = 0;
 
-        // Pega primeira mensagem do agente após transferência
+      for (const conv of conversations) {
+        // Usa transferredAt como data de início (quando conversa foi transferida/atribuída)
+        const startTime = conv.transferredAt;
+        if (!startTime) continue;
+
+        // 1. Tempo de Primeira Resposta: primeira mensagem do agente após atribuição
         const firstAgentMessage = await db.select()
           .from(schema.messages)
           .where(and(
             eq(schema.messages.conversationId, conv.id),
             eq(schema.messages.role, 'assistant'),
-            gte(schema.messages.timestamp, conv.transferredAt)
+            gte(schema.messages.timestamp, startTime)
           ))
           .orderBy(schema.messages.timestamp)
           .limit(1);
 
         if (firstAgentMessage.length > 0 && firstAgentMessage[0].timestamp) {
-          const responseTime = firstAgentMessage[0].timestamp.getTime() - conv.transferredAt.getTime();
-          totalResponseTime += responseTime;
-          countWithResponseTime++;
+          const responseTime = firstAgentMessage[0].timestamp.getTime() - startTime.getTime();
+          if (responseTime > 0) {
+            totalResponseTime += responseTime;
+            countWithResponseTime++;
+          }
+        }
+
+        // 2. Tempo de Atendimento: da atribuição até resolução
+        if (conv.resolvedAt) {
+          const serviceTime = conv.resolvedAt.getTime() - startTime.getTime();
+          if (serviceTime > 0) {
+            totalServiceTime += serviceTime;
+            countWithServiceTime++;
+          }
         }
       }
+
       const avgResponseTime = countWithResponseTime > 0
         ? Math.round(totalResponseTime / countWithResponseTime / 1000) // em segundos
+        : 0;
+      
+      const avgServiceTime = countWithServiceTime > 0
+        ? Math.round(totalServiceTime / countWithServiceTime / 1000) // em segundos
         : 0;
 
       scores.push({
@@ -4397,6 +4420,7 @@ export class DbStorage implements IStorage {
         avgNps,
         successRate,
         avgResponseTime,
+        avgServiceTime,
       });
     }
 
@@ -4462,6 +4486,7 @@ export class DbStorage implements IStorage {
         avgNps: score.avgNps,
         successRate: score.successRate,
         avgResponseTime: score.avgResponseTime,
+        avgServiceTime: score.avgServiceTime,
         volumeScore: score.volumeScore,
         npsScore: score.npsScore,
         resolutionScore: score.resolutionScore,
