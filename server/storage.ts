@@ -4377,15 +4377,12 @@ export class DbStorage implements IStorage {
         if (!startTime) continue;
 
         // 1. Tempo de Primeira Resposta: primeira mensagem do agente HUMANO após atribuição
-        // Usa sendBy = 'agent' ou 'supervisor' para identificar mensagens de atendentes humanos
+        // Usa sendBy = 'supervisor' para identificar mensagens de atendentes humanos (no sistema atual)
         const firstAgentMessage = await db.select()
           .from(schema.messages)
           .where(and(
             eq(schema.messages.conversationId, conv.id),
-            or(
-              eq(schema.messages.sendBy, 'agent'),
-              eq(schema.messages.sendBy, 'supervisor')
-            ),
+            eq(schema.messages.sendBy, 'supervisor'),
             gte(schema.messages.timestamp, startTime)
           ))
           .orderBy(schema.messages.timestamp)
