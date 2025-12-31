@@ -588,7 +588,7 @@ export default function Gamification() {
                     <div>
                       <div className="font-semibold">{agent.agentName}</div>
                       <div className="text-sm text-muted-foreground">
-                        {agent.totalConversations} conversas • {formatResponseTime(agent.avgResponseTime)} 1ª resp • {formatResponseTime(agent.avgServiceTime || 0)} atend
+                        {agent.totalConversations} conversas • NPS {agent.avgNps.toFixed(1)} • {agent.successRate.toFixed(0)}% sucesso
                       </div>
                     </div>
                   </div>
@@ -675,7 +675,7 @@ export default function Gamification() {
                     <div>
                       <div className="font-medium">{agent.agentName}</div>
                       <div className="text-sm text-muted-foreground">
-                        {agent.totalConversations} conversas • {formatResponseTime(agent.avgResponseTime)} 1ª resp • {formatResponseTime(agent.avgServiceTime || 0)} atend
+                        {agent.totalConversations} conversas • NPS {agent.avgNps.toFixed(1)} • {agent.successRate.toFixed(0)}% sucesso
                       </div>
                     </div>
                   </div>
