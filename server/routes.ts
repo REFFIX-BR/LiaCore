@@ -1156,6 +1156,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (error) {
           console.error(`❌ [Contacts] Error updating contact on reopen:`, error);
         }
+      } else if (conversation.status === 'active' && conversation.transferredToHuman) {
+        // FIX: Conversa ativa mas transferida - cliente enviou nova mensagem
+        // Resetar transferência para IA voltar a responder
+        console.log(`🤖 [Active Reset] Conversa ativa transferida recebeu nova mensagem - resetando para IA: ${chatId}`);
+        
+        const updateData: any = {
+          transferredToHuman: false,
+          transferReason: null,
+          transferredAt: null,
+        };
+        
+        await storage.updateConversation(conversation.id, updateData);
+        Object.assign(conversation, updateData);
+        console.log(`✅ [Active Reset] Transferência resetada - IA vai responder`);
       }
 
       // 🧠 ANÁLISE DE INTELIGÊNCIA: Sentiment, Urgência e Problemas Técnicos
@@ -2742,6 +2756,20 @@ Qualquer coisa, estamos à disposição! 😊
           await storage.updateConversation(conversation.id, updateData);
           // Update local object
           Object.assign(conversation, updateData);
+        } else if (conversation.status === 'active' && conversation.transferredToHuman) {
+          // FIX: Conversa ativa mas transferida - cliente enviou nova mensagem
+          // Resetar transferência para IA voltar a responder
+          console.log(`🤖 [Evolution Active Reset] Conversa ativa transferida recebeu nova mensagem - resetando para IA: ${chatId} (${clientName})`);
+          
+          const updateData: any = {
+            transferredToHuman: false,
+            transferReason: null,
+            transferredAt: null,
+          };
+          
+          await storage.updateConversation(conversation.id, updateData);
+          Object.assign(conversation, updateData);
+          console.log(`✅ [Evolution Active Reset] Transferência resetada - IA vai responder`);
         }
 
         // 🔐 LGPD COMPLIANCE: CPF/CNPJ NÃO é mais salvo automaticamente no banco de dados
