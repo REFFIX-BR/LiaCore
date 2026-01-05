@@ -2538,6 +2538,18 @@ Fonte: ${fonte}`;
           });
         }
         
+        // VALIDAÇÃO: Assistente de suporte NÃO deve chamar funções de boletos
+        // Isso evita que a IA tente consultar boletos sem o cliente pedir
+        const { storage: storageValidacao } = await import("../storage");
+        const conversaValidacao = await storageValidacao.getConversation(conversationId);
+        if (conversaValidacao?.assistantType === 'suporte') {
+          console.warn(`⚠️ [AI Tool] BLOQUEADO: Assistente de suporte tentou chamar ${functionName}`);
+          return JSON.stringify({
+            error: "Esta função não está disponível para o assistente de suporte. Para consultar boletos, transfira para o assistente financeiro.",
+            instrucao_ia: "Você é o assistente de SUPORTE TÉCNICO. NÃO consulte boletos. Se o cliente pedir boleto, use rotear_para_assistente('financeiro', 'Cliente quer boleto')."
+          });
+        }
+        
         const { consultaBoletoCliente } = await import("../ai-tools");
         const { storage } = await import("../storage");
         const { installationPointManager } = await import("./redis-config");
