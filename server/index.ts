@@ -64,6 +64,16 @@ app.use((req, res, next) => {
     console.log(`📍 [Startup] Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`📍 [Startup] Port: ${process.env.PORT || '5000'}`);
     
+    // Initialize database connection BEFORE anything else
+    try {
+      const { initializeDb } = await import('./db');
+      await initializeDb();
+      console.log('✅ [Startup] Database connection initialized');
+    } catch (error) {
+      console.error('❌ [Startup] Failed to initialize database:', error);
+      throw error;
+    }
+    
     // Initialize agent logger with Redis persistence BEFORE routes
     try {
       const { agentLogger } = await import('./lib/agent-logger');
