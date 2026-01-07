@@ -23,9 +23,11 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Instalar apenas dependências de produção
+# Instalar dependências de produção + vite (necessário mesmo em produção devido ao bundle)
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci --only=production && \
+    npm install vite@^5.4.20 && \
+    npm cache clean --force
 
 # Copiar arquivos buildados do stage anterior
 COPY --from=builder /app/dist ./dist

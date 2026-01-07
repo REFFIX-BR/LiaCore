@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { serveStatic, log } from "./vite";
 import { startLearningScheduler } from "./lib/learning-scheduler";
 import { startMessageRecoveryScheduler } from "./lib/message-recovery-scheduler";
 import { startComercialSyncWorker } from "./workers/comercial-sync-worker";
@@ -89,6 +89,8 @@ app.use((req, res, next) => {
     // doesn't interfere with the other routes
     if (app.get("env") === "development") {
       console.log('🔧 [Startup] Setting up Vite (development mode)');
+      // Import dinâmico para evitar incluir vite no bundle de produção
+      const { setupVite } = await import("./vite");
       await setupVite(app, server);
     } else {
       console.log('📦 [Startup] Serving static files (production mode)');
