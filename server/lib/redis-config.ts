@@ -23,12 +23,7 @@ if (isLocalRedis) {
     port: parseInt(process.env.REDIS_PORT || process.env.UPSTASH_REDIS_PORT || '6379'),
     password: process.env.UPSTASH_REDIS_PASSWORD || undefined,
     enableReadyCheck: true,
-    lazyConnect: false, // Conectar imediatamente
-  });
-  
-  // Conectar ao Redis local
-  localRedisClient.connect().catch((err) => {
-    console.error('❌ [Redis Local] Erro ao conectar:', err);
+    lazyConnect: true, // Não conectar automaticamente - será conectado quando necessário
   });
   
   // Criar wrapper compatível com API do Upstash Redis
