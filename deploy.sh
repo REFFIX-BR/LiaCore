@@ -47,6 +47,23 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Detectar comando docker-compose
+detect_docker_compose() {
+    # Tentar docker compose (plugin - versão mais recente)
+    if docker compose version >/dev/null 2>&1; then
+        DOCKER_COMPOSE_CMD="docker compose"
+        return 0
+    fi
+    
+    # Tentar docker-compose (standalone)
+    if command_exists docker-compose; then
+        DOCKER_COMPOSE_CMD="docker-compose"
+        return 0
+    fi
+    
+    return 1
+}
+
 # Verificar pré-requisitos
 check_prerequisites() {
     print_info "Verificando pré-requisitos..."
@@ -57,13 +74,20 @@ check_prerequisites() {
         exit 1
     fi
     
-    if ! command_exists docker-compose; then
+    if ! detect_docker_compose; then
         print_error "Docker Compose não está instalado!"
-        echo "Instale Docker Compose: https://docs.docker.com/compose/install/"
+        echo ""
+        echo "Opções de instalação:"
+        echo "  1. Docker Compose Plugin (recomendado):"
+        echo "     https://docs.docker.com/compose/install/linux/"
+        echo ""
+        echo "  2. Docker Compose Standalone:"
+        echo "     https://docs.docker.com/compose/install/standalone/"
         exit 1
     fi
     
-    print_success "Docker e Docker Compose encontrados"
+    print_success "Docker encontrado"
+    print_success "Docker Compose encontrado: $DOCKER_COMPOSE_CMD"
 }
 
 # Verificar arquivo .env
@@ -131,7 +155,7 @@ check_required_vars() {
 # Parar containers existentes
 stop_containers() {
     print_info "Parando containers existentes..."
-    docker-compose down 2>/dev/null || true
+    $DOCKER_COMPOSE_CMD down 2>/dev/null || true
     print_success "Containers parados"
 }
 
@@ -143,9 +167,9 @@ build_images() {
     
     if [ "$rebuild" = "--rebuild" ] || [ "$rebuild" = "true" ]; then
         print_info "Forçando rebuild completo (sem cache)..."
-        docker-compose build --no-cache
+        $DOCKER_COMPOSE_CMD build --no-cache
     else
-        docker-compose build
+        $DOCKER_COMPOSE_CMD build
     fi
     
     print_success "Imagens construídas com sucesso"
@@ -155,7 +179,7 @@ build_images() {
 start_services() {
     print_info "Iniciando serviços..."
     
-    docker-compose up -d
+    $DOCKER_COMPOSE_CMD up -d
     
     print_success "Serviços iniciados"
 }
@@ -170,7 +194,7 @@ wait_for_services() {
     # Aguardar PostgreSQL
     print_info "Aguardando PostgreSQL..."
     while [ $attempt -lt $max_attempts ]; do
-        if docker-compose exec -T postgres pg_isready -U postgres >/dev/null 2>&1; then
+        if $DOCKER_COMPOSE_CMD exec -T postgres pg_isready -U postgres >/dev/null 2>&1; then
             print_success "PostgreSQL está pronto"
             break
         fi
@@ -187,7 +211,7 @@ wait_for_services() {
     print_info "Aguardando Redis..."
     attempt=0
     while [ $attempt -lt $max_attempts ]; do
-        if docker-compose exec -T redis redis-cli ping >/dev/null 2>&1; then
+        if $DOCKER_COMPOSE_CMD exec -T redis redis-cli ping >/dev/null 2>&1; then
             print_success "Redis está pronto"
             break
         fi
@@ -222,11 +246,11 @@ wait_for_services() {
 apply_database_schema() {
     print_info "Aplicando schema do banco de dados..."
     
-    if docker-compose exec -T app npm run db:push 2>/dev/null; then
+    if $DOCKER_COMPOSE_CMD exec -T app npm run db:push 2>/dev/null; then
         print_success "Schema aplicado com sucesso"
     else
         print_warning "Erro ao aplicar schema (pode já estar aplicado)"
-        print_info "Você pode tentar manualmente: docker-compose exec app npm run db:push"
+        print_info "Você pode tentar manualmente: $DOCKER_COMPOSE_CMD exec app npm run db:push"
     fi
 }
 
@@ -234,7 +258,7 @@ apply_database_schema() {
 show_status() {
     echo ""
     print_info "Status dos containers:"
-    docker-compose ps
+    $DOCKER_COMPOSE_CMD ps
     
     echo ""
     print_info "Informações de acesso:"
@@ -254,7 +278,7 @@ show_status() {
     echo "     http://localhost:8081"
     echo ""
     echo "  📝 Logs da aplicação:"
-    echo "     docker-compose logs -f app"
+    echo "     $DOCKER_COMPOSE_CMD logs -f app"
     echo ""
     echo "  🔍 Health Check:"
     echo "     curl http://localhost:5000/api/health"
@@ -264,7 +288,7 @@ show_status() {
 # Mostrar logs
 show_logs() {
     print_info "Mostrando logs (Ctrl+C para sair)..."
-    docker-compose logs -f
+    $DOCKER_COMPOSE_CMD logs -f
 }
 
 # Função principal de deploy
@@ -302,17 +326,23 @@ main_deploy() {
     echo ""
 }
 
+# Inicializar variável global
+DOCKER_COMPOSE_CMD=""
+
 # Menu principal
 case "${1:-}" in
     --stop)
+        detect_docker_compose || exit 1
         print_info "Parando todos os containers..."
-        docker-compose down
+        $DOCKER_COMPOSE_CMD down
         print_success "Containers parados"
         ;;
     --logs)
+        detect_docker_compose || exit 1
         show_logs
         ;;
     --status)
+        detect_docker_compose || exit 1
         show_status
         ;;
     --rebuild)
