@@ -35,19 +35,42 @@ async function initializeDb() {
         connectionTimeoutMillis: 10000,
       });
       db = neonDrizzle({ client: pool, schema });
-    } else {
-      // Usar driver PostgreSQL normal (TCP)
-      const { Pool: PgPool } = await import('pg');
-      const { drizzle: pgDrizzle } = await import('drizzle-orm/node-postgres');
-      
-      pool = new PgPool({ 
-        connectionString: process.env.DATABASE_URL!,
-        max: 10,
-        idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 10000,
-      });
-      db = pgDrizzle({ client: pool, schema });
+  } else {
+    // Usar driver PostgreSQL normal (TCP)
+    // Importar pg de forma compatível com ESM
+    const pgModule = await import('pg');
+    const { drizzle: pgDrizzle } = await import('drizzle-orm/node-postgres');
+    
+    // pg em ESM exporta Pool como named export
+    // Verificar diferentes formas de exportação
+    let PgPool = pgModule.Pool;
+    
+    // Se não encontrou, tentar default export
+    if (!PgPool && pgModule.default) {
+      PgPool = pgModule.default.Pool || pgModule.default;
     }
+    
+    if (!PgPool || typeof PgPool !== 'function') {
+      console.error('❌ [DB] Erro ao importar Pool do pg:', {
+        hasPool: !!pgModule.Pool,
+        hasDefault: !!pgModule.default,
+        keys: Object.keys(pgModule),
+        poolType: typeof PgPool
+      });
+      throw new Error(`Pool não encontrado no módulo pg. Verifique se o pacote 'pg' está instalado.`);
+    }
+    
+    console.log('✅ [DB] Pool importado com sucesso do módulo pg');
+    
+    pool = new PgPool({ 
+      connectionString: process.env.DATABASE_URL!,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
+    db = pgDrizzle({ client: pool, schema });
+    console.log('✅ [DB] Conexão PostgreSQL inicializada');
+  }
   })();
 
   return initPromise;
