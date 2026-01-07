@@ -2,21 +2,79 @@ import IORedis from 'ioredis';
 import { Redis } from "@upstash/redis";
 
 // =============================================================================
-// UPSTASH REDIS CONFIGURATION
+// REDIS CONFIGURATION (Upstash Cloud ou Local)
 // =============================================================================
 
+// Detectar se está usando Redis local ou Upstash
+const isLocalRedis = !process.env.UPSTASH_REDIS_REST_URL || 
+                     process.env.UPSTASH_REDIS_HOST === 'redis' || 
+                     process.env.UPSTASH_REDIS_HOST === 'localhost' ||
+                     process.env.REDIS_HOST === 'redis' ||
+                     process.env.REDIS_HOST === 'localhost';
+
 // REST API client (for general use - threads, cache, metadata)
-export const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+// Se usar Redis local, precisamos criar um wrapper compatível ou usar IORedis diretamente
+let redis: any;
+if (isLocalRedis) {
+  // Para Redis local, vamos usar IORedis também para REST operations
+  // Nota: Isso pode precisar de ajustes dependendo de como o código usa o Redis REST API
+  const localRedisClient = new IORedis({
+    host: process.env.REDIS_HOST || process.env.UPSTASH_REDIS_HOST || 'redis',
+    port: parseInt(process.env.REDIS_PORT || process.env.UPSTASH_REDIS_PORT || '6379'),
+    password: process.env.UPSTASH_REDIS_PASSWORD || undefined,
+    enableReadyCheck: true,
+    lazyConnect: false, // Conectar imediatamente
+  });
+  
+  // Conectar ao Redis local
+  localRedisClient.connect().catch((err) => {
+    console.error('❌ [Redis Local] Erro ao conectar:', err);
+  });
+  
+  // Criar wrapper compatível com API do Upstash Redis
+  redis = {
+    get: async (key: string) => {
+      const value = await localRedisClient.get(key);
+      return value;
+    },
+    set: async (key: string, value: string, options?: { ex?: number }) => {
+      if (options?.ex) {
+        return localRedisClient.setex(key, options.ex, value);
+      }
+      return localRedisClient.set(key, value);
+    },
+    del: async (...keys: string[]) => {
+      return localRedisClient.del(...keys);
+    },
+    smembers: async (key: string) => {
+      return localRedisClient.smembers(key);
+    },
+    sadd: async (key: string, ...members: string[]) => {
+      return localRedisClient.sadd(key, ...members);
+    },
+    expire: async (key: string, seconds: number) => {
+      return localRedisClient.expire(key, seconds);
+    },
+    ttl: async (key: string) => {
+      return localRedisClient.ttl(key);
+    },
+    keys: async (pattern: string) => {
+      return localRedisClient.keys(pattern);
+    },
+  };
+} else {
+  // Usar Upstash Redis REST API
+  redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+  });
+}
 
 // TCP/TLS client for BullMQ (requires IORedis)
-// Using Upstash-compatible configuration
-export const redisConnection = new IORedis({
-  host: process.env.UPSTASH_REDIS_HOST!,
-  port: parseInt(process.env.UPSTASH_REDIS_PORT || '6379'),
-  password: process.env.UPSTASH_REDIS_PASSWORD!,
+// Configuração adaptada para Redis local ou Upstash
+const redisConfig: any = {
+  host: process.env.REDIS_HOST || process.env.UPSTASH_REDIS_HOST || 'redis',
+  port: parseInt(process.env.REDIS_PORT || process.env.UPSTASH_REDIS_PORT || '6379'),
   
   // ===== CONNECTION POOLING OPTIMIZATION =====
   maxRetriesPerRequest: null, // Required for BullMQ blocking operations
@@ -24,37 +82,46 @@ export const redisConnection = new IORedis({
   lazyConnect: false,
   keepAlive: 30000, // Keep connection alive for 30s
   connectTimeout: 10000, // 10s timeout for initial connection
-  
-  // TLS configuration for Upstash
-  tls: {
+};
+
+// Configurar senha se fornecida
+if (process.env.UPSTASH_REDIS_PASSWORD || process.env.REDIS_PASSWORD) {
+  redisConfig.password = process.env.UPSTASH_REDIS_PASSWORD || process.env.REDIS_PASSWORD;
+}
+
+// TLS apenas para Upstash (não para Redis local)
+if (!isLocalRedis) {
+  redisConfig.tls = {
     // Upstash provides valid certificates, use standard validation
-  },
-  
-  // Retry strategy
-  retryStrategy(times) {
-    if (times > 10) {
-      console.error('❌ [Redis] Max retries reached, giving up');
-      return null; // Stop retrying
-    }
-    const delay = Math.min(times * 50, 2000);
-    console.log(`🔄 [Redis] Retry attempt ${times}, waiting ${delay}ms`);
-    return delay;
-  },
-  
-  // Reconnect on error
-  reconnectOnError(err) {
-    const targetError = 'READONLY';
-    if (err.message.includes(targetError)) {
-      // Reconnect on READONLY errors (happens during failover)
-      return true;
-    }
-    return false;
-  },
-});
+  };
+}
+
+// Retry strategy
+redisConfig.retryStrategy = (times: number) => {
+  if (times > 10) {
+    console.error('❌ [Redis] Max retries reached, giving up');
+    return null; // Stop retrying
+  }
+  const delay = Math.min(times * 50, 2000);
+  console.log(`🔄 [Redis] Retry attempt ${times}, waiting ${delay}ms`);
+  return delay;
+};
+
+// Reconnect on error
+redisConfig.reconnectOnError = (err: Error) => {
+  const targetError = 'READONLY';
+  if (err.message.includes(targetError)) {
+    // Reconnect on READONLY errors (happens during failover)
+    return true;
+  }
+  return false;
+};
+
+export const redisConnection = new IORedis(redisConfig);
 
 // Connection event handlers
 redisConnection.on('connect', () => {
-  console.log('✅ [Redis] Connected to Upstash');
+  console.log(`✅ [Redis] Connected to ${isLocalRedis ? 'Local Redis' : 'Upstash'}`);
 });
 
 redisConnection.on('ready', () => {

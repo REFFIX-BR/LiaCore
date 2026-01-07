@@ -20,6 +20,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - lia-network
 
   # Redis 7
   redis:
@@ -36,6 +38,43 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+    networks:
+      - lia-network
+
+  # Aplicação HealthLinkConnect
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lia-app
+    restart: unless-stopped
+    ports:
+      - "${PORT:-5000}:5000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=5000
+      - DATABASE_URL=postgresql://postgres:lia_dev_2024@postgres:5432/lia_cortex_dev
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - UPSTASH_REDIS_HOST=redis
+      - UPSTASH_REDIS_PORT=6379
+      # Variáveis de ambiente serão carregadas do arquivo .env
+      # Use docker-compose.override.yml ou passe via -e no docker-compose
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - lia-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # Redis Commander (Interface Web - Opcional)
   redis-commander:
@@ -48,6 +87,8 @@ services:
       - "8081:8081"
     depends_on:
       - redis
+    networks:
+      - lia-network
 
   # Adminer (Interface PostgreSQL - Opcional)
   adminer:
@@ -58,9 +99,15 @@ services:
       - "8080:8080"
     depends_on:
       - postgres
+    networks:
+      - lia-network
 
 volumes:
   postgres_data:
     driver: local
   redis_data:
     driver: local
+
+networks:
+  lia-network:
+    driver: bridge
