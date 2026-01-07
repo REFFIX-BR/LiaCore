@@ -14,7 +14,7 @@ const isLocalRedis = !process.env.UPSTASH_REDIS_REST_URL ||
 
 // REST API client (for general use - threads, cache, metadata)
 // Se usar Redis local, precisamos criar um wrapper compatível ou usar IORedis diretamente
-let redis: any;
+export let redis: any;
 if (isLocalRedis) {
   // Para Redis local, vamos usar IORedis também para REST operations
   // Nota: Isso pode precisar de ajustes dependendo de como o código usa o Redis REST API
@@ -60,6 +60,58 @@ if (isLocalRedis) {
     },
     keys: async (pattern: string) => {
       return localRedisClient.keys(pattern);
+    },
+    // List operations
+    lrange: async (key: string, start: number, stop: number) => {
+      return localRedisClient.lrange(key, start, stop);
+    },
+    lpush: async (key: string, ...values: string[]) => {
+      return localRedisClient.lpush(key, ...values);
+    },
+    rpush: async (key: string, ...values: string[]) => {
+      return localRedisClient.rpush(key, ...values);
+    },
+    lpop: async (key: string) => {
+      return localRedisClient.lpop(key);
+    },
+    rpop: async (key: string) => {
+      return localRedisClient.rpop(key);
+    },
+    ltrim: async (key: string, start: number, stop: number) => {
+      return localRedisClient.ltrim(key, start, stop);
+    },
+    llen: async (key: string) => {
+      return localRedisClient.llen(key);
+    },
+    // Hash operations
+    hget: async (key: string, field: string) => {
+      return localRedisClient.hget(key, field);
+    },
+    hset: async (key: string, field: string, value: string) => {
+      return localRedisClient.hset(key, field, value);
+    },
+    hgetall: async (key: string) => {
+      return localRedisClient.hgetall(key);
+    },
+    hexists: async (key: string, field: string) => {
+      return localRedisClient.hexists(key, field);
+    },
+    // String operations
+    incr: async (key: string) => {
+      return localRedisClient.incr(key);
+    },
+    decr: async (key: string) => {
+      return localRedisClient.decr(key);
+    },
+    exists: async (key: string) => {
+      return localRedisClient.exists(key);
+    },
+    // Multiple operations
+    mget: async (...keys: string[]) => {
+      return localRedisClient.mget(...keys);
+    },
+    mset: async (...keyValues: (string | number)[]) => {
+      return localRedisClient.mset(...keyValues);
     },
   };
 } else {
