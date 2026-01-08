@@ -44,6 +44,12 @@ echo ""
 # CONFIGURAÇÃO
 # ==========================================
 
+# Verificar se está em modo automático (sem confirmação)
+AUTO_MODE=false
+if [ "$1" = "--auto" ] || [ "$1" = "-y" ]; then
+    AUTO_MODE=true
+fi
+
 # Carregar variáveis do .env se existir
 if [ -f .env ]; then
     export $(grep -v '^#' .env | xargs)
@@ -193,13 +199,17 @@ fi
 print_info "📤 Importando no banco local (Docker)..."
 print_warning "   ⚠️  ATENÇÃO: Os dados locais serão SUBSTITUÍDOS pelos dados de produção!"
 
-# Perguntar confirmação
-read -p "Deseja continuar? (s/N): " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Ss]$ ]]; then
-    print_info "Sincronização cancelada pelo usuário"
-    print_info "Backup salvo em: $BACKUP_FILE"
-    exit 0
+# Perguntar confirmação (a menos que esteja em modo automático)
+if [ "$AUTO_MODE" = false ]; then
+    read -p "Deseja continuar? (s/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Ss]$ ]]; then
+        print_info "Sincronização cancelada pelo usuário"
+        print_info "Backup salvo em: $BACKUP_FILE"
+        exit 0
+    fi
+else
+    print_info "   Modo automático: prosseguindo sem confirmação..."
 fi
 
 # Importar no banco local

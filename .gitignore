@@ -14,3 +14,7 @@ vite.config.ts.*
 # Backups de banco de dados
 backups/
 *.sql
+
+# Logs de sincronização
+logs/
+.last-sync

@@ -87,16 +87,51 @@ Você pode passar a URL de produção via variável de ambiente:
 PRODUCTION_DATABASE_URL="sua-url-aqui" ./scripts/sync-from-production.sh
 ```
 
-### Sincronização Automática (Cron)
+### Sincronização Automática
+
+Para manter o banco local sempre atualizado com produção, você pode configurar sincronização automática:
+
+#### Opção 1: Usando o Script de Configuração (Recomendado)
+
+```bash
+# Executar o assistente de configuração
+./scripts/setup-auto-sync.sh
+```
+
+O script oferece opções de frequência:
+- A cada hora
+- A cada 6 horas
+- A cada 12 horas
+- Diariamente (2h da manhã)
+- Duas vezes por dia (2h e 14h)
+
+#### Opção 2: Configuração Manual do Cron
 
 Para sincronizar automaticamente, adicione ao crontab:
 
 ```bash
 # Sincronizar diariamente às 2h da manhã
-0 2 * * * cd /caminho/para/HealthLinkConnect && ./scripts/sync-from-production.sh >> /var/log/sync-db.log 2>&1
+0 2 * * * cd /caminho/para/HealthLinkConnect && ./scripts/sync-scheduler.sh
 ```
 
 **⚠️ Atenção**: A sincronização automática substitui os dados locais sem confirmação. Use com cuidado!
+
+#### Verificar Status da Sincronização
+
+```bash
+# Ver quando foi a última sincronização
+./scripts/check-last-sync.sh
+```
+
+#### Executar Sincronização Manual
+
+```bash
+# Sincronização com confirmação
+./scripts/sync-from-production.sh
+
+# Sincronização automática (sem confirmação - para cron)
+./scripts/sync-scheduler.sh
+```
 
 ## 🔍 Troubleshooting
 
@@ -165,8 +200,43 @@ tail -f backups/import-log-*.txt
 - O arquivo `.env` está no `.gitignore`
 - Use variáveis de ambiente ou secrets management em produção
 
+## 📝 Scripts Disponíveis
+
+| Script | Descrição |
+|--------|-----------|
+| `sync-from-production.sh` | Sincronização manual com confirmação |
+| `sync-scheduler.sh` | Sincronização automática (para cron) |
+| `setup-auto-sync.sh` | Configurar sincronização automática |
+| `check-last-sync.sh` | Verificar última sincronização |
+| `verify-sync.sh` | Verificar dados sincronizados |
+
+## 🔄 Fluxo de Sincronização Contínua
+
+Para manter o banco local sempre atualizado durante testes:
+
+1. **Configurar sincronização automática:**
+   ```bash
+   ./scripts/setup-auto-sync.sh
+   ```
+
+2. **Verificar status:**
+   ```bash
+   ./scripts/check-last-sync.sh
+   ```
+
+3. **Sincronizar manualmente quando necessário:**
+   ```bash
+   ./scripts/sync-from-production.sh
+   ```
+
+4. **Verificar dados sincronizados:**
+   ```bash
+   ./scripts/verify-sync.sh
+   ```
+
 ## 📚 Referências
 
 - [PostgreSQL pg_dump Documentation](https://www.postgresql.org/docs/current/app-pgdump.html)
 - [PostgreSQL psql Documentation](https://www.postgresql.org/docs/current/app-psql.html)
+- [Cron Documentation](https://man7.org/linux/man-pages/man5/crontab.5.html)
 
