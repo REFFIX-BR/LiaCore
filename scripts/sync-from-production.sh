@@ -64,36 +64,53 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/production-backup-$TIMESTAMP.sql"
 
 # ==========================================
-# VALIDAÇÃO
+# DETECÇÃO DE FERRAMENTAS
 # ==========================================
 
-print_info "Verificando pré-requisitos..."
+# Detectar se pg_dump e psql estão disponíveis no sistema ou via Docker
+USE_DOCKER=false
+PG_DUMP_CMD="pg_dump"
+PSQL_CMD="psql"
+DOCKER_CONTAINER="lia-postgres"
 
-# Verificar se pg_dump e psql estão disponíveis
-if ! command -v pg_dump &> /dev/null; then
-    print_error "pg_dump não encontrado!"
-    print_info "Instale o cliente PostgreSQL:"
-    print_info "  Ubuntu/Debian: sudo apt-get install postgresql-client-15"
-    print_info "  Ou use o container: docker exec -it lia-postgres pg_dump --version"
-    exit 1
+if ! command -v pg_dump &> /dev/null || ! command -v psql &> /dev/null; then
+    print_info "Ferramentas PostgreSQL não encontradas no sistema"
+    print_info "Tentando usar via container Docker..."
+    
+    # Verificar se o container existe e está rodando
+    if docker ps --format '{{.Names}}' | grep -q "^${DOCKER_CONTAINER}$"; then
+        USE_DOCKER=true
+        PG_DUMP_CMD="docker exec -i ${DOCKER_CONTAINER} pg_dump"
+        PSQL_CMD="docker exec -i ${DOCKER_CONTAINER} psql"
+        print_success "Usando ferramentas PostgreSQL via Docker container: ${DOCKER_CONTAINER}"
+    else
+        print_error "Container Docker '${DOCKER_CONTAINER}' não está rodando!"
+        print_info "Inicie o container: docker compose up -d postgres"
+        exit 1
+    fi
+else
+    print_success "Ferramentas PostgreSQL encontradas no sistema"
 fi
-
-if ! command -v psql &> /dev/null; then
-    print_error "psql não encontrado!"
-    print_info "Instale o cliente PostgreSQL:"
-    print_info "  Ubuntu/Debian: sudo apt-get install postgresql-client-15"
-    exit 1
-fi
-
-print_success "Ferramentas PostgreSQL encontradas"
 
 # Verificar se banco local está acessível
 print_info "Verificando conexão com banco local..."
-if ! PGPASSWORD=lia_dev_2024 psql -h localhost -p 5432 -U postgres -d lia_cortex_dev -c "SELECT 1;" >/dev/null 2>&1; then
-    print_error "Banco local não está acessível!"
-    print_info "Certifique-se de que o Docker está rodando:"
-    print_info "  docker compose up -d"
-    exit 1
+
+if [ "$USE_DOCKER" = true ]; then
+    # Via Docker, usar conexão interna
+    if ! docker exec ${DOCKER_CONTAINER} psql -U postgres -d lia_cortex_dev -c "SELECT 1;" >/dev/null 2>&1; then
+        print_error "Banco local não está acessível via Docker!"
+        print_info "Certifique-se de que o Docker está rodando:"
+        print_info "  docker compose up -d postgres"
+        exit 1
+    fi
+else
+    # Via sistema, usar conexão externa
+    if ! PGPASSWORD=lia_dev_2024 psql -h localhost -p 5432 -U postgres -d lia_cortex_dev -c "SELECT 1;" >/dev/null 2>&1; then
+        print_error "Banco local não está acessível!"
+        print_info "Certifique-se de que o Docker está rodando:"
+        print_info "  docker compose up -d postgres"
+        exit 1
+    fi
 fi
 
 print_success "Banco local está acessível"
@@ -116,13 +133,45 @@ print_info "   Host: $PROD_HOST"
 print_info "   Database: $PROD_DB"
 
 # Exportar do banco de produção
-if pg_dump "$PRODUCTION_DB_URL" \
-  --no-owner \
-  --no-privileges \
-  --clean \
-  --if-exists \
-  --verbose \
-  --file="$BACKUP_FILE" 2>&1 | tee "$BACKUP_DIR/export-log-$TIMESTAMP.txt"; then
+# ⚠️  IMPORTANTE: pg_dump precisa acessar o banco remoto
+#     Se estiver usando Docker, o container precisa ter acesso à internet
+if [ "$USE_DOCKER" = true ]; then
+    # Via Docker: redirecionar saída para arquivo no host
+    print_info "   Usando pg_dump via Docker (container precisa de acesso à internet)"
+    if docker exec ${DOCKER_CONTAINER} pg_dump "$PRODUCTION_DB_URL" \
+      --no-owner \
+      --no-privileges \
+      --clean \
+      --if-exists \
+      --verbose > "$BACKUP_FILE" 2> "$BACKUP_DIR/export-log-$TIMESTAMP.txt"; then
+        EXPORT_SUCCESS=true
+        # Mostrar últimas linhas do log
+        if [ -s "$BACKUP_DIR/export-log-$TIMESTAMP.txt" ]; then
+            tail -20 "$BACKUP_DIR/export-log-$TIMESTAMP.txt"
+        fi
+    else
+        EXPORT_SUCCESS=false
+        # Mostrar erro completo
+        if [ -s "$BACKUP_DIR/export-log-$TIMESTAMP.txt" ]; then
+            cat "$BACKUP_DIR/export-log-$TIMESTAMP.txt"
+        fi
+    fi
+else
+    # Via sistema: comando direto
+    if pg_dump "$PRODUCTION_DB_URL" \
+      --no-owner \
+      --no-privileges \
+      --clean \
+      --if-exists \
+      --verbose \
+      --file="$BACKUP_FILE" 2>&1 | tee "$BACKUP_DIR/export-log-$TIMESTAMP.txt"; then
+        EXPORT_SUCCESS=true
+    else
+        EXPORT_SUCCESS=false
+    fi
+fi
+
+if [ "$EXPORT_SUCCESS" = true ]; then
     
     if [ ! -f "$BACKUP_FILE" ] || [ ! -s "$BACKUP_FILE" ]; then
         print_error "Backup não foi criado ou está vazio!"
@@ -156,12 +205,34 @@ fi
 # Importar no banco local
 print_info "Importando dados (isso pode levar alguns minutos)..."
 
-if PGPASSWORD=lia_dev_2024 psql "$LOCAL_DB_URL" < "$BACKUP_FILE" 2>&1 | tee "$BACKUP_DIR/import-log-$TIMESTAMP.txt"; then
-    print_success "Sincronização concluída com sucesso!"
+if [ "$USE_DOCKER" = true ]; then
+    # Via Docker: copiar arquivo para o container e executar psql
+    print_info "   Copiando backup para o container..."
+    docker cp "$BACKUP_FILE" "${DOCKER_CONTAINER}:/tmp/backup.sql"
+    
+    # Executar importação e capturar saída
+    if docker exec ${DOCKER_CONTAINER} psql -U postgres -d lia_cortex_dev -f /tmp/backup.sql > "$BACKUP_DIR/import-log-$TIMESTAMP.txt" 2>&1; then
+        # Limpar arquivo temporário do container
+        docker exec ${DOCKER_CONTAINER} rm -f /tmp/backup.sql
+        print_success "Sincronização concluída com sucesso!"
+    else
+        print_error "Falha ao importar no banco local!"
+        print_info "Verifique os logs em: $BACKUP_DIR/import-log-$TIMESTAMP.txt"
+        # Mostrar últimas linhas do erro
+        if [ -s "$BACKUP_DIR/import-log-$TIMESTAMP.txt" ]; then
+            tail -30 "$BACKUP_DIR/import-log-$TIMESTAMP.txt"
+        fi
+        exit 1
+    fi
 else
-    print_error "Falha ao importar no banco local!"
-    print_info "Verifique os logs em: $BACKUP_DIR/import-log-$TIMESTAMP.txt"
-    exit 1
+    # Via sistema: comando direto
+    if PGPASSWORD=lia_dev_2024 psql "$LOCAL_DB_URL" < "$BACKUP_FILE" 2>&1 | tee "$BACKUP_DIR/import-log-$TIMESTAMP.txt"; then
+        print_success "Sincronização concluída com sucesso!"
+    else
+        print_error "Falha ao importar no banco local!"
+        print_info "Verifique os logs em: $BACKUP_DIR/import-log-$TIMESTAMP.txt"
+        exit 1
+    fi
 fi
 
 # ==========================================
