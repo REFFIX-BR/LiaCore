@@ -32,6 +32,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Check if user is logged in
   const { data, isLoading } = useQuery<{ user: User }>({
     queryKey: ["/api/auth/me"],
+    queryFn: async () => {
+      const res = await fetch("/api/auth/me", {
+        credentials: "include",
+      });
+      if (res.status === 401) {
+        // Não autenticado - retornar null em vez de lançar erro
+        return null;
+      }
+      if (!res.ok) {
+        throw new Error(`${res.status}: ${res.statusText}`);
+      }
+      return await res.json();
+    },
     retry: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
