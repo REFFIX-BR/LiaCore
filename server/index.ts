@@ -24,6 +24,23 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 const app = express();
+
+// CORS configuration para permitir cookies
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  // Permitir requisições do mesmo domínio ou de origens específicas
+  if (!origin || origin.includes(req.headers.host || '') || origin.includes('localhost') || origin.includes('10.10.10')) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  }
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(express.json({ limit: '50mb' })); // Support large base64 images/audio
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 app.use(cookieParser());

@@ -16,9 +16,12 @@ export function authenticate(
   next: NextFunction
 ) {
   const token = req.cookies.auth_token;
-
+  
+  // Debug: verificar cookies recebidos
   if (!token) {
     console.log(`❌ [Auth] No token for ${req.method} ${req.path}`);
+    console.log(`🔍 [Auth Debug] Cookies recebidos:`, Object.keys(req.cookies || {}));
+    console.log(`🔍 [Auth Debug] Headers cookie:`, req.headers.cookie ? 'presente' : 'ausente');
     return res.status(401).json({ error: "Não autenticado" });
   }
 

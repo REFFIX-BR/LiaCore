@@ -478,12 +478,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate token and set cookie
       const token = generateToken(user);
+      
+      // Configurar cookie baseado no ambiente
+      // Em produção com HTTPS, usar secure: true
+      // Em desenvolvimento/local com HTTP, usar secure: false
+      const isSecure = process.env.NODE_ENV === "production" && 
+                       (req.protocol === "https" || req.headers['x-forwarded-proto'] === 'https');
+      
       res.cookie("auth_token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: isSecure,
         sameSite: "lax",
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: "/", // Garantir que o cookie seja enviado para todas as rotas
       });
+      
+      console.log(`🍪 [Auth] Cookie definido para ${user.username} (secure: ${isSecure}, protocol: ${req.protocol})`);
 
       res.json({ user: getUserFromUser(user) });
     } catch (error) {
