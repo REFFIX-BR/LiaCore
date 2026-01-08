@@ -103,13 +103,24 @@ function getEvolutionApiKey(instanceName?: string): string | undefined {
   }
   
   // Try to get instance-specific key from environment (convert to uppercase)
-  const instanceKey = process.env[`EVOLUTION_API_KEY_${instanceName.toUpperCase()}`];
+  const instanceKeyEnv = `EVOLUTION_API_KEY_${instanceName.toUpperCase()}`;
+  const instanceKey = process.env[instanceKeyEnv];
+  
   if (instanceKey) {
+    console.log(`🔑 [Evolution] Usando chave específica para instância ${instanceName}: ${instanceKeyEnv}`);
     return instanceKey;
   }
   
   // Fallback to default key
-  return EVOLUTION_CONFIG.apiKey;
+  if (EVOLUTION_CONFIG.apiKey) {
+    console.log(`🔑 [Evolution] Usando chave padrão para instância ${instanceName} (${instanceKeyEnv} não configurada)`);
+    return EVOLUTION_CONFIG.apiKey;
+  }
+  
+  console.error(`❌ [Evolution] Nenhuma chave encontrada para instância ${instanceName}`);
+  console.error(`   Tentou: ${instanceKeyEnv}`);
+  console.error(`   Fallback: EVOLUTION_API_KEY`);
+  return undefined;
 }
 
 // Helper function to get Evolution API URL for specific instance
@@ -343,6 +354,19 @@ async function sendWhatsAppMessage(
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ [Evolution] Erro ao enviar mensagem (${response.status}):`, errorText);
+      
+      // Diagnóstico detalhado para erro 401
+      if (response.status === 401) {
+        const instanceKeyEnv = `EVOLUTION_API_KEY_${instance.toUpperCase()}`;
+        console.error(`🔍 [Evolution] Diagnóstico 401 (Unauthorized):`);
+        console.error(`   - Instância: ${instance}`);
+        console.error(`   - URL: ${url}`);
+        console.error(`   - Chave usada: ${instanceKeyEnv} ou EVOLUTION_API_KEY`);
+        console.error(`   - Chave configurada: ${apiKey ? 'Sim (primeiros 8 chars: ' + apiKey.substring(0, 8) + '...)' : 'NÃO'}`);
+        console.error(`   💡 Solução: Configure ${instanceKeyEnv} no arquivo .env`);
+        console.error(`   💡 Ou verifique se EVOLUTION_API_KEY tem permissão para a instância ${instance}`);
+      }
+      
       return { success: false };
     }
 
