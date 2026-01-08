@@ -6,6 +6,11 @@ vite.config.ts.*
 *.tar.gz
 
 # Environment variables (NUNCA commitar com secrets!)
+.env
 .env.local
 .env.production
 .env.*.local
+
+# Backups de banco de dados
+backups/
+*.sql
