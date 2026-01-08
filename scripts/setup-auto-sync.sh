@@ -50,38 +50,55 @@ fi
 chmod +x "$SYNC_SCHEDULER"
 
 print_info "Escolha a frequência de sincronização:"
+print_warning "⚠️  Nota: Sincronizações muito frequentes (10 min) podem sobrecarregar o banco de produção"
+print_info "   Recomendado para testes: 20-30 minutos"
 echo ""
-echo "1) A cada hora"
-echo "2) A cada 6 horas"
-echo "3) A cada 12 horas"
-echo "4) Diariamente (2h da manhã)"
-echo "5) Duas vezes por dia (2h e 14h)"
-echo "6) Remover sincronização automática"
+echo "1) A cada 10 minutos ⚠️  (muito frequente)"
+echo "2) A cada 20 minutos"
+echo "3) A cada 30 minutos"
+echo "4) A cada hora"
+echo "5) A cada 6 horas"
+echo "6) A cada 12 horas"
+echo "7) Diariamente (2h da manhã)"
+echo "8) Duas vezes por dia (2h e 14h)"
+echo "9) Remover sincronização automática"
 echo ""
-read -p "Escolha uma opção (1-6): " choice
+read -p "Escolha uma opção (1-9): " choice
 
 case $choice in
     1)
+        CRON_SCHEDULE="*/10 * * * *"
+        DESCRIPTION="A cada 10 minutos"
+        ;;
+    2)
+        CRON_SCHEDULE="*/20 * * * *"
+        DESCRIPTION="A cada 20 minutos"
+        ;;
+    3)
+        CRON_SCHEDULE="*/30 * * * *"
+        DESCRIPTION="A cada 30 minutos"
+        ;;
+    4)
         CRON_SCHEDULE="0 * * * *"
         DESCRIPTION="A cada hora"
         ;;
-    2)
+    5)
         CRON_SCHEDULE="0 */6 * * *"
         DESCRIPTION="A cada 6 horas"
         ;;
-    3)
+    6)
         CRON_SCHEDULE="0 */12 * * *"
         DESCRIPTION="A cada 12 horas"
         ;;
-    4)
+    7)
         CRON_SCHEDULE="0 2 * * *"
         DESCRIPTION="Diariamente às 2h"
         ;;
-    5)
+    8)
         CRON_SCHEDULE="0 2,14 * * *"
         DESCRIPTION="Duas vezes por dia (2h e 14h)"
         ;;
-    6)
+    9)
         print_info "Removendo sincronização automática..."
         crontab -l 2>/dev/null | grep -v "sync-scheduler.sh" | crontab -
         print_success "Sincronização automática removida!"

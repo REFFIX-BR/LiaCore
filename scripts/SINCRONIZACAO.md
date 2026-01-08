@@ -99,6 +99,9 @@ Para manter o banco local sempre atualizado com produção, você pode configura
 ```
 
 O script oferece opções de frequência:
+- A cada 10 minutos
+- A cada 20 minutos
+- A cada 30 minutos
 - A cada hora
 - A cada 6 horas
 - A cada 12 horas
