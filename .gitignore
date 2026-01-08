@@ -9,6 +9,7 @@ vite.config.ts.*
 .env
 .env.local
 .env.production
+env.production
 .env.*.local
 
 # Backups de banco de dados

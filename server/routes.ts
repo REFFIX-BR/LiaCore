@@ -123,6 +123,42 @@ function getEvolutionApiKey(instanceName?: string): string | undefined {
   return undefined;
 }
 
+// Helper function to get a valid instance with available API key
+// Falls back to Principal if requested instance doesn't have a key
+function getValidEvolutionInstance(requestedInstance?: string | null): string {
+  if (!requestedInstance) {
+    return 'Principal';
+  }
+  
+  const validated = validateEvolutionInstance(requestedInstance);
+  
+  // Check if this instance has a key configured
+  const instanceKeyEnv = `EVOLUTION_API_KEY_${validated.toUpperCase()}`;
+  const instanceKey = process.env[instanceKeyEnv];
+  const hasInstanceKey = !!instanceKey;
+  const hasDefaultKey = !!EVOLUTION_CONFIG.apiKey;
+  
+  // If instance has specific key or default key exists, use it
+  if (hasInstanceKey || hasDefaultKey) {
+    return validated;
+  }
+  
+  // If no key available for requested instance, try fallback instances
+  const fallbackInstances = ['Principal', 'Cobranca', 'Leads'];
+  for (const fallback of fallbackInstances) {
+    const fallbackKeyEnv = `EVOLUTION_API_KEY_${fallback.toUpperCase()}`;
+    const fallbackKey = process.env[fallbackKeyEnv] || EVOLUTION_CONFIG.apiKey;
+    if (fallbackKey) {
+      console.warn(`⚠️ [Evolution] Instância ${validated} não tem chave configurada, usando fallback: ${fallback}`);
+      return fallback;
+    }
+  }
+  
+  // Last resort: return requested instance anyway (will fail with better error message)
+  console.error(`❌ [Evolution] Nenhuma chave disponível para instância ${validated} ou fallbacks`);
+  return validated;
+}
+
 // Helper function to get Evolution API URL for specific instance
 function getEvolutionApiUrl(instanceName?: string): string {
   if (!instanceName) {
@@ -7595,11 +7631,12 @@ A resposta deve:
           // Se tem imagem, enviar como mídia ao invés de texto
           if (imageBase64) {
             console.log(`📸 [Supervisor] Enviando imagem via WhatsApp para ${phoneNumber}`);
+            const validInstance = getValidEvolutionInstance(conversation.evolutionInstance);
             whatsappSent = await sendWhatsAppImage(
               phoneNumber, 
               imageBase64, 
               content || '', // Caption (mensagem do supervisor)
-              conversation.evolutionInstance || undefined
+              validInstance
             );
             
             if (whatsappSent) {
@@ -7614,12 +7651,13 @@ A resposta deve:
           } else if (pdfBase64) {
             // Se tem PDF, enviar como documento
             console.log(`📄 [Supervisor] Enviando PDF via WhatsApp para ${phoneNumber}`);
+            const validInstance = getValidEvolutionInstance(conversation.evolutionInstance);
             whatsappSent = await sendWhatsAppDocument(
               phoneNumber,
               pdfBase64,
               pdfName || 'documento.pdf',
               content || '', // Caption (mensagem do supervisor)
-              conversation.evolutionInstance || undefined
+              validInstance
             );
             
             if (whatsappSent) {
@@ -7634,7 +7672,8 @@ A resposta deve:
             }
           } else if (audioBase64) {
             // Para áudio, por enquanto enviar apenas a transcrição (Evolution API pode não suportar áudio)
-            const result = await sendWhatsAppMessage(phoneNumber, processedContent, conversation.evolutionInstance || undefined);
+            const validInstance = getValidEvolutionInstance(conversation.evolutionInstance);
+            const result = await sendWhatsAppMessage(phoneNumber, processedContent, validInstance);
             whatsappSent = result.success;
             if (result.success) {
               console.log(`✅ [Supervisor] Transcrição de áudio enviada ao WhatsApp: ${phoneNumber}`);
@@ -7648,7 +7687,9 @@ A resposta deve:
             }
           } else {
             // Mensagem de texto normal
-            const result = await sendWhatsAppMessage(phoneNumber, processedContent, conversation.evolutionInstance || undefined);
+            // Usar instância válida (com fallback se necessário)
+            const validInstance = getValidEvolutionInstance(conversation.evolutionInstance);
+            const result = await sendWhatsAppMessage(phoneNumber, processedContent, validInstance);
             whatsappSent = result.success;
             if (result.success) {
               console.log(`✅ [Supervisor] Mensagem enviada ao WhatsApp: ${phoneNumber}`);
