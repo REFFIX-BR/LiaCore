@@ -835,8 +835,10 @@ export class DbStorage implements IStorage {
       const current = await this.getConversation(id);
       
       if (current?.threadId) {
-        console.warn(`⚠️ [Storage] Attempted to clear threadId for conversation ${id} (current: ${current.threadId}) - BLOCKED`);
-        console.warn(`   Caller stack trace:`, new Error().stack);
+        // Log apenas em modo debug - não é um erro, é proteção intencional
+        if (process.env.DEBUG_THREAD_PROTECTION === 'true') {
+          console.log(`ℹ️ [Storage] Preserving threadId for conversation ${id} (protection: threadId not cleared)`);
+        }
         
         // Remove threadId from updates to preserve existing value
         const { threadId, ...safeUpdates } = updates;
@@ -844,11 +846,20 @@ export class DbStorage implements IStorage {
       }
     }
     
-    const [updated] = await db.update(schema.conversations)
-      .set(updates)
-      .where(eq(schema.conversations.id, id))
-      .returning();
-    return updated;
+    try {
+      const [updated] = await db.update(schema.conversations)
+        .set(updates)
+        .where(eq(schema.conversations.id, id))
+        .returning();
+      return updated;
+    } catch (error: any) {
+      console.error(`❌ [Storage] Error updating conversation ${id}:`, error.message);
+      console.error(`   Updates attempted:`, Object.keys(updates));
+      if (error.code === '42703') {
+        console.error(`   💡 This might be a missing column. Check the database schema.`);
+      }
+      throw error;
+    }
   }
 
   // ✅ Atomic conversation resolution - handles update + activity logs in ONE transaction
