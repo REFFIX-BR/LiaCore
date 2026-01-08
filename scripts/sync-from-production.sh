@@ -67,35 +67,38 @@ BACKUP_FILE="$BACKUP_DIR/production-backup-$TIMESTAMP.sql"
 # DETECÇÃO DE FERRAMENTAS
 # ==========================================
 
-# Detectar se pg_dump e psql estão disponíveis no sistema ou via Docker
-USE_DOCKER=false
-PG_DUMP_CMD="pg_dump"
+# Detectar se psql está disponível no sistema ou via Docker (para importação)
+# Para exportação, sempre usaremos container temporário com PostgreSQL 16 (compatível com Neon)
+USE_DOCKER_PSQL=false
 PSQL_CMD="psql"
 DOCKER_CONTAINER="lia-postgres"
 
-if ! command -v pg_dump &> /dev/null || ! command -v psql &> /dev/null; then
-    print_info "Ferramentas PostgreSQL não encontradas no sistema"
+# Verificar se psql está disponível no sistema
+if ! command -v psql &> /dev/null; then
+    print_info "psql não encontrado no sistema"
     print_info "Tentando usar via container Docker..."
     
     # Verificar se o container existe e está rodando
     if docker ps --format '{{.Names}}' | grep -q "^${DOCKER_CONTAINER}$"; then
-        USE_DOCKER=true
-        PG_DUMP_CMD="docker exec -i ${DOCKER_CONTAINER} pg_dump"
+        USE_DOCKER_PSQL=true
         PSQL_CMD="docker exec -i ${DOCKER_CONTAINER} psql"
-        print_success "Usando ferramentas PostgreSQL via Docker container: ${DOCKER_CONTAINER}"
+        print_success "Usando psql via Docker container: ${DOCKER_CONTAINER}"
     else
         print_error "Container Docker '${DOCKER_CONTAINER}' não está rodando!"
         print_info "Inicie o container: docker compose up -d postgres"
         exit 1
     fi
 else
-    print_success "Ferramentas PostgreSQL encontradas no sistema"
+    print_success "psql encontrado no sistema"
 fi
+
+# Para pg_dump, sempre usaremos container temporário com PostgreSQL 16
+print_info "pg_dump será executado via container temporário PostgreSQL 16 (compatível com Neon)"
 
 # Verificar se banco local está acessível
 print_info "Verificando conexão com banco local..."
 
-if [ "$USE_DOCKER" = true ]; then
+if [ "$USE_DOCKER_PSQL" = true ]; then
     # Via Docker, usar conexão interna
     if ! docker exec ${DOCKER_CONTAINER} psql -U postgres -d lia_cortex_dev -c "SELECT 1;" >/dev/null 2>&1; then
         print_error "Banco local não está acessível via Docker!"
@@ -125,49 +128,46 @@ print_info "📥 Exportando dados de produção (Neon/Replit)..."
 print_info "   ⚠️  Esta operação é SOMENTE LEITURA - não modifica produção"
 print_info "   Isso pode levar alguns minutos dependendo do tamanho do banco..."
 
-# Extrair informações da URL para validação
-PROD_HOST=$(echo "$PRODUCTION_DB_URL" | sed -n 's/.*@\([^:]*\):.*/\1/p')
-PROD_DB=$(echo "$PRODUCTION_DB_URL" | sed -n 's/.*\/\([^?]*\).*/\1/p')
-
-print_info "   Host: $PROD_HOST"
-print_info "   Database: $PROD_DB"
+# Extrair informações da URL para validação (opcional, apenas para log)
+# A URL do Neon tem formato: postgresql://user:pass@host/db?params
+if echo "$PRODUCTION_DB_URL" | grep -q "@.*/"; then
+    PROD_HOST=$(echo "$PRODUCTION_DB_URL" | sed -n 's/.*@\([^/]*\).*/\1/p' | sed 's/:.*$//')
+    PROD_DB=$(echo "$PRODUCTION_DB_URL" | sed -n 's/.*\/\([^?]*\).*/\1/p')
+    print_info "   Host: $PROD_HOST"
+    print_info "   Database: $PROD_DB"
+fi
 
 # Exportar do banco de produção
 # ⚠️  IMPORTANTE: pg_dump precisa acessar o banco remoto
-#     Se estiver usando Docker, o container precisa ter acesso à internet
-if [ "$USE_DOCKER" = true ]; then
-    # Via Docker: redirecionar saída para arquivo no host
-    print_info "   Usando pg_dump via Docker (container precisa de acesso à internet)"
-    if docker exec ${DOCKER_CONTAINER} pg_dump "$PRODUCTION_DB_URL" \
-      --no-owner \
-      --no-privileges \
-      --clean \
-      --if-exists \
-      --verbose > "$BACKUP_FILE" 2> "$BACKUP_DIR/export-log-$TIMESTAMP.txt"; then
-        EXPORT_SUCCESS=true
-        # Mostrar últimas linhas do log
-        if [ -s "$BACKUP_DIR/export-log-$TIMESTAMP.txt" ]; then
-            tail -20 "$BACKUP_DIR/export-log-$TIMESTAMP.txt"
-        fi
-    else
-        EXPORT_SUCCESS=false
-        # Mostrar erro completo
-        if [ -s "$BACKUP_DIR/export-log-$TIMESTAMP.txt" ]; then
-            cat "$BACKUP_DIR/export-log-$TIMESTAMP.txt"
-        fi
+#     Neon usa PostgreSQL 16, então precisamos usar pg_dump 16 ou superior
+#     Vamos usar um container temporário com PostgreSQL 16 para garantir compatibilidade
+print_info "   Usando container temporário com PostgreSQL 16 para compatibilidade com Neon..."
+
+# Usar container temporário com PostgreSQL 16 para fazer o dump
+# Isso garante compatibilidade com PostgreSQL 16 do Neon
+TEMP_CONTAINER="pg-dump-temp-$$"
+
+if docker run --rm \
+  --name "$TEMP_CONTAINER" \
+  postgres:16-alpine \
+  pg_dump "$PRODUCTION_DB_URL" \
+  --no-owner \
+  --no-privileges \
+  --clean \
+  --if-exists \
+  --verbose > "$BACKUP_FILE" 2> "$BACKUP_DIR/export-log-$TIMESTAMP.txt"; then
+    EXPORT_SUCCESS=true
+    # Mostrar últimas linhas do log
+    if [ -s "$BACKUP_DIR/export-log-$TIMESTAMP.txt" ]; then
+        print_info "   Últimas linhas do log:"
+        tail -20 "$BACKUP_DIR/export-log-$TIMESTAMP.txt"
     fi
 else
-    # Via sistema: comando direto
-    if pg_dump "$PRODUCTION_DB_URL" \
-      --no-owner \
-      --no-privileges \
-      --clean \
-      --if-exists \
-      --verbose \
-      --file="$BACKUP_FILE" 2>&1 | tee "$BACKUP_DIR/export-log-$TIMESTAMP.txt"; then
-        EXPORT_SUCCESS=true
-    else
-        EXPORT_SUCCESS=false
+    EXPORT_SUCCESS=false
+    # Mostrar erro completo
+    if [ -s "$BACKUP_DIR/export-log-$TIMESTAMP.txt" ]; then
+        print_error "   Erro durante exportação:"
+        cat "$BACKUP_DIR/export-log-$TIMESTAMP.txt"
     fi
 fi
 
@@ -205,7 +205,7 @@ fi
 # Importar no banco local
 print_info "Importando dados (isso pode levar alguns minutos)..."
 
-if [ "$USE_DOCKER" = true ]; then
+if [ "$USE_DOCKER_PSQL" = true ]; then
     # Via Docker: copiar arquivo para o container e executar psql
     print_info "   Copiando backup para o container..."
     docker cp "$BACKUP_FILE" "${DOCKER_CONTAINER}:/tmp/backup.sql"
