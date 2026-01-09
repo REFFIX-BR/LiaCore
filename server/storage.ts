@@ -2635,10 +2635,10 @@ export class DbStorage implements IStorage {
         agentId ? eq(schema.conversations.resolvedBy, agentId) : sql`1=1`
       ));
 
-    // ✅ NOVO: Get ALL conversations ASSIGNED to agents in the period
-    // IMPORTANTE: Buscar TODAS as conversas atribuídas no período, independente de status ou data de resolução
-    // "Atendidas" = conversas atribuídas (assignedTo) no período (usando data de atribuição)
-    // Isso mostra quantas conversas foram atribuídas a ela, mesmo que não resolvidas ou resolvidas em outro dia
+    // ✅ NOVO: Get ALL conversations ASSIGNED to agents that were RESOLVED in the period
+    // IMPORTANTE: Buscar conversas atribuídas ao atendente que foram RESOLVIDAS no período
+    // "Atendidas" = conversas atribuídas (assignedTo) que foram resolvidas no período
+    // Isso mostra quantas conversas o atendente trabalhou no período, mesmo que tenham sido atribuídas antes
     let assignedConversationsQuery = db.select({
       conversation: schema.conversations,
       agent: schema.users
@@ -2647,20 +2647,12 @@ export class DbStorage implements IStorage {
       .leftJoin(schema.users, eq(schema.conversations.assignedTo, schema.users.id))
       .where(and(
         isNotNull(schema.conversations.assignedTo),
-        // ✅ Buscar conversas ATRIBUÍDAS no período (usando data de atribuição)
-        // transferredAt é quando foi atribuído, createdAt como fallback
-        or(
-          and(
-            isNotNull(schema.conversations.transferredAt),
-            gte(schema.conversations.transferredAt, startDate),
-            lte(schema.conversations.transferredAt, endDate)
-          ),
-          and(
-            isNull(schema.conversations.transferredAt),
-            gte(schema.conversations.createdAt, startDate),
-            lte(schema.conversations.createdAt, endDate)
-          )
-        ),
+        // ✅ Buscar conversas que foram RESOLVIDAS no período e que foram atribuídas ao atendente
+        // Isso garante que estamos contando conversas que o atendente realmente trabalhou no período
+        eq(schema.conversations.status, 'resolved'),
+        isNotNull(schema.conversations.resolvedAt),
+        gte(schema.conversations.resolvedAt, startDate),
+        lte(schema.conversations.resolvedAt, endDate),
         agentId ? eq(schema.conversations.assignedTo, agentId) : sql`1=1`
       ));
 
@@ -2741,17 +2733,15 @@ export class DbStorage implements IStorage {
     });
 
     // Group assigned conversations by period
-    // ✅ FIX: Usar a DATA DE ATRIBUIÇÃO para agrupar (não a data de resolução)
-    // "Atendidas" = conversas atribuídas (assignedTo) no período (usando data de atribuição)
-    // Isso mostra quantas conversas foram atribuídas a ela no período, independente de quando foram resolvidas
+    // ✅ FIX: Usar a DATA DE RESOLUÇÃO para agrupar (mesmo período que as resolvidas)
+    // "Atendidas" = conversas atribuídas (assignedTo) que foram resolvidas no período
+    // Isso garante que estamos comparando o mesmo conjunto de conversas (resolvidas no período)
     assignedConversations.forEach(({ conversation, agent }) => {
       if (!conversation.assignedTo) return;
+      if (!conversation.resolvedAt) return; // Já filtrado na query, mas garantir
 
-      // ✅ Usar transferredAt (quando foi atribuído) ou createdAt como fallback
-      const assignmentDate = conversation.transferredAt || conversation.createdAt;
-      if (!assignmentDate) return;
-
-      const date = new Date(assignmentDate);
+      // ✅ Usar resolvedAt para agrupar (mesmo período que as resolvidas)
+      const date = new Date(conversation.resolvedAt);
       let periodKey = '';
 
       switch (groupBy) {
@@ -2759,7 +2749,10 @@ export class DbStorage implements IStorage {
           periodKey = date.toISOString().split('T')[0];
           break;
         case 'week':
-          const weekNum = this.getWeekNumber(date);
+          // Calcular número da semana (ISO week)
+          const startOfYear = new Date(date.getFullYear(), 0, 1);
+          const days = Math.floor((date.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
+          const weekNum = Math.ceil((days + startOfYear.getDay() + 1) / 7);
           periodKey = `${date.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
           break;
         case 'month':
@@ -2768,7 +2761,7 @@ export class DbStorage implements IStorage {
       }
 
       // ✅ Usar assignedTo para agrupar (não resolvedBy)
-      // Isso mostra quantas conversas foram atribuídas a esse agente no período
+      // Isso mostra quantas conversas foram atribuídas a esse agente e resolvidas no período
       const key = agentId ? periodKey : `${periodKey}-${conversation.assignedTo}`;
 
       if (!assignedGroupedData.has(key)) {
