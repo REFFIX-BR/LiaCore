@@ -9059,6 +9059,105 @@ A resposta deve:
     }
   });
 
+  // ============================================================================
+  // GAMIFICATION
+  // ============================================================================
+
+  // Calculate gamification scores for a period
+  app.post("/api/gamification/calculate", authenticate, requireAdminOrSupervisor, async (req, res) => {
+    try {
+      const { period } = req.body;
+
+      if (!period || !/^\d{4}-\d{2}$/.test(period)) {
+        return res.status(400).json({ error: "Período inválido. Use formato YYYY-MM" });
+      }
+
+      console.log(`📊 [Gamification] Iniciando cálculo para período ${period}`);
+
+      const results = await storage.calculateGamificationScores(period);
+
+      return res.json({
+        success: true,
+        period,
+        results,
+        message: `Gamificação calculada com sucesso para ${period}`
+      });
+    } catch (error: any) {
+      console.error("❌ [Gamification] Erro ao calcular:", error);
+      return res.status(500).json({ error: error.message || "Erro ao calcular gamificação" });
+    }
+  });
+
+  // Get gamification ranking for a period
+  app.get("/api/gamification/ranking", authenticate, async (req, res) => {
+    try {
+      const { period } = req.query;
+
+      if (!period || typeof period !== 'string') {
+        return res.status(400).json({ error: "Parâmetro 'period' é obrigatório (formato YYYY-MM)" });
+      }
+
+      const ranking = await storage.getGamificationRanking(period);
+
+      return res.json(ranking);
+    } catch (error: any) {
+      console.error("❌ [Gamification] Erro ao buscar ranking:", error);
+      return res.status(500).json({ error: error.message || "Erro ao buscar ranking" });
+    }
+  });
+
+  // Get gamification statistics for a period
+  app.get("/api/gamification/stats", authenticate, async (req, res) => {
+    try {
+      const { period } = req.query;
+
+      if (!period || typeof period !== 'string') {
+        return res.status(400).json({ error: "Parâmetro 'period' é obrigatório (formato YYYY-MM)" });
+      }
+
+      const ranking = await storage.getGamificationRanking(period);
+
+      // Calcular estatísticas
+      const totalAgents = ranking.length;
+      const avgTotalScore = totalAgents > 0
+        ? Math.round(ranking.reduce((sum, r) => sum + r.totalScore, 0) / totalAgents)
+        : 0;
+      const topScore = ranking.length > 0 ? ranking[0].totalScore : 0;
+
+      // Contar badges por tipo
+      const badgeDistribution: Record<string, number> = {
+        solucionador: 0,
+        velocista: 0,
+        campeao_volume: 0,
+        encantador: 0,
+        zero_reclamacao: 0,
+        especialista: 0,
+        maratonista: 0,
+        pontualidade: 0,
+        regularidade: 0,
+      };
+
+      ranking.forEach(agent => {
+        agent.badges.forEach(badge => {
+          if (badge.type in badgeDistribution) {
+            badgeDistribution[badge.type]++;
+          }
+        });
+      });
+
+      return res.json({
+        period,
+        totalAgents,
+        avgTotalScore,
+        topScore,
+        badgeDistribution,
+      });
+    } catch (error: any) {
+      console.error("❌ [Gamification] Erro ao buscar estatísticas:", error);
+      return res.status(500).json({ error: error.message || "Erro ao buscar estatísticas" });
+    }
+  });
+
   // Get fair resolution metrics (based on activity_log - never overwritten)
   // This provides accurate counting even when conversations are reopened
   app.get("/api/reports/fair-resolutions", authenticate, requireAdminOrSupervisor, async (req, res) => {

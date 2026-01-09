@@ -304,6 +304,24 @@ export interface IStorage {
     transfersToHuman: number;
   }>>;
 
+  // Gamification
+  calculateGamificationScores(period: string): Promise<{
+    agentsProcessed: number;
+    totalConversations: number;
+    badgesAwarded: number;
+  }>;
+  getGamificationRanking(period: string): Promise<Array<{
+    agentId: string;
+    agentName: string;
+    totalScore: number;
+    totalConversations: number;
+    avgNps: number;
+    successRate: number;
+    avgResponseTime: number;
+    avgServiceTime: number;
+    badges: Array<{ type: string; earnedAt: string; metric: number }>;
+  }>>;
+
   // Registration Requests
   createRegistrationRequest(request: InsertRegistrationRequest): Promise<RegistrationRequest>;
   getRegistrationRequestByUsername(username: string): Promise<RegistrationRequest | undefined>;
@@ -5870,6 +5888,354 @@ export class DbStorage implements IStorage {
       recentViolations: violations.slice(0, 10),
       hourlyTrend,
     };
+  }
+
+  // ===================================
+  // GAMIFICATION CALCULATION
+  // ===================================
+
+  /**
+   * Calcula as métricas de gamificação para todos os atendentes em um período
+   * Fórmula: 40% NPS + 30% Volume + 20% Resolução + 10% Tempo de Resposta
+   */
+  async calculateGamificationScores(period: string): Promise<{
+    agentsProcessed: number;
+    totalConversations: number;
+    badgesAwarded: number;
+  }> {
+    // Parse period (YYYY-MM)
+    const [year, month] = period.split('-').map(Number);
+    if (!year || !month || month < 1 || month > 12) {
+      throw new Error(`Período inválido: ${period}. Use formato YYYY-MM`);
+    }
+
+    // Calcular início e fim do período
+    const startDate = new Date(year, month - 1, 1, 0, 0, 0, 0);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999); // Último dia do mês
+
+    console.log(`📊 [Gamification] Calculando scores para período ${period} (${startDate.toISOString()} até ${endDate.toISOString()})`);
+
+    // Buscar configurações de gamificação
+    const [settings] = await db.select()
+      .from(schema.gamificationSettings)
+      .limit(1);
+
+    if (!settings) {
+      throw new Error('Configurações de gamificação não encontradas. Configure primeiro em /gamification/settings');
+    }
+
+    // Buscar todos os agentes (role AGENT)
+    const agents = await db.select()
+      .from(schema.users)
+      .where(eq(schema.users.role, 'AGENT'));
+
+    console.log(`📊 [Gamification] Encontrados ${agents.length} agentes`);
+
+    // Buscar TODAS as conversas resolvidas no período (para calcular normalização)
+    const allResolvedConversations = await db.select()
+      .from(schema.conversations)
+      .where(and(
+        eq(schema.conversations.status, 'resolved'),
+        isNotNull(schema.conversations.resolvedBy),
+        isNotNull(schema.conversations.resolvedAt),
+        gte(schema.conversations.resolvedAt, startDate),
+        lte(schema.conversations.resolvedAt, endDate)
+      ));
+
+    const totalConversationsInPeriod = allResolvedConversations.length;
+    console.log(`📊 [Gamification] Total de conversas resolvidas no período: ${totalConversationsInPeriod}`);
+
+    // Calcular estatísticas globais para normalização
+    const allNpsScores: number[] = [];
+    const allResponseTimes: number[] = [];
+    const allSuccessRates: number[] = [];
+
+    // Processar cada agente
+    const agentScores: Array<{
+      agentId: string;
+      agentName: string;
+      totalConversations: number;
+      avgNps: number;
+      successRate: number;
+      avgResponseTime: number;
+      avgServiceTime: number;
+      npsScore: number;
+      volumeScore: number;
+      resolutionScore: number;
+      timeScore: number;
+      totalScore: number;
+    }> = [];
+
+    for (const agent of agents) {
+      // Buscar conversas RESOLVIDAS por este agente no período
+      const agentConversations = allResolvedConversations.filter(
+        c => c.resolvedBy === agent.id
+      );
+
+      if (agentConversations.length === 0) {
+        // Agente sem conversas no período - criar score zerado
+        agentScores.push({
+          agentId: agent.id,
+          agentName: agent.fullName || agent.username,
+          totalConversations: 0,
+          avgNps: 0,
+          successRate: 0,
+          avgResponseTime: 0,
+          avgServiceTime: 0,
+          npsScore: 0,
+          volumeScore: 0,
+          resolutionScore: 0,
+          timeScore: 0,
+          totalScore: 0,
+        });
+        continue;
+      }
+
+      // Calcular NPS médio (buscar feedbacks das conversas deste agente)
+      const conversationIds = agentConversations.map(c => c.id);
+      const feedbacks = await db.select()
+        .from(schema.satisfactionFeedback)
+        .where(and(
+          inArray(schema.satisfactionFeedback.conversationId, conversationIds),
+          gte(schema.satisfactionFeedback.createdAt, startDate),
+          lte(schema.satisfactionFeedback.createdAt, endDate)
+        ));
+
+      const npsScores = feedbacks.map(f => f.npsScore || 0).filter(n => n > 0);
+      const avgNps = npsScores.length > 0
+        ? Math.round(npsScores.reduce((sum, n) => sum + n, 0) / npsScores.length)
+        : 0;
+
+      // Calcular taxa de sucesso (sentimento positivo ou neutro)
+      const successfulConversations = agentConversations.filter(c =>
+        c.sentiment === 'positive' || c.sentiment === 'neutral'
+      ).length;
+      const successRate = Math.round((successfulConversations / agentConversations.length) * 100);
+
+      // Calcular tempo médio de resposta (da atribuição até primeira resposta do agente)
+      // Usar transferredAt (quando agente assumiu) ou createdAt se não tiver transferredAt
+      const MAX_RESPONSE_TIME = 8 * 60 * 60; // 8 horas máximo (excluir outliers)
+      const responseTimes = agentConversations
+        .filter(c => c.transferredAt || c.createdAt)
+        .map(c => {
+          const startTime = new Date(c.transferredAt || c.createdAt!).getTime();
+          // Buscar primeira mensagem do agente após atribuição
+          // Por enquanto, usar tempo até resolução como aproximação
+          const endTime = new Date(c.resolvedAt!).getTime();
+          return Math.floor((endTime - startTime) / 1000);
+        })
+        .filter(seconds => seconds > 0 && seconds <= MAX_RESPONSE_TIME);
+
+      const avgResponseTime = responseTimes.length > 0
+        ? Math.floor(responseTimes.reduce((sum, t) => sum + t, 0) / responseTimes.length)
+        : 0;
+
+      // Calcular tempo médio de atendimento (da atribuição até finalização)
+      const serviceTimes = agentConversations
+        .filter(c => c.transferredAt && c.resolvedAt)
+        .map(c => {
+          const startTime = new Date(c.transferredAt!).getTime();
+          const endTime = new Date(c.resolvedAt!).getTime();
+          return Math.floor((endTime - startTime) / 1000);
+        })
+        .filter(seconds => seconds > 0 && seconds <= MAX_RESPONSE_TIME);
+
+      const avgServiceTime = serviceTimes.length > 0
+        ? Math.floor(serviceTimes.reduce((sum, t) => sum + t, 0) / serviceTimes.length)
+        : 0;
+
+      // Coletar dados para normalização
+      if (avgNps > 0) allNpsScores.push(avgNps);
+      if (avgResponseTime > 0) allResponseTimes.push(avgResponseTime);
+      if (successRate > 0) allSuccessRates.push(successRate);
+
+      agentScores.push({
+        agentId: agent.id,
+        agentName: agent.fullName || agent.username,
+        totalConversations: agentConversations.length,
+        avgNps,
+        successRate,
+        avgResponseTime,
+        avgServiceTime,
+        // Scores normalizados serão calculados depois
+        npsScore: 0,
+        volumeScore: 0,
+        resolutionScore: 0,
+        timeScore: 0,
+        totalScore: 0,
+      });
+    }
+
+    // Normalizar scores (0-100)
+    const maxVolume = Math.max(...agentScores.map(s => s.totalConversations), 1);
+    const maxNps = Math.max(...allNpsScores, 10) || 10; // Máximo 10
+    const maxSuccessRate = 100; // Já está em porcentagem
+    const minResponseTime = Math.min(...allResponseTimes.filter(t => t > 0), 60) || 60; // Mínimo 1 minuto
+    const maxResponseTime = Math.max(...allResponseTimes, 3600) || 3600; // Máximo 1 hora
+
+    console.log(`📊 [Gamification] Normalização: Volume max=${maxVolume}, NPS max=${maxNps}, Tempo min=${minResponseTime}s max=${maxResponseTime}s`);
+
+    // Calcular scores normalizados e total
+    for (const score of agentScores) {
+      // Volume Score (0-100): baseado no volume relativo ao máximo
+      score.volumeScore = maxVolume > 0
+        ? Math.round((score.totalConversations / maxVolume) * 100)
+        : 0;
+
+      // NPS Score (0-100): NPS já está em escala 0-10, multiplicar por 10
+      score.npsScore = Math.round((score.avgNps / maxNps) * 100);
+
+      // Resolution Score (0-100): taxa de sucesso já está em porcentagem
+      score.resolutionScore = score.successRate;
+
+      // Time Score (0-100): inverter (menor tempo = maior score)
+      // Normalizar: (max - atual) / (max - min) * 100
+      if (score.avgResponseTime > 0 && maxResponseTime > minResponseTime) {
+        const normalizedTime = (maxResponseTime - score.avgResponseTime) / (maxResponseTime - minResponseTime);
+        score.timeScore = Math.max(0, Math.min(100, Math.round(normalizedTime * 100)));
+      } else {
+        score.timeScore = 0;
+      }
+
+      // Total Score: fórmula ponderada
+      score.totalScore = Math.round(
+        (score.npsScore * settings.npsWeight / 100) +
+        (score.volumeScore * settings.volumeWeight / 100) +
+        (score.resolutionScore * settings.resolutionWeight / 100) +
+        (score.timeScore * settings.responseTimeWeight / 100)
+      );
+    }
+
+    // Ordenar por totalScore (desc) e calcular ranking
+    agentScores.sort((a, b) => b.totalScore - a.totalScore);
+    agentScores.forEach((score, index) => {
+      score.ranking = index + 1;
+    });
+
+    // Salvar scores no banco (upsert)
+    let badgesAwarded = 0;
+    for (const score of agentScores) {
+      // Upsert gamification score
+      const existing = await db.select()
+        .from(schema.gamificationScores)
+        .where(and(
+          eq(schema.gamificationScores.agentId, score.agentId),
+          eq(schema.gamificationScores.period, period)
+        ))
+        .limit(1);
+
+      const scoreData = {
+        agentId: score.agentId,
+        period,
+        totalConversations: score.totalConversations,
+        avgNps: score.avgNps,
+        successRate: score.successRate,
+        avgResponseTime: score.avgResponseTime,
+        avgServiceTime: score.avgServiceTime,
+        volumeScore: score.volumeScore,
+        npsScore: score.npsScore,
+        resolutionScore: score.resolutionScore,
+        timeScore: score.timeScore,
+        totalScore: score.totalScore,
+        ranking: score.ranking,
+        calculatedAt: new Date(),
+      };
+
+      if (existing.length > 0) {
+        await db.update(schema.gamificationScores)
+          .set(scoreData)
+          .where(eq(schema.gamificationScores.id, existing[0].id));
+      } else {
+        await db.insert(schema.gamificationScores)
+          .values(scoreData);
+      }
+
+      // Atribuir badges (lógica simplificada - pode ser expandida)
+      // Badge "Solucionador": NPS >= 7 e Resolução >= 70%
+      if (score.avgNps >= (settings.solucionadorNpsMin || 7) && 
+          score.successRate >= (settings.solucionadorResolutionMin || 70)) {
+        const existingBadge = await db.select()
+          .from(schema.gamificationBadges)
+          .where(and(
+            eq(schema.gamificationBadges.agentId, score.agentId),
+            eq(schema.gamificationBadges.period, period),
+            eq(schema.gamificationBadges.badgeType, 'solucionador')
+          ))
+          .limit(1);
+
+        if (existingBadge.length === 0) {
+          await db.insert(schema.gamificationBadges).values({
+            id: randomUUID(),
+            agentId: score.agentId,
+            period,
+            badgeType: 'solucionador',
+            awardedAt: new Date(),
+          });
+          badgesAwarded++;
+        }
+      }
+    }
+
+    console.log(`✅ [Gamification] Cálculo concluído: ${agentScores.length} agentes processados, ${badgesAwarded} badges atribuídos`);
+
+    return {
+      agentsProcessed: agentScores.length,
+      totalConversations: totalConversationsInPeriod,
+      badgesAwarded,
+    };
+  }
+
+  /**
+   * Busca ranking de gamificação para um período
+   */
+  async getGamificationRanking(period: string): Promise<Array<{
+    agentId: string;
+    agentName: string;
+    totalScore: number;
+    totalConversations: number;
+    avgNps: number;
+    successRate: number;
+    avgResponseTime: number;
+    avgServiceTime: number;
+    badges: Array<{ type: string; earnedAt: string; metric: number }>;
+  }>> {
+    const scores = await db.select({
+      score: schema.gamificationScores,
+      agent: schema.users,
+    })
+      .from(schema.gamificationScores)
+      .leftJoin(schema.users, eq(schema.gamificationScores.agentId, schema.users.id))
+      .where(eq(schema.gamificationScores.period, period))
+      .orderBy(asc(schema.gamificationScores.ranking));
+
+    // Buscar badges para cada agente
+    const badges = await db.select()
+      .from(schema.gamificationBadges)
+      .where(eq(schema.gamificationBadges.period, period));
+
+    const badgesByAgent = new Map<string, typeof badges>();
+    badges.forEach(badge => {
+      if (!badgesByAgent.has(badge.agentId)) {
+        badgesByAgent.set(badge.agentId, []);
+      }
+      badgesByAgent.get(badge.agentId)!.push(badge);
+    });
+
+    return scores.map(({ score, agent }) => ({
+      agentId: score.agentId,
+      agentName: agent?.fullName || agent?.username || 'Desconhecido',
+      totalScore: score.totalScore,
+      totalConversations: score.totalConversations,
+      avgNps: score.avgNps,
+      successRate: score.successRate,
+      avgResponseTime: score.avgResponseTime,
+      avgServiceTime: score.avgServiceTime,
+      badges: (badgesByAgent.get(score.agentId) || []).map(b => ({
+        type: b.badgeType,
+        earnedAt: b.awardedAt?.toISOString() || '',
+        metric: 0, // Pode ser expandido
+      })),
+    }));
   }
 }
 
