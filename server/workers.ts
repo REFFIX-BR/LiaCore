@@ -115,7 +115,29 @@ async function sendWhatsAppMessage(phoneNumberOrChatId: string, text: string, in
     });
 
     if (!response.ok) {
-      throw new Error(`Evolution API error: ${response.statusText}`);
+      const errorText = await response.text();
+      let errorMessage = `Evolution API error: ${response.statusText}`;
+      
+      // Adicionar detalhes do erro se disponível
+      if (errorText) {
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage += ` - ${JSON.stringify(errorJson)}`;
+        } catch {
+          errorMessage += ` - ${errorText.substring(0, 200)}`;
+        }
+      }
+      
+      console.error(`❌ [WhatsApp] Evolution API error (${response.status}):`, {
+        url: fullUrl,
+        instance: evolutionInstance,
+        phoneNumber,
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText.substring(0, 500)
+      });
+      
+      throw new Error(errorMessage);
     }
 
     // Parse response to get WhatsApp message ID
