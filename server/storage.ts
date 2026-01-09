@@ -2636,9 +2636,10 @@ export class DbStorage implements IStorage {
       ));
 
     // ✅ NOVO: Get ALL conversations ASSIGNED to agents that were RESOLVED in the period
-    // IMPORTANTE: Buscar conversas atribuídas ao atendente que foram RESOLVIDAS no período
+    // IMPORTANTE: Buscar TODAS as conversas atribuídas ao atendente que foram RESOLVIDAS no período
     // "Atendidas" = conversas atribuídas (assignedTo) que foram resolvidas no período
     // Isso mostra quantas conversas o atendente trabalhou no período, mesmo que tenham sido atribuídas antes
+    // IMPORTANTE: Não filtrar por resolvedBy, apenas por assignedTo e resolvedAt
     let assignedConversationsQuery = db.select({
       conversation: schema.conversations,
       agent: schema.users
@@ -2648,7 +2649,8 @@ export class DbStorage implements IStorage {
       .where(and(
         isNotNull(schema.conversations.assignedTo),
         // ✅ Buscar conversas que foram RESOLVIDAS no período e que foram atribuídas ao atendente
-        // Isso garante que estamos contando conversas que o atendente realmente trabalhou no período
+        // IMPORTANTE: Não filtrar por resolvedBy, apenas por assignedTo
+        // Isso garante que contamos todas as conversas atribuídas, mesmo que resolvidas por outro
         eq(schema.conversations.status, 'resolved'),
         isNotNull(schema.conversations.resolvedAt),
         gte(schema.conversations.resolvedAt, startDate),
@@ -2658,6 +2660,13 @@ export class DbStorage implements IStorage {
 
     const conversations = await conversationsQuery;
     const assignedConversations = await assignedConversationsQuery;
+    
+    // Debug: verificar quantas conversas foram encontradas
+    console.log(`📊 [Agent Reports] Conversas resolvidas: ${conversations.length}`);
+    console.log(`📊 [Agent Reports] Conversas atribuídas: ${assignedConversations.length}`);
+    if (agentId) {
+      console.log(`📊 [Agent Reports] Filtrado por agente: ${agentId}`);
+    }
 
     // ✅ NOVO: Get transfer actions made BY the agent in the period
     // Contar quantas conversas o atendente TRANSFERIU para outros atendentes
@@ -2812,44 +2821,65 @@ export class DbStorage implements IStorage {
       const resolvedConversations = convs.length;
       
       // ✅ NOVO: Contar conversas ATRIBUÍDAS no período (para comparação)
-      // IMPORTANTE: "Atendidas" usa data de ATRIBUIÇÃO, "Resolvidas" usa data de RESOLUÇÃO
-      // O agente que resolveu (resolvedBy) pode ser diferente do que foi atribuído (assignedTo)
-      // Por isso, precisamos buscar conversas atribuídas a esse agente no período de ATRIBUIÇÃO
-      let assignedData = null;
+      // IMPORTANTE: Contar diretamente das conversas atribuídas que foram resolvidas no período
+      // Isso garante que vamos contar todas as conversas atribuídas ao agente, mesmo que o agrupamento falhe
       const resolvedByAgentId = data.agentId; // ID do agente que resolveu
+      const searchAgentId = agentId || resolvedByAgentId; // Usar agentId se fornecido, senão usar resolvedByAgentId
       
-      if (agentId) {
-        // Se filtrou por agente específico, buscar pelo período apenas
-        // (todas as conversas já são desse agente)
-        assignedData = assignedGroupedData.get(period);
-      } else if (resolvedByAgentId) {
-        // Buscar conversas atribuídas a esse agente no período
-        // A chave é: "period-assignedToAgentId"
-        // IMPORTANTE: O resolvedByAgentId geralmente é o mesmo que assignedTo, mas pode ser diferente
-        // Se uma conversa foi atribuída a um agente mas resolvida por outro, ela não aparece aqui
-        const searchKey = `${period}-${resolvedByAgentId}`;
-        assignedData = assignedGroupedData.get(searchKey);
-        
-        // Se não encontrou, pode ser que:
-        // 1. O agente resolveu mas não foi atribuído (improvável, mas possível)
-        // 2. A conversa foi atribuída em outro período mas resolvida neste
-        // 3. A conversa foi atribuída a outro agente mas resolvida por este
-        // Nesse caso, vamos buscar TODAS as conversas atribuídas no período para esse agente
-        if (!assignedData) {
-          // Buscar em todas as entradas do período para encontrar conversas desse agente
-          for (const [key, value] of assignedGroupedData.entries()) {
-            if (key.startsWith(period + '-') && value.agentId === resolvedByAgentId) {
-              assignedData = value;
-              break;
+      // Contar conversas atribuídas a esse agente que foram resolvidas no período
+      let assignedCount = 0;
+      if (searchAgentId) {
+        const matchingAssigned = assignedConversations.filter(
+          ({ conversation }) => {
+            // Verificar se foi atribuída ao agente correto
+            if (conversation.assignedTo !== searchAgentId) return false;
+            if (!conversation.resolvedAt) return false;
+            
+            // Verificar se foi resolvida no período correto
+            const resolvedDate = new Date(conversation.resolvedAt);
+            let resolvedPeriodKey = '';
+            
+            switch (groupBy) {
+              case 'day':
+                resolvedPeriodKey = resolvedDate.toISOString().split('T')[0];
+                break;
+              case 'week':
+                const startOfYear = new Date(resolvedDate.getFullYear(), 0, 1);
+                const days = Math.floor((resolvedDate.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
+                const weekNum = Math.ceil((days + startOfYear.getDay() + 1) / 7);
+                resolvedPeriodKey = `${resolvedDate.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+                break;
+              case 'month':
+                resolvedPeriodKey = `${resolvedDate.getFullYear()}-${String(resolvedDate.getMonth() + 1).padStart(2, '0')}`;
+                break;
             }
+            
+            return resolvedPeriodKey === period;
+          }
+        );
+        
+        assignedCount = matchingAssigned.length;
+        
+        // Debug: log para entender o que está acontecendo
+        if (period === '2026-01-09' && searchAgentId) {
+          console.log(`🔍 [Agent Reports Debug] Período: ${period}, Agente: ${searchAgentId}`);
+          console.log(`🔍 [Agent Reports Debug] Total de conversas atribuídas (query): ${assignedConversations.length}`);
+          console.log(`🔍 [Agent Reports Debug] Conversas atribuídas a esse agente no período: ${assignedCount}`);
+          console.log(`🔍 [Agent Reports Debug] Conversas resolvidas por esse agente no período: ${resolvedConversations}`);
+          if (matchingAssigned.length > 0) {
+            console.log(`🔍 [Agent Reports Debug] Primeiras 3 conversas atribuídas:`, matchingAssigned.slice(0, 3).map(({ conversation }) => ({
+              id: conversation.id,
+              assignedTo: conversation.assignedTo,
+              resolvedBy: conversation.resolvedBy,
+              resolvedAt: conversation.resolvedAt
+            })));
           }
         }
       }
       
-      // Se não encontrou conversas atribuídas, mostrar 0 (não usar resolvidas como fallback)
-      // Isso é correto porque se não foi atribuído no período, não deve contar como "atendida" no período
-      // Mas se foi resolvida no período, ainda conta como "resolvida"
-      const assignedConversations = assignedData ? assignedData.conversations.length : 0;
+      // Se não encontrou conversas atribuídas, usar resolvidas como fallback
+      // (isso acontece quando o agente resolveu mas não foi atribuído, ou quando foi atribuído em outro período)
+      const assignedConversationsCount = assignedCount > 0 ? assignedCount : resolvedConversations;
       
       // Total de conversas = resolvidas (para manter compatibilidade)
       const totalConversations = resolvedConversations;
@@ -2941,7 +2971,7 @@ export class DbStorage implements IStorage {
         agentName: data.agentName,
         totalConversations, // Mantido para compatibilidade (resolvidas)
         resolvedConversations, // Conversas resolvidas
-        assignedConversations, // ✅ NOVO: Total de conversas atribuídas (pode ser maior que resolvidas)
+        assignedConversations: assignedConversationsCount, // ✅ NOVO: Total de conversas atribuídas (pode ser maior que resolvidas)
         successRate,
         avgResponseTime,
         avgSentiment,
