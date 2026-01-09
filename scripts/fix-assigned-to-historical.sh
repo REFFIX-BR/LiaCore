@@ -88,26 +88,51 @@ print_success "Banco local está acessível"
 # EXECUTAR QUERIES
 # ==========================================
 
-SQL_SCRIPT_PATH="$(dirname "${BASH_SOURCE[0]}")/fix-assigned-to-historical.sql"
-
-print_info "Executando queries de verificação..."
-
-# Ler o conteúdo do script SQL
-SQL_CONTENT=$(cat "$SQL_SCRIPT_PATH")
-
-# Separar as queries (até a linha do UPDATE)
-VERIFICATION_SQL=$(echo "$SQL_CONTENT" | sed -n '/^-- ==========================================$/,/^-- UPDATE conversations$/p' | head -n -1)
-
 print_warning "⚠️  ATENÇÃO: Este script irá atualizar conversas resolvidas que não têm assignedTo."
 print_warning "   Ele definirá assignedTo = resolvedBy para essas conversas."
 echo ""
 
 # Mostrar estatísticas antes da correção
 print_info "Estatísticas ANTES da correção:"
+VERIFICATION_SQL="SELECT 
+    COUNT(*) AS conversas_sem_assigned_to,
+    COUNT(DISTINCT resolved_by) AS agentes_afetados
+FROM 
+    conversations
+WHERE 
+    status = 'resolved'
+    AND resolved_by IS NOT NULL
+    AND assigned_to IS NULL;"
+
 if [ "$USE_DOCKER_PSQL" = true ]; then
     echo "$VERIFICATION_SQL" | docker exec -i ${DOCKER_CONTAINER} psql -U postgres -d lia_cortex_dev
 else
     PGPASSWORD=lia_dev_2024 echo "$VERIFICATION_SQL" | psql -h localhost -p 5432 -U postgres -d lia_cortex_dev
+fi
+
+echo ""
+print_info "Prévia das conversas que serão atualizadas (primeiras 10):"
+PREVIEW_SQL="SELECT 
+    id,
+    chat_id,
+    client_name,
+    resolved_by,
+    resolved_at,
+    assigned_to
+FROM 
+    conversations
+WHERE 
+    status = 'resolved'
+    AND resolved_by IS NOT NULL
+    AND assigned_to IS NULL
+ORDER BY 
+    resolved_at DESC
+LIMIT 10;"
+
+if [ "$USE_DOCKER_PSQL" = true ]; then
+    echo "$PREVIEW_SQL" | docker exec -i ${DOCKER_CONTAINER} psql -U postgres -d lia_cortex_dev
+else
+    PGPASSWORD=lia_dev_2024 echo "$PREVIEW_SQL" | psql -h localhost -p 5432 -U postgres -d lia_cortex_dev
 fi
 
 echo ""
@@ -123,16 +148,27 @@ print_info "Executando correção..."
 UPDATE_SQL="UPDATE conversations SET assigned_to = resolved_by WHERE status = 'resolved' AND resolved_by IS NOT NULL AND assigned_to IS NULL;"
 
 if [ "$USE_DOCKER_PSQL" = true ]; then
-    RESULT=$(echo "$UPDATE_SQL" | docker exec -i ${DOCKER_CONTAINER} psql -U postgres -d lia_cortex_dev -t -c "SELECT COUNT(*) FROM conversations WHERE status = 'resolved' AND resolved_by IS NOT NULL AND assigned_to IS NULL;" | xargs)
+    # Contar quantas serão atualizadas antes
+    COUNT_BEFORE=$(docker exec ${DOCKER_CONTAINER} psql -U postgres -d lia_cortex_dev -t -c "SELECT COUNT(*) FROM conversations WHERE status = 'resolved' AND resolved_by IS NOT NULL AND assigned_to IS NULL;" | xargs)
+    
+    # Executar UPDATE
     echo "$UPDATE_SQL" | docker exec -i ${DOCKER_CONTAINER} psql -U postgres -d lia_cortex_dev
-    UPDATED_COUNT=$(docker exec -i ${DOCKER_CONTAINER} psql -U postgres -d lia_cortex_dev -t -c "SELECT COUNT(*) FROM conversations WHERE status = 'resolved' AND resolved_by IS NOT NULL AND assigned_to IS NOT NULL;" | xargs)
+    
+    # Contar quantas foram atualizadas
+    COUNT_AFTER=$(docker exec ${DOCKER_CONTAINER} psql -U postgres -d lia_cortex_dev -t -c "SELECT COUNT(*) FROM conversations WHERE status = 'resolved' AND resolved_by IS NOT NULL AND assigned_to IS NOT NULL;" | xargs)
 else
-    RESULT=$(PGPASSWORD=lia_dev_2024 echo "$UPDATE_SQL" | psql -h localhost -p 5432 -U postgres -d lia_cortex_dev -t -c "SELECT COUNT(*) FROM conversations WHERE status = 'resolved' AND resolved_by IS NOT NULL AND assigned_to IS NULL;" | xargs)
+    # Contar quantas serão atualizadas antes
+    COUNT_BEFORE=$(PGPASSWORD=lia_dev_2024 psql -h localhost -p 5432 -U postgres -d lia_cortex_dev -t -c "SELECT COUNT(*) FROM conversations WHERE status = 'resolved' AND resolved_by IS NOT NULL AND assigned_to IS NULL;" | xargs)
+    
+    # Executar UPDATE
     PGPASSWORD=lia_dev_2024 echo "$UPDATE_SQL" | psql -h localhost -p 5432 -U postgres -d lia_cortex_dev
-    UPDATED_COUNT=$(PGPASSWORD=lia_dev_2024 psql -h localhost -p 5432 -U postgres -d lia_cortex_dev -t -c "SELECT COUNT(*) FROM conversations WHERE status = 'resolved' AND resolved_by IS NOT NULL AND assigned_to IS NOT NULL;" | xargs)
+    
+    # Contar quantas foram atualizadas
+    COUNT_AFTER=$(PGPASSWORD=lia_dev_2024 psql -h localhost -p 5432 -U postgres -d lia_cortex_dev -t -c "SELECT COUNT(*) FROM conversations WHERE status = 'resolved' AND resolved_by IS NOT NULL AND assigned_to IS NOT NULL;" | xargs)
 fi
 
 print_success "Correção concluída!"
-print_info "Conversas com assignedTo após correção: $UPDATED_COUNT"
+print_info "Conversas atualizadas: $COUNT_BEFORE"
+print_info "Total de conversas resolvidas com assignedTo após correção: $COUNT_AFTER"
 echo ""
 
