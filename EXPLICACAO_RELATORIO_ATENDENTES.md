@@ -2,30 +2,38 @@
 
 ## 🔍 Critérios de Contagem
 
-O relatório agora mostra **DUAS métricas**:
+O relatório mostra **DUAS métricas independentes**:
 
-### 1️⃣ **Atendidas** (Nova métrica)
+### 1️⃣ **Atendidas** 
 Conversas **ATRIBUÍDAS** ao atendente no período:
 - **AssignedTo**: ID do atendente
-- **TransferredAt** ou **CreatedAt**: Dentro do período (data de atribuição)
-- Inclui conversas **ativas**, **resolvidas** e **pendentes**
+- **Data de Atribuição**: `transferredAt` ou `createdAt` dentro do período
+- **Inclui**: Conversas ativas, resolvidas, pendentes - **qualquer status**
+- **Critério**: Se foi atribuída a ela no período, conta como "atendida"
 
-### 2️⃣ **Resolvidas** (Métrica existente)
+### 2️⃣ **Resolvidas**
 Conversas **RESOLVIDAS** pelo atendente no período:
 - **Status**: `resolved` (resolvida)
 - **ResolvedBy**: Preenchido com o ID do atendente
 - **ResolvedAt**: Dentro do período selecionado (data de resolução)
+- **Critério**: Se ela resolveu no período, conta como "resolvida"
 
 ## 📝 Exemplo Prático
 
-**Cenário**: Thais Alves atendeu 32 conversas no dia 09/01/2026
+**Cenário**: Thais Alves foi atribuída a 32 conversas no dia 09/01/2026
 
 **O que aconteceu:**
 - ✅ **32 conversas** foram **atribuídas** a ela no dia 09/01 → **Coluna "Atendidas"**
+  - Baseado em `assignedTo` + data de atribuição (`transferredAt` ou `createdAt`)
+  - Conta **qualquer conversa atribuída a ela no período**, independente de status
+  
 - ✅ **28 conversas** foram **resolvidas por ela** no dia 09/01 → **Coluna "Resolvidas"**
-- ❌ **4 conversas** podem estar em uma destas situações:
-  1. Ainda estão **ativas** (não foram resolvidas)
-  2. Foram **resolvidas em outro dia** (resolvedAt diferente)
+  - Baseado em `resolvedBy` + `resolvedAt` no período
+  - Conta apenas conversas que ela **efetivamente resolveu** no período
+
+- ❌ **4 conversas** (32 - 28 = 4) podem estar em uma destas situações:
+  1. Ainda estão **ativas** (não foram resolvidas ainda)
+  2. Foram **resolvidas em outro dia** (resolvedAt em outro período)
   3. Foram **resolvidas por outro atendente** (resolvedBy diferente)
   4. Não têm `resolvedBy` preenchido (resolvidas pela IA ou auto-fechadas)
 
@@ -72,12 +80,24 @@ Para ver todas as conversas atribuídas (não apenas resolvidas), você pode:
 
 ## 💡 Diferença entre "Atendidas" e "Resolvidas"
 
-- **Atendidas**: Todas as conversas que foram atribuídas ao atendente (`assignedTo`)
-- **Resolvidas**: Apenas as conversas que o atendente efetivamente finalizou (`resolvedBy` + `resolvedAt`)
+### **Atendidas**
+- **Baseado em**: `assignedTo` + **data de atribuição** (`transferredAt` ou `createdAt`)
+- **Conta**: Todas as conversas atribuídas ao atendente **no período**
+- **Inclui**: Conversas ativas, resolvidas, pendentes - **qualquer status**
+- **Lógica**: "Se foi atribuída a ela no período, conta como atendida"
+
+### **Resolvidas**
+- **Baseado em**: `resolvedBy` + **data de resolução** (`resolvedAt`)
+- **Conta**: Apenas conversas que o atendente **efetivamente resolveu** no período
+- **Inclui**: Apenas conversas com status `resolved`
+- **Lógica**: "Se ela resolveu no período, conta como resolvida"
 
 **Exemplo:**
 - Se "Atendidas" = 32 e "Resolvidas" = 28
-- Significa que 4 conversas foram atribuídas mas não foram resolvidas por ela no período
+- Significa que:
+  - 32 conversas foram **atribuídas** a ela no período
+  - 28 dessas conversas foram **resolvidas por ela** no período
+  - 4 conversas foram atribuídas mas não resolvidas por ela no período (podem estar ativas, resolvidas em outro dia, ou resolvidas por outro agente)
 
 ## ✅ Melhorias Implementadas
 
