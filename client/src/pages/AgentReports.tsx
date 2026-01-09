@@ -136,11 +136,12 @@ export default function AgentReports() {
     (acc, r) => ({
       totalConversations: acc.totalConversations + r.totalConversations,
       resolvedConversations: acc.resolvedConversations + r.resolvedConversations,
+      assignedConversations: acc.assignedConversations + (r.assignedConversations || r.totalConversations), // Fallback para compatibilidade
       avgSuccessRate: acc.avgSuccessRate + r.successRate,
       avgNPS: acc.avgNPS + r.npsScore,
       transfersToHuman: acc.transfersToHuman + r.transfersToHuman,
     }),
-    { totalConversations: 0, resolvedConversations: 0, avgSuccessRate: 0, avgNPS: 0, transfersToHuman: 0 }
+    { totalConversations: 0, resolvedConversations: 0, assignedConversations: 0, avgSuccessRate: 0, avgNPS: 0, transfersToHuman: 0 }
   );
 
   const successRate = summary.totalConversations > 0
@@ -153,7 +154,8 @@ export default function AgentReports() {
   const chartData = reports.map(r => ({
     period: r.period,
     name: r.agentName || r.period,
-    conversas: r.totalConversations,
+    conversas: r.totalConversations, // Resolvidas (mantido para compatibilidade)
+    atendidas: r.assignedConversations || r.totalConversations, // ✅ NOVO: Total atendidas
     resolvidas: r.resolvedConversations,
     sucesso: r.successRate,
     nps: r.npsScore
@@ -279,10 +281,10 @@ export default function AgentReports() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-total-conversations">
-              {summary.totalConversations}
+              {summary.assignedConversations || summary.totalConversations}
             </div>
             <p className="text-xs text-muted-foreground">
-              {summary.resolvedConversations} resolvidas
+              {summary.assignedConversations || summary.totalConversations} atendidas • {summary.resolvedConversations} resolvidas
             </p>
           </CardContent>
         </Card>
@@ -369,7 +371,7 @@ export default function AgentReports() {
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Line type="monotone" dataKey="conversas" stroke="#8884d8" name="Total" />
+                  <Line type="monotone" dataKey="atendidas" stroke="#8884d8" name="Atendidas" />
                   <Line type="monotone" dataKey="resolvidas" stroke="#82ca9d" name="Resolvidas" />
                 </LineChart>
               </ResponsiveContainer>
@@ -425,7 +427,7 @@ export default function AgentReports() {
                 <tr className="border-b">
                   <th className="text-left py-2 px-4">Período</th>
                   {selectedAgent === "all" && <th className="text-left py-2 px-4">Atendente</th>}
-                  <th className="text-right py-2 px-4">Conversas</th>
+                  <th className="text-right py-2 px-4">Atendidas</th>
                   <th className="text-right py-2 px-4">Resolvidas</th>
                   <th className="text-right py-2 px-4">Sucesso</th>
                   <th className="text-right py-2 px-4">NPS</th>
@@ -435,13 +437,13 @@ export default function AgentReports() {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <td colSpan={selectedAgent === "all" ? 7 : 6} className="text-center py-8 text-muted-foreground">
                       Carregando...
                     </td>
                   </tr>
                 ) : reports.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <td colSpan={selectedAgent === "all" ? 7 : 6} className="text-center py-8 text-muted-foreground">
                       Sem dados para o período selecionado
                     </td>
                   </tr>
@@ -452,7 +454,14 @@ export default function AgentReports() {
                       {selectedAgent === "all" && (
                         <td className="py-2 px-4">{report.agentName || "N/A"}</td>
                       )}
-                      <td className="text-right py-2 px-4">{report.totalConversations}</td>
+                      <td className="text-right py-2 px-4">
+                        {report.assignedConversations !== undefined ? report.assignedConversations : report.totalConversations}
+                        {report.assignedConversations !== undefined && report.assignedConversations > report.resolvedConversations && (
+                          <span className="text-xs text-muted-foreground ml-1">
+                            ({report.assignedConversations - report.resolvedConversations} pendentes)
+                          </span>
+                        )}
+                      </td>
                       <td className="text-right py-2 px-4">{report.resolvedConversations}</td>
                       <td className="text-right py-2 px-4">{report.successRate}%</td>
                       <td className="text-right py-2 px-4">{report.npsScore}</td>

@@ -2635,7 +2635,36 @@ export class DbStorage implements IStorage {
         agentId ? eq(schema.conversations.resolvedBy, agentId) : sql`1=1`
       ));
 
+    // ✅ NOVO: Get ALL conversations ASSIGNED to agents in the period (for comparison)
+    // Isso mostra quantas conversas foram atribuídas, mesmo que não resolvidas
+    // Usar transferredAt (quando foi atribuído) ou createdAt como fallback
+    // Simplificado: buscar conversas onde transferredAt OU createdAt está no período
+    let assignedConversationsQuery = db.select({
+      conversation: schema.conversations,
+      agent: schema.users
+    })
+      .from(schema.conversations)
+      .leftJoin(schema.users, eq(schema.conversations.assignedTo, schema.users.id))
+      .where(and(
+        isNotNull(schema.conversations.assignedTo),
+        // Buscar conversas atribuídas no período (usando transferredAt ou createdAt)
+        or(
+          and(
+            isNotNull(schema.conversations.transferredAt),
+            gte(schema.conversations.transferredAt, startDate),
+            lte(schema.conversations.transferredAt, endDate)
+          ),
+          and(
+            isNull(schema.conversations.transferredAt),
+            gte(schema.conversations.createdAt, startDate),
+            lte(schema.conversations.createdAt, endDate)
+          )
+        ),
+        agentId ? eq(schema.conversations.assignedTo, agentId) : sql`1=1`
+      ));
+
     const conversations = await conversationsQuery;
+    const assignedConversations = await assignedConversationsQuery;
 
     // Get NPS feedbacks for the period
     const feedbacks = await db.select()
@@ -2645,12 +2674,18 @@ export class DbStorage implements IStorage {
         lte(schema.satisfactionFeedback.createdAt, endDate)
       ));
 
-    // Group conversations by period
+    // Group conversations by period (RESOLVED)
     const groupedData = new Map<string, {
       agentId?: string;
       agentName?: string;
       conversations: typeof conversations;
       feedbacks: typeof feedbacks;
+    }>();
+
+    // Group ASSIGNED conversations by period (for comparison)
+    const assignedGroupedData = new Map<string, {
+      agentId?: string;
+      conversations: typeof assignedConversations;
     }>();
 
     conversations.forEach(({ conversation, agent }) => {
@@ -2688,6 +2723,47 @@ export class DbStorage implements IStorage {
       groupedData.get(key)!.conversations.push({ conversation, agent });
     });
 
+    // Group assigned conversations by period
+    assignedConversations.forEach(({ conversation, agent }) => {
+      if (!conversation.assignedTo) return;
+
+      // ✅ Usar transferredAt (quando foi atribuído) ou createdAt como fallback
+      // transferredAt é mais preciso pois indica quando a conversa foi realmente atribuída
+      const assignmentDate = conversation.transferredAt || conversation.createdAt;
+      if (!assignmentDate) return;
+
+      const date = new Date(assignmentDate);
+      
+      // Garantir que a data está dentro do período (já filtrado na query, mas verificar novamente)
+      if (date < startDate || date > endDate) return;
+      let periodKey = '';
+
+      switch (groupBy) {
+        case 'day':
+          periodKey = date.toISOString().split('T')[0];
+          break;
+        case 'week':
+          const weekNum = this.getWeekNumber(date);
+          periodKey = `${date.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+          break;
+        case 'month':
+          periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          break;
+      }
+
+      // ✅ Usar assignedTo para agrupar (não resolvedBy)
+      const key = agentId ? periodKey : `${periodKey}-${conversation.assignedTo}`;
+
+      if (!assignedGroupedData.has(key)) {
+        assignedGroupedData.set(key, {
+          agentId: conversation.assignedTo || undefined,
+          conversations: []
+        });
+      }
+
+      assignedGroupedData.get(key)!.conversations.push({ conversation, agent });
+    });
+
     // Add feedbacks to grouped data
     feedbacks.forEach(feedback => {
       if (!feedback.createdAt) return;
@@ -2723,11 +2799,33 @@ export class DbStorage implements IStorage {
       const convs = data.conversations.map(c => c.conversation);
       
       // ✅ FIX: totalConversations agora representa conversas RESOLVIDAS pelo atendente no período
-      const totalConversations = convs.length;
+      const resolvedConversations = convs.length;
       
-      // ✅ FIX: Todas as conversas já são resolvidas (filtradas na query inicial)
-      // resolvedConversations = totalConversations (já que filtramos por status='resolved')
-      const resolvedConversations = totalConversations;
+      // ✅ NOVO: Contar conversas ATRIBUÍDAS no mesmo período (para comparação)
+      // Buscar conversas atribuídas ao mesmo agente no mesmo período
+      // O agente pode ter sido atribuído (assignedTo) mas resolvido por outro (resolvedBy)
+      // Por isso buscamos pelo assignedTo do agente que resolveu
+      let assignedData = null;
+      const searchAgentId = data.agentId; // ID do agente que resolveu
+      
+      if (agentId) {
+        // Se filtrou por agente específico, buscar pelo período
+        assignedData = assignedGroupedData.get(period);
+      } else if (searchAgentId) {
+        // Buscar conversas atribuídas a esse agente no período
+        const searchKey = `${period}-${searchAgentId}`;
+        assignedData = assignedGroupedData.get(searchKey);
+        
+        // Se não encontrou, pode ser que o agente resolveu mas não foi atribuído
+        // Nesse caso, não há conversas atribuídas para comparar
+      }
+      
+      // Se não encontrou conversas atribuídas, usar resolvidas como fallback
+      // (isso acontece quando o agente resolveu mas não foi atribuído, ou quando foi atribuído em outro período)
+      const assignedConversations = assignedData ? assignedData.conversations.length : resolvedConversations;
+      
+      // Total de conversas = resolvidas (para manter compatibilidade)
+      const totalConversations = resolvedConversations;
       
       // ✅ FIX: Success rate baseado em sentimento positivo/neutro
       const successfulConversations = convs.filter(c => 
@@ -2777,8 +2875,9 @@ export class DbStorage implements IStorage {
         period,
         agentId: data.agentId,
         agentName: data.agentName,
-        totalConversations,
-        resolvedConversations,
+        totalConversations, // Mantido para compatibilidade (resolvidas)
+        resolvedConversations, // Conversas resolvidas
+        assignedConversations, // ✅ NOVO: Total de conversas atribuídas (pode ser maior que resolvidas)
         successRate,
         avgResponseTime,
         avgSentiment,
