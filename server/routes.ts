@@ -5626,7 +5626,8 @@ IMPORTANTE: Você deve RESPONDER ao cliente (não repetir ou parafrasear o que e
       await storage.updateConversation(conversationId, {
         status: "resolved",
         resolvedAt: new Date(),
-        assignedTo: null, // Desatribuir conversa ao finalizar
+        // ✅ FIX: NÃO limpar assignedTo - necessário para métricas de "Atendidas"
+        // assignedTo: null, // REMOVIDO - preservar para métricas
         transferredToHuman: false, // Limpar flag de transferência ao finalizar
         metadata: isWhatsApp ? { ...currentMetadata, awaitingNPS: true } : currentMetadata,
       });
@@ -8473,7 +8474,8 @@ A resposta deve:
           assistantType: conversation.assistantType,
         },
         additionalUpdates: {
-          assignedTo: null, // Desatribuir conversa ao finalizar
+          // ✅ FIX: NÃO limpar assignedTo - necessário para métricas de "Atendidas"
+          // assignedTo: null, // REMOVIDO - preservar para métricas
           transferredToHuman: false, // Limpar flag de transferência ao finalizar
         },
         metadata: isWhatsApp ? { ...currentMetadata, awaitingNPS: true } : currentMetadata,

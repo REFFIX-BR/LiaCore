@@ -900,6 +900,20 @@ export class DbStorage implements IStorage {
       ...additionalUpdates,
     };
 
+    // 🔒 PRESERVE assignedTo: Se a conversa já tem assignedTo, SEMPRE preservar (nunca limpar)
+    // Isso é crítico para métricas de "Atendidas" - precisamos saber quem foi atribuído
+    // IMPORTANTE: Mesmo se additionalUpdates.assignedTo for null, preservamos o valor existente
+    if (currentConversation?.assignedTo) {
+      // Se assignedTo já existe, SEMPRE preservar (não permitir limpeza)
+      // Isso garante que as métricas de "Atendidas" funcionem corretamente
+      updates.assignedTo = currentConversation.assignedTo;
+      if (additionalUpdates.assignedTo === null) {
+        console.log(`📊 [Metrics] Preserving assignedTo=${currentConversation.assignedTo} (ignoring null in additionalUpdates) for conversation ${conversationId}`);
+      } else {
+        console.log(`📊 [Metrics] Preserving assignedTo=${currentConversation.assignedTo} for conversation ${conversationId}`);
+      }
+    }
+
     // 🔒 FAIR METRICS: Preserve first resolver (never overwrite)
     // first_resolved_by é usado para gamificação/ranking justo
     if (!currentConversation?.firstResolvedBy && resolvedBy) {
