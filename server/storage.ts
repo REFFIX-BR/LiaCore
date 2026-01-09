@@ -2914,8 +2914,7 @@ export class DbStorage implements IStorage {
       let transfersToHuman = 0;
       
       // Buscar transferências feitas por esse agente no período
-      // O agente que resolveu (resolvedByAgentId) é quem fez as transferências
-      const searchAgentId = resolvedByAgentId || agentId;
+      // Usar searchAgentId já declarado acima (não redeclarar)
       
       if (searchAgentId) {
         // Contar transferências feitas por esse agente no período
