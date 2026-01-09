@@ -2635,10 +2635,10 @@ export class DbStorage implements IStorage {
         agentId ? eq(schema.conversations.resolvedBy, agentId) : sql`1=1`
       ));
 
-    // ✅ NOVO: Get ALL conversations ASSIGNED to agents in the period (for comparison)
-    // Isso mostra quantas conversas foram atribuídas, mesmo que não resolvidas
-    // Usar transferredAt (quando foi atribuído) ou createdAt como fallback
-    // Simplificado: buscar conversas onde transferredAt OU createdAt está no período
+    // ✅ NOVO: Get ALL conversations ASSIGNED to agents that were RESOLVED in the period
+    // IMPORTANTE: Buscar conversas que foram RESOLVIDAS no período e que foram atribuídas a um agente
+    // Isso mostra quantas conversas foram atribuídas (assignedTo) e resolvidas no período
+    // Mesmo que tenham sido atribuídas antes do período, se foram resolvidas no período, contam
     let assignedConversationsQuery = db.select({
       conversation: schema.conversations,
       agent: schema.users
@@ -2647,19 +2647,12 @@ export class DbStorage implements IStorage {
       .leftJoin(schema.users, eq(schema.conversations.assignedTo, schema.users.id))
       .where(and(
         isNotNull(schema.conversations.assignedTo),
-        // Buscar conversas atribuídas no período (usando transferredAt ou createdAt)
-        or(
-          and(
-            isNotNull(schema.conversations.transferredAt),
-            gte(schema.conversations.transferredAt, startDate),
-            lte(schema.conversations.transferredAt, endDate)
-          ),
-          and(
-            isNull(schema.conversations.transferredAt),
-            gte(schema.conversations.createdAt, startDate),
-            lte(schema.conversations.createdAt, endDate)
-          )
-        ),
+        // ✅ Buscar conversas que foram RESOLVIDAS no período
+        // Isso garante que estamos comparando o mesmo conjunto de conversas (resolvidas no período)
+        eq(schema.conversations.status, 'resolved'),
+        isNotNull(schema.conversations.resolvedAt),
+        gte(schema.conversations.resolvedAt, startDate),
+        lte(schema.conversations.resolvedAt, endDate),
         agentId ? eq(schema.conversations.assignedTo, agentId) : sql`1=1`
       ));
 
@@ -2724,18 +2717,16 @@ export class DbStorage implements IStorage {
     });
 
     // Group assigned conversations by period
+    // ✅ FIX: Usar resolvedAt para agrupar (mesmo período que as resolvidas)
+    // Isso garante que estamos comparando o mesmo conjunto de conversas (resolvidas no período)
+    // "Atendidas" = conversas atribuídas (assignedTo) que foram resolvidas no período
+    // "Resolvidas" = conversas resolvidas (resolvedBy) no período
     assignedConversations.forEach(({ conversation, agent }) => {
       if (!conversation.assignedTo) return;
+      if (!conversation.resolvedAt) return; // Já filtrado na query, mas garantir
 
-      // ✅ Usar transferredAt (quando foi atribuído) ou createdAt como fallback
-      // transferredAt é mais preciso pois indica quando a conversa foi realmente atribuída
-      const assignmentDate = conversation.transferredAt || conversation.createdAt;
-      if (!assignmentDate) return;
-
-      const date = new Date(assignmentDate);
-      
-      // Garantir que a data está dentro do período (já filtrado na query, mas verificar novamente)
-      if (date < startDate || date > endDate) return;
+      // ✅ Usar resolvedAt para agrupar (mesmo período que as resolvidas)
+      const date = new Date(conversation.resolvedAt);
       let periodKey = '';
 
       switch (groupBy) {
@@ -2752,6 +2743,7 @@ export class DbStorage implements IStorage {
       }
 
       // ✅ Usar assignedTo para agrupar (não resolvedBy)
+      // Isso mostra quantas conversas foram atribuídas a esse agente e resolvidas no período
       const key = agentId ? periodKey : `${periodKey}-${conversation.assignedTo}`;
 
       if (!assignedGroupedData.has(key)) {
@@ -2802,22 +2794,38 @@ export class DbStorage implements IStorage {
       const resolvedConversations = convs.length;
       
       // ✅ NOVO: Contar conversas ATRIBUÍDAS no mesmo período (para comparação)
-      // Buscar conversas atribuídas ao mesmo agente no mesmo período
-      // O agente pode ter sido atribuído (assignedTo) mas resolvido por outro (resolvedBy)
-      // Por isso buscamos pelo assignedTo do agente que resolveu
+      // IMPORTANTE: Buscar conversas atribuídas ao MESMO agente
+      // O agente que resolveu (resolvedBy) pode ser diferente do que foi atribuído (assignedTo)
+      // Por isso, precisamos buscar conversas atribuídas a esse agente, mesmo que resolvidas por outro
       let assignedData = null;
-      const searchAgentId = data.agentId; // ID do agente que resolveu
+      const resolvedByAgentId = data.agentId; // ID do agente que resolveu
       
       if (agentId) {
-        // Se filtrou por agente específico, buscar pelo período
+        // Se filtrou por agente específico, buscar pelo período apenas
+        // (todas as conversas já são desse agente)
         assignedData = assignedGroupedData.get(period);
-      } else if (searchAgentId) {
+      } else if (resolvedByAgentId) {
         // Buscar conversas atribuídas a esse agente no período
-        const searchKey = `${period}-${searchAgentId}`;
+        // A chave é: "period-assignedToAgentId"
+        // Mas o resolvedByAgentId pode ser diferente do assignedTo
+        // Então vamos buscar todas as conversas atribuídas a esse agente no período
+        const searchKey = `${period}-${resolvedByAgentId}`;
         assignedData = assignedGroupedData.get(searchKey);
         
-        // Se não encontrou, pode ser que o agente resolveu mas não foi atribuído
-        // Nesse caso, não há conversas atribuídas para comparar
+        // Se não encontrou, pode ser que:
+        // 1. O agente resolveu mas não foi atribuído (improvável, mas possível)
+        // 2. A conversa foi atribuída em outro período mas resolvida neste
+        // 3. A conversa foi atribuída a outro agente mas resolvida por este
+        // Nesse caso, vamos buscar TODAS as conversas atribuídas no período para esse agente
+        if (!assignedData) {
+          // Buscar em todas as entradas do período para encontrar conversas desse agente
+          for (const [key, value] of assignedGroupedData.entries()) {
+            if (key.startsWith(period + '-') && value.agentId === resolvedByAgentId) {
+              assignedData = value;
+              break;
+            }
+          }
+        }
       }
       
       // Se não encontrou conversas atribuídas, usar resolvidas como fallback
