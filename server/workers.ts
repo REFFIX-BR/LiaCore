@@ -21,7 +21,8 @@ import { extractCPFFromHistory, extractDocumentoFromHistory, injectCPFContext, i
 import { validateAIResponse, logValidationMetrics } from './validators/response-validator';
 
 // Helper function to validate and normalize Evolution API instance
-// Supports: Principal, Leads, Cobranca, abertura
+// Supports: Principal, Leads, Cobranca
+// Note: 'abertura' is automatically converted to 'Principal' (legacy support)
 function validateEvolutionInstance(instance?: string): string {
   if (!instance) {
     return 'Principal'; // Default fallback
@@ -31,12 +32,13 @@ function validateEvolutionInstance(instance?: string): string {
   const normalized = instance.toLowerCase().trim();
   
   // Map to correct casing for each instance
+  // 'abertura' is converted to 'Principal' (instância abertura foi desativada)
   const instanceMap: Record<string, string> = {
     'principal': 'Principal',
     'leads': 'Leads',
     'cobranca': 'Cobranca',
     'cobrança': 'Cobranca',
-    'abertura': 'abertura',
+    'abertura': 'Principal', // Convertido para Principal (instância abertura desativada)
   };
   
   const validInstance = instanceMap[normalized];

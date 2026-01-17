@@ -12,6 +12,7 @@ const EVOLUTION_CONFIG = {
 };
 
 // Supported Evolution API instances
+// Note: 'abertura' is automatically converted to 'Principal' (legacy support)
 type EvolutionInstance = 'Principal' | 'Leads' | 'Cobranca' | 'abertura' | string;
 
 function validateEvolutionInstance(rawInstance: string): string {
@@ -22,12 +23,13 @@ function validateEvolutionInstance(rawInstance: string): string {
   const normalized = rawInstance.toLowerCase().trim();
   
   // Map to correct casing for each instance
+  // 'abertura' is converted to 'Principal' (instância abertura foi desativada)
   const instanceMap: Record<string, string> = {
     'principal': 'Principal',
     'leads': 'Leads',
     'cobranca': 'Cobranca',
     'cobrança': 'Cobranca',
-    'abertura': 'abertura',
+    'abertura': 'Principal', // Convertido para Principal (instância abertura desativada)
   };
   
   const validInstance = instanceMap[normalized];
