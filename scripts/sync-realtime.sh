@@ -80,8 +80,10 @@ sync_once() {
     
     # Exportar do banco de produção
     print_info "📥 Exportando dados de produção..."
+    print_info "   Isso pode levar de 1-5 minutos dependendo do tamanho do banco..."
     
     TEMP_CONTAINER="pg-dump-temp-$$"
+    START_TIME=$(date +%s)
     
     if docker run --rm \
       --name "$TEMP_CONTAINER" \
@@ -89,13 +91,22 @@ sync_once() {
       postgres:16-alpine \
       sh -c "pg_dump '$PRODUCTION_DB_URL' --no-owner --no-privileges --clean --if-exists > /backup/production-backup-$timestamp.sql" 2> "$export_log"; then
         
+        END_TIME=$(date +%s)
+        DURATION=$((END_TIME - START_TIME))
+        MINUTES=$((DURATION / 60))
+        SECONDS=$((DURATION % 60))
+        
         if [ ! -f "$backup_file" ] || [ ! -s "$backup_file" ]; then
             print_error "Backup não foi criado ou está vazio!"
             return 1
         fi
         
         local backup_size=$(du -h "$backup_file" | cut -f1)
-        print_success "Backup criado: $backup_size"
+        if [ $MINUTES -gt 0 ]; then
+            print_success "Backup criado: $backup_size (em ${MINUTES}m ${SECONDS}s)"
+        else
+            print_success "Backup criado: $backup_size (em ${SECONDS}s)"
+        fi
     else
         print_error "Falha ao exportar banco de produção!"
         if [ -s "$export_log" ]; then
@@ -106,11 +117,23 @@ sync_once() {
     
     # Importar no banco local
     print_info "📤 Importando no banco local..."
+    print_info "   Isso pode levar de 30 segundos a 3 minutos..."
+    
+    IMPORT_START=$(date +%s)
     
     if docker cp "$backup_file" "${DOCKER_CONTAINER}:/tmp/backup.sql" && \
        docker exec ${DOCKER_CONTAINER} psql -U postgres -d lia_cortex_dev -f /tmp/backup.sql > "$import_log" 2>&1 && \
        docker exec ${DOCKER_CONTAINER} rm -f /tmp/backup.sql; then
-        print_success "Sincronização concluída! ($(date '+%H:%M:%S'))"
+        IMPORT_END=$(date +%s)
+        IMPORT_DURATION=$((IMPORT_END - IMPORT_START))
+        IMPORT_MIN=$((IMPORT_DURATION / 60))
+        IMPORT_SEC=$((IMPORT_DURATION % 60))
+        
+        if [ $IMPORT_MIN -gt 0 ]; then
+            print_success "Sincronização concluída! ($(date '+%H:%M:%S') - Total: ${MINUTES}m ${SECONDS}s + ${IMPORT_MIN}m ${IMPORT_SEC}s)"
+        else
+            print_success "Sincronização concluída! ($(date '+%H:%M:%S') - Total: ${MINUTES}m ${SECONDS}s + ${IMPORT_SEC}s)"
+        fi
         
         # Limpar backups antigos (manter últimos 3)
         cd "$BACKUP_DIR"
