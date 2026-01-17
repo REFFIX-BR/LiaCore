@@ -70,18 +70,34 @@ export async function searchKnowledge(query: string, topK: number = 5): Promise<
 }
 
 export async function storeConversationThread(chatId: string, threadId: string, metadata?: Record<string, any>): Promise<void> {
-  // ✨ OTIMIZAÇÃO: Pipeline para salvar thread + metadata em 1 request
-  const pipeline = redis.pipeline();
-  
-  // Salva thread
-  pipeline.set(`thread:${chatId}`, threadId, { ex: 86400 * 7 });
-  
-  // Salva metadata se fornecido
-  if (metadata) {
-    pipeline.set(`metadata:${chatId}`, JSON.stringify(metadata), { ex: 86400 * 7 });
+  try {
+    // ✨ OTIMIZAÇÃO: Pipeline para salvar thread + metadata em 1 request (se suportado)
+    if (typeof redis.pipeline === 'function') {
+      const pipeline = redis.pipeline();
+      
+      // Salva thread
+      pipeline.set(`thread:${chatId}`, threadId, { ex: 86400 * 7 });
+      
+      // Salva metadata se fornecido
+      if (metadata) {
+        pipeline.set(`metadata:${chatId}`, JSON.stringify(metadata), { ex: 86400 * 7 });
+      }
+      
+      await pipeline.exec();
+      console.log(`💾 [Optimized] Thread + metadata saved in 1 request`);
+    } else {
+      // Fallback: operações individuais (para Upstash REST que não suporta pipeline)
+      await redis.set(`thread:${chatId}`, threadId, { ex: 86400 * 7 });
+      
+      if (metadata) {
+        await redis.set(`metadata:${chatId}`, JSON.stringify(metadata), { ex: 86400 * 7 });
+      }
+      console.log(`💾 [Fallback] Thread + metadata saved (2 requests)`);
+    }
+  } catch (error) {
+    console.error(`❌ [Upstash] Error storing conversation thread:`, error);
+    // Não falhar o webhook por causa disso - continuar processamento
   }
-  
-  await pipeline.exec();
   
   // Cache local para metadata (não faz request Redis)
   if (metadata) {
@@ -90,8 +106,6 @@ export async function storeConversationThread(chatId: string, threadId: string, 
       tags: [`conv:${chatId}`] 
     });
   }
-  
-  console.log(`💾 [Optimized] Thread + metadata saved in 1 request`);
 }
 
 export async function getConversationThread(chatId: string): Promise<string | null> {

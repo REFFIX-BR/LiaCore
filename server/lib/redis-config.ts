@@ -108,6 +108,10 @@ if (isLocalRedis) {
     mset: async (...keyValues: (string | number)[]) => {
       return localRedisClient.mset(...keyValues);
     },
+    // Pipeline support for local Redis
+    pipeline: () => {
+      return localRedisClient.pipeline();
+    },
   };
 } else {
   // Usar Upstash Redis REST API
